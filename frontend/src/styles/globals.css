@@ -125,8 +125,30 @@ html, body, #root {
   background: rgba(255, 252, 247, 0.92);
   border: 1px solid var(--border);
   backdrop-filter: blur(8px);
-  pointer-events: none;
+  pointer-events: auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.zone-title-picker { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.zone-picker-btn {
+  border: none; background: transparent; font: inherit; font-weight: 700; cursor: pointer; color: var(--text);
+}
+.zone-picker-hint { font-size: 10px; font-weight: 500; color: var(--muted); pointer-events: none; }
+.zone-picker-menu {
+  position: absolute; top: 100%; margin-top: 6px; min-width: 140px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1); overflow: hidden;
+}
+.zone-picker-menu button {
+  display: block; width: 100%; text-align: left; padding: 8px 12px; border: none;
+  background: transparent; font: inherit; font-size: 12px; cursor: pointer;
+}
+.zone-picker-menu button:hover, .zone-picker-menu button.active { background: #eef8f0; }
+
+.message-toast {
+  position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+  z-index: 180; max-width: 90vw; padding: 8px 14px; border-radius: 10px;
+  background: rgba(45,37,32,0.88); color: #faf6ef; font-size: 12px;
+  pointer-events: none; animation: fadeIn 0.2s ease;
 }
 
 .right-panel {
@@ -376,6 +398,9 @@ html, body, #root {
     grid-template-columns: 0 1fr 0;
     grid-template-rows: auto var(--top-h) 1fr 52px;
   }
+  .modal-box { min-width: 0; width: calc(100vw - 24px); padding: 16px; }
+  .modal-box.modal-wide { min-width: 0; max-width: calc(100vw - 24px); }
+  .canvas-controls { bottom: 64px; max-width: calc(100vw - 16px); flex-wrap: wrap; justify-content: center; }
   .disclaimer-bar { flex-direction: column; align-items: flex-start; gap: 2px; }
   .disclaimer-slogan { font-size: 10px; }
   .left-sidebar { display: none; }

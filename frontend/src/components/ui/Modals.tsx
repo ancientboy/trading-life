@@ -144,10 +144,13 @@ function LeisureModal({ type, title, lucide, items }: {
   const agents = useGameStore(s => s.agents);
   const points = useGameStore(s => s.points);
   const sendAgentToLeisure = useGameStore(s => s.sendAgentToLeisure);
+  const canOperateAgent = useGameStore(s => s.canOperateAgent);
   const [picked, setPicked] = useState(items[0].id);
   const [busy, setBusy] = useState(false);
 
-  const agent = selectedAgentId ? agents[selectedAgentId] : Object.values(agents).sort((a, b) => b.stress - a.stress)[0];
+  const operableAgents = Object.values(agents).filter(a => canOperateAgent(a.agentId));
+  const agent = (selectedAgentId && canOperateAgent(selectedAgentId) ? agents[selectedAgentId] : null)
+    || operableAgents.sort((a, b) => b.stress - a.stress)[0];
   const item = items.find(i => i.id === picked) || items[0];
   const canAfford = points >= item.cost;
 
@@ -160,12 +163,16 @@ function LeisureModal({ type, title, lucide, items }: {
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
           <div style={{ fontSize: 11, color: '#d4af37', marginTop: 4 }}>当前积分：{points}</div>
-          {agent && (
+          {agent ? (
             <div style={{ marginTop: 8, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>服务对象：</span>
               <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} size={24} />
               <b>{agent.data.name}</b>
               <span>· 压力 {Math.round(agent.stress)}%</span>
+            </div>
+          ) : (
+            <div style={{ marginTop: 8, padding: 8, background: '#fff8e8', borderRadius: 8, fontSize: 12, color: '#8a6e3a' }}>
+              请先点顶部「+ 创建」制作你自己的 Agent，系统 Agent 无法派遣
             </div>
           )}
         </div>
@@ -182,7 +189,10 @@ function LeisureModal({ type, title, lucide, items }: {
       ))}
       <button className="ui-btn" style={{ width: '100%', marginTop: 12, padding: '10px 0' }}
         disabled={!agent || busy || !canAfford} onClick={async () => {
-        if (!agent) return;
+        if (!agent) {
+          addMessage('请先创建你自己的 Agent（顶部 + 创建）');
+          return;
+        }
         setBusy(true);
         const ok = await sendAgentToLeisure(type, agent.agentId, item.cost);
         if (ok) addMessage(`${agent.data.name} 选择了「${item.name}」· 消耗 ${item.cost} 积分 · ${item.effect}`);

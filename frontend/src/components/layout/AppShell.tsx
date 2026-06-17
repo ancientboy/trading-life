@@ -32,9 +32,17 @@ export function AppShell() {
       </main>
       <RightPanel />
       <Modals />
+      <MessageToast />
       <MobileTabBar />
     </div>
   );
+}
+
+function MessageToast() {
+  const messages = useGameStore(s => s.messages);
+  const last = messages[messages.length - 1];
+  if (!last) return null;
+  return <div className="message-toast" key={last.time + last.text}>{last.text}</div>;
 }
 
 function MobileTabBar() {
@@ -45,6 +53,7 @@ function MobileTabBar() {
     { id: 'hall' as const, pair: SIDEBAR_ICONS.hall, action: () => navigateSidebar('hall') },
     { id: 'agents' as const, pair: SIDEBAR_ICONS.agents, action: () => navigateSidebar('agents') },
     { id: 'restaurant' as const, pair: SIDEBAR_ICONS.restaurant, action: () => navigateSidebar('restaurant') },
+    { id: 'casino' as const, pair: SIDEBAR_ICONS.casino, action: () => navigateSidebar('casino') },
     { id: 'panel' as const, pair: SIDEBAR_ICONS.logs, action: toggleRightPanel },
   ];
 

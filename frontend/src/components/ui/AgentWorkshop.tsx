@@ -42,8 +42,9 @@ export function AgentWorkshop() {
   const saveCustomAgentSoul = useGameStore(s => s.saveCustomAgentSoul);
   const closeModal = useGameStore(s => s.closeModal);
   const setFollowAgent = useGameStore(s => s.setFollowAgent);
+  const workshopMode = useGameStore(s => s.workshopMode);
 
-  const [mode, setMode] = useState<'list' | 'create'>('list');
+  const [mode, setMode] = useState<'list' | 'create'>(workshopMode === 'create' ? 'create' : 'list');
   const [editId, setEditId] = useState(selectedAgentId || Object.keys(agents)[0] || 'xau');
   const [tab, setTab] = useState<'info' | 'config' | 'soul'>('info');
   const [msg, setMsg] = useState('');
@@ -63,6 +64,11 @@ export function AgentWorkshop() {
   const aType = agentTypeOf(d);
   const showConfigTab = !custom && aType === 'trading';
   const localSoul = custom ? (d?.soulMd ?? '') : soulMd;
+
+  useEffect(() => {
+    if (workshopMode === 'create') setMode('create');
+    else if (workshopMode === 'list') setMode('list');
+  }, [workshopMode]);
 
   useEffect(() => {
     const fallback = selectedAgentId || Object.keys(agents)[0];

@@ -31,8 +31,17 @@ export function GameCanvas() {
     return () => ro.disconnect();
   }, []);
 
+  const flyToZone = useGameStore(s => s.flyToZone);
+  const [zoneOpen, setZoneOpen] = useState(false);
+
   const bgColor = dayMode === 'day' ? '#e8e4dc' : '#2a2838';
-  const badge = `${ZONE_CAMERA[activeZone]?.label ?? '交易大厅'} · 拖拽移动 · 点击箭头切换区域 · 点击设施派遣 Agent`;
+  const zones: { id: typeof activeZone; label: string }[] = [
+    { id: 'hall', label: '交易大厅' },
+    { id: 'reception', label: '前厅接待' },
+    { id: 'restaurant', label: '餐厅' },
+    { id: 'spa', label: '按摩区' },
+    { id: 'casino', label: '德州扑克' },
+  ];
 
   return (
     <div
@@ -40,7 +49,22 @@ export function GameCanvas() {
       className={`canvas-wrap${zoneAnim ? ' zone-fade' : ''}`}
       style={{ background: bgColor, position: 'relative' }}
     >
-      <div className="zone-title-badge">{badge}</div>
+      <div className="zone-title-badge zone-title-picker">
+        <button type="button" className="zone-picker-btn" onClick={() => setZoneOpen(v => !v)}>
+          ▼ {ZONE_CAMERA[activeZone]?.label ?? '交易大厅'}
+        </button>
+        {zoneOpen && (
+          <div className="zone-picker-menu">
+            {zones.map(z => (
+              <button key={z.id} type="button" className={z.id === activeZone ? 'active' : ''}
+                onClick={() => { flyToZone(z.id); setZoneOpen(false); }}>
+                {z.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <span className="zone-picker-hint">拖拽移动 · 点设施派遣</span>
+      </div>
       <Suspense fallback={null}>
         <CasinoGlbLayer cw={size.cw} ch={size.ch} />
       </Suspense>

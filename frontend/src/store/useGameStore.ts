@@ -61,6 +61,8 @@ interface GameStore {
   sidebarActive: string;
   activeZone: ZoneId;
   activeModal: ModalId;
+  /** 工坊打开模式：list=编辑已有，create=新建 */
+  workshopMode: 'list' | 'create';
   followAgentId: string | null;
   cameraLookAt: { x: number; z: number };
   cameraZoom: number;
@@ -125,6 +127,7 @@ interface GameStore {
   sendAgentToFacility: (action: 'dine' | 'massage' | 'poker' | 'rest', opts?: { agentId?: string; nodeId?: string; cost?: number; skipCost?: boolean }) => Promise<boolean>;
   createAgent: (draft: CustomAgentDraft) => Promise<boolean>;
   openModal: (id: ModalId) => void;
+  openWorkshop: (mode?: 'list' | 'create') => void;
   closeModal: () => void;
   flyToZone: (zone: ZoneId) => void;
   resetCamera: () => void;
@@ -182,6 +185,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   sidebarActive: 'hall',
   activeZone: 'hall',
   activeModal: null,
+  workshopMode: 'list',
   followAgentId: null,
   cameraLookAt: { x: ZONE_CAMERA.hall.x, z: ZONE_CAMERA.hall.z },
   cameraZoom: WORLD_MAP.zoneZoom,
@@ -277,6 +281,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       case 'agents': {
         const operable = Object.keys(s.agents).filter(id => get().canOperateAgent(id));
         const firstId = (s.selectedAgentId && get().canOperateAgent(s.selectedAgentId) ? s.selectedAgentId : operable[0]) || Object.keys(s.agents)[0] || null;
+        const openCreate = operable.length === 0;
         set({
           rightPanelCollapsed: false,
           sidebarActive: 'agents',
@@ -284,6 +289,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           rightTab: 'agent',
           selectedAgentId: firstId,
           activeModal: 'workshop',
+          workshopMode: openCreate ? 'create' : 'list',
           cameraLookAt: { x: ZONE_CAMERA.hall.x, z: ZONE_CAMERA.hall.z },
           cameraZoom: WORLD_MAP.defaultZoom,
           mapOverview: false,
@@ -319,7 +325,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
   openModal: (id) => set({ activeModal: id }),
-  closeModal: () => set({ activeModal: null }),
+  openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: false }),
+  closeModal: () => set({ activeModal: null, workshopMode: 'list' }),
   flyToZone: (zone) => {
     const cam = ZONE_CAMERA[zone];
     set({
