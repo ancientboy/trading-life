@@ -1,0 +1,187 @@
+import { useState } from 'react';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useGameStore, type ModalId } from '../../store/useGameStore';
+import { AgentWorkshop } from './AgentWorkshop';
+import { AppIcon } from '../icons/AppIcon';
+import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
+
+const TITLES: Record<Exclude<ModalId, null>, string> = {
+  workshop: 'Agent 工坊',
+  strategy: '策略编辑器',
+  market: '市场行情',
+  rank: '排行榜',
+  settings: '设置',
+  help: '帮助 / 新手引导',
+  dine: '餐厅 · 点餐',
+  massage: '按摩 · 理疗套餐',
+  poker: '德州扑克 · 开局',
+};
+
+export function Modals() {
+  const activeModal = useGameStore(s => s.activeModal);
+  const closeModal = useGameStore(s => s.closeModal);
+
+  if (!activeModal) return null;
+
+  const wide = ['workshop', 'strategy', 'dine', 'massage', 'poker'].includes(activeModal);
+
+  return (
+    <div className="modal-overlay" onClick={closeModal}>
+      <div className={`modal-box ${wide ? 'modal-wide' : ''}`} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#3d3530' }}>{TITLES[activeModal]}</h2>
+          <button className="ui-btn modal-close" onClick={closeModal} title="关闭">
+            <AppIcon icon={XMarkIcon} size="modal" color="muted" />
+          </button>
+        </div>
+        <ModalContent id={activeModal} />
+      </div>
+    </div>
+  );
+}
+
+function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
+  const agents = useGameStore(s => s.agents);
+  const selectedAgentId = useGameStore(s => s.selectedAgentId);
+  const soulMd = useGameStore(s => s.soulMd);
+  const overview = useGameStore(s => s.overview);
+  const tradeFeed = useGameStore(s => s.tradeFeed);
+  const ticker = useGameStore(s => s.ticker);
+  const agent = selectedAgentId ? agents[selectedAgentId] : null;
+  const d = agent?.data;
+
+  switch (id) {
+    case 'workshop':
+      return <AgentWorkshop />;
+    case 'strategy':
+      return d ? (
+        <div style={{ color: '#3d3530' }}>
+          <div style={{ marginBottom: 12, padding: 10, background: '#faf6ef', borderRadius: 8 }}>
+            <div style={{ fontWeight: 700 }}>{d.icon} {d.name}</div>
+            <div style={{ fontSize: 12, color: '#8a7e72' }}>{d.strategy} · {d.market} · {d.interval}</div>
+          </div>
+          <pre style={{ padding: 10, background: '#faf6ef', borderRadius: 8, fontSize: 11, lineHeight: 1.5, maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+            {soulMd || '加载中…'}
+          </pre>
+        </div>
+      ) : <p style={{ color: '#8a7e72' }}>请先选择一个 Agent</p>;
+    case 'market':
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {[{ sym: 'BTC/USDT', key: 'BTCUSDT' }, { sym: 'ETH/USDT', key: 'ETHUSDT' }, { sym: 'XAU/USDT', key: 'XAUUSDT' }, { sym: 'SOL/USDT', key: 'SOLUSDT' }].map(s => (
+            <div key={s.key} style={{ padding: 12, background: '#faf6ef', borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: '#9a8b7a' }}>{s.sym}</div>
+              <div style={{ fontWeight: 700, fontSize: 18 }}>
+                {ticker[s.key] != null ? (s.key === 'XAUUSDT' ? '$' + ticker[s.key].toFixed(2) : '$' + Math.round(ticker[s.key]).toLocaleString()) : '--'}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    case 'rank':
+      return (
+        <div>
+          {Object.values(agents).sort((a, b) => (b.data.pnl || 0) - (a.data.pnl || 0)).map((a, i) => (
+            <div key={a.agentId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px dashed #eee8dc' }}>
+              <span style={{ width: 20, color: i < 3 ? '#d4af37' : '#999' }}>{i + 1}</span>
+              <span style={{ fontSize: 20 }}>{a.data.icon}</span>
+              <span style={{ flex: 1, fontWeight: 600 }}>{a.data.name}</span>
+              <span className={(a.data.pnl || 0) >= 0 ? 'profit' : 'loss'}>{(a.data.pnl || 0) >= 0 ? '+' : ''}${Math.round(a.data.pnl || 0)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    case 'settings':
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label>画质 <select className="ui-btn"><option>低</option><option>中</option><option>高</option></select></label>
+          <label>音效 <input type="checkbox" defaultChecked /></label>
+        </div>
+      );
+    case 'help':
+      return (
+        <div style={{ fontSize: 13, lineHeight: 1.6, color: '#6b5e4e' }}>
+          <p><b>五大分区：</b>交易大厅 · 前厅接待 · 餐厅 · 按摩 · 德州扑克</p>
+          <p><b>场景操作：</b>点击家具（餐桌/按摩床/牌桌/包厢）派遣 Agent；点击箭头切换区域；拖拽平移视角</p>
+          <p><b>创建 Agent：</b>顶部「+ 创建」或 Agent 工坊 → 填写名称、外形、策略定义 → 自动加入大厅工位</p>
+          <p><b>自主活动：</b>无人操作时 Agent 会自行漫步、休息、前往休闲区，到达后播放对应互动动画</p>
+          {tradeFeed.length > 0 && <p style={{ fontSize: 11, color: '#9a8b7a' }}>已加载 {tradeFeed.length} 条成交</p>}
+        </div>
+      );
+    case 'dine':
+      return <LeisureModal type="dine" title="餐厅" lucide={LucideIcons.dine} items={[
+        { id: 'a', name: '能量套餐 A', desc: '意面 + 果汁', cost: 50, effect: '-30% 恐慌值' },
+        { id: 'b', name: '豪华套餐 B', desc: '牛排 + 红酒', cost: 80, effect: '-50% 恐慌值' },
+        { id: 'c', name: '甜心下午茶', desc: '蛋糕 + 咖啡', cost: 40, effect: '-20% 压力' },
+      ]} />;
+    case 'massage':
+      return <LeisureModal type="massage" title="按摩区" lucide={LucideIcons.massage} items={[
+        { id: 'a', name: '基础理疗', desc: '30 分钟肩颈', cost: 60, effect: '-30% 压力', icon: LucideIcons.massageBed },
+        { id: 'b', name: '深度按摩', desc: '60 分钟全身', cost: 80, effect: '-50% 压力', icon: LucideIcons.massageWind },
+        { id: 'c', name: '精油 SPA', desc: '90 分钟尊享', cost: 120, effect: '-70% 压力', icon: LucideIcons.massageOil },
+      ]} />;
+    case 'poker':
+      return <LeisureModal type="poker" title="德州扑克" lucide={LucideIcons.poker} items={[
+        { id: 'a', name: '休闲局', desc: '底注 10 代币', cost: 30, effect: '清空负面情绪' },
+        { id: 'b', name: '标准局', desc: '底注 50 代币', cost: 80, effect: '清空压力 + 奖金' },
+        { id: 'c', name: '高手局', desc: '底注 200 代币', cost: 200, effect: '大幅减压 + 奖金' },
+      ]} />;
+    default:
+      return null;
+  }
+}
+
+function LeisureModal({ type, title, lucide, items }: {
+  type: 'dine' | 'massage' | 'poker';
+  title: string;
+  lucide: typeof LucideIcons.dine;
+  items: { id: string; name: string; desc: string; cost: number; effect: string; icon?: typeof LucideIcons.dine }[];
+}) {
+  const closeModal = useGameStore(s => s.closeModal);
+  const addMessage = useGameStore(s => s.addMessage);
+  const selectedAgentId = useGameStore(s => s.selectedAgentId);
+  const agents = useGameStore(s => s.agents);
+  const sendAgentToLeisure = useGameStore(s => s.sendAgentToLeisure);
+  const [picked, setPicked] = useState(items[0].id);
+  const [busy, setBusy] = useState(false);
+
+  const agent = selectedAgentId ? agents[selectedAgentId] : Object.values(agents).sort((a, b) => b.stress - a.stress)[0];
+  const item = items.find(i => i.id === picked) || items[0];
+
+  return (
+    <div style={{ color: '#3d3530' }}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+        <div className={`leisure-preview leisure-${type} ${busy ? 'active' : ''}`}>
+          <MiniLucide icon={lucide} color="profit" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
+          {agent && (
+            <div style={{ marginTop: 8, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12 }}>
+              服务对象：<b>{agent.data.icon} {agent.data.name}</b> · 压力 {Math.round(agent.stress)}%
+            </div>
+          )}
+        </div>
+      </div>
+      {items.map(it => (
+        <button key={it.id} className={`leisure-option ${picked === it.id ? 'selected' : ''}`} onClick={() => setPicked(it.id)}>
+          <MiniLucide icon={it.icon ?? lucide} color={picked === it.id ? 'profit' : 'muted'} />
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontWeight: 600 }}>{it.name}</div>
+            <div style={{ fontSize: 11, color: '#8a7e72' }}>{it.desc} · {it.effect}</div>
+          </div>
+          <span style={{ color: '#d4af37', fontWeight: 600, fontSize: 12 }}>{it.cost} 代币</span>
+        </button>
+      ))}
+      <button className="ui-btn" style={{ width: '100%', marginTop: 12, padding: '10px 0' }} disabled={!agent || busy} onClick={() => {
+        if (!agent) return;
+        setBusy(true);
+        sendAgentToLeisure(type, agent.agentId);
+        addMessage(`${agent.data.name} 选择了「${item.name}」· ${item.effect}`);
+        setTimeout(() => { setBusy(false); closeModal(); }, 900);
+      }}>
+        {busy ? 'Agent 正在前往…' : `确认 · ${item.cost} 代币`}
+      </button>
+    </div>
+  );
+}
