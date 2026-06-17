@@ -12,6 +12,7 @@ import { preloadAllSprites } from './lib/spriteTextures';
 export default function App() {
   const initAgents = useGameStore(s => s.initAgents);
   const syncLifeState = useGameStore(s => s.syncLifeState);
+  const syncSeats = useGameStore(s => s.syncSeats);
   const syncEngagement = useGameStore(s => s.syncEngagement);
   const updateFromOverview = useGameStore(s => s.updateFromOverview);
   const setTicker = useGameStore(s => s.setTicker);
