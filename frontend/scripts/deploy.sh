@@ -9,22 +9,28 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REMOTE="${DEPLOY_HOST:-root@43.98.167.204}"
 REMOTE_DIR="/opt/trading-agent/dashboard/static/life"
 SSH_KEY="${DEPLOY_KEY:-$HOME/.ssh/trading_204}"
+# 与 vite.config.ts outDir 保持一致
+BUILD_DIR="${BUILD_DIR:-$ROOT/../dashboard/static/life}"
 
 echo "==> 构建..."
 cd "$ROOT"
 npm run build
 
 echo "==> 上传到 $REMOTE:$REMOTE_DIR"
+if [ ! -d "$BUILD_DIR" ]; then
+  echo "构建产物不存在: $BUILD_DIR" >&2
+  exit 1
+fi
 if [ -f "$SSH_KEY" ]; then
   SSH_OPTS=(-i "$SSH_KEY" -o StrictHostKeyChecking=no)
   RSYNC_RSH="ssh ${SSH_OPTS[*]}"
   ssh "${SSH_OPTS[@]}" "$REMOTE" "mkdir -p '$REMOTE_DIR' && rm -rf '$REMOTE_DIR'/*"
-  RSYNC_RSH="$RSYNC_RSH" rsync -avz dist/ "$REMOTE:$REMOTE_DIR/" 2>/dev/null || {
-    scp "${SSH_OPTS[@]}" -r dist/* "$REMOTE:$REMOTE_DIR/"
+  RSYNC_RSH="$RSYNC_RSH" rsync -avz "$BUILD_DIR/" "$REMOTE:$REMOTE_DIR/" 2>/dev/null || {
+    scp "${SSH_OPTS[@]}" -r "$BUILD_DIR"/* "$REMOTE:$REMOTE_DIR/"
   }
 elif [ -n "${SSHPASS:-}" ]; then
   sshpass -e ssh -o StrictHostKeyChecking=no "$REMOTE" "mkdir -p '$REMOTE_DIR' && rm -rf '$REMOTE_DIR'/*"
-  sshpass -e scp -o StrictHostKeyChecking=no -r dist/* "$REMOTE:$REMOTE_DIR/"
+  sshpass -e scp -o StrictHostKeyChecking=no -r "$BUILD_DIR"/* "$REMOTE:$REMOTE_DIR/"
 else
   echo "请配置 DEPLOY_KEY 或 SSHPASS 环境变量" >&2
   exit 1

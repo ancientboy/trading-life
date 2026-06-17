@@ -26,9 +26,16 @@ npm run build  # 输出 dist/
 ## 部署（204 服务器）
 
 ```bash
-npm run build
-scp -r dist/* root@43.98.167.204:/opt/trading-agent/dashboard/static/life/
+cd frontend
+npm install
+# 方式一：SSH 密钥（默认 ~/.ssh/trading_204）
+npm run deploy
+
+# 方式二：密码
+SSHPASS='你的密码' npm run deploy
 ```
+
+脚本会先 `npm run build`，再上传到 `root@43.98.167.204:/opt/trading-agent/dashboard/static/life/`。
 
 访问：`http://43.98.167.204/trading/life/`  
 旧地址 `/trading/pixel.html` 自动跳转至此。
