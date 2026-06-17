@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { getStoredAccount } from '../../lib/lifeAuth';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { useGameStore } from '../../store/useGameStore';
