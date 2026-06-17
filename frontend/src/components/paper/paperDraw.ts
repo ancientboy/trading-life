@@ -4,6 +4,12 @@ import { getPokerTableSprite } from '../../lib/pokerTableSprite';
 import { getMassageBedSprite } from '../../lib/massageBedSprite';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
 import { getRestSofaSprite } from '../../lib/restSofaSprite';
+import { outfitForRole, type NpcRole } from '../../lib/npcOutfits';
+import { DEFAULT_SCARF, scarfColorsFromAccent, type ScarfPalette } from '../../lib/scarfColors';
+import {
+  drawAgentHat2d, drawAgentScarf2d,
+  type AgentHeadwear, type HatStyleId,
+} from '../../lib/agentAppearance';
 
 export function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -106,7 +112,8 @@ export function drawAgent(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
   opts: {
     selected?: boolean; trading?: boolean; walking?: boolean; t?: number;
-    activity?: AgentActivity; icon?: string; facing?: AgentFacing; sitting?: boolean;
+    activity?: AgentActivity; facing?: AgentFacing; sitting?: boolean;
+    headwear?: AgentHeadwear; hatStyle?: HatStyleId;
   },
 ) {
   const act = opts.activity;
@@ -127,25 +134,24 @@ export function drawAgent(
 function drawAgentSitting(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
   opts: {
-    selected?: boolean; t?: number; activity?: AgentActivity; icon?: string; facing?: AgentFacing;
+    selected?: boolean; t?: number; activity?: AgentActivity; facing?: AgentFacing;
+    headwear?: AgentHeadwear; hatStyle?: HatStyleId;
   },
 ) {
   const t = opts.t ?? 0;
   const py = y - 4;
+  const hw = agentHw(opts);
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 20, 18, 0, 0, Math.PI * 2); ctx.stroke();
   }
   dropShadow(ctx, x, py + 8, 30, 24, 0.1);
-  ctx.fillStyle = '#5a5048';
-  rrect(ctx, x - 14, py + 6, 28, 10, 4); ctx.fill();
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.ellipse(x, py - 2, 13, 14, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(x - 4, py - 4, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(x + 4, py - 4, 2, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.ellipse(x, py + 4, 11, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.translate(x, 0);
+  drawPenguinBody(ctx, py - 2);
+  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 2, color, 'front');
+  drawPenguinFace(ctx, py - 2);
+  if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'front');
+  ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }
 
@@ -153,18 +159,95 @@ function walkPhase(t: number, walking: boolean) {
   return walking ? t * 10 : 0;
 }
 
+const PENGUIN = {
+  black: '#1a1a1a',
+  white: '#f7f7f7',
+  belly: '#f2f2f2',
+  beak: '#f5a623',
+  foot: '#f5a623',
+  scarfGreen: '#3d9e46',
+  scarfRed: '#d94c4c',
+  scarfBlue: '#4285f4',
+};
+
+/** 围脖 + 垂坠条纹；Agent 传 palette，NPC 用默认色 */
+function drawPenguinScarf(
+  ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number,
+  tail = false, palette: ScarfPalette = DEFAULT_SCARF,
+) {
+  const stripes = tail ? palette.tail : palette.wrap;
+  const n = tail ? 4 : 6;
+  const sh = h / n;
+  for (let i = 0; i < n; i++) {
+    ctx.fillStyle = stripes[i % 2];
+    ctx.fillRect(x - w / 2, y + i * sh, w, sh + 0.5);
+  }
+}
+
+function drawPenguinFace(ctx: CanvasRenderingContext2D, py: number, profile = false, flip = 1) {
+  if (profile) {
+    ctx.fillStyle = PENGUIN.white;
+    ctx.beginPath(); ctx.ellipse(flip * 5, py - 2, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PENGUIN.black;
+    ctx.beginPath(); ctx.arc(flip * 5, py - 2, 2, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.fillStyle = PENGUIN.white;
+    ctx.beginPath(); ctx.ellipse(-5, py - 2, 4.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5, py - 2, 4.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PENGUIN.black;
+    ctx.beginPath(); ctx.arc(-5, py - 2, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5, py - 2, 2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = PENGUIN.beak;
+  ctx.beginPath();
+  if (profile) {
+    ctx.moveTo(flip * 8, py + 1); ctx.lineTo(flip * 12, py + 4); ctx.lineTo(flip * 8, py + 6);
+  } else {
+    ctx.moveTo(0, py + 2); ctx.lineTo(-3, py + 7); ctx.lineTo(3, py + 7);
+  }
+  ctx.closePath(); ctx.fill();
+}
+
+function drawPenguinBody(ctx: CanvasRenderingContext2D, py: number, profile = false) {
+  ctx.fillStyle = PENGUIN.black;
+  ctx.beginPath(); ctx.ellipse(profile ? 2 : 0, py + 2, profile ? 12 : 15, profile ? 17 : 19, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = PENGUIN.belly;
+  ctx.beginPath(); ctx.ellipse(profile ? 4 : 0, py + 7, profile ? 7 : 10, profile ? 9 : 11, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+function agentHw(opts: { headwear?: AgentHeadwear; hatStyle?: HatStyleId }) {
+  return { headwear: opts.headwear ?? 'scarf' as AgentHeadwear, hatStyle: opts.hatStyle ?? 'beanie' as HatStyleId };
+}
+
+function drawHeadwearFront(ctx: CanvasRenderingContext2D, py: number, color: string, hw: ReturnType<typeof agentHw>) {
+  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py, color, 'front');
+  drawPenguinFace(ctx, py - 2);
+  if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'front');
+}
+
+function drawHeadwearBack(ctx: CanvasRenderingContext2D, py: number, color: string, hw: ReturnType<typeof agentHw>) {
+  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py, color, 'back');
+  else drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'back');
+}
+
+function drawHeadwearSide(ctx: CanvasRenderingContext2D, py: number, color: string, hw: ReturnType<typeof agentHw>, flip: number) {
+  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py, color, 'side', flip);
+  drawPenguinFace(ctx, py - 2, true, flip);
+  if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'side', flip);
+}
+
 /** 手脚摆动 — 参考 144 office-engine */
 function drawWalkLimbs(
   ctx: CanvasRenderingContext2D, py: number, facing: AgentFacing,
-  walking: boolean, t: number, color: string,
+  walking: boolean, t: number, _color: string,
 ) {
   const phase = walkPhase(t, walking);
   const swing = walking ? Math.sin(phase) * 5 : 0;
   const bounce = walking ? Math.abs(Math.sin(phase)) * 2 : 0;
   const vert = facing === 'n' || facing === 's';
 
-  ctx.fillStyle = '#1a1a1a';
-  ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = PENGUIN.black;
+  ctx.fillStyle = PENGUIN.foot;
   if (vert) {
     ctx.beginPath(); ctx.ellipse(-5, py + 18 - bounce + swing, 5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(5, py + 18 - bounce - swing, 5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
@@ -177,18 +260,21 @@ function drawWalkLimbs(
     ctx.beginPath(); ctx.moveTo(flip * 10, py + 2); ctx.lineTo(flip * (14 + swing * 0.5), py + 11); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(flip * 6, py); ctx.lineTo(flip * (2 - swing * 0.4), py + 10); ctx.stroke();
   }
-  void color;
 }
 
 /** 背面 — 圆头 + 后脑围巾 + 手脚 */
 function drawAgentBack(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
-  opts: { selected?: boolean; walking?: boolean; t?: number; activity?: AgentActivity; facing?: AgentFacing },
+  opts: {
+    selected?: boolean; walking?: boolean; t?: number; activity?: AgentActivity; facing?: AgentFacing;
+    headwear?: AgentHeadwear; hatStyle?: HatStyleId;
+  },
 ) {
   const t = opts.t ?? 0;
   const walking = !!opts.walking;
   const bob = walking ? Math.abs(Math.sin(walkPhase(t, walking))) * 2.5 : 0;
   const py = y + bob;
+  const hw = agentHw(opts);
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 18, 22, 0, 0, Math.PI * 2); ctx.stroke();
@@ -196,10 +282,8 @@ function drawAgentBack(
   dropShadow(ctx, x, py + 6, 32, 36, 0.12);
   ctx.save(); ctx.translate(x, 0);
   drawWalkLimbs(ctx, py, 'n', walking, t, color);
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.ellipse(0, py + 2, 14, 17, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.ellipse(0, py - 10, 15, 5, 0, 0, Math.PI * 2); ctx.fill();
+  drawPenguinBody(ctx, py);
+  drawHeadwearBack(ctx, py, color, hw);
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }
@@ -209,7 +293,7 @@ function drawAgentFront(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
   opts: {
     selected?: boolean; trading?: boolean; walking?: boolean; t?: number;
-    activity?: AgentActivity; icon?: string;
+    activity?: AgentActivity; headwear?: AgentHeadwear; hatStyle?: HatStyleId;
   },
 ) {
   const t = opts.t ?? 0;
@@ -219,6 +303,7 @@ function drawAgentFront(
   else if (opts.trading) bob = Math.sin(t * 4) * 1.5;
   else if (opts.activity === 'dine') bob = Math.abs(Math.sin(t * 3)) * 1.5;
   const py = y + bob;
+  const hw = agentHw(opts);
 
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
@@ -227,21 +312,9 @@ function drawAgentFront(
   dropShadow(ctx, x, py + 6, 32, 36, 0.12);
   ctx.save(); ctx.translate(x, 0);
   drawWalkLimbs(ctx, py, 's', walking, t, color);
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.ellipse(0, py + 2, 14, 17, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.ellipse(-5, py - 2, 3.5, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(5, py - 2, 3.5, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.arc(-5, py - 2, 1.8, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(5, py - 2, 1.8, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.ellipse(0, py + 8, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+  drawPenguinBody(ctx, py);
+  drawHeadwearFront(ctx, py, color, hw);
   ctx.restore();
-  if (opts.icon && !opts.activity) {
-    ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(opts.icon, x, py + 12);
-  }
   if (opts.trading) {
     ctx.fillStyle = '#4285F4';
     ctx.fillRect(x + 12, py - 12, 9, 6);
@@ -252,13 +325,18 @@ function drawAgentFront(
 /** 侧面 + 手脚 */
 function drawAgentSide(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
-  opts: { selected?: boolean; walking?: boolean; t?: number; activity?: AgentActivity; icon?: string },
+  opts: {
+    selected?: boolean; walking?: boolean; t?: number; activity?: AgentActivity;
+    headwear?: AgentHeadwear; hatStyle?: HatStyleId;
+  },
   facing: 'e' | 'w',
 ) {
   const t = opts.t ?? 0;
   const walking = !!opts.walking;
   const bob = walking ? Math.abs(Math.sin(walkPhase(t, walking))) * 2.5 : 0;
   const py = y + bob;
+  const hw = agentHw(opts);
+  const flip = facing === 'w' ? -1 : 1;
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 16, 22, 0, 0, Math.PI * 2); ctx.stroke();
@@ -266,15 +344,8 @@ function drawAgentSide(
   dropShadow(ctx, x, py + 6, 28, 34, 0.12);
   ctx.save(); ctx.translate(x, 0);
   drawWalkLimbs(ctx, py, facing, walking, t, color);
-  const flip = facing === 'w' ? -1 : 1;
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.ellipse(flip * 2, py + 2, 12, 17, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.ellipse(flip * 6, py - 2, 2.5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.arc(flip * 6, py - 2, 1.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.ellipse(flip * 4, py + 6, 8, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  drawPenguinBody(ctx, py, true);
+  drawHeadwearSide(ctx, py, color, hw, flip);
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }
@@ -295,9 +366,11 @@ export function drawAgentTop(
   opts: {
     selected?: boolean; walking?: boolean; t?: number;
     activity?: AgentActivity; facing?: AgentFacing;
+    headwear?: AgentHeadwear; hatStyle?: HatStyleId;
   },
 ) {
   const t = opts.t ?? 0;
+  const hw = agentHw(opts);
   const bob = opts.walking ? Math.abs(Math.sin(t * 10)) * 3 : Math.sin(t * 1.5) * 1;
   const py = y + bob;
   if (opts.selected) {
@@ -305,12 +378,20 @@ export function drawAgentTop(
     ctx.beginPath(); ctx.arc(x, py, 22, 0, Math.PI * 2); ctx.stroke();
   }
   dropShadow(ctx, x, py + 4, 28, 28, 0.12);
-  ctx.fillStyle = '#1a1a1a';
+  ctx.fillStyle = PENGUIN.black;
   ctx.beginPath(); ctx.ellipse(x, py + 2, 18, 11, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.ellipse(x, py - 2, 12, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('✨', x + 14, py - 10 + Math.sin(t * 5) * 2);
+  ctx.fillStyle = PENGUIN.belly;
+  ctx.beginPath(); ctx.ellipse(x, py + 4, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+  if (hw.headwear === 'scarf') {
+    drawPenguinScarf(ctx, x, py - 1, 20, 5, false, scarfColorsFromAccent(color));
+  } else {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.ellipse(x, py - 2, 10, 8, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  if (opts.activity === 'massage') {
+    ctx.fillStyle = '#fff'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('✨', x + 14, py - 10 + Math.sin(t * 5) * 2);
+  }
 }
 
 /** 大型滚动行情屏 */
@@ -449,7 +530,6 @@ export function drawMassageBed(ctx: CanvasRenderingContext2D, x: number, y: numb
   if (sprite) {
     const w = 108 * s;
     const h = w * (sprite.naturalHeight / sprite.naturalWidth);
-    dropShadow(ctx, x, y, w, h * 0.85, 0.1);
     ctx.drawImage(sprite, x - w / 2, y - h / 2, w, h);
     return;
   }
@@ -491,7 +571,6 @@ export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: numbe
   if (sprite) {
     const w = 168 * s;
     const h = w * (sprite.naturalHeight / sprite.naturalWidth);
-    dropShadow(ctx, x, y, w, h * 0.9, 0.1);
     ctx.save();
     ctx.translate(x, y);
     if (flip) ctx.scale(-1, 1);
@@ -553,22 +632,80 @@ export function drawPokerTable8(
   ctx.fillText('TEXAS HOLD\'EM', x, y + 4 * s);
 }
 
+function drawNpcClothing2d(ctx: CanvasRenderingContext2D, py: number, role: NpcRole) {
+  const o = outfitForRole(role);
+  if (o.vestColor) {
+    ctx.fillStyle = o.vestColor;
+    ctx.beginPath(); ctx.ellipse(0, py + 8, 11, 8, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  if (o.apronColor) {
+    ctx.fillStyle = o.apronColor;
+    ctx.beginPath();
+    ctx.moveTo(-10, py + 4); ctx.lineTo(10, py + 4);
+    ctx.lineTo(8, py + 16); ctx.lineTo(-8, py + 16);
+    ctx.closePath(); ctx.fill();
+  }
+  if (o.badgeColor) {
+    ctx.fillStyle = o.badgeColor;
+    ctx.beginPath(); ctx.arc(0, py + 6, 3, 0, Math.PI * 2); ctx.fill();
+  }
+  if (o.bowtie) {
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(-3, py + 2, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(3, py + 2, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  if (o.prop === 'cards') {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(10, py + 4, 8, 10);
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 0.5; ctx.strokeRect(10, py + 4, 8, 10);
+  }
+  if (o.prop === 'tray') {
+    ctx.fillStyle = '#d4c8b8';
+    ctx.beginPath(); ctx.ellipse(12, py + 8, 7, 3, 0.3, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawNpcHat2d(ctx: CanvasRenderingContext2D, py: number, role: NpcRole) {
+  const o = outfitForRole(role);
+  ctx.fillStyle = o.hatColor;
+  switch (o.hat) {
+    case 'concierge':
+      ctx.fillRect(-8, py - 18, 16, 5);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(-5, py - 22, 10, 4);
+      break;
+    case 'chef':
+      ctx.beginPath(); ctx.ellipse(0, py - 20, 9, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, py - 26, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
+      break;
+    case 'headband':
+      ctx.fillRect(-10, py - 16, 20, 4);
+      break;
+    case 'dealer':
+      ctx.beginPath(); ctx.ellipse(0, py - 20, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(-7, py - 26, 14, 6);
+      break;
+  }
+}
+
 export function drawNpc(
   ctx: CanvasRenderingContext2D, x: number, y: number,
-  opts: { emoji: string; color: string; name: string; wave: number },
+  opts: { npcRole: NpcRole; color: string; name: string; wave: number },
 ) {
   const bob = Math.sin(opts.wave * 3) * 2;
   const py = y + bob;
   dropShadow(ctx, x, py + 6, 34, 38, 0.12);
-  ctx.fillStyle = '#2a2a2a';
-  ctx.beginPath(); ctx.ellipse(x, py + 2, 16, 20, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = opts.color;
-  ctx.beginPath(); ctx.ellipse(x, py + 10, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.font = '18px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText(opts.emoji, x, py + 6);
+  ctx.save(); ctx.translate(x, 0);
+  drawPenguinBody(ctx, py);
+  drawPenguinScarf(ctx, 0, py + 1, 22, 7);
+  drawPenguinScarf(ctx, -10, py + 6, 6, 9, true);
+  drawNpcClothing2d(ctx, py, opts.npcRole);
+  drawPenguinFace(ctx, py - 2);
+  drawNpcHat2d(ctx, py, opts.npcRole);
+  ctx.restore();
   ctx.fillStyle = '#3d3530';
-  ctx.font = '600 10px Inter,sans-serif';
-  ctx.fillText(opts.name.split(' ')[0], x, py - 18);
+  ctx.font = '600 10px Inter,sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(opts.name.split(' ')[0], x, py - 22);
 }
 
 export function drawSpeechBubble(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, s: number) {

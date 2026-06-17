@@ -125,37 +125,39 @@ export const HALL_REST_BOOTHS: RestBoothDef[] = [
   },
 ];
 
+import type { NpcRole } from './npcOutfits';
+
 export interface ZoneNpcDef {
   id: string;
   name: string;
   role: string;
+  npcRole: NpcRole;
   px: number;
   py: number;
   color: string;
-  emoji: string;
   greetings: string[];
 }
 
 export const ZONE_NPCS: Record<ZoneId, ZoneNpcDef[]> = {
   hall: [],
   reception: [{
-    id: 'reception', name: '迎宾 Gugu', role: '前厅接待', px: 360, py: 400,
-    color: '#6366f1', emoji: '🐧',
+    id: 'reception', name: '迎宾 Gugu', role: '前厅接待', npcRole: 'reception',
+    px: 360, py: 400, color: '#d4af37',
     greetings: ['欢迎来到交易人生！', '需要创建新 Agent 吗？', '今日任务已更新～'],
   }],
   restaurant: [{
-    id: 'lily', name: '服务员 Lily', role: '餐厅服务', px: 360, py: 180,
-    color: '#f59e0b', emoji: '👩‍🍳',
+    id: 'lily', name: '服务员 Lily', role: '餐厅服务', npcRole: 'waiter',
+    px: 360, py: 180, color: '#e879a9',
     greetings: ['欢迎光临，请入座～', '今日特餐：能量意面！', '用餐可恢复 30% 压力'],
   }],
   spa: [{
-    id: 'masseur', name: '技师 Gaga', role: '按摩技师', px: 600, py: 340,
-    color: '#a855f7', emoji: '💆',
+    id: 'masseur', name: '技师 Gaga', role: '按摩技师', npcRole: 'masseur',
+    px: 600, py: 340, color: '#c8a8e8',
     greetings: ['请躺好，开始放松～', '深度理疗可减 50% 压力', '需要加钟吗？'],
   }],
   casino: [{
-    id: 'dealer', name: '荷官 Jack', role: '德州荷官', px: 360, py: 160,
-    color: '#ef4444', emoji: '🎩',
+    id: 'dealer', name: '荷官 Jack', role: '德州荷官', npcRole: 'dealer',
+    px: 360, py: 160, color: '#d4af37',
     greetings: ['欢迎入座，祝你好运！', '请各位 Agent 就位', '发牌开始～'],
   }],
 };

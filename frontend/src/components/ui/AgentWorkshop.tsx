@@ -5,7 +5,16 @@ import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
 import { fetchAgentProfile, saveAgentConfig, saveAgentSoul } from '../../lib/api';
 import { APPEARANCE_PRESETS, type CustomAgentDraft } from '../../lib/customAgents';
+import { PenguinAvatar } from './PenguinAvatar';
+import { AgentScenePreview } from './AgentScenePreview';
+import { HatStylePicker } from './HatStylePicker';
+import type { AgentHeadwear } from '../../lib/agentAppearance';
 import type { CharState } from '../../lib/constants';
+
+const DEFAULT_DRAFT: CustomAgentDraft = {
+  name: '', headwear: 'scarf', hatStyle: 'beanie', color: APPEARANCE_PRESETS.colors[0],
+  desc: '', strategy: '趋势跟踪', market: 'BTC/ETH', interval: '15m/1h', risk: '中',
+};
 
 export function AgentWorkshop() {
   const agents = useGameStore(s => s.agents);
@@ -25,10 +34,7 @@ export function AgentWorkshop() {
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [draft, setDraft] = useState<CustomAgentDraft>({
-    name: '', icon: '🤖', color: APPEARANCE_PRESETS.colors[0],
-    desc: '', strategy: '趋势跟踪', market: 'BTC/ETH', interval: '15m/1h', risk: '中',
-  });
+  const [draft, setDraft] = useState<CustomAgentDraft>({ ...DEFAULT_DRAFT });
 
   const agentList = Object.values(agents) as CharState[];
   const current = editId ? agents[editId] : null;
@@ -64,17 +70,14 @@ export function AgentWorkshop() {
     const ok = createAgent(draft);
     if (ok) {
       setMode('list');
-      setDraft({
-        name: '', icon: '🤖', color: APPEARANCE_PRESETS.colors[0],
-        desc: '', strategy: '趋势跟踪', market: 'BTC/ETH', interval: '15m/1h', risk: '中',
-      });
+      setDraft({ ...DEFAULT_DRAFT });
       setMsg('');
     }
   };
 
   if (mode === 'create') {
     return (
-      <div style={{ color: '#3d3530', maxHeight: 420, overflowY: 'auto' }}>
+      <div style={{ color: '#3d3530', maxHeight: 520, overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>创建新 Agent</div>
           <button className="ui-btn" onClick={() => setMode('list')}>返回列表</button>
@@ -83,21 +86,36 @@ export function AgentWorkshop() {
           创建成功后 Agent 将自动出现在<b>交易大厅</b>工位，可立即在场景中点击选中并派遣至各休闲区。
         </p>
 
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'start' }}>
+          <div>
         <Field label="名称">
           <input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })}
             placeholder="例如：Alpha Hunter" style={inputStyle} />
         </Field>
 
-        <Field label="外形 · 图标">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {APPEARANCE_PRESETS.icons.map(ic => (
-              <button key={ic} type="button" className={`ui-btn ${draft.icon === ic ? 'active' : ''}`}
-                onClick={() => setDraft({ ...draft, icon: ic })} style={{ fontSize: 20, padding: '4px 8px' }}>{ic}</button>
+        <Field label="外形 · 配饰类型">
+          <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+            {(['scarf', 'hat'] as AgentHeadwear[]).map(hw => (
+              <button key={hw} type="button" className={`ui-btn ${draft.headwear === hw ? 'active' : ''}`}
+                onClick={() => setDraft({ ...draft, headwear: hw })}
+                style={{ flex: 1, padding: '8px 0' }}>
+                {hw === 'scarf' ? '围巾' : '帽子'}
+              </button>
             ))}
           </div>
+          <p style={{ fontSize: 11, color: '#9a8b7a', margin: 0, lineHeight: 1.4 }}>
+            围巾与帽子二选一，右侧预览会实时更新
+          </p>
         </Field>
 
-        <Field label="外形 · 围巾颜色">
+        {draft.headwear === 'hat' && (
+          <Field label="帽子款式">
+            <HatStylePicker value={draft.hatStyle} color={draft.color}
+              onChange={hatStyle => setDraft({ ...draft, hatStyle })} />
+          </Field>
+        )}
+
+        <Field label={draft.headwear === 'scarf' ? '围巾颜色' : '帽子颜色'}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {APPEARANCE_PRESETS.colors.map(c => (
               <button key={c} type="button" onClick={() => setDraft({ ...draft, color: c })}
@@ -131,24 +149,24 @@ export function AgentWorkshop() {
           </Field>
         </div>
 
-        <div style={{
-          margin: '14px 0', padding: 12, background: '#faf6ef', borderRadius: 10,
-          display: 'flex', alignItems: 'center', gap: 12,
-        }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: '50%', background: '#1a1a1a',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
-          }}>
-            <span style={{ position: 'absolute', top: 6, width: 32, height: 8, borderRadius: 4, background: draft.color }} />
-            <span style={{ fontSize: 18 }}>{draft.icon}</span>
-          </div>
-          <div style={{ fontSize: 12, color: '#6b5e4e' }}>预览：俯视剪纸风 · 黑圆头 + 彩色围巾</div>
-        </div>
-
         <button className="ui-btn" style={{ width: '100%', padding: '10px 0', marginTop: 4 }} onClick={handleCreate}>
           创建并加入交易大厅
         </button>
         {msg && <div style={{ marginTop: 8, fontSize: 11, color: '#e74c3c' }}>{msg}</div>}
+          </div>
+
+          <div style={{ position: 'sticky', top: 0 }}>
+            <AgentScenePreview
+              color={draft.color}
+              headwear={draft.headwear}
+              hatStyle={draft.hatStyle}
+              name={draft.name}
+            />
+            <p style={{ fontSize: 10, color: '#9a8b7a', marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
+              实时预览 · 与游戏场景渲染一致
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -178,7 +196,7 @@ export function AgentWorkshop() {
             }}
           >
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{ fontSize: 20 }}>{a.data.icon}</span>
+              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={36} selected={editId === a.agentId} />
               <div>
                 <div style={{ fontWeight: 600, fontSize: 12 }}>{a.data.name}</div>
                 <div style={{ fontSize: 10, color: '#8a7e72' }}>{a.data.running ? '🟢 运行' : '⚪ 停止'}</div>
@@ -197,10 +215,7 @@ export function AgentWorkshop() {
         ) : (
           <>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-              <div style={{
-                width: 64, height: 64, borderRadius: 12, background: d.color + '33',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32,
-              }}>{d.icon}</div>
+              <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={64} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 16 }}>{d.name}</div>
                 <div style={{ fontSize: 12, color: '#8a7e72' }}>{d.desc}</div>

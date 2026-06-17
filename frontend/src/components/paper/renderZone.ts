@@ -172,7 +172,7 @@ function drawNpcs(
 ) {
   (ZONE_NPCS[zone] ?? []).forEach((npc: ZoneNpcDef) => {
     const s = pt(cam, npc.px, npc.py);
-    drawNpc(ctx, s.x, s.y, { emoji: npc.emoji, color: npc.color, name: npc.name, wave: t });
+    drawNpc(ctx, s.x, s.y, { npcRole: npc.npcRole, color: npc.color, name: npc.name, wave: t });
     if (npcBubble && npcBubble.npcId === npc.id && performance.now() < npcBubble.until) {
       drawSpeechBubble(ctx, s.x, s.y - ws(cam, 28), npcBubble.text, cam.scale);
     }
@@ -280,7 +280,8 @@ export function renderAgents(
       trading: char.state === 'trading' || char.state === 'scanning',
       walking: char.isWalking,
       activity: char.activity,
-      icon: char.data.icon,
+      headwear: char.data.headwear,
+      hatStyle: char.data.hatStyle,
       facing: agentFacing(char),
       sitting,
       t: opts.t,
