@@ -19,6 +19,27 @@ export function tickCharacterSim(dt: number) {
   if (paused) return;
   const scaledDt = dt * simSpeed;
   const now = performance.now();
+  const store = useGameStore.getState();
+  const mentorPairs = store.mentorPairs;
+
+  // 情绪传染：同座位/同桌 Agent 互相减压
+  const bySeat: Record<string, import('./constants').CharState[]> = {};
+  Object.values(store.agents).forEach(a => {
+    if (a.activity && a.destNode) {
+      (bySeat[a.destNode] = bySeat[a.destNode] || []).push(a);
+    }
+  });
+  Object.values(bySeat).forEach(group => {
+    if (group.length < 2) return;
+    group.forEach(a => {
+      let bonus = 0.015 * scaledDt * 1000;
+      const mentored = mentorPairs.some(p => p.mentor_agent_id === a.agentId || p.mentee_agent_id === a.agentId);
+      if (mentored) bonus *= 1.5;
+      const ns = Math.max(0, a.stress - bonus);
+      if (ns < a.stress - 0.01) store.patchChar(a.agentId, { ...a, stress: ns });
+    });
+  });
+
   Object.values(agents).forEach(char => {
     let c = { ...char };
 

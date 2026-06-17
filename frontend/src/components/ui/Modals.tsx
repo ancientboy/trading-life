@@ -3,6 +3,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useGameStore, type ModalId } from '../../store/useGameStore';
 import { AgentWorkshop } from './AgentWorkshop';
 import { DailyTasksPanel } from './DailyTasksPanel';
+import { SeasonPanel } from './SeasonPanel';
 import { PenguinAvatar } from './PenguinAvatar';
 import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
@@ -86,18 +87,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
         </div>
       );
     case 'rank':
-      return (
-        <div>
-          {Object.values(agents).sort((a, b) => (b.data.pnl || 0) - (a.data.pnl || 0)).map((a, i) => (
-            <div key={a.agentId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px dashed #eee8dc' }}>
-              <span style={{ width: 20, color: i < 3 ? '#d4af37' : '#999' }}>{i + 1}</span>
-              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={28} />
-              <span style={{ flex: 1, fontWeight: 600 }}>{a.data.name}</span>
-              <span className={(a.data.pnl || 0) >= 0 ? 'profit' : 'loss'}>{(a.data.pnl || 0) >= 0 ? '+' : ''}${Math.round(a.data.pnl || 0)}</span>
-            </div>
-          ))}
-        </div>
-      );
+      return <SeasonPanel />;
     case 'settings':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

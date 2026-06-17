@@ -7,11 +7,13 @@ import { AppIcon } from '../icons/AppIcon';
 import { ProfitIcon, LossIcon, PieAssetIcon } from '../icons/phosphorIcons';
 import { PenguinAvatar } from './PenguinAvatar';
 import { DailyTasksPanel } from './DailyTasksPanel';
+import { SocialPanel } from './SocialPanel';
 
 const TABS: { id: RightTab; label: string }[] = [
   { id: 'hall', label: '交易大厅' },
   { id: 'agent', label: '交易 Agent' },
   { id: 'tasks', label: '每日任务' },
+  { id: 'social', label: '社交大厅' },
   { id: 'assets', label: '持仓交易' },
   { id: 'strategy', label: '策略预览' },
   { id: 'messages', label: '交易日志' },
@@ -100,6 +102,7 @@ export function RightPanel() {
       <div className="panel-body">
         {currentTab === 'hall' && renderHallPanel()}
         {currentTab === 'tasks' && <DailyTasksPanel compact />}
+        {currentTab === 'social' && <SocialPanel />}
         {(currentTab === 'object' || currentTab === 'agent') && renderAgentPanel()}
         {currentTab === 'npc' && renderNpcPanel()}
         {currentTab === 'facility' && renderFacilityPanel()}

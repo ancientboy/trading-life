@@ -82,8 +82,149 @@ def init_db(data_dir: Path) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_session_account ON life_sessions(account_id);
         CREATE INDEX IF NOT EXISTS idx_session_expires ON life_sessions(expires_at);
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            channel TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            display_name TEXT NOT NULL DEFAULT '',
+            agent_id TEXT NOT NULL DEFAULT '',
+            body TEXT NOT NULL,
+            kind TEXT NOT NULL DEFAULT 'user',
+            created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_chat_channel ON chat_messages(channel, created_at);
+        CREATE TABLE IF NOT EXISTS agent_mood (
+            user_id TEXT NOT NULL,
+            agent_id TEXT NOT NULL,
+            stress INTEGER NOT NULL DEFAULT 0,
+            mood_tag TEXT NOT NULL DEFAULT 'neutral',
+            zone TEXT NOT NULL DEFAULT 'hall',
+            channel TEXT NOT NULL DEFAULT '',
+            updated_at INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (user_id, agent_id)
+        );
+        CREATE TABLE IF NOT EXISTS mentor_pairs (
+            user_id TEXT NOT NULL,
+            mentor_agent_id TEXT NOT NULL,
+            mentee_agent_id TEXT NOT NULL,
+            paired_at TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (user_id, mentee_agent_id)
+        );
+        CREATE TABLE IF NOT EXISTS npc_events (
+            id TEXT PRIMARY KEY,
+            zone TEXT NOT NULL,
+            npc_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            buff_type TEXT NOT NULL DEFAULT '',
+            buff_value INTEGER NOT NULL DEFAULT 0,
+            reward_points INTEGER NOT NULL DEFAULT 0,
+            starts_at INTEGER NOT NULL,
+            ends_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS npc_event_claims (
+            user_id TEXT NOT NULL,
+            event_id TEXT NOT NULL,
+            claimed_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, event_id)
+        );
+        CREATE TABLE IF NOT EXISTS poker_rooms (
+            id TEXT PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'waiting',
+            pot INTEGER NOT NULL DEFAULT 0,
+            host_user_id TEXT NOT NULL,
+            min_players INTEGER NOT NULL DEFAULT 2,
+            buy_in INTEGER NOT NULL DEFAULT 30,
+            created_at INTEGER NOT NULL,
+            started_at INTEGER NOT NULL DEFAULT 0,
+            settled_at INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS poker_room_players (
+            room_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            agent_id TEXT NOT NULL,
+            seat_id TEXT NOT NULL DEFAULT '',
+            buy_in INTEGER NOT NULL DEFAULT 0,
+            score INTEGER NOT NULL DEFAULT 0,
+            rank INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (room_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS seat_auctions (
+            seat_id TEXT PRIMARY KEY,
+            activity TEXT NOT NULL DEFAULT '',
+            high_bid INTEGER NOT NULL DEFAULT 0,
+            high_bidder TEXT NOT NULL DEFAULT '',
+            ends_at INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS dispatch_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            agent_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            node_id TEXT NOT NULL DEFAULT '',
+            cost INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'pending',
+            enqueued_at INTEGER NOT NULL,
+            processed_at INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS idx_dispatch_pending ON dispatch_queue(user_id, status);
+        CREATE TABLE IF NOT EXISTS trading_pk (
+            id TEXT PRIMARY KEY,
+            challenger_id TEXT NOT NULL,
+            defender_id TEXT NOT NULL,
+            challenger_score REAL NOT NULL DEFAULT 0,
+            defender_score REAL NOT NULL DEFAULT 0,
+            winner_id TEXT NOT NULL DEFAULT '',
+            stake INTEGER NOT NULL DEFAULT 50,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at INTEGER NOT NULL,
+            settled_at INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS seasons (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            starts_at INTEGER NOT NULL,
+            ends_at INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'active'
+        );
+        CREATE TABLE IF NOT EXISTS season_scores (
+            season_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            points_earned INTEGER NOT NULL DEFAULT 0,
+            social_score INTEGER NOT NULL DEFAULT 0,
+            pvp_wins INTEGER NOT NULL DEFAULT 0,
+            pnl_score REAL NOT NULL DEFAULT 0,
+            rank INTEGER NOT NULL DEFAULT 0,
+            settled INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (season_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS guilds (
+            id TEXT PRIMARY KEY,
+            season_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            leader_id TEXT NOT NULL,
+            score INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS guild_members (
+            guild_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member',
+            joined_at TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (guild_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS season_cosmetics (
+            season_id TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            label TEXT NOT NULL,
+            item_type TEXT NOT NULL DEFAULT 'cosmetic',
+            item_value TEXT NOT NULL DEFAULT '',
+            cost INTEGER NOT NULL DEFAULT 100,
+            PRIMARY KEY (season_id, item_id)
+        );
         """)
     _migrate_json_files(data_dir)
+    _seed_engagement_data()
 
 
 def _conn() -> sqlite3.Connection:
@@ -352,6 +493,11 @@ def claim_seat(seat_id: str, user_id: str, agent_id: str, activity: str, until_t
     now_ms = int(datetime.now(CST).timestamp() * 1000)
     with _lock:
         with _conn() as c:
+            auc = c.execute("SELECT * FROM seat_auctions WHERE seat_id=?", (seat_id,)).fetchone()
+            if auc and auc["ends_at"] > now_ms and auc["high_bidder"] and auc["high_bidder"] != user_id:
+                return {"ok": False, "error": "auction_active", "high_bidder": auc["high_bidder"]}
+            if auc and auc["ends_at"] <= now_ms and auc["high_bidder"] and auc["high_bidder"] != user_id:
+                return {"ok": False, "error": "auction_won_by_other", "winner": auc["high_bidder"]}
             row = c.execute("SELECT * FROM seat_occupancy WHERE seat_id=?", (seat_id,)).fetchone()
             if row:
                 if row["until_ts"] > now_ms and row["agent_id"] != agent_id:
@@ -476,4 +622,94 @@ def reset_session_idle(account_id: str) -> None:
     with _lock:
         with _conn() as c:
             c.execute("UPDATE life_users SET last_idle_tick=? WHERE id=?", (now_ms, account_id))
+
+
+SEASON_LENGTH_MS = 14 * 24 * 60 * 60 * 1000
+
+
+def _seed_engagement_data() -> None:
+    now_ms = int(datetime.now(CST).timestamp() * 1000)
+    with _lock:
+        with _conn() as c:
+            if not c.execute("SELECT 1 FROM seasons LIMIT 1").fetchone():
+                sid = datetime.now(CST).strftime("%Y-S%W")
+                c.execute(
+                    "INSERT INTO seasons (id, name, starts_at, ends_at, status) VALUES (?,?,?,?,?)",
+                    (sid, f"第 {sid} 赛季", now_ms, now_ms + SEASON_LENGTH_MS, "active"),
+                )
+                for item in [
+                    (sid, "season_frame_gold", "金色赛季头像框", "frame", "gold", 150),
+                    (sid, "season_sofa_sakura", "樱花沙发皮肤", "cosmetic", "sofa_sakura", 220),
+                    (sid, "season_hat_crown", "赛季皇冠帽", "hat", "crown", 180),
+                ]:
+                    c.execute(
+                        "INSERT OR IGNORE INTO season_cosmetics (season_id, item_id, label, item_type, item_value, cost) VALUES (?,?,?,?,?,?)",
+                        item,
+                    )
+            if not c.execute("SELECT 1 FROM npc_events WHERE ends_at > ?", (now_ms,)).fetchone():
+                day_end = now_ms + 24 * 60 * 60 * 1000
+                for ev in [
+                    ("ev_lily_lunch", "restaurant", "lily", "午餐特惠", "今日用餐积分 -20%", "dine_discount", 20, 15, now_ms, day_end),
+                    ("ev_gaga_spa", "spa", "masseur", "理疗加钟", "按摩奖励 +10 积分", "massage_bonus", 10, 20, now_ms, day_end),
+                    ("ev_jack_poker", "casino", "dealer", "牌局红利", "德州完成额外 +15 积分", "poker_bonus", 15, 25, now_ms, day_end),
+                    ("ev_gugu_tasks", "hall", "reception", "任务加倍", "领取每日任务 +50%", "task_bonus", 50, 10, now_ms, day_end),
+                ]:
+                    c.execute(
+                        "INSERT OR REPLACE INTO npc_events (id, zone, npc_id, title, body, buff_type, buff_value, reward_points, starts_at, ends_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        ev,
+                    )
+
+
+def now_ms() -> int:
+    return int(datetime.now(CST).timestamp() * 1000)
+
+
+def ensure_season_score(season_id: str, user_id: str) -> None:
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                "INSERT OR IGNORE INTO season_scores (season_id, user_id) VALUES (?,?)",
+                (season_id, user_id),
+            )
+
+
+def get_active_season() -> Optional[dict]:
+    ts = now_ms()
+    with _lock:
+        with _conn() as c:
+            row = c.execute(
+                "SELECT * FROM seasons WHERE status='active' AND starts_at <= ? AND ends_at > ? ORDER BY starts_at DESC LIMIT 1",
+                (ts, ts),
+            ).fetchone()
+            return dict(row) if row else None
+
+
+def add_season_points(user_id: str, points: int = 0, social: int = 0, pvp_win: int = 0, pnl: float = 0) -> None:
+    season = get_active_season()
+    if not season:
+        return
+    ensure_season_score(season["id"], user_id)
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                """UPDATE season_scores SET
+                   points_earned = points_earned + ?,
+                   social_score = social_score + ?,
+                   pvp_wins = pvp_wins + ?,
+                   pnl_score = pnl_score + ?
+                   WHERE season_id=? AND user_id=?""",
+                (points, social, pvp_win, pnl, season["id"], user_id),
+            )
+
+
+def get_user_guild(user_id: str, season_id: str) -> Optional[dict]:
+    with _lock:
+        with _conn() as c:
+            row = c.execute(
+                """SELECT g.*, m.role FROM guild_members m
+                   JOIN guilds g ON g.id = m.guild_id
+                   WHERE m.user_id=? AND g.season_id=?""",
+                (user_id, season_id),
+            ).fetchone()
+            return dict(row) if row else None
 

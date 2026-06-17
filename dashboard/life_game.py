@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 import life_db
 from life_auth import router as auth_router, resolve_account_id
+from life_engagement import social_router, pvp_router, season_router
 
 CST = timezone(timedelta(hours=8))
 
@@ -45,6 +46,9 @@ DEFAULT_FREE_UNLOCKS = life_db.DEFAULT_FREE_UNLOCKS
 
 router = APIRouter()
 router.include_router(auth_router)
+router.include_router(social_router)
+router.include_router(pvp_router)
+router.include_router(season_router)
 
 _zhipu_key: str = ""
 
@@ -74,9 +78,11 @@ def save_user(account_id: str, data: dict) -> None:
     life_db.save_user_data(account_id, data)
 
 
-def _earn(user: dict, amount: int, reason: str = "") -> int:
+def _earn(user: dict, amount: int, reason: str = "", account_id: str = "") -> int:
     amount = max(0, int(amount))
     user["points"] = max(0, user.get("points", 0) + amount)
+    if account_id and amount > 0:
+        life_db.add_season_points(account_id, points=amount)
     return user["points"]
 
 
@@ -230,7 +236,7 @@ async def life_earn(body: EarnBody, account_id: str = Depends(resolve_account_id
     user = load_user(uid)
     cap = 500
     amount = min(max(0, body.amount), cap)
-    balance = _earn(user, amount, body.reason)
+    balance = _earn(user, amount, body.reason, uid)
     save_user(uid, user)
     return {"ok": True, "balance": balance, "earned": amount}
 
@@ -258,7 +264,7 @@ async def life_idle(body: IdleBody, account_id: str = Depends(resolve_account_id
     minutes = min(minutes, remaining)
     agents = min(max(0, body.agent_count), IDLE_MAX_AGENTS)
     earned = minutes * agents * IDLE_POINTS_PER_AGENT_PER_MIN
-    balance = _earn(user, earned)
+    balance = _earn(user, earned, account_id=uid)
     user["last_idle_tick"] = now_ms
     stats["idle_ms_today"] = stats.get("idle_ms_today", 0) + minutes * 60_000
     stats["idle_minutes_today"] = idle_minutes_today + minutes
@@ -286,7 +292,7 @@ async def life_activity_complete(body: ActivityBody, account_id: str = Depends(r
     if not body.user_initiated:
         return {"ok": True, "balance": user["points"], "earned": 0}
     reward = ACTIVITY_REWARDS.get(body.activity, 0)
-    balance = _earn(user, reward)
+    balance = _earn(user, reward, account_id=uid)
     stats = user.setdefault("stats", {})
     acts = stats.setdefault("activities", {})
     acts[body.activity] = acts.get(body.activity, 0) + 1
@@ -332,7 +338,7 @@ async def life_claim_task(body: TaskClaimBody, account_id: str = Depends(resolve
         return {"ok": False, "error": "not_complete", "progress": task.get("progress", 0)}
     task["claimed"] = True
     user["daily_tasks"][body.task_id] = task
-    balance = _earn(user, tdef["reward"])
+    balance = _earn(user, tdef["reward"], account_id=uid)
     save_user(uid, user)
     return {"ok": True, "balance": balance, "reward": tdef["reward"]}
 

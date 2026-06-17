@@ -25,10 +25,14 @@ import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
 import { homeNodeForAgent } from '../lib/agentHome';
 import { isLoggedIn } from '../lib/lifeAuth';
+import {
+  fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
+  chatChannelForZone, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
+} from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
 import { isCrossZoneTravel, zoneForNode, zoneForIntent, ZONE_TRANSIT_MS } from '../lib/zoneTransit';
 
-export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages' | 'tasks';
+export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages' | 'tasks' | 'social';
 export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs' | 'tasks';
 export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'shop' | 'tasks' | null;
 export type ZoneId = 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
@@ -85,6 +89,13 @@ interface GameStore {
   shopCatalog: LifeState['shop_catalog'];
   facilityCosts: Record<string, number>;
   agentBubble: { agentId: string; text: string; until: number } | null;
+  chatMessages: ChatMessage[];
+  npcEvents: NpcEvent[];
+  season: SeasonInfo | null;
+  seasonScore: SeasonScore | null;
+  seasonCosmetics: SeasonCosmetic[];
+  mentorPairs: { mentor_agent_id: string; mentee_agent_id: string }[];
+  activeNpcBuffs: Record<string, number>;
   /** 上次客户端挂机 tick 时间（performance.now） */
   lastIdleClientTick: number;
 
@@ -140,6 +151,9 @@ interface GameStore {
   setAgentBubble: (agentId: string | null, text: string, until: number) => void;
   applyLifeState: (state: Partial<LifeState>) => void;
   syncSeats: () => Promise<void>;
+  syncEngagement: () => Promise<void>;
+  setChatMessages: (msgs: ChatMessage[]) => void;
+  setNpcEvents: (ev: NpcEvent[]) => void;
   releaseAgentSeat: (agentId: string, seatId: string | null | undefined) => void;
 }
 
@@ -186,6 +200,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   shopCatalog: [],
   facilityCosts: { ...FACILITY_BASE_COST },
   agentBubble: null,
+  chatMessages: [],
+  npcEvents: [],
+  season: null,
+  seasonScore: null,
+  seasonCosmetics: [],
+  mentorPairs: [],
+  activeNpcBuffs: {},
   lastIdleClientTick: 0,
 
   setCameraMode: (m) => set({ cameraMode: m }),
@@ -281,7 +302,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         set({ ...expand, sidebarActive: 'warehouse', activeZone: 'hall', rightTab: 'assets' });
         break;
       case 'social':
-        set({ ...expand, sidebarActive: 'social', activeZone: 'hall', rightTab: 'hall' });
+        set({ ...expand, sidebarActive: 'social', rightTab: 'social', rightPanelCollapsed: false });
         break;
       default:
         break;
@@ -333,7 +354,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!node) return false;
 
     if (!hasFreeSeat(action, id, s.seatOccupancy)) {
-      get().addMessage(`该区域座位已满，请稍后再派遣 ${s.agents[id].data.name}`);
+      const cost = opts?.cost ?? s.facilityCosts[action] ?? FACILITY_BASE_COST[action];
+      await enqueueDispatch(id, action, opts?.nodeId || '', cost);
+      get().addMessage(`${s.agents[id].data.name} 座位已满，已加入派遣队列`);
       return false;
     }
 
@@ -516,6 +539,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (res.ok) set({ seatOccupancy: res.seats });
     } catch { /* ignore */ }
   },
+
+  syncEngagement: async () => {
+    try {
+      const [seasonRes, evRes] = await Promise.all([fetchSeasonCurrent(), fetchNpcEvents()]);
+      if (seasonRes.ok && seasonRes.season) {
+        set({
+          season: seasonRes.season,
+          seasonScore: seasonRes.my_score ?? null,
+          seasonCosmetics: seasonRes.cosmetics ?? [],
+        });
+      }
+      if (evRes.ok) {
+        const buffs: Record<string, number> = {};
+        evRes.events.forEach(ev => { if (!ev.claimed) buffs[ev.buff_type] = ev.buff_value; });
+        set({ npcEvents: evRes.events, activeNpcBuffs: buffs });
+      }
+      const mentorRes = await import('../lib/lifeEngagementApi').then(m => m.fetchMentorPairs());
+      if (mentorRes.ok) set({ mentorPairs: mentorRes.pairs });
+    } catch { /* ignore */ }
+  },
+
+  setChatMessages: (msgs) => set({ chatMessages: msgs }),
+  setNpcEvents: (ev) => set({ npcEvents: ev }),
 
   releaseAgentSeat: (agentId, seatId) => {
     if (!seatId) return;
@@ -870,6 +916,14 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
       : activity === 'rest' ? Math.max(0, char.stress - 20) : char.stress,
   };
   useGameStore.getState().speakForAgent(char.agentId, activity ?? 'greeting', activity);
+  if (zone && slot) {
+    const ch = chatChannelForZone(zone, slot.slotId);
+    tableSpeak(ch, char.agentId, char.data.name, char.data.soulMd || '').then(() => {
+      import('../lib/lifeEngagementApi').then(m => m.fetchChat(ch, 0).then(r => {
+        if (r.ok) store.setChatMessages(r.messages);
+      }));
+    }).catch(() => {});
+  }
   return started;
 }
 
