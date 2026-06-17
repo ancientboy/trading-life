@@ -1,5 +1,7 @@
 /** Canvas 2D 剪纸绘制工具 — 对齐灵犀 144 office-engine.js */
 
+import { getPokerTableSprite } from '../../lib/pokerTableSprite';
+
 export function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -477,6 +479,20 @@ export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: numbe
 export function drawPokerTable8(
   ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number,
 ) {
+  const sprite = getPokerTableSprite();
+  if (sprite) {
+    const w = 240 * s;
+    const h = 172 * s;
+    dropShadow(ctx, x, y, w, h * 0.85, 0.1);
+    ctx.save();
+    ctx.translate(x, y);
+    // 原图荷官托盘在下方；旋转 180° 使有牌/发牌侧朝向画布上方荷官 Jack (py≈160)
+    ctx.rotate(Math.PI);
+    ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+    ctx.restore();
+    return;
+  }
+
   dropShadow(ctx, x, y, 240 * s, 180 * s, 0.1);
   ctx.fillStyle = '#2d5a3d';
   ctx.beginPath(); ctx.ellipse(x, y, 110 * s, 75 * s, 0, 0, Math.PI * 2); ctx.fill();
