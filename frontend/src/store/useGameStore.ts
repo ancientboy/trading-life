@@ -32,9 +32,22 @@ import {
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
 import { isCrossZoneTravel, zoneForNode, zoneForIntent, ZONE_TRANSIT_MS } from '../lib/zoneTransit';
 
+let seatSyncTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleSeatSync(fn: () => Promise<void>) {
+  if (seatSyncTimer) clearTimeout(seatSyncTimer);
+  seatSyncTimer = setTimeout(() => { fn().catch(() => {}); }, 2500);
+}
+
 export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages' | 'tasks' | 'social';
 export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs' | 'tasks';
-export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'shop' | 'tasks' | null;
+export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'shop' | 'tasks' | null;
+
+export type PokerHandResult = {
+  results: Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
+  won: number;
+  buyIn: number;
+  pot?: number;
+};
 export type ZoneId = 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
 
 const LEISURE_FACILITY: Record<'restaurant' | 'spa' | 'casino', string> = {
@@ -98,6 +111,7 @@ interface GameStore {
   seasonCosmetics: SeasonCosmetic[];
   mentorPairs: { mentor_agent_id: string; mentee_agent_id: string }[];
   activeNpcBuffs: Record<string, number>;
+  pokerHandResult: PokerHandResult | null;
   /** 上次客户端挂机 tick 时间（performance.now） */
   lastIdleClientTick: number;
   /** 当前用户可操作（派遣/编辑）的 Agent */
@@ -126,9 +140,10 @@ interface GameStore {
   sendAgentToLeisure: (type: 'dine' | 'massage' | 'poker', agentId?: string, cost?: number) => Promise<boolean>;
   sendAgentToFacility: (action: 'dine' | 'massage' | 'poker' | 'rest', opts?: { agentId?: string; nodeId?: string; cost?: number; skipCost?: boolean }) => Promise<boolean>;
   createAgent: (draft: CustomAgentDraft) => Promise<boolean>;
-  openModal: (id: ModalId) => void;
+  openModal: (id: Exclude<ModalId, null>) => void;
   openWorkshop: (mode?: 'list' | 'create') => void;
   closeModal: () => void;
+  showPokerResult: (result: PokerHandResult) => void;
   flyToZone: (zone: ZoneId) => void;
   resetCamera: () => void;
   setFollowAgent: (id: string | null) => void;
@@ -216,6 +231,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   seasonCosmetics: [],
   mentorPairs: [],
   activeNpcBuffs: {},
+  pokerHandResult: null,
   lastIdleClientTick: 0,
   operableAgentIds: [],
   isAdmin: false,
@@ -324,9 +340,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
         break;
     }
   },
-  openModal: (id) => set({ activeModal: id }),
+  openModal: (id) => set({ activeModal: id, rightPanelCollapsed: true }),
   openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: true }),
-  closeModal: () => set({ activeModal: null, workshopMode: 'list' }),
+  closeModal: () => set({ activeModal: null, workshopMode: 'list', pokerHandResult: null }),
+  showPokerResult: (result) => set({ pokerHandResult: result, activeModal: 'poker_result', rightPanelCollapsed: true }),
   flyToZone: (zone) => {
     const cam = ZONE_CAMERA[zone];
     set({
@@ -396,8 +413,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       sidebarActive: zone === 'hall' ? 'hall' : zone,
       rightTab: action === 'rest' ? 'hall' : 'facility',
       selectedFacility: action === 'rest' ? null : LEISURE_FACILITY[zone as keyof typeof LEISURE_FACILITY] ?? null,
-      rightPanelCollapsed: false,
-      activeModal: null,
+      rightPanelCollapsed: action === 'poker' ? true : false,
+      activeModal: action === 'poker' ? 'poker' : null,
       cameraLookAt: { x: cam.x, z: cam.z },
       cameraZoom: WORLD_MAP.zoneZoom,
       mapOverview: false,
@@ -595,7 +612,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   releaseAgentSeat: (agentId, seatId) => {
     if (!seatId) return;
-    releaseSeat(seatId, agentId).then(() => get().syncSeats()).catch(() => {});
+    releaseSeat(seatId, agentId).then(() => scheduleSeatSync(() => get().syncSeats())).catch(() => {});
   },
 
   applyLifeState: (state) => {
@@ -943,15 +960,16 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   const until = now + dur + Math.random() * 5000;
   if (seatId && activity) {
     claimSeat(seatId, char.agentId, activity, Math.round(until)).then(res => {
-      if (!res.ok) store.addMessage(`${char.data.name} 占座失败，座位可能已被占用`);
-      store.syncSeats();
+      if (!res.ok && char.userDispatched) store.addMessage(`${char.data.name} 占座失败，座位可能已被占用`);
     }).catch(() => {});
   }
   if (zone && activity) {
     const greet = greetingForActivity(zone);
     const npc = npcForZone(zone);
-    if (greet && npc) store.addMessage(`🐧 ${npc.name}：${greet}`);
-    store.setNpcBubble(npc?.id ?? null, greet ?? '', now + 4500);
+    if (greet && npc) {
+      if (char.userDispatched) store.addMessage(`🐧 ${npc.name}：${greet}`);
+      store.setNpcBubble(npc?.id ?? null, greet ?? '', now + 4500);
+    }
   }
   const started = {
     ...char, activity, activityUntil: until,
@@ -987,7 +1005,6 @@ export function awardActivityPoints(
       useGameStore.setState({ points: res.balance });
       useGameStore.getState().addMessage(`+${res.earned} 积分 · ${agentName} 完成${activityLabel(activity)}`);
     }
-    fetchLifeState().then(s => useGameStore.getState().applyLifeState(s)).catch(() => {});
   }).catch(() => {});
 }
 

@@ -37,15 +37,11 @@ export function SeasonPanel() {
     return operable[0] || aid;
   };
 
-  const showPokerResults = (results?: Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>, won?: number) => {
+  const showPokerResults = (results?: Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>, won?: number, buyIn = 30, pot?: number) => {
     if (!results?.length) return;
     setLastPokerResults(results);
-    const me = results.find(r => !r.is_npc);
-    const summary = me
-      ? `第 ${me.rank} 名 · 得分 ${me.score}${won ? ` · 赢得 ${won}` : ''}`
-      : '开牌完成';
-    addMessage(summary);
-    if (won) syncEngagement();
+    useGameStore.getState().showPokerResult({ results, won: won ?? 0, buyIn, pot });
+    syncEngagement();
   };
 
   useEffect(() => { syncEngagement(); }, [syncEngagement]);
@@ -143,7 +139,7 @@ export function SeasonPanel() {
               if (!r.ok) { addMessage(r.error || '单人模式失败'); return; }
               if (r.balance != null) useGameStore.setState({ points: r.balance });
               addMessage('牌局开始 · 买入 -30 · vs NPC');
-              showPokerResults(r.results, r.won);
+              showPokerResults(r.results, r.won, 30, r.pot);
               listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
             }}>开始牌局 · -30</button>
           </div>
@@ -187,7 +183,7 @@ export function SeasonPanel() {
                     if (r.ok) {
                       if (r.balance != null) useGameStore.setState({ points: r.balance });
                       addMessage(`牌局开始 · 买入 -${room.buy_in}`);
-                      showPokerResults(r.results, r.won);
+                      showPokerResults(r.results, r.won, room.buy_in, r.pot);
                     } else addMessage(r.error || '开局失败');
                     listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
                   }}>开始牌局 · -{room.buy_in}</button>

@@ -14,8 +14,12 @@ function nextWanderDelay(state: import('./constants').CharState['state']): numbe
 }
 
 /** 单帧角色模拟（供 Canvas 2D 引擎调用，不依赖 Three.js） */
+const ACTIVITY_END_LABEL: Record<string, string> = {
+  rest: '休息', dine: '用餐', massage: '按摩', poker: '德州',
+};
+
 export function tickCharacterSim(dt: number) {
-  const { paused, agents, patchChar, addMessage, simSpeed } = useGameStore.getState();
+  const { paused, agents, patchChar, simSpeed } = useGameStore.getState();
   if (paused) return;
   const scaledDt = dt * simSpeed;
   const now = performance.now();
@@ -70,9 +74,15 @@ export function tickCharacterSim(dt: number) {
       useGameStore.getState().releaseAgentSeat(c.agentId, seatId);
       c = { ...c, activity: null, activityUntil: 0, activityPose: undefined, moveTimer: 0, nextMoveTime: 1500, travelIntent: null, destNode: null, userDispatched: false };
       if (finished && finished !== 'idle') awardActivityPoints(finished, c.data.name, !!userDispatched);
+      const label = ACTIVITY_END_LABEL[finished ?? ''] ?? '休闲';
+      const dest = c.data.agentType === 'entertainment' ? '休息区' : '工位';
+      if (userDispatched) {
+        useGameStore.getState().addMessage(`${c.data.name} 结束${label}，返回${dest}`);
+      } else {
+        useGameStore.getState().setAgentBubble(c.agentId, `${label}结束～`, now + 3200);
+      }
       const home = homeNodeForAgent(c.agentId, c.data);
       if (home) c = assignPath(c, home);
-      addMessage(`${c.data.name} 结束休闲，返回${c.data.agentType === 'entertainment' ? '休息区' : '工位'}`);
       patchChar(c.agentId, c);
       return;
     }

@@ -27,12 +27,33 @@ export function AppShell() {
       <LeftSidebar />
       <main className="main-canvas">
         <GameCanvas />
+        <PokerFloatCTA />
         <CanvasControls />
       </main>
       <RightPanel />
       <Modals />
       <MessageToast />
     </div>
+  );
+}
+
+/** 赌场入座后，画布上悬浮「开始牌局」入口 */
+function PokerFloatCTA() {
+  const activeZone = useGameStore(s => s.activeZone);
+  const agents = useGameStore(s => s.agents);
+  const canOperateAgent = useGameStore(s => s.canOperateAgent);
+  const activeModal = useGameStore(s => s.activeModal);
+  const openModal = useGameStore(s => s.openModal);
+
+  if (activeZone !== 'casino' || activeModal === 'poker' || activeModal === 'poker_result') return null;
+  const seated = Object.values(agents).find(a => a.activity === 'poker' && canOperateAgent(a.agentId));
+  if (!seated) return null;
+
+  return createPortal(
+    <button type="button" className="poker-float-cta" onClick={() => openModal('poker')}>
+      🃏 {seated.data.name} 已入座 · 点我开始牌局
+    </button>,
+    document.body,
   );
 }
 

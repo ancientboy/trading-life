@@ -6,6 +6,7 @@ import { AgentWorkshop } from './AgentWorkshop';
 import { DailyTasksPanel } from './DailyTasksPanel';
 import { SeasonPanel } from './SeasonPanel';
 import { PokerGamePanel } from './PokerGamePanel';
+import { PokerResultModal } from './PokerResultModal';
 import { PenguinAvatar } from './PenguinAvatar';
 import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
@@ -20,6 +21,7 @@ const TITLES: Record<Exclude<ModalId, null>, string> = {
   dine: '餐厅 · 点餐',
   massage: '按摩 · 理疗套餐',
   poker: '德州扑克 · 开局',
+  poker_result: '德州扑克 · 开牌结果',
   shop: '积分商城',
   tasks: '每日任务',
 };
@@ -30,7 +32,7 @@ export function Modals() {
 
   if (!activeModal) return null;
 
-  const wide = ['workshop', 'strategy', 'dine', 'massage', 'poker', 'shop', 'tasks'].includes(activeModal);
+  const wide = ['workshop', 'strategy', 'dine', 'massage', 'poker', 'poker_result', 'shop', 'tasks'].includes(activeModal);
 
   return createPortal(
     <div className="modal-overlay" onClick={closeModal}>
@@ -55,6 +57,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
   const overview = useGameStore(s => s.overview);
   const tradeFeed = useGameStore(s => s.tradeFeed);
   const ticker = useGameStore(s => s.ticker);
+  const pokerHandResult = useGameStore(s => s.pokerHandResult);
   const agent = selectedAgentId ? agents[selectedAgentId] : null;
   const d = agent?.data;
 
@@ -121,7 +124,9 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
         { id: 'c', name: '精油 SPA', desc: '90 分钟尊享', cost: 120, effect: '-70% 压力', icon: LucideIcons.massageOil },
       ]} />;
     case 'poker':
-      return <PokerGamePanel onSitDone={closeModal} />;
+      return <PokerGamePanel />;
+    case 'poker_result':
+      return pokerHandResult ? <PokerResultModal data={pokerHandResult} /> : null;
     case 'shop':
       return <ShopPanel />;
     case 'tasks':

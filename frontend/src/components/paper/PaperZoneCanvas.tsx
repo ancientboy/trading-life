@@ -36,6 +36,8 @@ export function PaperZoneCanvas() {
   const selectAgent = useGameStore(s => s.selectAgent);
   const selectNpc = useGameStore(s => s.selectNpc);
   const sendAgentToFacility = useGameStore(s => s.sendAgentToFacility);
+  const openModal = useGameStore(s => s.openModal);
+  const setNpcBubble = useGameStore(s => s.setNpcBubble);
   const panCamera = useGameStore(s => s.panCamera);
   const setCameraZoom = useGameStore(s => s.setCameraZoom);
   const setCameraLookAt = useGameStore(s => s.setCameraLookAt);
@@ -192,8 +194,22 @@ export function PaperZoneCanvas() {
     if (!hit) return;
     if (hit.type === 'nav') flyToZone(hit.target);
     else if (hit.type === 'agent') selectAgent(hit.id);
-    else if (hit.type === 'npc') selectNpc(hit.id);
-    else if (hit.type === 'facility') void sendAgentToFacility(hit.action, { nodeId: hit.nodeId });
+    else if (hit.type === 'npc') {
+      if (hit.id === 'dealer') {
+        openModal('poker');
+        setNpcBubble('dealer', '欢迎！入座后点「开始牌局」发牌 🃏', performance.now() + 5000);
+      } else if (hit.id === 'lily') openModal('dine');
+      else if (hit.id === 'masseur') openModal('massage');
+      else selectNpc(hit.id);
+    } else if (hit.type === 'facility') {
+      if (hit.action === 'poker') {
+        void sendAgentToFacility('poker', { nodeId: hit.nodeId, skipCost: true }).then(ok => {
+          if (ok) openModal('poker');
+        });
+      } else {
+        void sendAgentToFacility(hit.action, { nodeId: hit.nodeId });
+      }
+    }
   };
 
   const onWheel = (e: React.WheelEvent) => {
