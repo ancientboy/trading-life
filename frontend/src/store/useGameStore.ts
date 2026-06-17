@@ -343,6 +343,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   sendAgentToLeisure: async (type, agentId, cost) => {
+    if (type === 'poker') {
+      return get().sendAgentToFacility('poker', { agentId, skipCost: true });
+    }
     return get().sendAgentToFacility(type, { agentId, cost, skipCost: cost == null });
   },
 
@@ -355,8 +358,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return false;
     }
 
+    const skipCost = opts?.skipCost || action === 'poker';
     const cost = opts?.cost ?? s.facilityCosts[action] ?? FACILITY_BASE_COST[action];
-    if (!opts?.skipCost && cost > 0) {
+    if (!skipCost && cost > 0) {
       const disp = await lifeDispatch(action, cost);
       if (!disp.ok) {
         get().addMessage(`积分不足，需要 ${cost} 积分（当前 ${disp.balance}）`);
@@ -375,8 +379,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!node) return false;
 
     if (!hasFreeSeat(action, id, s.seatOccupancy)) {
-      const cost = opts?.cost ?? s.facilityCosts[action] ?? FACILITY_BASE_COST[action];
-      await enqueueDispatch(id, action, opts?.nodeId || '', cost);
+      const queueCost = action === 'poker' ? 0 : (opts?.cost ?? s.facilityCosts[action] ?? FACILITY_BASE_COST[action]);
+      await enqueueDispatch(id, action, opts?.nodeId || '', queueCost);
       get().addMessage(`${s.agents[id].data.name} 座位已满，已加入派遣队列`);
       return false;
     }
@@ -398,7 +402,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cameraZoom: WORLD_MAP.zoneZoom,
       mapOverview: false,
     });
-    get().addMessage(`${char.data.name} 已抵达${cam.label}${cost > 0 ? ` · -${cost} 积分` : ''}`);
+    get().addMessage(`${char.data.name} 已抵达${cam.label}${!skipCost && cost > 0 ? ` · -${cost} 积分` : action === 'poker' ? ' · 已入座（免费）' : ''}`);
     get().speakForAgent(id, action, action);
     return true;
   },
@@ -883,12 +887,15 @@ export function onPathComplete(char: CharState, now: number): CharState {
   if (char.travelIntent) {
     const intent = char.travelIntent;
     return startActivity({ ...char, travelIntent: null }, intent, now,
-      intent === 'poker' ? 12000 : intent === 'massage' ? 10000 : intent === 'rest' ? 9000 : 9000);
+      intent === 'poker' ? (char.userDispatched ? 1_800_000 : 12000)
+      : intent === 'massage' ? 10000 : intent === 'rest' ? 9000 : 9000);
   }
   if (node === OfficePath.boothByAgent[char.agentId] || node?.startsWith('rest_l')) return startActivity(char, 'rest', now, 9000);
   if (node === OfficePath.massageByAgent[char.agentId] || node?.startsWith('bed_')) return startActivity(char, 'massage', now, 10000);
   if (node === OfficePath.dineByAgent[char.agentId] || node?.startsWith('dine_')) return startActivity(char, 'dine', now, 9000);
-  if (node === OfficePath.pokerByAgent[char.agentId] || node?.startsWith('poker_s')) return startActivity(char, 'poker', now, 12000);
+  if (node === OfficePath.pokerByAgent[char.agentId] || node?.startsWith('poker_s')) {
+    return startActivity(char, 'poker', now, char.userDispatched ? 1_800_000 : 12000);
+  }
   if (node?.startsWith('seat_')) {
     const store = useGameStore.getState();
     const seatId = resolveAvailableSeat('desk', node, char.agentId, store.seatOccupancy, now);
@@ -974,6 +981,7 @@ export function awardActivityPoints(
   userInitiated: boolean,
 ) {
   if (!userInitiated) return;
+  if (activity === 'poker') return;
   lifeActivityComplete(activity, true).then(res => {
     if (res.earned > 0) {
       useGameStore.setState({ points: res.balance });

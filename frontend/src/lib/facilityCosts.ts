@@ -3,5 +3,5 @@ export const FACILITY_BASE_COST: Record<'rest' | 'dine' | 'massage' | 'poker', n
   rest: 5,
   dine: 40,
   massage: 50,
-  poker: 30,
+  poker: 0,
 };

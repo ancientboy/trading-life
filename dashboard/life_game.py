@@ -24,8 +24,8 @@ MAX_ENTERTAINMENT_AGENTS = 1
 MAX_TRADING_CUSTOM_AGENTS = 3
 DAILY_TASK_DEFS = life_db.DAILY_TASK_DEFS
 
-ACTIVITY_REWARDS = {"rest": 10, "dine": 15, "massage": 25, "poker": 20}
-FACILITY_COSTS = {"rest": 5, "dine": 40, "massage": 50, "poker": 30}
+ACTIVITY_REWARDS = {"rest": 10, "dine": 15, "massage": 25, "poker": 0}
+FACILITY_COSTS = {"rest": 5, "dine": 40, "massage": 50, "poker": 0}
 IDLE_POINTS_PER_AGENT_PER_MIN = 3
 IDLE_MAX_AGENTS = 5
 IDLE_MAX_ELAPSED_PER_TICK_MS = 60_000

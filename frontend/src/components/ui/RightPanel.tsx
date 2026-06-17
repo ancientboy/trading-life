@@ -8,6 +8,7 @@ import { ProfitIcon, LossIcon, PieAssetIcon } from '../icons/phosphorIcons';
 import { PenguinAvatar } from './PenguinAvatar';
 import { DailyTasksPanel } from './DailyTasksPanel';
 import { SocialPanel } from './SocialPanel';
+import { PokerGamePanel } from './PokerGamePanel';
 
 const TABS: { id: RightTab; label: string }[] = [
   { id: 'hall', label: '交易大厅' },
@@ -278,7 +279,7 @@ export function RightPanel() {
     const zoneInfo: Record<string, { title: string; desc: string; modal: 'dine' | 'massage' | 'poker'; leisure: 'dine' | 'massage' | 'poker' }> = {
       table: { title: '餐厅 · 餐桌', desc: '点餐用餐，恢复 Agent 情绪（-30% 压力）', modal: 'dine', leisure: 'dine' },
       bed: { title: '按摩 · 理疗床', desc: '深度放松，大幅降低压力（-50% 压力）', modal: 'massage', leisure: 'massage' },
-      poker: { title: '德州 · 牌桌', desc: '博弈娱乐，清空负面情绪', modal: 'poker', leisure: 'poker' },
+      poker: { title: '德州 · 牌桌', desc: '① 免费入座 → ② 点「开始牌局」才扣买入积分', modal: 'poker', leisure: 'poker' },
     };
     const f = selectedFacility ? zoneInfo[selectedFacility] : null;
     const leisureAgents = (Object.values(agents) as CharState[]).filter(a => {
@@ -299,14 +300,23 @@ export function RightPanel() {
               <div key={a.agentId} style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={22} />
                 <span>{a.data.name}</span>
+                {activeZone === 'casino' && <span style={{ fontSize: 10, color: '#48d093' }}>已入座</span>}
               </div>
             ))}
           </div>
         )}
-        <button className="ui-btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => sendAgentToLeisure(f.leisure, selectedAgentId || undefined)}>
-          派遣 Agent 前往
-        </button>
-        <button className="ui-btn" style={{ width: '100%' }} onClick={() => openModal(f.modal)}>打开详细交互</button>
+        {activeZone === 'casino' && selectedFacility === 'poker' ? (
+          <PokerGamePanel showSitButton={leisureAgents.length === 0} compact />
+        ) : (
+          <>
+            <button className="ui-btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => sendAgentToLeisure(f.leisure, selectedAgentId || undefined)}>
+              {f.leisure === 'poker' ? '① 免费入座' : '派遣 Agent 前往'}
+            </button>
+            <button className="ui-btn" style={{ width: '100%' }} onClick={() => openModal(f.modal)}>
+              {f.leisure === 'poker' ? '打开牌局面板' : '打开详细交互'}
+            </button>
+          </>
+        )}
       </>
     );
   }

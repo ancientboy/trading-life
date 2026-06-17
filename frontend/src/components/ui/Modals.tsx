@@ -5,6 +5,7 @@ import { useGameStore, type ModalId } from '../../store/useGameStore';
 import { AgentWorkshop } from './AgentWorkshop';
 import { DailyTasksPanel } from './DailyTasksPanel';
 import { SeasonPanel } from './SeasonPanel';
+import { PokerGamePanel } from './PokerGamePanel';
 import { PenguinAvatar } from './PenguinAvatar';
 import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
@@ -120,11 +121,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
         { id: 'c', name: '精油 SPA', desc: '90 分钟尊享', cost: 120, effect: '-70% 压力', icon: LucideIcons.massageOil },
       ]} />;
     case 'poker':
-      return <LeisureModal type="poker" title="德州扑克" lucide={LucideIcons.poker} items={[
-        { id: 'a', name: '休闲局', desc: '底注 10 积分', cost: 30, effect: '清空负面情绪' },
-        { id: 'b', name: '标准局', desc: '底注 50 积分', cost: 80, effect: '清空压力 + 奖金' },
-        { id: 'c', name: '高手局', desc: '底注 200 积分', cost: 200, effect: '大幅减压 + 奖金' },
-      ]} />;
+      return <PokerGamePanel onSitDone={closeModal} />;
     case 'shop':
       return <ShopPanel />;
     case 'tasks':

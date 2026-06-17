@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import {
   fetchSeasonLeaderboard, buySeasonCosmetic,
-  listPokerRooms, createPokerRoom, joinPokerRoom, playPokerRound,
+  listPokerRooms, createPokerRoom, joinPokerRoom, startPokerRoom,
   pokerSolo, pokerQuickJoin,
   listSeatAuctions, bidSeat, fetchDispatchQueue, processDispatchQueue,
   type LeaderboardEntry, type SeasonCosmetic, type PokerRoom, type SeatAuction,
@@ -121,37 +121,36 @@ export function SeasonPanel() {
 
       {tab === 'pvp' && (
         <>
-          <div style={{ fontSize: 11, color: '#8a7e72', marginBottom: 8, lineHeight: 1.5 }}>
-            多人：手动建房/加入，满员后开牌。快速加入优先匹配公开房，无人则自动与 NPC 对战。
+          <div style={{ fontSize: 11, color: '#8a7e72', marginBottom: 8, lineHeight: 1.5, padding: '8px 10px', background: '#fff8e8', borderRadius: 8 }}>
+            <b>入座免费</b>，点「开始牌局」时才扣买入积分。单人可直接开局；多人需先加入房间再开始。
           </div>
           <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
             <button className="ui-btn" style={{ flex: 1 }} onClick={async () => {
               const aid = selectedAgent();
               if (!aid) { addMessage('请先选择 Agent'); return; }
               const r = await pokerQuickJoin(aid, 30);
-              if (!r.ok) { addMessage(r.error || '快速加入失败'); return; }
-              if (r.mode === 'waiting') addMessage(r.message || '已加入房间，等待其他玩家…');
-              else if (r.mode === 'solo_npc') addMessage('无人房间，已自动与 NPC 开牌');
-              else if (r.mode === 'quick_match') addMessage('匹配成功，已开牌');
-              if (r.balance != null) useGameStore.setState({ points: r.balance });
-              showPokerResults(r.results, r.won);
+              if (!r.ok) {
+                addMessage(r.error || '暂无公开房间，可点「开始牌局」单人开局');
+                return;
+              }
+              addMessage(r.message || '已入座（免费），等待其他玩家…');
               listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
-            }}>快速加入（30 积分）</button>
-            <button className="ui-btn" style={{ flex: 1 }} onClick={async () => {
+            }}>快速入座（免费）</button>
+            <button className="ui-btn" style={{ flex: 1, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#48d093,#2ea872)' }} onClick={async () => {
               const aid = selectedAgent();
               if (!aid) { addMessage('请先选择 Agent'); return; }
               const r = await pokerSolo(aid, 30);
               if (!r.ok) { addMessage(r.error || '单人模式失败'); return; }
               if (r.balance != null) useGameStore.setState({ points: r.balance });
-              addMessage('单人 vs NPC 已开牌（荷官 Jack + Lily + Gaga）');
+              addMessage('牌局开始 · 买入 -30 · vs NPC');
               showPokerResults(r.results, r.won);
               listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
-            }}>单人 vs NPC</button>
+            }}>开始牌局 · -30</button>
           </div>
           <button className="ui-btn" style={{ width: '100%', marginBottom: 8 }} onClick={async () => {
             const r = await createPokerRoom(30);
-            if (r.ok) { addMessage(`牌局 ${r.room_id} 已创建`); listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); }); }
-          }}>创建德州房间（30 积分）</button>
+            if (r.ok) { addMessage(`房间已创建（入座免费，开局扣 30）`); listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); }); }
+          }}>创建德州房间（入座免费）</button>
           {lastPokerResults.length > 0 && (
             <div style={{ padding: 8, background: '#faf6ef', borderRadius: 8, marginBottom: 8, fontSize: 11 }}>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>上次开牌</div>
@@ -163,11 +162,14 @@ export function SeasonPanel() {
               ))}
             </div>
           )}
-          {rooms.map(room => (
+          {rooms.map(room => {
+            const humanCount = room.players.filter(p => !p.user_id.startsWith('npc_')).length;
+            const statusLabel = room.status === 'waiting' ? `等待中 · ${humanCount} 人` : room.status;
+            return (
             <div key={room.id} className="leisure-option" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <b>{room.id.slice(-8)}</b>
-                <span style={{ fontSize: 11 }}>{room.status} · 池 {room.pot}</span>
+                <span style={{ fontSize: 11 }}>{statusLabel} · 买入 {room.buy_in}</span>
               </div>
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 <button className="ui-btn" style={{ flex: 1, fontSize: 11 }} disabled={room.status !== 'waiting'}
@@ -175,23 +177,23 @@ export function SeasonPanel() {
                     const aid = selectedAgent();
                     if (!aid) return;
                     const r = await joinPokerRoom(room.id, aid);
-                    if (r.ok) addMessage('已加入牌局');
+                    if (r.ok) addMessage(r.message || '已入座（免费）');
                     else addMessage(r.error || '失败');
-                    if (r.balance != null) useGameStore.setState({ points: r.balance });
                     listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
-                  }}>加入</button>
-                <button className="ui-btn" style={{ flex: 1, fontSize: 11 }} disabled={room.status !== 'playing'}
+                  }}>入座（免费）</button>
+                <button className="ui-btn" style={{ flex: 1, fontSize: 11, fontWeight: 700 }} disabled={room.status !== 'waiting'}
                   onClick={async () => {
-                    const r = await playPokerRound(room.id);
+                    const r = await startPokerRoom(room.id);
                     if (r.ok) {
                       if (r.balance != null) useGameStore.setState({ points: r.balance });
+                      addMessage(`牌局开始 · 买入 -${room.buy_in}`);
                       showPokerResults(r.results, r.won);
-                    } else addMessage(r.error || '开牌失败');
+                    } else addMessage(r.error || '开局失败');
                     listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
-                  }}>开牌</button>
+                  }}>开始牌局 · -{room.buy_in}</button>
               </div>
             </div>
-          ))}
+          );})}
           {queueLen > 0 && (
             <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={async () => {
               const r = await processDispatchQueue();

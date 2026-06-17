@@ -247,6 +247,56 @@ def _poker_score(player: dict, room: dict, human_id: str) -> int:
     return random.randint(20, 100) + 12
 
 
+def _charge_human_buy_ins(room_id: str, room: dict, players: list) -> tuple[bool, str]:
+    """开局时向真人玩家收取买入积分（入座不扣）。"""
+    from life_game import load_user, save_user, _spend
+
+    buy_in = room["buy_in"]
+    for p in players:
+        pd = dict(p)
+        uid = pd["user_id"]
+        if uid.startswith("npc_"):
+            continue
+        if pd.get("buy_in", 0) >= buy_in:
+            continue
+        user = load_user(uid)
+        if not _spend(user, buy_in):
+            save_user(uid, user)
+            acc = life_db.get_account_by_id(uid)
+            name = (acc or {}).get("display_name") or uid[:8]
+            return False, f"{name} 积分不足（需 {buy_in} 积分）"
+        save_user(uid, user)
+        with life_db._lock:
+            with life_db._conn() as c:
+                c.execute(
+                    "UPDATE poker_room_players SET buy_in=? WHERE room_id=? AND user_id=?",
+                    (buy_in, room_id, uid),
+                )
+    return True, ""
+
+
+def _calc_room_pot(room: dict, players: list) -> int:
+    buy_in = room["buy_in"]
+    pot = 0
+    for p in players:
+        pd = dict(p)
+        if pd["user_id"].startswith("npc_"):
+            pot += buy_in
+        elif pd.get("buy_in", 0) > 0:
+            pot += pd["buy_in"]
+    return pot
+
+
+def _add_npc_players_to_room(c, room_id: str, buy_in: int, taken_seats: set[str]) -> None:
+    for uid, _name, seat in NPC_POKER_ROSTER:
+        if seat in taken_seats:
+            continue
+        c.execute(
+            "INSERT OR IGNORE INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
+            (room_id, uid, f"agent_{uid}", seat, buy_in),
+        )
+
+
 def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str) -> dict:
     from life_game import load_user, save_user, _earn
 
@@ -331,9 +381,7 @@ async def poker_solo(body: PokerSoloBody, account_id: str = Depends(resolve_acco
 
 @pvp_router.post("/pvp/poker/quick-join")
 async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolve_account_id)):
-    """快速加入：优先匹配公开等待房，无房则自动单人 vs NPC"""
-    from life_game import load_user, save_user, _spend
-
+    """快速加入等待房（入座免费）；无公开房则单人 vs NPC（开局扣买入）。"""
     with life_db._lock:
         with life_db._conn() as c:
             rows = c.execute(
@@ -351,38 +399,23 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
                     break
 
     if not target:
-        return await poker_solo(PokerSoloBody(agent_id=body.agent_id, buy_in=30), account_id)
+        return {"ok": False, "error": "暂无等待中的公开房间", "mode": "no_room"}
 
-    user = load_user(account_id)
-    if not _spend(user, target["buy_in"]):
-        save_user(account_id, user)
-        return {"ok": False, "error": "积分不足", "cost": target["buy_in"]}
-    save_user(account_id, user)
     with life_db._lock:
         with life_db._conn() as c:
             count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (target["id"],)).fetchone()[0]
             seat = body.seat_id or f"poker_s{(count % 8) + 1}"
             c.execute(
                 "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
-                (target["id"], account_id, body.agent_id, seat, target["buy_in"]),
+                (target["id"], account_id, body.agent_id, seat, 0),
             )
-            c.execute("UPDATE poker_rooms SET pot = pot + ? WHERE id=?", (target["buy_in"], target["id"]))
-            count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (target["id"],)).fetchone()[0]
-            if count >= target["min_players"]:
-                c.execute("UPDATE poker_rooms SET status='playing', started_at=? WHERE id=?", (life_db.now_ms(), target["id"]))
-            room = c.execute("SELECT * FROM poker_rooms WHERE id=?", (target["id"],)).fetchone()
             players = c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (target["id"],)).fetchall()
 
-    if room["status"] == "playing":
-        out = _settle_poker_room(target["id"], dict(room), players, account_id)
-        out["mode"] = "quick_match"
-        out["balance"] = load_user(account_id)["points"]
-        return out
-
+    human_count = sum(1 for p in players if not dict(p)["user_id"].startswith("npc_"))
     return {
         "ok": True, "mode": "waiting", "room_id": target["id"],
-        "players": len(players), "message": "已加入房间，等待其他玩家…",
-        "balance": user["points"],
+        "players": human_count, "buy_in": target["buy_in"],
+        "message": f"已入座（免费），房间 {human_count} 人 · 满员后点「开始牌局」才扣 {target['buy_in']} 积分",
     }
 
 
@@ -437,9 +470,7 @@ async def create_poker_room(body: PokerCreateBody, account_id: str = Depends(res
 
 @pvp_router.post("/pvp/poker/rooms/{room_id}/join")
 async def join_poker_room(room_id: str, body: PokerJoinBody, account_id: str = Depends(resolve_account_id)):
-    from life_game import load_user, save_user, _spend
-
-    user = load_user(account_id)
+    """入座加入房间（免费，开局时才扣买入积分）。"""
     with life_db._lock:
         with life_db._conn() as c:
             room = c.execute("SELECT * FROM poker_rooms WHERE id=? AND status='waiting'", (room_id,)).fetchone()
@@ -450,37 +481,99 @@ async def join_poker_room(room_id: str, body: PokerJoinBody, account_id: str = D
             count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (room_id,)).fetchone()[0]
             if count >= 8:
                 return {"ok": False, "error": "房间已满"}
-    if not _spend(user, room["buy_in"]):
-        save_user(account_id, user)
-        return {"ok": False, "error": "积分不足", "cost": room["buy_in"]}
-    save_user(account_id, user)
-    seat = body.seat_id or f"poker_s{(count % 8) + 1}"
-    with life_db._lock:
-        with life_db._conn() as c:
+            seat = body.seat_id or f"poker_s{(count % 8) + 1}"
             c.execute(
                 "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
-                (room_id, account_id, body.agent_id, seat, room["buy_in"]),
+                (room_id, account_id, body.agent_id, seat, 0),
             )
-            c.execute("UPDATE poker_rooms SET pot = pot + ? WHERE id=?", (room["buy_in"], room_id))
-            count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (room_id,)).fetchone()[0]
-            if count >= room["min_players"]:
-                c.execute("UPDATE poker_rooms SET status='playing', started_at=? WHERE id=?", (life_db.now_ms(), room_id))
-    return {"ok": True, "room_id": room_id, "seat_id": seat, "balance": user["points"]}
+            human_count = c.execute(
+                "SELECT COUNT(*) FROM poker_room_players WHERE room_id=? AND user_id NOT LIKE 'npc_%'",
+                (room_id,),
+            ).fetchone()[0]
+    room = dict(room)
+    return {
+        "ok": True, "room_id": room_id, "seat_id": seat,
+        "players": human_count, "buy_in": room["buy_in"],
+        "message": f"已入座（免费）· {human_count}/{room['min_players']} 人 · 点「开始牌局」扣 {room['buy_in']} 积分",
+    }
+
+
+@pvp_router.post("/pvp/poker/rooms/{room_id}/start")
+async def start_poker_room(room_id: str, account_id: str = Depends(resolve_account_id)):
+    """开始牌局：此时才向所有真人收取买入积分并开牌。"""
+    from life_game import load_user
+
+    with life_db._lock:
+        with life_db._conn() as c:
+            room = c.execute("SELECT * FROM poker_rooms WHERE id=? AND status='waiting'", (room_id,)).fetchone()
+            if not room:
+                return {"ok": False, "error": "房间不可开始（可能已在进行中）"}
+            players = [dict(p) for p in c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()]
+            if not any(p["user_id"] == account_id for p in players):
+                return {"ok": False, "error": "你不在该房间中，请先加入"}
+
+    room = dict(room)
+    humans = [p for p in players if not p["user_id"].startswith("npc_")]
+    if len(humans) < room["min_players"]:
+        if len(humans) == 1:
+            taken = {p["seat_id"] for p in players}
+            with life_db._lock:
+                with life_db._conn() as c:
+                    _add_npc_players_to_room(c, room_id, room["buy_in"], taken)
+                    players = [dict(p) for p in c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()]
+        else:
+            return {"ok": False, "error": f"至少需要 {room['min_players']} 名玩家才能开始"}
+
+    ok, err = _charge_human_buy_ins(room_id, room, players)
+    if not ok:
+        return {"ok": False, "error": err, "cost": room["buy_in"]}
+
+    with life_db._lock:
+        with life_db._conn() as c:
+            players = [dict(p) for p in c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()]
+    pot = _calc_room_pot(room, players)
+    ts = life_db.now_ms()
+    with life_db._lock:
+        with life_db._conn() as c:
+            c.execute("UPDATE poker_rooms SET status='playing', started_at=?, pot=? WHERE id=?", (ts, pot, room_id))
+            room = dict(c.execute("SELECT * FROM poker_rooms WHERE id=?", (room_id,)).fetchone())
+            players = c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()
+
+    out = _settle_poker_room(room_id, room, players, account_id)
+    out["mode"] = "started"
+    out["balance"] = load_user(account_id)["points"]
+    out["cost"] = room["buy_in"]
+    return out
 
 
 @pvp_router.post("/pvp/poker/rooms/{room_id}/play")
 async def play_poker_round(room_id: str, account_id: str = Depends(resolve_account_id)):
+    from life_game import load_user
+
     with life_db._lock:
         with life_db._conn() as c:
             room = c.execute("SELECT * FROM poker_rooms WHERE id=? AND status='playing'", (room_id,)).fetchone()
             if not room:
-                return {"ok": False, "error": "牌局未开始"}
-            players = c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()
+                return {"ok": False, "error": "牌局未开始，请先点「开始牌局」"}
+            players = [dict(p) for p in c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()]
             if len(players) < 2:
                 return {"ok": False, "error": "玩家不足"}
-    out = _settle_poker_room(room_id, dict(room), players, account_id)
+
+    room = dict(room)
+    if room["pot"] <= 0:
+        ok, err = _charge_human_buy_ins(room_id, room, players)
+        if not ok:
+            return {"ok": False, "error": err, "cost": room["buy_in"]}
+        pot = _calc_room_pot(room, players)
+        with life_db._lock:
+            with life_db._conn() as c:
+                c.execute("UPDATE poker_rooms SET pot=? WHERE id=?", (pot, room_id))
+                room["pot"] = pot
+                players = [dict(p) for p in c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()]
+
+    out = _settle_poker_room(room_id, room, players, account_id)
     out["mode"] = "pvp"
-    out["balance"] = __import__("life_game").load_user(account_id)["points"]
+    out["balance"] = load_user(account_id)["points"]
     return out
 
 
