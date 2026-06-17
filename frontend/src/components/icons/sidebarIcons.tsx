@@ -10,6 +10,7 @@ import {
   UsersIcon,
   ClipboardDocumentListIcon,
   ComputerDesktopIcon,
+  GiftIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeSolid,
@@ -23,6 +24,7 @@ import {
   UsersIcon as UsersSolid,
   ClipboardDocumentListIcon as ClipboardSolid,
   ComputerDesktopIcon as DesktopSolid,
+  GiftIcon as GiftSolid,
 } from '@heroicons/react/24/solid';
 import type { SidebarAction } from '../../store/useGameStore';
 import type { ComponentType, SVGProps } from 'react';
@@ -40,5 +42,6 @@ export const SIDEBAR_ICONS: Record<SidebarAction | 'minimal', Pair> = {
   warehouse: { outline: CubeIcon, solid: CubeSolid },
   social: { outline: UsersIcon, solid: UsersSolid },
   logs: { outline: ClipboardDocumentListIcon, solid: ClipboardSolid },
+  tasks: { outline: GiftIcon, solid: GiftSolid },
   minimal: { outline: ComputerDesktopIcon, solid: DesktopSolid },
 };

@@ -16,7 +16,7 @@ export interface LifeState {
   last_idle_tick: number;
   daily_date: string;
   daily_tasks: Record<string, { progress: number; claimed: boolean }>;
-  daily_task_defs: { id: string; label: string; target: number; reward: number; kind: string; activity?: string }[];
+  daily_task_defs: { id: string; label: string; target: number; reward: number; kind: string; activity?: string; icon?: string }[];
   shop_unlocks: string[];
   shop_catalog: { id: string; type: string; value: string; cost: number; label: string }[];
   custom_agents: Record<string, AgentMeta>;
@@ -134,4 +134,32 @@ export async function lifeAgentSpeak(opts: {
     method: 'POST', headers: headers(), body: JSON.stringify(opts),
   });
   return parse<{ ok: boolean; line: string }>(r);
+}
+
+export interface SeatOccupant {
+  user_id: string;
+  agent_id: string;
+  activity: string;
+  until_ts: number;
+}
+
+export async function fetchSeats() {
+  const r = await fetch(`${API}/seats`, { headers: headers() });
+  return parse<{ ok: boolean; seats: Record<string, SeatOccupant> }>(r);
+}
+
+export async function claimSeat(seatId: string, agentId: string, activity: string, untilTs: number) {
+  const r = await fetch(`${API}/seats/claim`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ seat_id: seatId, agent_id: agentId, activity, until_ts: untilTs }),
+  });
+  return parse<{ ok: boolean; seat_id?: string; error?: string; occupied_by?: string }>(r);
+}
+
+export async function releaseSeat(seatId: string, agentId: string) {
+  const r = await fetch(`${API}/seats/release`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ seat_id: seatId, agent_id: agentId }),
+  });
+  return parse<{ ok: boolean; error?: string }>(r);
 }

@@ -15,6 +15,7 @@ const LEISURE: { id: SidebarAction; label: string }[] = [
   { id: 'casino', label: '德州扑克' },
 ];
 const OTHER: { id: SidebarAction; label: string }[] = [
+  { id: 'tasks', label: '每日任务' },
   { id: 'warehouse', label: '资产仓库' },
   { id: 'social', label: '社交大厅' },
   { id: 'logs', label: '交易日志' },
@@ -25,6 +26,8 @@ export function LeftSidebar() {
   const setExpanded = useGameStore(s => s.setLeftSidebarExpanded);
   const active = useGameStore(s => s.sidebarActive);
   const navigateSidebar = useGameStore(s => s.navigateSidebar);
+  const setRightTab = useGameStore(s => s.setRightTab);
+  const openModal = useGameStore(s => s.openModal);
   const toggleMinimalUi = useGameStore(s => s.toggleMinimalUi);
   const agents = useGameStore(s => s.agents);
   const [hover, setHover] = useState<string | null>(null);
@@ -50,7 +53,14 @@ export function LeftSidebar() {
         {OTHER.map(item => (
           <SidebarBtn key={item.id} id={item.id} label={item.label} expanded={expanded}
             active={active === item.id} hover={hover === item.id}
-            onHover={setHover} onClick={() => navigateSidebar(item.id)} />
+            onHover={setHover} onClick={() => {
+              if (item.id === 'tasks') {
+                setRightTab('tasks');
+                openModal('tasks');
+              } else {
+                navigateSidebar(item.id);
+              }
+            }} />
         ))}
       </div>
       <div style={{ padding: '8px 0', borderTop: '1px dashed #e0d8cc' }}>

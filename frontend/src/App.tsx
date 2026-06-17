@@ -8,6 +8,7 @@ import { preloadAllSprites } from './lib/spriteTextures';
 export default function App() {
   const initAgents = useGameStore(s => s.initAgents);
   const syncLifeState = useGameStore(s => s.syncLifeState);
+  const syncSeats = useGameStore(s => s.syncSeats);
   const updateFromOverview = useGameStore(s => s.updateFromOverview);
   const setTicker = useGameStore(s => s.setTicker);
   const addMessage = useGameStore(s => s.addMessage);
@@ -24,8 +25,9 @@ export default function App() {
     addMessage('欢迎来到交易人生 · 纯模拟推演，点击左侧「交易大厅」开始');
     const a = setInterval(poll, 5000);
     const b = setInterval(tick, 10000);
-    return () => { clearInterval(a); clearInterval(b); };
-  }, [initAgents, syncLifeState, updateFromOverview, setTicker, addMessage]);
+    const c = setInterval(() => syncSeats(), 15000);
+    return () => { clearInterval(a); clearInterval(b); clearInterval(c); };
+  }, [initAgents, syncLifeState, syncSeats, updateFromOverview, setTicker, addMessage]);
 
   return <AppShell />;
 }

@@ -1,9 +1,9 @@
 """
 交易人生 — 积分、每日任务、商城、自定义 Agent（按 X-Life-User-Id 隔离）
+数据存储：SQLite（life_db.py）
 """
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -13,23 +13,19 @@ import aiohttp
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
+import life_db
+
 CST = timezone(timedelta(hours=8))
 
-STARTING_POINTS = 200
+STARTING_POINTS = life_db.STARTING_POINTS
 MAX_ENTERTAINMENT_AGENTS = 1
 MAX_TRADING_CUSTOM_AGENTS = 3
+DAILY_TASK_DEFS = life_db.DAILY_TASK_DEFS
 
 ACTIVITY_REWARDS = {"rest": 10, "dine": 15, "massage": 25, "poker": 20}
 FACILITY_COSTS = {"rest": 5, "dine": 40, "massage": 50, "poker": 30}
 IDLE_POINTS_PER_AGENT_PER_MIN = 3
 IDLE_MAX_AGENTS = 5
-
-DAILY_TASK_DEFS = [
-    {"id": "idle_30", "label": "挂机 30 分钟", "target": 30, "reward": 50, "kind": "idle_minutes"},
-    {"id": "massage_3", "label": "完成 3 次按摩", "target": 3, "reward": 40, "kind": "activity", "activity": "massage"},
-    {"id": "dine_2", "label": "用餐 2 次", "target": 2, "reward": 30, "kind": "activity", "activity": "dine"},
-    {"id": "dispatch_5", "label": "派遣 5 次", "target": 5, "reward": 35, "kind": "dispatch"},
-]
 
 SHOP_CATALOG = [
     {"id": "color_aurora", "type": "color", "value": "#FF6B9D", "cost": 80, "label": "极光粉"},
@@ -42,18 +38,16 @@ SHOP_CATALOG = [
     {"id": "skin_table_premium", "type": "cosmetic", "value": "table_premium", "cost": 180, "label": "尊享餐桌皮肤"},
 ]
 
-DEFAULT_FREE_UNLOCKS = ["color_default", "hat_beanie", "hat_cap"]
+DEFAULT_FREE_UNLOCKS = life_db.DEFAULT_FREE_UNLOCKS
 
 router = APIRouter()
 
-_life_dir: Optional[Path] = None
 _zhipu_key: str = ""
 
 
 def init_life_game(data_dir: Path, zhipu_api_key: str = "") -> None:
-    global _life_dir, _zhipu_key
-    _life_dir = data_dir / "life_users"
-    _life_dir.mkdir(parents=True, exist_ok=True)
+    global _zhipu_key
+    life_db.init_db(data_dir)
     _zhipu_key = zhipu_api_key
 
 
@@ -68,65 +62,12 @@ def _validate_user_id(user_id: str) -> str:
     return uid
 
 
-def _user_path(user_id: str) -> Path:
-    if _life_dir is None:
-        raise HTTPException(500, "Life game not initialized")
-    safe = "".join(c for c in user_id if c.isalnum() or c in "-_")
-    return _life_dir / f"{safe}.json"
-
-
-def _default_user() -> dict:
-    tasks = {}
-    for t in DAILY_TASK_DEFS:
-        tasks[t["id"]] = {"progress": 0, "claimed": False}
-    return {
-        "points": STARTING_POINTS,
-        "last_idle_tick": 0,
-        "daily_date": _today(),
-        "daily_tasks": tasks,
-        "shop_unlocks": list(DEFAULT_FREE_UNLOCKS),
-        "custom_agents": {},
-        "stats": {
-            "idle_ms_today": 0,
-            "activities": {"rest": 0, "dine": 0, "massage": 0, "poker": 0},
-            "dispatches": 0,
-        },
-    }
-
-
 def load_user(user_id: str) -> dict:
-    path = _user_path(user_id)
-    if not path.exists():
-        return _default_user()
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return _default_user()
-    return _merge_defaults(data)
-
-
-def _merge_defaults(data: dict) -> dict:
-    base = _default_user()
-    base.update({k: v for k, v in data.items() if k != "daily_tasks"})
-    if data.get("daily_date") != _today():
-        base["daily_date"] = _today()
-        base["daily_tasks"] = _default_user()["daily_tasks"]
-        base["stats"] = {**_default_user()["stats"], "idle_ms_today": 0}
-    else:
-        tasks = _default_user()["daily_tasks"]
-        for tid, t in (data.get("daily_tasks") or {}).items():
-            if tid in tasks:
-                tasks[tid] = {**tasks[tid], **t}
-        base["daily_tasks"] = tasks
-        base["stats"] = {**base["stats"], **(data.get("stats") or {})}
-    base["shop_unlocks"] = list(set(DEFAULT_FREE_UNLOCKS + (data.get("shop_unlocks") or [])))
-    base["custom_agents"] = data.get("custom_agents") or {}
-    return base
+    return life_db.load_user(user_id)
 
 
 def save_user(user_id: str, data: dict) -> None:
-    path = _user_path(user_id)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    life_db.save_user_data(user_id, data)
 
 
 def _earn(user: dict, amount: int, reason: str = "") -> int:
@@ -240,6 +181,18 @@ class MigrateBody(BaseModel):
     shop_unlocks: list = Field(default_factory=list)
 
 
+class SeatClaimBody(BaseModel):
+    seat_id: str
+    agent_id: str
+    activity: str = ""
+    until_ts: int = 0
+
+
+class SeatReleaseBody(BaseModel):
+    seat_id: str
+    agent_id: str
+
+
 @router.get("/state")
 async def life_state(user_id: str = Header(..., alias="X-Life-User-Id")):
     uid = _validate_user_id(user_id)
@@ -251,16 +204,8 @@ async def life_state(user_id: str = Header(..., alias="X-Life-User-Id")):
 @router.post("/migrate")
 async def life_migrate(body: MigrateBody, user_id: str = Header(..., alias="X-Life-User-Id")):
     uid = _validate_user_id(user_id)
+    life_db.migrate_user(uid, body.points, body.last_idle_tick, body.custom_agents, body.shop_unlocks)
     user = load_user(uid)
-    if not user.get("custom_agents") and body.custom_agents:
-        user["custom_agents"] = body.custom_agents
-    if user.get("points", STARTING_POINTS) == STARTING_POINTS and body.points != STARTING_POINTS:
-        user["points"] = max(0, body.points)
-    if body.last_idle_tick:
-        user["last_idle_tick"] = body.last_idle_tick
-    if body.shop_unlocks:
-        user["shop_unlocks"] = list(set(user["shop_unlocks"] + body.shop_unlocks))
-    save_user(uid, user)
     return {"ok": True, **_public_state(user)}
 
 
@@ -442,6 +387,23 @@ async def life_agent_speak(body: AgentSpeakBody, user_id: str = Header(..., alia
     _validate_user_id(user_id)
     line = await _generate_speak_line(body)
     return {"ok": True, "line": line}
+
+
+@router.get("/seats")
+async def life_get_seats():
+    return {"ok": True, "seats": life_db.get_all_seats()}
+
+
+@router.post("/seats/claim")
+async def life_claim_seat(body: SeatClaimBody, user_id: str = Header(..., alias="X-Life-User-Id")):
+    uid = _validate_user_id(user_id)
+    return life_db.claim_seat(body.seat_id, uid, body.agent_id, body.activity, body.until_ts)
+
+
+@router.post("/seats/release")
+async def life_release_seat(body: SeatReleaseBody, user_id: str = Header(..., alias="X-Life-User-Id")):
+    _validate_user_id(user_id)
+    return life_db.release_seat(body.seat_id, body.agent_id)
 
 
 def JSONResponse_error(msg: str) -> dict:

@@ -17,16 +17,18 @@ import {
 import {
   fetchLifeState, migrateLifeState, lifeIdleTick,
   lifeActivityComplete, lifeDispatch, lifeClaimTask, lifeShopBuy,
-  lifeCreateAgent, lifeSaveAgentSoul, lifeAgentSpeak, type LifeState,
+  lifeCreateAgent, lifeSaveAgentSoul, lifeAgentSpeak,
+  fetchSeats, claimSeat, releaseSeat, type LifeState,
 } from '../lib/lifeApi';
+import { resolveAvailableSeat, hasFreeSeat, type SeatMap } from '../lib/seatRegistry';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
 import { homeNodeForAgent } from '../lib/agentHome';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
 import { isCrossZoneTravel, zoneForNode, zoneForIntent, ZONE_TRANSIT_MS } from '../lib/zoneTransit';
 
-export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages';
-export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs';
+export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages' | 'tasks';
+export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs' | 'tasks';
 export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'shop' | 'tasks' | null;
 export type ZoneId = 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
 
@@ -76,6 +78,8 @@ interface GameStore {
   points: number;
   dailyTasks: LifeState['daily_tasks'];
   dailyTaskDefs: LifeState['daily_task_defs'];
+  dailyDate: string;
+  seatOccupancy: SeatMap;
   shopUnlocks: string[];
   shopCatalog: LifeState['shop_catalog'];
   facilityCosts: Record<string, number>;
@@ -132,6 +136,8 @@ interface GameStore {
   speakForAgent: (agentId: string, context?: string, activity?: string | null) => Promise<void>;
   setAgentBubble: (agentId: string | null, text: string, until: number) => void;
   applyLifeState: (state: Partial<LifeState>) => void;
+  syncSeats: () => Promise<void>;
+  releaseAgentSeat: (agentId: string, seatId: string | null | undefined) => void;
 }
 
 /** 大厅 Agent 使用本地坐标（分区中心为原点） */
@@ -171,6 +177,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   points: 200,
   dailyTasks: {},
   dailyTaskDefs: [],
+  dailyDate: '',
+  seatOccupancy: {},
   shopUnlocks: [],
   shopCatalog: [],
   facilityCosts: { ...FACILITY_BASE_COST },
@@ -319,6 +327,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const cam = ZONE_CAMERA[zone];
     const node = opts?.nodeId || nodeMap[action][id];
     if (!node) return false;
+
+    if (!hasFreeSeat(action, id, s.seatOccupancy)) {
+      get().addMessage(`该区域座位已满，请稍后再派遣 ${s.agents[id].data.name}`);
+      return false;
+    }
 
     let char = { ...s.agents[id], travelIntent: intentMap[action], activity: null, activityUntil: 0 };
     char = teleportAgentToDestination(char, node, performance.now());
@@ -485,9 +498,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
         saveCustomAgentMeta(state.custom_agents);
         get().initAgents();
       }
+      await get().syncSeats();
     } catch {
       /* 离线时沿用本地缓存 */
     }
+  },
+
+  syncSeats: async () => {
+    try {
+      const res = await fetchSeats();
+      if (res.ok) set({ seatOccupancy: res.seats });
+    } catch { /* ignore */ }
+  },
+
+  releaseAgentSeat: (agentId, seatId) => {
+    if (!seatId) return;
+    releaseSeat(seatId, agentId).then(() => get().syncSeats()).catch(() => {});
   },
 
   applyLifeState: (state) => {
@@ -495,6 +521,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       points: state.points ?? get().points,
       dailyTasks: state.daily_tasks ?? get().dailyTasks,
       dailyTaskDefs: state.daily_task_defs ?? get().dailyTaskDefs,
+      dailyDate: state.daily_date ?? get().dailyDate,
       shopUnlocks: state.shop_unlocks ?? get().shopUnlocks,
       shopCatalog: state.shop_catalog ?? get().shopCatalog,
       facilityCosts: state.facility_costs ?? get().facilityCosts,
@@ -675,6 +702,9 @@ export function teleportAgentToDestination(char: CharState, nodeId: string, now:
 
 export function assignPath(char: CharState, nodeId: string): CharState {
   const store = useGameStore.getState();
+  if (char.destNode && char.destNode !== nodeId && !char.activity) {
+    store.releaseAgentSeat(char.agentId, char.destNode);
+  }
   const fromZone = zoneAtPosition(char.x, char.z);
   const destZone = zoneForNode(nodeId) ?? zoneForIntent(char.travelIntent);
 
@@ -761,8 +791,15 @@ export function onPathComplete(char: CharState, now: number): CharState {
   if (node === OfficePath.dineByAgent[char.agentId] || node?.startsWith('dine_')) return startActivity(char, 'dine', now, 9000);
   if (node === OfficePath.pokerByAgent[char.agentId] || node?.startsWith('poker_s')) return startActivity(char, 'poker', now, 12000);
   if (node?.startsWith('seat_')) {
+    const store = useGameStore.getState();
+    const seatId = resolveAvailableSeat('desk', node, char.agentId, store.seatOccupancy, now);
+    if (!seatId) {
+      store.addMessage(`${char.data.name} 工位已被占用`);
+      return { ...char, destNode: null, isWalking: false, pathQueue: [] };
+    }
+    claimSeat(seatId, char.agentId, 'desk', 0).then(() => store.syncSeats()).catch(() => {});
     return {
-      ...char, destNode: node, isWalking: false, pathQueue: [],
+      ...char, destNode: seatId, isWalking: false, pathQueue: [],
       activityPose: 'desk', facing: 'n' as const,
     };
   }
@@ -777,7 +814,17 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   const nodeId = char.destNode || seatMap[activity!]?.[char.agentId];
   const zoneMap = { dine: 'restaurant' as const, massage: 'spa' as const, poker: 'casino' as const, rest: 'hall' as const };
   const zone = activity ? zoneMap[activity] : null;
-  const slot = activity ? resolveActivitySlot(activity, nodeId, char.agentId) : null;
+
+  const store = useGameStore.getState();
+  const seatId = activity
+    ? resolveAvailableSeat(activity, nodeId, char.agentId, store.seatOccupancy, now)
+    : null;
+  if (activity && !seatId) {
+    store.addMessage(`${char.data.name} 找不到空座位，活动取消`);
+    return { ...char, travelIntent: null, isWalking: false, pathQueue: [], destNode: null };
+  }
+
+  const slot = activity ? resolveActivitySlot(activity, seatId ?? nodeId, char.agentId) : null;
   let wx = char.x, wz = char.z;
   let facing = char.facing;
   let activityPose: CharState['activityPose'] = 'sit';
@@ -787,7 +834,13 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     facing = slot.facing;
     activityPose = slot.pose;
   }
-  const store = useGameStore.getState();
+  const until = now + dur + Math.random() * 5000;
+  if (seatId && activity) {
+    claimSeat(seatId, char.agentId, activity, Math.round(until)).then(res => {
+      if (!res.ok) store.addMessage(`${char.data.name} 占座失败，座位可能已被占用`);
+      store.syncSeats();
+    }).catch(() => {});
+  }
   if (zone && activity) {
     const greet = greetingForActivity(zone);
     const npc = npcForZone(zone);
@@ -795,8 +848,8 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     store.setNpcBubble(npc?.id ?? null, greet ?? '', now + 4500);
   }
   const started = {
-    ...char, activity, activityUntil: now + dur + Math.random() * 5000,
-    travelIntent: null, isWalking: false, pathQueue: [], destNode: slot?.slotId ?? nodeId,
+    ...char, activity, activityUntil: until,
+    travelIntent: null, isWalking: false, pathQueue: [], destNode: slot?.slotId ?? seatId ?? nodeId,
     x: wx, z: wz, facing, activityPose,
     stress: activity === 'massage' ? Math.max(0, char.stress - 50)
       : activity === 'dine' ? Math.max(0, char.stress - 30)

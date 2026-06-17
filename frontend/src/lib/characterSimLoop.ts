@@ -45,7 +45,9 @@ export function tickCharacterSim(dt: number) {
     if (c.activity && now < c.activityUntil) return;
     if (c.activity && now >= c.activityUntil) {
       const finished = c.activity;
-      c = { ...c, activity: null, activityUntil: 0, activityPose: undefined, moveTimer: 0, nextMoveTime: 1500, travelIntent: null };
+      const seatId = c.destNode;
+      useGameStore.getState().releaseAgentSeat(c.agentId, seatId);
+      c = { ...c, activity: null, activityUntil: 0, activityPose: undefined, moveTimer: 0, nextMoveTime: 1500, travelIntent: null, destNode: null };
       if (finished && finished !== 'idle') awardActivityPoints(finished, c.data.name);
       const home = homeNodeForAgent(c.agentId, c.data);
       if (home) c = assignPath(c, home);

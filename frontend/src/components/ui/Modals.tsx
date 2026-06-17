@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useGameStore, type ModalId } from '../../store/useGameStore';
 import { AgentWorkshop } from './AgentWorkshop';
+import { DailyTasksPanel } from './DailyTasksPanel';
 import { PenguinAvatar } from './PenguinAvatar';
 import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
@@ -232,43 +233,6 @@ function ShopPanel() {
         );
       })}
       <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10 }}>购买后可在 Agent 工坊创建/编辑外形时使用</p>
-    </div>
-  );
-}
-
-function DailyTasksPanel() {
-  const points = useGameStore(s => s.points);
-  const dailyTasks = useGameStore(s => s.dailyTasks);
-  const dailyTaskDefs = useGameStore(s => s.dailyTaskDefs);
-  const claimDailyTask = useGameStore(s => s.claimDailyTask);
-
-  return (
-    <div style={{ color: '#3d3530' }}>
-      <div style={{ fontSize: 12, color: '#d4af37', marginBottom: 12 }}>当前积分：{points}</div>
-      {dailyTaskDefs.map(def => {
-        const t = dailyTasks[def.id] ?? { progress: 0, claimed: false };
-        const done = t.progress >= def.target;
-        return (
-          <div key={def.id} className="leisure-option" style={{ cursor: 'default' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600 }}>{def.label}</div>
-              <div style={{ fontSize: 11, color: '#8a7e72' }}>
-                进度 {Math.min(t.progress, def.target)} / {def.target} · 奖励 {def.reward} 积分
-              </div>
-            </div>
-            {t.claimed ? (
-              <span style={{ color: '#48d093', fontSize: 12 }}>已领取</span>
-            ) : (
-              <button className="ui-btn" disabled={!done} onClick={() => claimDailyTask(def.id)}>
-                领取
-              </button>
-            )}
-          </div>
-        );
-      })}
-      <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10 }}>
-        挂机、派遣、完成活动可推进任务进度；每日 0 点重置
-      </p>
     </div>
   );
 }
