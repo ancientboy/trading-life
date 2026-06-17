@@ -102,7 +102,7 @@ export async function joinPokerRoom(roomId: string, agentId: string, seatId = ''
 export async function startPokerRoom(roomId: string) {
   const r = await fetch(`${API}/pvp/poker/rooms/${roomId}/start`, { method: 'POST', headers: headers() });
   return parse<{
-    ok: boolean; mode?: string; balance?: number; won?: number; pot?: number; cost?: number;
+    ok: boolean; mode?: string; balance?: number; won?: number; net?: number; cost?: number; pot?: number;
     results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
     error?: string;
   }>(r);
@@ -113,7 +113,7 @@ export async function playPokerRound(roomId: string) {
   return parse<{
     ok: boolean;
     results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
-    winner?: unknown; pot?: number; won?: number; balance?: number; error?: string;
+    winner?: unknown; pot?: number; won?: number; net?: number; cost?: number; balance?: number; error?: string;
   }>(r);
 }
 

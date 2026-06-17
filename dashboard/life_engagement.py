@@ -303,13 +303,14 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
     scores = [(p, _poker_score(dict(p), dict(room), account_id)) for p in players]
     scores.sort(key=lambda x: x[1], reverse=True)
     pot = room["pot"]
-    payouts = [int(pot * 0.55), int(pot * 0.25), int(pot * 0.12)]
+    buy_in = room["buy_in"]
     results = []
     with life_db._lock:
         with life_db._conn() as c:
             for i, (p, sc) in enumerate(scores):
                 rank = i + 1
-                win = payouts[i] if i < len(payouts) else 0
+                # 胜者通吃：第一名赢得全部奖池（所有玩家买入之和）
+                win = pot if rank == 1 else 0
                 uid = p["user_id"]
                 c.execute(
                     "UPDATE poker_room_players SET score=?, rank=? WHERE room_id=? AND user_id=?",
@@ -329,15 +330,29 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
                 "UPDATE poker_rooms SET status='settled', settled_at=?, pot=0 WHERE id=?",
                 (life_db.now_ms(), room_id),
             )
-    human_win = 0
+
+    # 向所有获胜的真人玩家发放奖池积分
     for r in results:
-        if r["won"] > 0 and r["user_id"] == account_id:
-            user = load_user(account_id)
-            _earn(user, r["won"], account_id=account_id)
-            save_user(account_id, user)
-            human_win = r["won"]
-            life_db.add_season_points(account_id, points=r["won"], pvp_win=1 if r["rank"] == 1 else 0, social=5)
-    return {"ok": True, "results": results, "winner": results[0], "pot": pot, "won": human_win}
+        if r["won"] > 0 and not r["is_npc"]:
+            uid = r["user_id"]
+            user = load_user(uid)
+            _earn(user, r["won"], account_id=uid)
+            save_user(uid, user)
+            life_db.add_season_points(uid, pvp_win=1, social=5)
+
+    caller_cost = buy_in
+    for p in players:
+        if dict(p)["user_id"] == account_id:
+            caller_cost = dict(p).get("buy_in", buy_in) or buy_in
+            break
+    human_win = next((r["won"] for r in results if r["user_id"] == account_id), 0)
+    net = human_win - caller_cost if any(dict(p)["user_id"] == account_id for p in players) else 0
+
+    return {
+        "ok": True, "results": results, "winner": results[0], "pot": pot,
+        "won": human_win, "cost": caller_cost, "net": net,
+        "balance": load_user(account_id)["points"],
+    }
 
 
 @pvp_router.post("/pvp/poker/solo")

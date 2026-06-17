@@ -45,8 +45,10 @@ export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' |
 export type PokerHandResult = {
   results: Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
   won: number;
+  net: number;
   buyIn: number;
   pot?: number;
+  balance?: number;
 };
 export type ZoneId = 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
 
