@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useGameStore, type ModalId } from '../../store/useGameStore';
 import { AgentWorkshop } from './AgentWorkshop';
@@ -30,7 +31,7 @@ export function Modals() {
 
   const wide = ['workshop', 'strategy', 'dine', 'massage', 'poker', 'shop', 'tasks'].includes(activeModal);
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={closeModal}>
       <div className={`modal-box ${wide ? 'modal-wide' : ''}`} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -41,7 +42,8 @@ export function Modals() {
         </div>
         <ModalContent id={activeModal} />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

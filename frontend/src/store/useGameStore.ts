@@ -283,7 +283,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const firstId = (s.selectedAgentId && get().canOperateAgent(s.selectedAgentId) ? s.selectedAgentId : operable[0]) || Object.keys(s.agents)[0] || null;
         const openCreate = operable.length === 0;
         set({
-          rightPanelCollapsed: false,
+          rightPanelCollapsed: true,
           sidebarActive: 'agents',
           activeZone: 'hall',
           rightTab: 'agent',
@@ -325,7 +325,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
   openModal: (id) => set({ activeModal: id }),
-  openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: false }),
+  openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: true }),
   closeModal: () => set({ activeModal: null, workshopMode: 'list' }),
   flyToZone: (zone) => {
     const cam = ZONE_CAMERA[zone];

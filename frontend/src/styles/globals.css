@@ -175,7 +175,7 @@ html, body, #root {
 
 .message-toast {
   position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
-  z-index: 180; max-width: 90vw; padding: 8px 14px; border-radius: 10px;
+  z-index: 600; max-width: 90vw; padding: 8px 14px; border-radius: 10px;
   background: rgba(45,37,32,0.88); color: #faf6ef; font-size: 12px;
   pointer-events: none; animation: fadeIn 0.2s ease;
 }
@@ -338,11 +338,12 @@ html, body, #root {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
-  background: rgba(45,37,32,0.35);
+  z-index: 500;
+  background: rgba(45,37,32,0.45);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 12px;
   animation: fadeIn 0.2s ease;
 }
 .modal-box {
@@ -350,17 +351,17 @@ html, body, #root {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 20px 24px;
-  min-width: 360px;
+  min-width: 320px;
+  width: 100%;
   max-width: 90vw;
-  max-height: 85vh;
+  max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.1);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.15);
   animation: scaleIn 0.2s ease;
   color: var(--text);
 }
 .modal-box.modal-wide {
-  min-width: 640px;
-  max-width: 720px;
+  max-width: min(720px, 96vw);
 }
 
 .leisure-preview {
@@ -429,8 +430,8 @@ html, body, #root {
     grid-template-rows: auto var(--top-h) 1fr;
   }
   .app-shell.right-collapsed { --right-w: 0; }
-  .modal-box { min-width: 0; width: calc(100vw - 24px); padding: 16px; }
-  .modal-box.modal-wide { min-width: 0; max-width: calc(100vw - 24px); }
+  .modal-box { min-width: 0; width: calc(100vw - 24px); padding: 16px; max-height: 88vh; }
+  .modal-box.modal-wide { max-width: calc(100vw - 16px); }
   .canvas-controls {
     bottom: 12px;
     left: calc(52px + 50%);
