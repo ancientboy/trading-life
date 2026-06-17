@@ -2,6 +2,7 @@
 
 import { getPokerTableSprite } from '../../lib/pokerTableSprite';
 import { getMassageBedSprite } from '../../lib/massageBedSprite';
+import { getDiningTableSprite } from '../../lib/diningTableSprite';
 
 export function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -460,6 +461,15 @@ export function drawMassageBed(ctx: CanvasRenderingContext2D, x: number, y: numb
 }
 
 export function drawDiningTable(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const sprite = getDiningTableSprite();
+  if (sprite) {
+    const w = 132 * s;
+    const h = w * (sprite.naturalHeight / sprite.naturalWidth);
+    dropShadow(ctx, x, y, w, h * 0.9, 0.1);
+    ctx.drawImage(sprite, x - w / 2, y - h / 2, w, h);
+    return;
+  }
+
   dropShadow(ctx, x, y, 70 * s, 70 * s);
   ctx.fillStyle = '#d4c8b8';
   ctx.beginPath(); ctx.ellipse(x, y, 32 * s, 32 * s, 0, 0, Math.PI * 2); ctx.fill();
