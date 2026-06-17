@@ -1,5 +1,10 @@
 /** Canvas 2D 剪纸绘制工具 — 对齐灵犀 144 office-engine.js */
 
+import { getPokerTableSprite } from '../../lib/pokerTableSprite';
+import { getMassageBedSprite } from '../../lib/massageBedSprite';
+import { getDiningTableSprite } from '../../lib/diningTableSprite';
+import { getRestSofaSprite } from '../../lib/restSofaSprite';
+
 export function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -440,6 +445,15 @@ export function drawRoundTable(ctx: CanvasRenderingContext2D, x: number, y: numb
 }
 
 export function drawMassageBed(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const sprite = getMassageBedSprite();
+  if (sprite) {
+    const w = 108 * s;
+    const h = w * (sprite.naturalHeight / sprite.naturalWidth);
+    dropShadow(ctx, x, y, w, h * 0.85, 0.1);
+    ctx.drawImage(sprite, x - w / 2, y - h / 2, w, h);
+    return;
+  }
+
   dropShadow(ctx, x, y, 90 * s, 40 * s);
   ctx.fillStyle = '#c4a882';
   rrect(ctx, x - 45 * s, y - 12 * s, 90 * s, 24 * s, 5 * s); ctx.fill();
@@ -448,6 +462,15 @@ export function drawMassageBed(ctx: CanvasRenderingContext2D, x: number, y: numb
 }
 
 export function drawDiningTable(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const sprite = getDiningTableSprite();
+  if (sprite) {
+    const w = 132 * s;
+    const h = w * (sprite.naturalHeight / sprite.naturalWidth);
+    dropShadow(ctx, x, y, w, h * 0.9, 0.1);
+    ctx.drawImage(sprite, x - w / 2, y - h / 2, w, h);
+    return;
+  }
+
   dropShadow(ctx, x, y, 70 * s, 70 * s);
   ctx.fillStyle = '#d4c8b8';
   ctx.beginPath(); ctx.ellipse(x, y, 32 * s, 32 * s, 0, 0, Math.PI * 2); ctx.fill();
@@ -463,7 +486,20 @@ export function drawChair(ctx: CanvasRenderingContext2D, x: number, y: number, s
   rrect(ctx, x - 10 * s, y + back * s - 4 * s, 20 * s, 6 * s, 2 * s); ctx.fill();
 }
 
-export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, flip = false) {
+  const sprite = getRestSofaSprite();
+  if (sprite) {
+    const w = 168 * s;
+    const h = w * (sprite.naturalHeight / sprite.naturalWidth);
+    dropShadow(ctx, x, y, w, h * 0.9, 0.1);
+    ctx.save();
+    ctx.translate(x, y);
+    if (flip) ctx.scale(-1, 1);
+    ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+    ctx.restore();
+    return;
+  }
+
   dropShadow(ctx, x, y, 160 * s, 90 * s, 0.08);
   ctx.fillStyle = '#d4c8b8';
   rrect(ctx, x - 70 * s, y - 20 * s, 140 * s, 40 * s, 8 * s); ctx.fill();
@@ -477,6 +513,20 @@ export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: numbe
 export function drawPokerTable8(
   ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number,
 ) {
+  const sprite = getPokerTableSprite();
+  if (sprite) {
+    const w = 240 * s;
+    const h = 172 * s;
+    dropShadow(ctx, x, y, w, h * 0.85, 0.1);
+    ctx.save();
+    ctx.translate(x, y);
+    // 原图荷官托盘在下方；旋转 180° 使有牌/发牌侧朝向画布上方荷官 Jack (py≈160)
+    ctx.rotate(Math.PI);
+    ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+    ctx.restore();
+    return;
+  }
+
   dropShadow(ctx, x, y, 240 * s, 180 * s, 0.1);
   ctx.fillStyle = '#2d5a3d';
   ctx.beginPath(); ctx.ellipse(x, y, 110 * s, 75 * s, 0, 0, Math.PI * 2); ctx.fill();

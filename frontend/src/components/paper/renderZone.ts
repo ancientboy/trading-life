@@ -17,6 +17,8 @@ import {
   drawMarketBigScreen, drawCoffeeZone, drawChair, drawRestBooth,
   drawPokerTable8, drawNpc, drawSpeechBubble,
 } from './paperDraw';
+import { getDiningTableSprite } from '../../lib/diningTableSprite';
+import { getRestSofaSprite } from '../../lib/restSofaSprite';
 
 export interface PaperCamera {
   cw: number;
@@ -98,13 +100,16 @@ function drawHallDesks(
 }
 
 function drawHallRest(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null) {
-  HALL_REST_BOOTHS.forEach(b => {
+  const sofaSprite = getRestSofaSprite();
+  HALL_REST_BOOTHS.forEach((b, i) => {
     const s = pt(cam, b.px, b.py);
-    drawRestBooth(ctx, s.x, s.y, cam.scale);
-    b.seats.forEach(ch => {
-      const cs = pt(cam, ch.px, ch.py);
-      drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing);
-    });
+    drawRestBooth(ctx, s.x, s.y, cam.scale, i === 1);
+    if (!sofaSprite) {
+      b.seats.forEach(ch => {
+        const cs = pt(cam, ch.px, ch.py);
+        drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing);
+      });
+    }
     drawFacilityLabel(ctx, s.x, s.y + ws(cam, 52), b.label, cam.scale, hoverId === b.id);
   });
 }
@@ -118,13 +123,16 @@ function drawSpaScene(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: 
 }
 
 function drawRestaurantScene(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null) {
+  const diningSprite = getDiningTableSprite();
   RESTAURANT_TABLES.forEach(t => {
     const s = pt(cam, t.px, t.py);
     drawDiningTable(ctx, s.x, s.y, cam.scale);
-    t.chairs.forEach(ch => {
-      const cs = pt(cam, ch.px, ch.py);
-      drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing);
-    });
+    if (!diningSprite) {
+      t.chairs.forEach(ch => {
+        const cs = pt(cam, ch.px, ch.py);
+        drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing);
+      });
+    }
     drawFacilityLabel(ctx, s.x, s.y + ws(cam, 44), t.label, cam.scale, hoverId === t.id);
   });
 }
