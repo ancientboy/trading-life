@@ -24,6 +24,7 @@ import { resolveAvailableSeat, hasFreeSeat, type SeatMap } from '../lib/seatRegi
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
 import { homeNodeForAgent } from '../lib/agentHome';
+import { isLoggedIn } from '../lib/lifeAuth';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
 import { isCrossZoneTravel, zoneForNode, zoneForIntent, ZONE_TRANSIT_MS } from '../lib/zoneTransit';
 
@@ -336,7 +337,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return false;
     }
 
-    let char = { ...s.agents[id], travelIntent: intentMap[action], activity: null, activityUntil: 0 };
+    let char = { ...s.agents[id], travelIntent: intentMap[action], activity: null, activityUntil: 0, userDispatched: true };
     char = teleportAgentToDestination(char, node, performance.now());
 
     set({
@@ -484,6 +485,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   syncLifeState: async () => {
+    if (!isLoggedIn()) return;
     try {
       await lifeSessionStart().catch(() => {});
       let state = await fetchLifeState();
@@ -871,12 +873,17 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   return started;
 }
 
-/** 活动完成时发放积分（后端记账） */
-export function awardActivityPoints(activity: NonNullable<CharState['activity']>, agentName: string) {
-  lifeActivityComplete(activity).then(res => {
+/** 活动完成时发放积分（仅用户派遣） */
+export function awardActivityPoints(
+  activity: NonNullable<CharState['activity']>,
+  agentName: string,
+  userInitiated: boolean,
+) {
+  if (!userInitiated) return;
+  lifeActivityComplete(activity, true).then(res => {
     if (res.earned > 0) {
-      useGameStore.getState().earnPoints(res.earned, `${agentName} 完成${activityLabel(activity)}`);
       useGameStore.setState({ points: res.balance });
+      useGameStore.getState().addMessage(`+${res.earned} 积分 · ${agentName} 完成${activityLabel(activity)}`);
     }
     fetchLifeState().then(s => useGameStore.getState().applyLifeState(s)).catch(() => {});
   }).catch(() => {});

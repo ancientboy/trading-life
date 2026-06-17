@@ -10,6 +10,8 @@ import { useState } from 'react';
 import { PenguinAvatar } from './PenguinAvatar';
 import { useGameStore } from '../../store/useGameStore';
 import { AppIcon, NavIcon } from '../icons/AppIcon';
+import { getStoredAccount, clearAuthSession } from '../../lib/lifeAuth';
+import { authLogout } from '../../lib/lifeApi';
 
 const NAV_BTNS = [
   { id: 'market', label: '行情', outline: ChartBarIcon, solid: ChartBarSolid, modal: 'market' as const },
@@ -33,6 +35,13 @@ export function TopNavBar() {
   const capital = overview.total_capital || 0;
   const pnlPct = capital ? (pnl / capital * 100) : 0;
   const mainAgent = selectedAgentId ? agents[selectedAgentId]?.data : Object.values(agents)[0]?.data;
+  const account = getStoredAccount();
+
+  const logout = async () => {
+    await authLogout().catch(() => {});
+    clearAuthSession();
+    window.location.reload();
+  };
 
   return (
     <header className="top-nav">
@@ -98,6 +107,12 @@ export function TopNavBar() {
           </button>
         ))}
         <a href="/trading/" className="ui-btn" style={{ textDecoration: 'none', marginLeft: 4, fontSize: 11 }}>Dashboard</a>
+        {account && (
+          <button className="ui-btn" onClick={logout} title={`${account.username} · 退出登录`}
+            style={{ marginLeft: 4, fontSize: 11, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {account.display_name || account.username} · 退出
+          </button>
+        )}
       </div>
     </header>
   );

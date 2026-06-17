@@ -10,10 +10,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 import aiohttp
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 import life_db
+from life_auth import router as auth_router, resolve_account_id
 
 CST = timezone(timedelta(hours=8))
 
@@ -43,6 +44,7 @@ SHOP_CATALOG = [
 DEFAULT_FREE_UNLOCKS = life_db.DEFAULT_FREE_UNLOCKS
 
 router = APIRouter()
+router.include_router(auth_router)
 
 _zhipu_key: str = ""
 
@@ -60,16 +62,16 @@ def _today() -> str:
 def _validate_user_id(user_id: str) -> str:
     uid = (user_id or "").strip()
     if not uid or len(uid) > 64:
-        raise HTTPException(400, "Invalid X-Life-User-Id")
+        raise HTTPException(400, "Invalid account id")
     return uid
 
 
-def load_user(user_id: str) -> dict:
-    return life_db.load_user(user_id)
+def load_user(account_id: str) -> dict:
+    return life_db.load_user(account_id)
 
 
-def save_user(user_id: str, data: dict) -> None:
-    life_db.save_user_data(user_id, data)
+def save_user(account_id: str, data: dict) -> None:
+    life_db.save_user_data(account_id, data)
 
 
 def _earn(user: dict, amount: int, reason: str = "") -> int:
@@ -117,12 +119,6 @@ def _public_state(user: dict) -> dict:
     }
 
 
-def get_user_header(x_life_user_id: Optional[str] = Header(None)) -> str:
-    if not x_life_user_id:
-        raise HTTPException(401, "Missing X-Life-User-Id header")
-    return _validate_user_id(x_life_user_id)
-
-
 class SpendBody(BaseModel):
     amount: int
     reason: str = ""
@@ -140,6 +136,7 @@ class IdleBody(BaseModel):
 
 class ActivityBody(BaseModel):
     activity: str
+    user_initiated: bool = False
 
 
 class DispatchBody(BaseModel):
@@ -201,24 +198,24 @@ class SeatReleaseBody(BaseModel):
 
 
 @router.get("/state")
-async def life_state(user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_state(account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     user = load_user(uid)
     save_user(uid, user)
     return _public_state(user)
 
 
 @router.post("/migrate")
-async def life_migrate(body: MigrateBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_migrate(body: MigrateBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     life_db.migrate_user(uid, body.points, body.last_idle_tick, body.custom_agents, body.shop_unlocks)
     user = load_user(uid)
     return {"ok": True, **_public_state(user)}
 
 
 @router.post("/points/spend")
-async def life_spend(body: SpendBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_spend(body: SpendBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     user = load_user(uid)
     if not _spend(user, body.amount):
         save_user(uid, user)
@@ -228,8 +225,8 @@ async def life_spend(body: SpendBody, user_id: str = Header(..., alias="X-Life-U
 
 
 @router.post("/points/earn")
-async def life_earn(body: EarnBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_earn(body: EarnBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     user = load_user(uid)
     cap = 500
     amount = min(max(0, body.amount), cap)
@@ -239,8 +236,8 @@ async def life_earn(body: EarnBody, user_id: str = Header(..., alias="X-Life-Use
 
 
 @router.post("/points/idle")
-async def life_idle(body: IdleBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_idle(body: IdleBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     user = load_user(uid)
     now_ms = int(datetime.now(CST).timestamp() * 1000)
     last = user.get("last_idle_tick") or now_ms
@@ -274,20 +271,20 @@ async def life_idle(body: IdleBody, user_id: str = Header(..., alias="X-Life-Use
 
 
 @router.post("/session/start")
-async def life_session_start(user_id: str = Header(..., alias="X-Life-User-Id")):
+async def life_session_start(account_id: str = Depends(resolve_account_id)):
     """页面打开时调用：重置挂机计时，离线期间不计入挂机。"""
-    uid = _validate_user_id(user_id)
+    uid = _validate_user_id(account_id)
+    life_db.reset_session_idle(uid)
     user = load_user(uid)
-    now_ms = int(datetime.now(CST).timestamp() * 1000)
-    user["last_idle_tick"] = now_ms
-    save_user(uid, user)
     return {"ok": True, "balance": user["points"]}
 
 
 @router.post("/activity/complete")
-async def life_activity_complete(body: ActivityBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_activity_complete(body: ActivityBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     user = load_user(uid)
+    if not body.user_initiated:
+        return {"ok": True, "balance": user["points"], "earned": 0}
     reward = ACTIVITY_REWARDS.get(body.activity, 0)
     balance = _earn(user, reward)
     stats = user.setdefault("stats", {})
@@ -304,8 +301,8 @@ async def life_activity_complete(body: ActivityBody, user_id: str = Header(..., 
 
 
 @router.post("/dispatch")
-async def life_dispatch(body: DispatchBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_dispatch(body: DispatchBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     user = load_user(uid)
     cost = body.cost if body.cost is not None else FACILITY_COSTS.get(body.action, 0)
     if cost > 0 and not _spend(user, cost):
@@ -322,8 +319,8 @@ async def life_dispatch(body: DispatchBody, user_id: str = Header(..., alias="X-
 
 
 @router.post("/tasks/claim")
-async def life_claim_task(body: TaskClaimBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_claim_task(body: TaskClaimBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     user = load_user(uid)
     tdef = next((t for t in DAILY_TASK_DEFS if t["id"] == body.task_id), None)
     if not tdef:
@@ -341,8 +338,8 @@ async def life_claim_task(body: TaskClaimBody, user_id: str = Header(..., alias=
 
 
 @router.post("/shop/buy")
-async def life_shop_buy(body: ShopBuyBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_shop_buy(body: ShopBuyBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     item = next((i for i in SHOP_CATALOG if i["id"] == body.item_id), None)
     if not item:
         raise HTTPException(404, "Unknown item")
@@ -358,8 +355,8 @@ async def life_shop_buy(body: ShopBuyBody, user_id: str = Header(..., alias="X-L
 
 
 @router.post("/agents")
-async def life_create_agent(body: CustomAgentBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_create_agent(body: CustomAgentBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     user = load_user(uid)
     custom = user.setdefault("custom_agents", {})
     ent, trading = _count_agents(custom)
@@ -395,8 +392,8 @@ async def life_create_agent(body: CustomAgentBody, user_id: str = Header(..., al
 
 
 @router.put("/agents/{agent_id}/soul")
-async def life_update_soul(agent_id: str, body: AgentSoulBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_update_soul(agent_id: str, body: AgentSoulBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     user = load_user(uid)
     custom = user.get("custom_agents", {})
     if agent_id not in custom:
@@ -412,8 +409,8 @@ async def life_update_soul(agent_id: str, body: AgentSoulBody, user_id: str = He
 
 
 @router.post("/agent-speak")
-async def life_agent_speak(body: AgentSpeakBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    _validate_user_id(user_id)
+async def life_agent_speak(body: AgentSpeakBody, account_id: str = Depends(resolve_account_id)):
+    _validate_user_id(account_id)
     line = await _generate_speak_line(body)
     return {"ok": True, "line": line}
 
@@ -424,14 +421,14 @@ async def life_get_seats():
 
 
 @router.post("/seats/claim")
-async def life_claim_seat(body: SeatClaimBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    uid = _validate_user_id(user_id)
+async def life_claim_seat(body: SeatClaimBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
     return life_db.claim_seat(body.seat_id, uid, body.agent_id, body.activity, body.until_ts)
 
 
 @router.post("/seats/release")
-async def life_release_seat(body: SeatReleaseBody, user_id: str = Header(..., alias="X-Life-User-Id")):
-    _validate_user_id(user_id)
+async def life_release_seat(body: SeatReleaseBody, account_id: str = Depends(resolve_account_id)):
+    _validate_user_id(account_id)
     return life_db.release_seat(body.seat_id, body.agent_id)
 
 

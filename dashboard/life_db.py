@@ -67,6 +67,21 @@ def init_db(data_dir: Path) -> None:
             until_ts INTEGER NOT NULL DEFAULT 0
         );
         CREATE INDEX IF NOT EXISTS idx_seat_until ON seat_occupancy(until_ts);
+        CREATE TABLE IF NOT EXISTS life_accounts (
+            id TEXT PRIMARY KEY,
+            username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            password_hash TEXT NOT NULL,
+            display_name TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS life_sessions (
+            token TEXT PRIMARY KEY,
+            account_id TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_session_account ON life_sessions(account_id);
+        CREATE INDEX IF NOT EXISTS idx_session_expires ON life_sessions(expires_at);
         """)
     _migrate_json_files(data_dir)
 
@@ -363,3 +378,102 @@ def release_seat(seat_id: str, agent_id: str) -> dict:
                 return {"ok": False, "error": "not_owner"}
             c.execute("DELETE FROM seat_occupancy WHERE seat_id=?", (seat_id,))
     return {"ok": True}
+
+
+SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
+
+
+def purge_expired_sessions(now_ms: Optional[int] = None) -> None:
+    ts = now_ms or int(datetime.now(CST).timestamp() * 1000)
+    with _lock:
+        with _conn() as c:
+            c.execute("DELETE FROM life_sessions WHERE expires_at < ?", (ts,))
+
+
+def create_account(username: str, password_hash: str, display_name: str) -> dict:
+    purge_expired_sessions()
+    aid = f"acc_{uuid4_hex()}"
+    with _lock:
+        with _conn() as c:
+            try:
+                c.execute(
+                    "INSERT INTO life_accounts (id, username, password_hash, display_name, created_at) VALUES (?,?,?,?,?)",
+                    (aid, username, password_hash, display_name or username, datetime.now(CST).isoformat()),
+                )
+            except sqlite3.IntegrityError:
+                return {"ok": False, "error": "username_taken"}
+    ensure_user(aid)
+    return {"ok": True, "account_id": aid}
+
+
+def uuid4_hex() -> str:
+    import uuid
+    return uuid.uuid4().hex[:16]
+
+
+def get_account_by_username(username: str) -> Optional[dict]:
+    with _lock:
+        with _conn() as c:
+            row = c.execute(
+                "SELECT id, username, password_hash, display_name, created_at FROM life_accounts WHERE username=? COLLATE NOCASE",
+                (username.strip(),),
+            ).fetchone()
+            if not row:
+                return None
+            return dict(row)
+
+
+def get_account_by_id(account_id: str) -> Optional[dict]:
+    with _lock:
+        with _conn() as c:
+            row = c.execute(
+                "SELECT id, username, display_name, created_at FROM life_accounts WHERE id=?",
+                (account_id,),
+            ).fetchone()
+            return dict(row) if row else None
+
+
+def create_session(account_id: str) -> str:
+    import secrets
+    purge_expired_sessions()
+    token = secrets.token_urlsafe(32)
+    now_ms = int(datetime.now(CST).timestamp() * 1000)
+    expires = now_ms + SESSION_TTL_MS
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                "INSERT INTO life_sessions (token, account_id, expires_at, created_at) VALUES (?,?,?,?)",
+                (token, account_id, expires, datetime.now(CST).isoformat()),
+            )
+    return token
+
+
+def resolve_session_token(token: str) -> Optional[str]:
+    purge_expired_sessions()
+    with _lock:
+        with _conn() as c:
+            row = c.execute(
+                "SELECT account_id, expires_at FROM life_sessions WHERE token=?",
+                (token,),
+            ).fetchone()
+            if not row:
+                return None
+            now_ms = int(datetime.now(CST).timestamp() * 1000)
+            if row["expires_at"] < now_ms:
+                c.execute("DELETE FROM life_sessions WHERE token=?", (token,))
+                return None
+            return row["account_id"]
+
+
+def delete_session(token: str) -> None:
+    with _lock:
+        with _conn() as c:
+            c.execute("DELETE FROM life_sessions WHERE token=?", (token,))
+
+
+def reset_session_idle(account_id: str) -> None:
+    now_ms = int(datetime.now(CST).timestamp() * 1000)
+    with _lock:
+        with _conn() as c:
+            c.execute("UPDATE life_users SET last_idle_tick=? WHERE id=?", (now_ms, account_id))
+

@@ -1,14 +1,14 @@
-import { getLifeUserId } from './lifeUser';
+import { getAuthToken } from './lifeAuth';
 import type { AgentMeta } from './constants';
 import type { CustomAgentDraft } from './customAgents';
 
 const API = '/trading/api/life';
 
 function headers(): HeadersInit {
-  return {
-    'Content-Type': 'application/json',
-    'X-Life-User-Id': getLifeUserId(),
-  };
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = getAuthToken();
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  return h;
 }
 
 export interface LifeState {
@@ -73,11 +73,49 @@ export async function lifeSessionStart() {
   return parse<{ ok: boolean; balance: number }>(r);
 }
 
-export async function lifeActivityComplete(activity: string) {
+export async function lifeActivityComplete(activity: string, userInitiated = false) {
   const r = await fetch(`${API}/activity/complete`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ activity }),
+    method: 'POST', headers: headers(), body: JSON.stringify({ activity, user_initiated: userInitiated }),
   });
   return parse<{ ok: boolean; balance: number; earned: number }>(r);
+}
+
+export async function authRegister(username: string, password: string, displayName = '') {
+  const r = await fetch(`${API}/auth/register`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, display_name: displayName }),
+  });
+  return parse<{
+    ok: boolean; token?: string;
+    account?: { id: string; username: string; display_name: string };
+    state?: LifeState; error?: string;
+  }>(r);
+}
+
+export async function authLogin(username: string, password: string) {
+  const r = await fetch(`${API}/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  return parse<{
+    ok: boolean; token?: string;
+    account?: { id: string; username: string; display_name: string };
+    state?: LifeState; error?: string;
+  }>(r);
+}
+
+export async function authLogout() {
+  const r = await fetch(`${API}/auth/logout`, { method: 'POST', headers: headers() });
+  return parse<{ ok: boolean }>(r);
+}
+
+export async function authMe() {
+  const r = await fetch(`${API}/auth/me`, { headers: headers() });
+  return parse<{
+    ok: boolean;
+    account?: { id: string; username: string; display_name: string };
+    state?: LifeState;
+  }>(r);
 }
 
 export async function lifeDispatch(action: string, cost?: number) {

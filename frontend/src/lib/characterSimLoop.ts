@@ -17,7 +17,6 @@ function nextWanderDelay(state: import('./constants').CharState['state']): numbe
 export function tickCharacterSim(dt: number) {
   const { paused, agents, patchChar, addMessage, simSpeed } = useGameStore.getState();
   if (paused) return;
-  useGameStore.getState().tickIdlePoints(performance.now());
   const scaledDt = dt * simSpeed;
   const now = performance.now();
   Object.values(agents).forEach(char => {
@@ -46,9 +45,10 @@ export function tickCharacterSim(dt: number) {
     if (c.activity && now >= c.activityUntil) {
       const finished = c.activity;
       const seatId = c.destNode;
+      const userDispatched = c.userDispatched;
       useGameStore.getState().releaseAgentSeat(c.agentId, seatId);
-      c = { ...c, activity: null, activityUntil: 0, activityPose: undefined, moveTimer: 0, nextMoveTime: 1500, travelIntent: null, destNode: null };
-      if (finished && finished !== 'idle') awardActivityPoints(finished, c.data.name);
+      c = { ...c, activity: null, activityUntil: 0, activityPose: undefined, moveTimer: 0, nextMoveTime: 1500, travelIntent: null, destNode: null, userDispatched: false };
+      if (finished && finished !== 'idle') awardActivityPoints(finished, c.data.name, !!userDispatched);
       const home = homeNodeForAgent(c.agentId, c.data);
       if (home) c = assignPath(c, home);
       addMessage(`${c.data.name} 结束休闲，返回${c.data.agentType === 'entertainment' ? '休息区' : '工位'}`);

@@ -84,6 +84,8 @@ export interface CharState {
   inTransit?: boolean;
   transitUntil?: number;
   transitZone?: 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
+  /** 用户主动派遣的活动才发放积分奖励 */
+  userDispatched?: boolean;
   data: AgentData;
 }
 
