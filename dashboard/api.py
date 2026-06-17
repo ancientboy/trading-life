@@ -22,9 +22,10 @@ import aiohttp
 # ============================================================
 # 配置
 # ============================================================
-DATA_DIR = Path("/opt/trading-agent/data")
-LOG_DIR = Path("/opt/trading-agent/logs")
-AGENTS_DIR = Path("/opt/trading-agent/scripts/agents")
+BASE_DIR = Path(os.environ.get("TRADING_AGENT_ROOT", "/opt/trading-agent"))
+DATA_DIR = BASE_DIR / "data"
+LOG_DIR = BASE_DIR / "logs"
+AGENTS_DIR = BASE_DIR / "scripts" / "agents"
 
 OPENCLAW_URL = os.environ.get("OPENCLAW_URL", "http://localhost:18789")
 OPENCLAW_TOKEN = os.environ.get("OPENCLAW_TOKEN", "")
@@ -441,7 +442,7 @@ async def agent_start(name: str):
         # 使用 multi_agent_runner 或单独启动
         subprocess.Popen(
             ["python3", "-m", "scripts.multi_agent_runner"],
-            cwd="/opt/trading-agent",
+            cwd=str(BASE_DIR),
             stdout=open("/tmp/agent-start.log", "a"),
             stderr=subprocess.STDOUT,
         )
@@ -572,7 +573,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception:
         pass
 
-AGENT_CONFIG_DIR = Path("/opt/trading-agent/config/agents")
+AGENT_CONFIG_DIR = BASE_DIR / "config" / "agents"
 
 AGENT_CONFIG_SCHEMA = {
     "xau": {
