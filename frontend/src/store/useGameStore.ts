@@ -12,18 +12,22 @@ import { paperToWorld } from '../lib/zoneProjection';
 import { syncFurnitureToPathfinding, getActivitySeatPaper, greetingForActivity, npcForZone, resolveActivitySlot } from '../lib/zoneFurniture';
 import {
   loadCustomAgentMeta, saveCustomAgentMeta, registerCustomAgentSlots,
-  nextCustomAgentId, updateCustomAgentMeta, type CustomAgentDraft,
+  canCreateAgentType, createLimitMessage, type CustomAgentDraft,
 } from '../lib/customAgents';
 import {
-  loadPoints, savePoints, ACTIVITY_REWARDS, calcIdleEarn,
-  loadLastIdleTick, saveLastIdleTick,
-} from '../lib/pointsSystem';
+  fetchLifeState, migrateLifeState, lifeIdleTick,
+  lifeActivityComplete, lifeDispatch, lifeClaimTask, lifeShopBuy,
+  lifeCreateAgent, lifeSaveAgentSoul, lifeAgentSpeak, type LifeState,
+} from '../lib/lifeApi';
+import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
+import { FACILITY_BASE_COST } from '../lib/facilityCosts';
+import { homeNodeForAgent } from '../lib/agentHome';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
 import { isCrossZoneTravel, zoneForNode, zoneForIntent, ZONE_TRANSIT_MS } from '../lib/zoneTransit';
 
 export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages';
 export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs';
-export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | null;
+export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'shop' | 'tasks' | null;
 export type ZoneId = 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
 
 const LEISURE_FACILITY: Record<'restaurant' | 'spa' | 'casino', string> = {
@@ -68,8 +72,14 @@ interface GameStore {
   messages: { text: string; time: string }[];
   npcBubble: { npcId: string; text: string; until: number } | null;
   pokerGlbReady: boolean;
-  /** 用户积分 — 参与活动获得、消费于休闲项目 */
+  /** 用户积分 — 后端持久化 */
   points: number;
+  dailyTasks: LifeState['daily_tasks'];
+  dailyTaskDefs: LifeState['daily_task_defs'];
+  shopUnlocks: string[];
+  shopCatalog: LifeState['shop_catalog'];
+  facilityCosts: Record<string, number>;
+  agentBubble: { agentId: string; text: string; until: number } | null;
 
   setCameraMode: (m: CameraMode) => void;
   setQuality: (q: QualityTier) => void;
@@ -88,9 +98,9 @@ interface GameStore {
   toggleMinimalUi: () => void;
   setSidebarActive: (id: string) => void;
   navigateSidebar: (action: SidebarAction) => void;
-  sendAgentToLeisure: (type: 'dine' | 'massage' | 'poker', agentId?: string) => void;
-  sendAgentToFacility: (action: 'dine' | 'massage' | 'poker' | 'rest', opts?: { agentId?: string; nodeId?: string }) => void;
-  createAgent: (draft: CustomAgentDraft) => boolean;
+  sendAgentToLeisure: (type: 'dine' | 'massage' | 'poker', agentId?: string, cost?: number) => Promise<boolean>;
+  sendAgentToFacility: (action: 'dine' | 'massage' | 'poker' | 'rest', opts?: { agentId?: string; nodeId?: string; cost?: number; skipCost?: boolean }) => Promise<boolean>;
+  createAgent: (draft: CustomAgentDraft) => Promise<boolean>;
   openModal: (id: ModalId) => void;
   closeModal: () => void;
   flyToZone: (zone: ZoneId) => void;
@@ -100,6 +110,7 @@ interface GameStore {
   setCameraZoom: (zoom: number) => void;
   panCamera: (dx: number, dz: number) => void;
   initAgents: () => void;
+  syncLifeState: () => Promise<void>;
   updateFromOverview: (data: {
     agents?: AgentData[];
     total_pnl?: number; total_wr?: number; total_capital?: number;
@@ -114,8 +125,13 @@ interface GameStore {
   setPokerGlbReady: (v: boolean) => void;
   earnPoints: (amount: number, reason?: string) => void;
   trySpendPoints: (amount: number) => { ok: boolean; balance: number };
-  saveCustomAgentSoul: (agentId: string, content: string) => boolean;
+  saveCustomAgentSoul: (agentId: string, content: string) => Promise<boolean>;
   tickIdlePoints: (now: number) => void;
+  claimDailyTask: (taskId: string) => Promise<boolean>;
+  buyShopItem: (itemId: string) => Promise<boolean>;
+  speakForAgent: (agentId: string, context?: string, activity?: string | null) => Promise<void>;
+  setAgentBubble: (agentId: string | null, text: string, until: number) => void;
+  applyLifeState: (state: Partial<LifeState>) => void;
 }
 
 /** 大厅 Agent 使用本地坐标（分区中心为原点） */
@@ -152,7 +168,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   messages: [],
   npcBubble: null,
   pokerGlbReady: false,
-  points: loadPoints(),
+  points: 200,
+  dailyTasks: {},
+  dailyTaskDefs: [],
+  shopUnlocks: [],
+  shopCatalog: [],
+  facilityCosts: { ...FACILITY_BASE_COST },
+  agentBubble: null,
 
   setCameraMode: (m) => set({ cameraMode: m }),
   setQuality: (q) => set({ quality: q }),
@@ -160,14 +182,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setSimSpeed: (s) => set({ simSpeed: s }),
   togglePause: () => set(s => ({ paused: !s.paused })),
   setDayMode: (d) => set({ dayMode: d }),
-  selectAgent: (id, opts) => set({
-    selectedAgentId: id,
-    selectedNpcId: null,
-    selectedFacility: null,
-    rightTab: opts?.tab ?? 'agent',
-    panelTab: 'overview',
-    rightPanelCollapsed: false,
-  }),
+  selectAgent: (id, opts) => {
+    set({
+      selectedAgentId: id,
+      selectedNpcId: null,
+      selectedFacility: null,
+      rightTab: opts?.tab ?? 'agent',
+      panelTab: 'overview',
+      rightPanelCollapsed: false,
+    });
+    if (id) get().speakForAgent(id, 'greeting');
+  },
   focusAgent: (id) => set({
     selectedAgentId: id,
     selectedNpcId: null,
@@ -267,14 +292,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
-  sendAgentToLeisure: (type, agentId) => {
-    get().sendAgentToFacility(type, { agentId });
+  sendAgentToLeisure: async (type, agentId, cost) => {
+    return get().sendAgentToFacility(type, { agentId, cost, skipCost: cost == null });
   },
 
-  sendAgentToFacility: (action, opts) => {
+  sendAgentToFacility: async (action, opts) => {
     const s = get();
     const id = opts?.agentId || s.selectedAgentId || Object.values(s.agents).sort((a, b) => b.stress - a.stress)[0]?.agentId;
-    if (!id || !s.agents[id]) return;
+    if (!id || !s.agents[id]) return false;
+
+    const cost = opts?.cost ?? s.facilityCosts[action] ?? FACILITY_BASE_COST[action];
+    if (!opts?.skipCost && cost > 0) {
+      const disp = await lifeDispatch(action, cost);
+      if (!disp.ok) {
+        get().addMessage(`积分不足，需要 ${cost} 积分（当前 ${disp.balance}）`);
+        return false;
+      }
+      set({ points: disp.balance });
+    }
 
     const zoneMap = { dine: 'restaurant' as ZoneId, massage: 'spa' as ZoneId, poker: 'casino' as ZoneId, rest: 'hall' as ZoneId };
     const intentMap = { dine: 'dine' as const, massage: 'massage' as const, poker: 'poker' as const, rest: 'rest' as const };
@@ -283,7 +318,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const zone = zoneMap[action];
     const cam = ZONE_CAMERA[zone];
     const node = opts?.nodeId || nodeMap[action][id];
-    if (!node) return;
+    if (!node) return false;
 
     let char = { ...s.agents[id], travelIntent: intentMap[action], activity: null, activityUntil: 0 };
     char = teleportAgentToDestination(char, node, performance.now());
@@ -302,35 +337,36 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cameraZoom: WORLD_MAP.zoneZoom,
       mapOverview: false,
     });
-    get().addMessage(`${char.data.name} 已抵达${cam.label}`);
+    get().addMessage(`${char.data.name} 已抵达${cam.label}${cost > 0 ? ` · -${cost} 积分` : ''}`);
+    get().speakForAgent(id, action, action);
+    return true;
   },
 
-  createAgent: (draft) => {
+  createAgent: async (draft) => {
     const s = get();
     const customMeta = loadCustomAgentMeta();
-    const id = nextCustomAgentId({ ...s.agents, ...customMeta });
-    const slot = registerCustomAgentSlots(OfficePath, id, Object.keys(customMeta).length);
+    if (!canCreateAgentType(draft.agentType, customMeta)) {
+      get().addMessage(createLimitMessage(draft.agentType));
+      return false;
+    }
+
+    const apiRes = await lifeCreateAgent(draft);
+    if (!apiRes.ok || !apiRes.agent) {
+      get().addMessage(apiRes.error || '创建失败');
+      return false;
+    }
+
+    const meta = normalizeAgentMeta(apiRes.agent);
+    const id = meta.id;
+    const slot = registerCustomAgentSlots(OfficePath, id, draft.agentType);
     if (!slot) {
-      get().addMessage('工位已满，最多再创建 3 个自定义 Agent');
+      get().addMessage(createLimitMessage(draft.agentType));
       return false;
     }
     assignAgentSeatSlots(OfficePath);
-    const isEntertainment = draft.agentType === 'entertainment';
-    const meta: AgentMeta = normalizeAgentMeta({
-      id,
-      name: draft.name.trim() || `Agent ${id}`,
-      headwear: draft.headwear,
-      hatStyle: draft.hatStyle,
-      color: draft.color,
-      agentType: draft.agentType,
-      desc: draft.desc.trim() || (isEntertainment ? '休闲陪伴企鹅' : '自定义交易策略 Agent'),
-      soulMd: isEntertainment ? draft.soul.trim() : '',
-      strategy: isEntertainment ? '休闲陪伴' : (draft.strategy.trim() || '自定义策略'),
-      market: isEntertainment ? '—' : (draft.market.trim() || 'Crypto'),
-      interval: isEntertainment ? '—' : (draft.interval.trim() || '15m/1h'),
-      risk: isEntertainment ? '—' : (draft.risk || '中'),
-    });
     saveCustomAgentMeta({ ...customMeta, [id]: meta });
+    if (apiRes.state) get().applyLifeState(apiRes.state);
+
     const pos = OfficePath.nodes[slot];
     const char: CharState = {
       agentId: id, x: pos.x, z: pos.z,
@@ -338,8 +374,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       activity: null, activityUntil: 0, travelIntent: null,
       state: 'idle', stress: 0,
       moveTimer: 0, nextMoveTime: 1500 + Math.random() * 2500,
-      facing: 'n',
-      data: { ...meta, capital: 10000, initial_capital: 10000, pnl: 0, running: false },
+      facing: draft.agentType === 'entertainment' ? 'e' : 'n',
+      data: { ...meta, capital: draft.agentType === 'trading' ? 10000 : 0, initial_capital: 10000, pnl: 0, running: false },
     };
     set({
       agents: { ...s.agents, [id]: char },
@@ -352,7 +388,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cameraZoom: WORLD_MAP.defaultZoom,
       activeModal: 'workshop',
     });
-    get().addMessage(`${meta.name} 已加入交易大厅工位`);
+    get().speakForAgent(id, 'greeting');
     return true;
   },
   resetCamera: () => set({
@@ -398,8 +434,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     rebuildNavGraph(OfficePath);
     invalidateCollisionCache();
     const customMeta = loadCustomAgentMeta();
-    Object.entries(customMeta).forEach(([id], i) => {
-      if (!OfficePath.deskByAgent[id]) registerCustomAgentSlots(OfficePath, id, i);
+    Object.entries(customMeta).forEach(([id, meta]) => {
+      if (!OfficePath.deskByAgent[id] && !OfficePath.boothByAgent[id]) {
+        registerCustomAgentSlots(OfficePath, id, meta.agentType ?? 'trading');
+      }
     });
     assignAgentSeatSlots(OfficePath);
 
@@ -407,23 +445,60 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const allIds = new Set([...Object.keys(AGENT_META), ...Object.keys(customMeta)]);
 
     allIds.forEach(id => {
-      const nodeId = OfficePath.deskByAgent[id];
+      const raw = AGENT_META[id] || customMeta[id];
+      if (!raw) return;
+      const meta = normalizeAgentMeta(raw);
+      const nodeId = meta.agentType === 'entertainment'
+        ? OfficePath.boothByAgent[id]
+        : OfficePath.deskByAgent[id];
       if (!nodeId) return;
       const pos = OfficePath.nodes[nodeId];
-      const raw = AGENT_META[id] || customMeta[id];
-      if (!raw || !pos) return;
-      const meta = normalizeAgentMeta(raw);
+      if (!pos) return;
       agents[id] = {
         agentId: id, x: pos.x, z: pos.z,
         pathQueue: [], pathIndex: 0, isWalking: false, destNode: null,
         activity: null, activityUntil: 0, travelIntent: null,
         state: 'idle', stress: 0,
         moveTimer: 0, nextMoveTime: 1500 + Math.random() * 2500,
-        facing: 'n',
+        facing: meta.agentType === 'entertainment' ? 'e' : 'n',
         data: { ...meta },
       };
     });
     set({ agents });
+  },
+
+  syncLifeState: async () => {
+    try {
+      let state = await fetchLifeState();
+      const localMeta = loadCustomAgentMeta();
+      const localPoints = loadPoints();
+      if (Object.keys(localMeta).length && !Object.keys(state.custom_agents || {}).length) {
+        const migrated = await migrateLifeState({
+          points: localPoints,
+          last_idle_tick: loadLastIdleTick(),
+          custom_agents: localMeta,
+        });
+        state = migrated;
+      }
+      get().applyLifeState(state);
+      if (state.custom_agents && Object.keys(state.custom_agents).length) {
+        saveCustomAgentMeta(state.custom_agents);
+        get().initAgents();
+      }
+    } catch {
+      /* 离线时沿用本地缓存 */
+    }
+  },
+
+  applyLifeState: (state) => {
+    set({
+      points: state.points ?? get().points,
+      dailyTasks: state.daily_tasks ?? get().dailyTasks,
+      dailyTaskDefs: state.daily_task_defs ?? get().dailyTaskDefs,
+      shopUnlocks: state.shop_unlocks ?? get().shopUnlocks,
+      shopCatalog: state.shop_catalog ?? get().shopCatalog,
+      facilityCosts: state.facility_costs ?? get().facilityCosts,
+    });
   },
 
   updateFromOverview: (data) => {
@@ -436,6 +511,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     (data.agents || []).forEach((a) => {
       if (!agents[a.id]) return;
+      if (agents[a.id].data.agentType === 'entertainment') return;
       const stress = Math.min(100, Math.max(0, -(a.pnl || 0) / 20 + (a.is_circuit_break ? 40 : 0)));
       let state: CharState['state'] = 'idle';
       if (a.is_circuit_break) state = 'panic';
@@ -482,49 +558,97 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   earnPoints: (amount, reason) => {
     if (amount <= 0) return;
-    const balance = loadPoints() + amount;
-    savePoints(balance);
-    set({ points: balance });
+    set(s => ({ points: s.points + amount }));
     if (reason) get().addMessage(`+${amount} 积分 · ${reason}`);
   },
 
   trySpendPoints: (amount) => {
-    const cur = loadPoints();
+    const cur = get().points;
     if (amount > cur) return { ok: false, balance: cur };
-    const balance = cur - amount;
-    savePoints(balance);
-    set({ points: balance });
-    return { ok: true, balance };
+    set({ points: cur - amount });
+    return { ok: true, balance: cur - amount };
   },
 
-  saveCustomAgentSoul: (agentId, content) => {
+  saveCustomAgentSoul: async (agentId, content) => {
     if (!agentId.startsWith('custom_')) return false;
-    const ok = updateCustomAgentMeta(agentId, { soulMd: content });
-    if (ok) {
-      const agents = { ...get().agents };
-      if (agents[agentId]) {
-        agents[agentId] = { ...agents[agentId], data: { ...agents[agentId].data, soulMd: content } };
-        set({ agents, soulMd: content });
-      }
+    try {
+      const r = await lifeSaveAgentSoul(agentId, content);
+      if (!r.ok) return false;
+    } catch {
+      return false;
     }
-    return ok;
+    const agents = { ...get().agents };
+    if (agents[agentId]) {
+      agents[agentId] = { ...agents[agentId], data: { ...agents[agentId].data, soulMd: content } };
+      set({ agents, soulMd: content });
+    }
+    const customMeta = loadCustomAgentMeta();
+    if (customMeta[agentId]) {
+      customMeta[agentId] = { ...customMeta[agentId], soulMd: content };
+      saveCustomAgentMeta(customMeta);
+    }
+    return true;
   },
 
   tickIdlePoints: (now) => {
     const { paused, agents } = get();
     if (paused) return;
-    const last = loadLastIdleTick();
-    if (!last) {
-      saveLastIdleTick(now);
-      return;
-    }
     const count = Object.keys(agents).length;
-    const earned = calcIdleEarn(count, now - last);
-    if (earned > 0) {
-      saveLastIdleTick(now);
-      get().earnPoints(earned, `挂机奖励（${Math.min(count, 5)} 位 Agent 在线）`);
-    }
+    lifeIdleTick(count, 60_000).then(res => {
+      if (res.earned > 0) {
+        set({ points: res.balance });
+        get().addMessage(`+${res.earned} 积分 · 挂机奖励（${Math.min(count, 5)} 位 Agent 在线）`);
+        fetchLifeState().then(s => get().applyLifeState(s)).catch(() => {});
+      }
+    }).catch(() => {});
   },
+
+  claimDailyTask: async (taskId) => {
+    const res = await lifeClaimTask(taskId);
+    if (!res.ok) {
+      get().addMessage(res.error === 'not_complete' ? '任务尚未完成' : '领取失败');
+      return false;
+    }
+    set({ points: res.balance });
+    get().addMessage(`+${res.reward} 积分 · 每日任务奖励`);
+    const state = await fetchLifeState();
+    get().applyLifeState(state);
+    return true;
+  },
+
+  buyShopItem: async (itemId) => {
+    const res = await lifeShopBuy(itemId);
+    if (!res.ok) {
+      get().addMessage('积分不足或购买失败');
+      return false;
+    }
+    set({ points: res.balance });
+    const state = await fetchLifeState();
+    get().applyLifeState(state);
+    get().addMessage(`已解锁：${res.item?.label ?? itemId}`);
+    return true;
+  },
+
+  speakForAgent: async (agentId, context = 'greeting', activity = null) => {
+    const char = get().agents[agentId];
+    if (!char) return;
+    try {
+      const res = await lifeAgentSpeak({
+        agent_id: agentId,
+        agent_name: char.data.name,
+        soul_md: char.data.soulMd || get().soulMd || '',
+        context,
+        activity,
+      });
+      if (res.line) {
+        get().setAgentBubble(agentId, res.line, performance.now() + 4500);
+      }
+    } catch { /* ignore */ }
+  },
+
+  setAgentBubble: (agentId, text, until) => set({
+    agentBubble: agentId && text ? { agentId, text, until } : null,
+  }),
 }));
 
 /** 用户派遣 / 卡住恢复：直接传送到目标节点并进入活动 */
@@ -670,7 +794,7 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     if (greet && npc) store.addMessage(`🐧 ${npc.name}：${greet}`);
     store.setNpcBubble(npc?.id ?? null, greet ?? '', now + 4500);
   }
-  return {
+  const started = {
     ...char, activity, activityUntil: now + dur + Math.random() * 5000,
     travelIntent: null, isWalking: false, pathQueue: [], destNode: slot?.slotId ?? nodeId,
     x: wx, z: wz, facing, activityPose,
@@ -679,12 +803,19 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
       : activity === 'poker' ? 0
       : activity === 'rest' ? Math.max(0, char.stress - 20) : char.stress,
   };
+  useGameStore.getState().speakForAgent(char.agentId, activity ?? 'greeting', activity);
+  return started;
 }
 
-/** 活动完成时发放积分 */
+/** 活动完成时发放积分（后端记账） */
 export function awardActivityPoints(activity: NonNullable<CharState['activity']>, agentName: string) {
-  const reward = ACTIVITY_REWARDS[activity];
-  if (reward) useGameStore.getState().earnPoints(reward, `${agentName} 完成${activityLabel(activity)}`);
+  lifeActivityComplete(activity).then(res => {
+    if (res.earned > 0) {
+      useGameStore.getState().earnPoints(res.earned, `${agentName} 完成${activityLabel(activity)}`);
+      useGameStore.setState({ points: res.balance });
+    }
+    fetchLifeState().then(s => useGameStore.getState().applyLifeState(s)).catch(() => {});
+  }).catch(() => {});
 }
 
 function activityLabel(activity: NonNullable<CharState['activity']>) {

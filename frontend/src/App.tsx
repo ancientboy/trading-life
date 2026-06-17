@@ -7,12 +7,14 @@ import { preloadAllSprites } from './lib/spriteTextures';
 
 export default function App() {
   const initAgents = useGameStore(s => s.initAgents);
+  const syncLifeState = useGameStore(s => s.syncLifeState);
   const updateFromOverview = useGameStore(s => s.updateFromOverview);
   const setTicker = useGameStore(s => s.setTicker);
   const addMessage = useGameStore(s => s.addMessage);
 
   useEffect(() => {
     initAgents();
+    syncLifeState();
     preloadAllSprites().catch(() => {});
     const poll = () => fetchOverview().then(data => {
       updateFromOverview(data);
@@ -23,7 +25,7 @@ export default function App() {
     const a = setInterval(poll, 5000);
     const b = setInterval(tick, 10000);
     return () => { clearInterval(a); clearInterval(b); };
-  }, [initAgents, updateFromOverview, setTicker, addMessage]);
+  }, [initAgents, syncLifeState, updateFromOverview, setTicker, addMessage]);
 
   return <AppShell />;
 }

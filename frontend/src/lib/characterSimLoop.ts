@@ -1,4 +1,5 @@
 import { useGameStore, assignPath, pickWanderTarget, onPathComplete, maybeDispatchLeisure, teleportAgentToDestination, awardActivityPoints } from '../store/useGameStore';
+import { homeNodeForAgent } from '../lib/agentHome';
 import { OfficePath } from './pathfinding';
 import { moveWithCollision } from './collision';
 
@@ -46,8 +47,9 @@ export function tickCharacterSim(dt: number) {
       const finished = c.activity;
       c = { ...c, activity: null, activityUntil: 0, activityPose: undefined, moveTimer: 0, nextMoveTime: 1500, travelIntent: null };
       if (finished && finished !== 'idle') awardActivityPoints(finished, c.data.name);
-      c = assignPath(c, OfficePath.deskByAgent[c.agentId]);
-      addMessage(`${c.data.name} 结束休闲，返回工位`);
+      const home = homeNodeForAgent(c.agentId, c.data);
+      if (home) c = assignPath(c, home);
+      addMessage(`${c.data.name} 结束休闲，返回${c.data.agentType === 'entertainment' ? '休息区' : '工位'}`);
       patchChar(c.agentId, c);
       return;
     }

@@ -16,6 +16,8 @@ const TITLES: Record<Exclude<ModalId, null>, string> = {
   dine: '餐厅 · 点餐',
   massage: '按摩 · 理疗套餐',
   poker: '德州扑克 · 开局',
+  shop: '积分商城',
+  tasks: '每日任务',
 };
 
 export function Modals() {
@@ -24,7 +26,7 @@ export function Modals() {
 
   if (!activeModal) return null;
 
-  const wide = ['workshop', 'strategy', 'dine', 'massage', 'poker'].includes(activeModal);
+  const wide = ['workshop', 'strategy', 'dine', 'massage', 'poker', 'shop', 'tasks'].includes(activeModal);
 
   return (
     <div className="modal-overlay" onClick={closeModal}>
@@ -130,6 +132,10 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
         { id: 'b', name: '标准局', desc: '底注 50 积分', cost: 80, effect: '清空压力 + 奖金' },
         { id: 'c', name: '高手局', desc: '底注 200 积分', cost: 200, effect: '大幅减压 + 奖金' },
       ]} />;
+    case 'shop':
+      return <ShopPanel />;
+    case 'tasks':
+      return <DailyTasksPanel />;
     default:
       return null;
   }
@@ -146,7 +152,6 @@ function LeisureModal({ type, title, lucide, items }: {
   const selectedAgentId = useGameStore(s => s.selectedAgentId);
   const agents = useGameStore(s => s.agents);
   const points = useGameStore(s => s.points);
-  const trySpendPoints = useGameStore(s => s.trySpendPoints);
   const sendAgentToLeisure = useGameStore(s => s.sendAgentToLeisure);
   const [picked, setPicked] = useState(items[0].id);
   const [busy, setBusy] = useState(false);
@@ -185,20 +190,85 @@ function LeisureModal({ type, title, lucide, items }: {
         </button>
       ))}
       <button className="ui-btn" style={{ width: '100%', marginTop: 12, padding: '10px 0' }}
-        disabled={!agent || busy || !canAfford} onClick={() => {
+        disabled={!agent || busy || !canAfford} onClick={async () => {
         if (!agent) return;
-        const spend = trySpendPoints(item.cost);
-        if (!spend.ok) {
-          addMessage(`积分不足，需要 ${item.cost} 积分（当前 ${spend.balance}）`);
-          return;
-        }
         setBusy(true);
-        sendAgentToLeisure(type, agent.agentId);
-        addMessage(`${agent.data.name} 选择了「${item.name}」· 消耗 ${item.cost} 积分 · ${item.effect}`);
-        setTimeout(() => { setBusy(false); closeModal(); }, 900);
+        const ok = await sendAgentToLeisure(type, agent.agentId, item.cost);
+        if (ok) addMessage(`${agent.data.name} 选择了「${item.name}」· 消耗 ${item.cost} 积分 · ${item.effect}`);
+        else if (!canAfford) addMessage(`积分不足，需要 ${item.cost} 积分`);
+        setBusy(false);
+        if (ok) closeModal();
       }}>
         {busy ? 'Agent 正在前往…' : !canAfford ? `积分不足（需 ${item.cost}）` : `确认 · ${item.cost} 积分`}
       </button>
+    </div>
+  );
+}
+
+function ShopPanel() {
+  const points = useGameStore(s => s.points);
+  const shopCatalog = useGameStore(s => s.shopCatalog);
+  const shopUnlocks = useGameStore(s => s.shopUnlocks);
+  const buyShopItem = useGameStore(s => s.buyShopItem);
+
+  return (
+    <div style={{ color: '#3d3530' }}>
+      <div style={{ fontSize: 12, color: '#d4af37', marginBottom: 12 }}>当前积分：{points}</div>
+      {shopCatalog.map(item => {
+        const owned = shopUnlocks.includes(item.id);
+        return (
+          <button key={item.id} className="leisure-option" disabled={owned}
+            onClick={() => buyShopItem(item.id)} style={{ opacity: owned ? 0.55 : 1 }}>
+            <div style={{ flex: 1, textAlign: 'left' }}>
+              <div style={{ fontWeight: 600 }}>{item.label}</div>
+              <div style={{ fontSize: 11, color: '#8a7e72' }}>
+                {item.type === 'color' ? '解锁围巾/帽子颜色' : item.type === 'hat' ? '解锁帽子款式' : '场景装饰皮肤'}
+              </div>
+            </div>
+            <span style={{ color: owned ? '#48d093' : '#d4af37', fontWeight: 600, fontSize: 12 }}>
+              {owned ? '已拥有' : `${item.cost} 积分`}
+            </span>
+          </button>
+        );
+      })}
+      <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10 }}>购买后可在 Agent 工坊创建/编辑外形时使用</p>
+    </div>
+  );
+}
+
+function DailyTasksPanel() {
+  const points = useGameStore(s => s.points);
+  const dailyTasks = useGameStore(s => s.dailyTasks);
+  const dailyTaskDefs = useGameStore(s => s.dailyTaskDefs);
+  const claimDailyTask = useGameStore(s => s.claimDailyTask);
+
+  return (
+    <div style={{ color: '#3d3530' }}>
+      <div style={{ fontSize: 12, color: '#d4af37', marginBottom: 12 }}>当前积分：{points}</div>
+      {dailyTaskDefs.map(def => {
+        const t = dailyTasks[def.id] ?? { progress: 0, claimed: false };
+        const done = t.progress >= def.target;
+        return (
+          <div key={def.id} className="leisure-option" style={{ cursor: 'default' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600 }}>{def.label}</div>
+              <div style={{ fontSize: 11, color: '#8a7e72' }}>
+                进度 {Math.min(t.progress, def.target)} / {def.target} · 奖励 {def.reward} 积分
+              </div>
+            </div>
+            {t.claimed ? (
+              <span style={{ color: '#48d093', fontSize: 12 }}>已领取</span>
+            ) : (
+              <button className="ui-btn" disabled={!done} onClick={() => claimDailyTask(def.id)}>
+                领取
+              </button>
+            )}
+          </div>
+        );
+      })}
+      <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10 }}>
+        挂机、派遣、完成活动可推进任务进度；每日 0 点重置
+      </p>
     </div>
   );
 }

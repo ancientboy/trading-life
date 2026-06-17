@@ -5,8 +5,10 @@ import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
 import { fetchAgentProfile, saveAgentConfig, saveAgentSoul } from '../../lib/api';
 import {
-  APPEARANCE_PRESETS, DEFAULT_ENTERTAINMENT_SOUL, type CustomAgentDraft,
+  APPEARANCE_PRESETS, DEFAULT_ENTERTAINMENT_SOUL, DEFAULT_TRADING_SOUL,
+  countCustomByType, canCreateAgentType, loadCustomAgentMeta, type CustomAgentDraft,
 } from '../../lib/customAgents';
+import { unlockedColors, unlockedHatStyles } from '../../lib/lifeShop';
 import { PenguinAvatar } from './PenguinAvatar';
 import { AgentScenePreview } from './AgentScenePreview';
 import { HatStylePicker } from './HatStylePicker';
@@ -49,6 +51,11 @@ export function AgentWorkshop() {
 
   const [draft, setDraft] = useState<CustomAgentDraft>({ ...DEFAULT_DRAFT });
 
+  const shopUnlocks = useGameStore(s => s.shopUnlocks);
+  const shopCatalog = useGameStore(s => s.shopCatalog);
+  const customMeta = loadCustomAgentMeta();
+  const limits = countCustomByType(customMeta);
+
   const agentList = Object.values(agents) as CharState[];
   const current = editId ? agents[editId] : null;
   const d = current?.data;
@@ -82,16 +89,20 @@ export function AgentWorkshop() {
     setMsg('');
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!draft.name.trim()) {
       setMsg('请填写 Agent 名称');
       return;
     }
-    if (draft.agentType === 'entertainment' && draft.soul.trim().length < 20) {
-      setMsg('娱乐 Agent 请填写 SOUL 文档（至少 20 字）');
+    if (draft.soul.trim().length < 20) {
+      setMsg('请填写 SOUL 文档（至少 20 字）');
       return;
     }
-    const ok = createAgent(draft);
+    if (!canCreateAgentType(draft.agentType, customMeta)) {
+      setMsg(draft.agentType === 'entertainment' ? '娱乐 Agent 已达上限（1 个）' : '交易 Agent 已达上限（3 个）');
+      return;
+    }
+    const ok = await createAgent(draft);
     if (ok) {
       setMode('list');
       setDraft({ ...DEFAULT_DRAFT, soul: DEFAULT_ENTERTAINMENT_SOUL('') });
@@ -105,9 +116,12 @@ export function AgentWorkshop() {
       agentType,
       soul: agentType === 'entertainment'
         ? DEFAULT_ENTERTAINMENT_SOUL(prev.name)
-        : prev.soul,
+        : DEFAULT_TRADING_SOUL(prev.name),
     }));
   };
+
+  const colorOptions = unlockedColors(shopCatalog, shopUnlocks);
+  const hatOptions = unlockedHatStyles(shopUnlocks);
 
   if (mode === 'create') {
     const entertainment = draft.agentType === 'entertainment';
@@ -129,8 +143,12 @@ export function AgentWorkshop() {
 
         <p style={{ fontSize: 12, color: '#8a7e72', marginBottom: 14, lineHeight: 1.5 }}>
           {entertainment
-            ? '娱乐 Agent 只需配置外形与 SOUL 人格，无需策略参数。创建后会在场景中闲逛、参与活动，帮你赚取积分。'
-            : '交易 Agent 需配置策略信息，可对接后端交易引擎；SOUL 可在创建后于文档页继续完善。'}
+            ? '娱乐 Agent 只需配置外形与 SOUL，不占交易工位，出生在沙发休息区。'
+            : '交易 Agent 需配置策略与 SOUL，占用扩展工位（最多 3 个）。'}
+          <br />
+          <span style={{ fontSize: 11, color: '#9a8b7a' }}>
+            已创建：娱乐 {limits.entertainment}/1 · 交易 {limits.trading}/3
+          </span>
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'start' }}>
@@ -140,7 +158,7 @@ export function AgentWorkshop() {
                 onChange={e => setDraft({
                   ...draft,
                   name: e.target.value,
-                  soul: entertainment ? DEFAULT_ENTERTAINMENT_SOUL(e.target.value) : draft.soul,
+                  soul: entertainment ? DEFAULT_ENTERTAINMENT_SOUL(e.target.value) : DEFAULT_TRADING_SOUL(e.target.value),
                 })}
                 placeholder="例如：小凤、Alpha Hunter" style={inputStyle} />
             </Field>
@@ -166,7 +184,7 @@ export function AgentWorkshop() {
 
             <Field label={draft.headwear === 'scarf' ? '围巾颜色' : '帽子颜色'}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {APPEARANCE_PRESETS.colors.map(c => (
+                {colorOptions.map(c => (
                   <button key={c} type="button" onClick={() => setDraft({ ...draft, color: c })}
                     style={{
                       width: 28, height: 28, borderRadius: 6,
@@ -182,13 +200,13 @@ export function AgentWorkshop() {
                 placeholder={entertainment ? '例如：爱逛餐厅的开心果' : 'Agent 职能描述'} style={inputStyle} />
             </Field>
 
-            {entertainment ? (
-              <Field label="SOUL 文档（必填）">
-                <textarea value={draft.soul} onChange={e => setDraft({ ...draft, soul: e.target.value })}
-                  placeholder="描述 Agent 的性格、说话方式、行为偏好…"
-                  style={{ ...inputStyle, minHeight: 160, fontFamily: 'monospace', fontSize: 12 }} />
-              </Field>
-            ) : (
+            <Field label="SOUL 文档（必填）">
+              <textarea value={draft.soul} onChange={e => setDraft({ ...draft, soul: e.target.value })}
+                placeholder={entertainment ? '描述性格、说话方式、行为偏好…' : '描述交易策略灵魂、风控原则、交易性格…'}
+                style={{ ...inputStyle, minHeight: 140, fontFamily: 'monospace', fontSize: 12 }} />
+            </Field>
+
+            {!entertainment && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <Field label="策略">
                   <input value={draft.strategy} onChange={e => setDraft({ ...draft, strategy: e.target.value })} style={inputStyle} />
@@ -353,8 +371,8 @@ export function AgentWorkshop() {
                 <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={async () => {
                   const content = (document.getElementById('ws-soul') as HTMLTextAreaElement).value;
                   if (custom) {
-                    const ok = saveCustomAgentSoul(editId, content);
-                    setMsg(ok ? 'SOUL 已保存（本地）' : '保存失败');
+                    const ok = await saveCustomAgentSoul(editId, content);
+                    setMsg(ok ? 'SOUL 已保存' : '保存失败');
                   } else {
                     const r = await saveAgentSoul(editId, content);
                     setMsg(r.message || '已保存');

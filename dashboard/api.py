@@ -714,6 +714,14 @@ async def update_agent_soul(name: str, body: AgentSoulUpdate):
     return {"ok": True, "message": "SOUL 已保存"}
 
 # ============================================================
+# 交易人生 Life Game API
+# ============================================================
+from life_game import router as life_router, init_life_game
+
+init_life_game(DATA_DIR, ZHIPU_API_KEY)
+app.include_router(life_router, prefix="/api/life", tags=["life"])
+
+# ============================================================
 # 静态文件
 # ============================================================
 STATIC_DIR = Path(__file__).parent / "static"

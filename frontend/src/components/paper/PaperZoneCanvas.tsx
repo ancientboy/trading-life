@@ -29,6 +29,7 @@ export function PaperZoneCanvas() {
   const paused = useGameStore(s => s.paused);
   const ticker = useGameStore(s => s.ticker);
   const npcBubble = useGameStore(s => s.npcBubble);
+  const agentBubble = useGameStore(s => s.agentBubble);
   const pokerGlbReady = useGameStore(s => s.pokerGlbReady);
 
   const flyToZone = useGameStore(s => s.flyToZone);
@@ -84,9 +85,10 @@ export function PaperZoneCanvas() {
       renderAgents(ctx, activeZone, cam, agents, c => agentVisibleInZone(c, activeZone), {
         selectedId: selectedAgentId,
         t,
+        agentBubble,
       });
     }
-  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, pokerGlbReady]);
+  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerGlbReady]);
 
   useEffect(() => {
     let last = performance.now();
@@ -191,7 +193,7 @@ export function PaperZoneCanvas() {
     if (hit.type === 'nav') flyToZone(hit.target);
     else if (hit.type === 'agent') selectAgent(hit.id);
     else if (hit.type === 'npc') selectNpc(hit.id);
-    else if (hit.type === 'facility') sendAgentToFacility(hit.action, { nodeId: hit.nodeId });
+    else if (hit.type === 'facility') void sendAgentToFacility(hit.action, { nodeId: hit.nodeId });
   };
 
   const onWheel = (e: React.WheelEvent) => {

@@ -35,7 +35,10 @@ function agentSeatIndex(agentId: string, count: number) {
 
 /** 为每个 Agent 分配具体座位槽位（非家具中心点） */
 export function assignAgentSeatSlots(OfficePath: PathStore) {
-  const agents = Object.keys(OfficePath.deskByAgent);
+  const agents = [...new Set([
+    ...Object.keys(OfficePath.deskByAgent),
+    ...Object.keys(OfficePath.boothByAgent),
+  ])];
   agents.forEach((id, i) => {
     const booth = HALL_REST_BOOTHS[i % HALL_REST_BOOTHS.length];
     OfficePath.boothByAgent[id] = booth.seats[agentSeatIndex(id, booth.seats.length)].id;

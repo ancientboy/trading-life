@@ -283,8 +283,9 @@ export function renderAgents(
   cam: PaperCamera,
   agents: Record<string, CharState>,
   visible: (c: CharState) => boolean,
-  opts: { selectedId: string | null; t: number },
+  opts: { selectedId: string | null; t: number; agentBubble?: { agentId: string; text: string; until: number } | null },
 ) {
+  const now = performance.now();
   Object.values(agents).forEach(char => {
     if (!visible(char)) return;
     const paper = getAgentPaperPos(zone, char);
@@ -308,6 +309,9 @@ export function renderAgents(
       ctx.font = `600 ${Math.max(9, ws(cam, 10))}px Inter,sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText(char.data.name.split(' ')[0], s.x, s.y - ws(cam, 30));
+    }
+    if (opts.agentBubble && opts.agentBubble.agentId === char.agentId && now < opts.agentBubble.until) {
+      drawSpeechBubble(ctx, s.x, s.y - ws(cam, 42), opts.agentBubble.text, ws(cam, 1));
     }
   });
 }
