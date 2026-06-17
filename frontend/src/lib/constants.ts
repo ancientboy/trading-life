@@ -1,23 +1,20 @@
 export const S = 0.01;
 export const WORLD = { W: 56, H: 30, MID_X: 28, MID_Y: 15 };
 
-export interface AgentMeta {
-  id: string; name: string; icon: string; color: string;
-  desc: string; strategy: string; market: string; interval: string; risk: string;
-  /** 头饰 — 创建时可自定义 */
-  hat?: HatStyle;
-}
-
-/** 俯视剪纸风头饰 */
-export type HatStyle = 'none' | 'headband' | 'cap' | 'beanie' | 'tophat';
-
 export const AGENT_META: Record<string, AgentMeta> = {
-  xau: { id: 'xau', name: 'XAU Agent', icon: '🥇', color: '#FFD700', hat: 'beanie', desc: '黄金趋势交易', strategy: '趋势跟踪', market: 'XAUUSDT', interval: '15m/1h', risk: '中' },
-  major: { id: 'major', name: 'Major Agent', icon: '₿', color: '#3B82F6', hat: 'cap', desc: '主流币趋势', strategy: '趋势+反转', market: 'BTC/ETH', interval: '1h/4h', risk: '中' },
-  altcoin: { id: 'altcoin', name: 'Altcoin Agent', icon: '🪙', color: '#F59E0B', hat: 'headband', desc: '山寨波段', strategy: '波段动量', market: 'Alt', interval: '15m/1h', risk: '中高' },
-  newcoin: { id: 'newcoin', name: 'Newcoin Agent', icon: '🚀', color: '#A855F7', hat: 'beanie', desc: '新币猎手', strategy: '趋势突破', market: '新币', interval: '5m/15m', risk: '高' },
-  momentum: { id: 'momentum', name: 'Momentum Agent', icon: '⚡', color: '#EF4444', hat: 'tophat', desc: '动量快打', strategy: '动量追踪', market: '高波动', interval: '5m/15m', risk: '高' },
+  xau: { id: 'xau', name: 'XAU Agent', color: '#FFD700', headwear: 'scarf', hatStyle: 'beanie', desc: '黄金趋势交易', strategy: '趋势跟踪', market: 'XAUUSDT', interval: '15m/1h', risk: '中' },
+  major: { id: 'major', name: 'Major Agent', color: '#3B82F6', headwear: 'hat', hatStyle: 'cap', desc: '主流币趋势', strategy: '趋势+反转', market: 'BTC/ETH', interval: '1h/4h', risk: '中' },
+  altcoin: { id: 'altcoin', name: 'Altcoin Agent', color: '#F59E0B', headwear: 'scarf', hatStyle: 'beanie', desc: '山寨波段', strategy: '波段动量', market: 'Alt', interval: '15m/1h', risk: '中高' },
+  newcoin: { id: 'newcoin', name: 'Newcoin Agent', color: '#A855F7', headwear: 'hat', hatStyle: 'bobble', desc: '新币猎手', strategy: '趋势突破', market: '新币', interval: '5m/15m', risk: '高' },
+  momentum: { id: 'momentum', name: 'Momentum Agent', color: '#EF4444', headwear: 'hat', hatStyle: 'top', desc: '动量快打', strategy: '动量追踪', market: '高波动', interval: '5m/15m', risk: '高' },
 };
+
+export interface AgentMeta {
+  id: string; name: string; color: string;
+  headwear: 'scarf' | 'hat';
+  hatStyle: 'beanie' | 'cap' | 'top' | 'bobble' | 'beret';
+  desc: string; strategy: string; market: string; interval: string; risk: string;
+}
 
 export interface Position {
   symbol: string;

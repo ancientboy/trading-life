@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import type { AgentData, CameraMode, CharState, QualityTier, TradeRecord } from '../lib/constants';
 import { AGENT_META } from '../lib/constants';
+import type { AgentData, CameraMode, CharState, QualityTier, TradeRecord } from '../lib/constants';
+import { normalizeAgentMeta } from '../lib/agentAppearance';
 import type { AgentMeta } from '../lib/constants';
 import { OfficePath } from '../lib/pathfinding';
 import { WORLD_MAP, ZONE_CAMERA } from '../lib/worldMap';
@@ -304,9 +305,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const meta: AgentMeta = {
       id,
       name: draft.name.trim() || `Agent ${id}`,
-      icon: draft.icon,
+      headwear: draft.headwear,
+      hatStyle: draft.hatStyle,
       color: draft.color,
-      hat: draft.hat,
       desc: draft.desc.trim() || '自定义交易策略 Agent',
       strategy: draft.strategy.trim() || '自定义策略',
       market: draft.market.trim() || 'Crypto',
@@ -395,8 +396,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const nodeId = OfficePath.deskByAgent[id];
       if (!nodeId) return;
       const pos = OfficePath.nodes[nodeId];
-      const meta = AGENT_META[id] || customMeta[id];
-      if (!meta || !pos) return;
+      const raw = AGENT_META[id] || customMeta[id];
+      if (!raw || !pos) return;
+      const meta = normalizeAgentMeta(raw);
       agents[id] = {
         agentId: id, x: pos.x, z: pos.z,
         pathQueue: [], pathIndex: 0, isWalking: false, destNode: null,
@@ -404,7 +406,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         state: 'idle', stress: 0,
         moveTimer: 0, nextMoveTime: 1500 + Math.random() * 2500,
         facing: 'n',
-        data: { ...meta, hat: meta.hat ?? 'cap' },
+        data: { ...meta },
       };
     });
     set({ agents });
@@ -585,7 +587,7 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   if (zone && activity) {
     const greet = greetingForActivity(zone);
     const npc = npcForZone(zone);
-    if (greet && npc) store.addMessage(`${npc.emoji} ${npc.name}：${greet}`);
+    if (greet && npc) store.addMessage(`🐧 ${npc.name}：${greet}`);
     store.setNpcBubble(npc?.id ?? null, greet ?? '', now + 4500);
   }
   return {

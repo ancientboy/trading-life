@@ -215,6 +215,8 @@ export function WorldScene() {
             )}
             <Gugugaga
               accentColor={meta.color}
+              headwear={meta.headwear}
+              hatStyle={meta.hatStyle}
               label={meta.name}
               status={status}
               stress={char.stress}

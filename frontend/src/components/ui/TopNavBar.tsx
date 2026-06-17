@@ -7,6 +7,7 @@ import {
   Cog6ToothIcon as CogSolid, QuestionMarkCircleIcon as HelpSolid,
 } from '@heroicons/react/24/solid';
 import { useState } from 'react';
+import { PenguinAvatar } from './PenguinAvatar';
 import { useGameStore } from '../../store/useGameStore';
 import { AppIcon, NavIcon } from '../icons/AppIcon';
 
@@ -39,7 +40,9 @@ export function TopNavBar() {
           <span style={{ color: '#3d3530' }}>交易人生</span>
         </div>
         <button className="ui-btn" onClick={() => openModal('workshop')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px' }}>
-          <span style={{ fontSize: 20 }}>{mainAgent?.icon || '🐧'}</span>
+          {mainAgent
+            ? <PenguinAvatar color={mainAgent.color} headwear={mainAgent.headwear} hatStyle={mainAgent.hatStyle} size={28} />
+            : <PenguinAvatar color="#FFD700" headwear="scarf" size={28} />}
           <span style={{ fontSize: 11, color: '#8A92A0' }}>{mainAgent?.name?.split(' ')[0] || 'Agent'}</span>
         </button>
         <button className="ui-btn" onClick={() => openModal('workshop')} title="创建 Agent"

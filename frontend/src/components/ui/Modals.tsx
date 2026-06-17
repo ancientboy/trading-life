@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useGameStore, type ModalId } from '../../store/useGameStore';
 import { AgentWorkshop } from './AgentWorkshop';
+import { PenguinAvatar } from './PenguinAvatar';
 import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
 
@@ -56,9 +57,12 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
     case 'strategy':
       return d ? (
         <div style={{ color: '#3d3530' }}>
-          <div style={{ marginBottom: 12, padding: 10, background: '#faf6ef', borderRadius: 8 }}>
-            <div style={{ fontWeight: 700 }}>{d.icon} {d.name}</div>
-            <div style={{ fontSize: 12, color: '#8a7e72' }}>{d.strategy} · {d.market} · {d.interval}</div>
+          <div style={{ marginBottom: 12, padding: 10, background: '#faf6ef', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={40} />
+            <div>
+              <div style={{ fontWeight: 700 }}>{d.name}</div>
+              <div style={{ fontSize: 12, color: '#8a7e72' }}>{d.strategy} · {d.market} · {d.interval}</div>
+            </div>
           </div>
           <pre style={{ padding: 10, background: '#faf6ef', borderRadius: 8, fontSize: 11, lineHeight: 1.5, maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
             {soulMd || '加载中…'}
@@ -84,7 +88,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
           {Object.values(agents).sort((a, b) => (b.data.pnl || 0) - (a.data.pnl || 0)).map((a, i) => (
             <div key={a.agentId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px dashed #eee8dc' }}>
               <span style={{ width: 20, color: i < 3 ? '#d4af37' : '#999' }}>{i + 1}</span>
-              <span style={{ fontSize: 20 }}>{a.data.icon}</span>
+              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={28} />
               <span style={{ flex: 1, fontWeight: 600 }}>{a.data.name}</span>
               <span className={(a.data.pnl || 0) >= 0 ? 'profit' : 'loss'}>{(a.data.pnl || 0) >= 0 ? '+' : ''}${Math.round(a.data.pnl || 0)}</span>
             </div>
@@ -157,8 +161,11 @@ function LeisureModal({ type, title, lucide, items }: {
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
           {agent && (
-            <div style={{ marginTop: 8, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12 }}>
-              服务对象：<b>{agent.data.icon} {agent.data.name}</b> · 压力 {Math.round(agent.stress)}%
+            <div style={{ marginTop: 8, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>服务对象：</span>
+              <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} size={24} />
+              <b>{agent.data.name}</b>
+              <span>· 压力 {Math.round(agent.stress)}%</span>
             </div>
           )}
         </div>

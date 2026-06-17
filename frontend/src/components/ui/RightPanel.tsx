@@ -5,6 +5,7 @@ import { fetchAgentProfile, saveAgentConfig, saveAgentSoul } from '../../lib/api
 import type { CharState, Position, TradeRecord } from '../../lib/constants';
 import { AppIcon } from '../icons/AppIcon';
 import { ProfitIcon, LossIcon, PieAssetIcon } from '../icons/phosphorIcons';
+import { PenguinAvatar } from './PenguinAvatar';
 
 const TABS: { id: RightTab; label: string }[] = [
   { id: 'hall', label: '交易大厅' },
@@ -168,7 +169,7 @@ export function RightPanel() {
     return (
       <>
         <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
-          <span style={{ fontSize: 32 }}>{d.icon}</span>
+          <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={44} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700 }}>{d.name}</div>
             <div style={{ fontSize: 11, color: '#8a7e72' }}>{d.desc}</div>
@@ -279,7 +280,10 @@ export function RightPanel() {
           <div style={{ marginBottom: 12, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>当前在此的 Agent</div>
             {leisureAgents.map(a => (
-              <div key={a.agentId} style={{ marginTop: 4 }}>{a.data.icon} {a.data.name}</div>
+              <div key={a.agentId} style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={22} />
+                <span>{a.data.name}</span>
+              </div>
             ))}
           </div>
         )}
@@ -310,7 +314,10 @@ export function RightPanel() {
         {allPositions.length === 0 && <p style={{ color: '#999', fontSize: 12 }}>暂无持仓</p>}
         {allPositions.map(({ agent: a, pos }, i) => (
           <div key={i} style={{ marginBottom: 8, padding: 8, background: '#faf6ef', borderRadius: 8, cursor: 'pointer' }} onClick={() => selectAgent(a.agentId)}>
-            <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 4 }}>{a.data.icon} {a.data.name}</div>
+            <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={20} />
+              <span>{a.data.name}</span>
+            </div>
             <PositionRow pos={pos} />
           </div>
         ))}
@@ -318,8 +325,11 @@ export function RightPanel() {
         <div style={{ fontWeight: 600, fontSize: 13, margin: '12px 0 8px' }}>Agent 资金分布</div>
         {agentList.map(a => (
           <div key={a.agentId} style={{ marginBottom: 6, padding: 8, background: '#faf6ef', borderRadius: 8, cursor: 'pointer' }} onClick={() => selectAgent(a.agentId)}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 600 }}>{a.data.icon} {a.data.name}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={22} />
+                {a.data.name}
+              </span>
               <span className={(a.data.pnl || 0) >= 0 ? 'profit' : 'loss'} style={{ fontSize: 12 }}>
                 {(a.data.pnl || 0) >= 0 ? '+' : ''}${Math.round(a.data.pnl || 0)}
               </span>
@@ -344,7 +354,10 @@ export function RightPanel() {
     }
     return (
       <>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>{d.icon} {d.name}</div>
+        <div style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={32} />
+          {d.name}
+        </div>
         <Row k="策略类型" v={d.strategy || '--'} />
         <Row k="交易市场" v={d.market || '--'} />
         <Row k="周期" v={d.interval || '--'} />
@@ -391,7 +404,7 @@ function AgentCard({ char, selected, onSelect }: { char: CharState; selected: bo
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 22 }}>{d.icon}</span>
+        <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 13 }}>{d.name}</div>
           <div style={{ fontSize: 10, color: '#8a7e72' }}>

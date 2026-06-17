@@ -140,6 +140,8 @@ function ZoneAgents({ zone }: { zone: ZoneId }) {
             {isMassage && char.stress < 45 && <SceneSprite id="healStar" position={[0, 2.3, 0]} scale={0.34} />}
             <Gugugaga
               accentColor={meta.color}
+              headwear={meta.headwear}
+              hatStyle={meta.hatStyle}
               label={meta.name}
               status={status}
               stress={char.stress}
