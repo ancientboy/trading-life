@@ -7,8 +7,9 @@ import { OfficePath } from '../lib/pathfinding';
 import { WORLD_MAP, ZONE_CAMERA } from '../lib/worldMap';
 import { SIDEBAR_TO_ZONE, ZONE_TO_RIGHT_TAB } from '../lib/zones';
 import { ensureHallPathGraph } from '../lib/hallLayout';
+import { rebuildNavGraph, assignAgentSeatSlots } from '../lib/navGraph';
 import { paperToWorld } from '../lib/zoneProjection';
-import { syncFurnitureToPathfinding, getActivitySeatPaper, greetingForActivity, npcForZone } from '../lib/zoneFurniture';
+import { syncFurnitureToPathfinding, getActivitySeatPaper, greetingForActivity, npcForZone, resolveActivitySlot } from '../lib/zoneFurniture';
 import {
   loadCustomAgentMeta, saveCustomAgentMeta, registerCustomAgentSlots,
   nextCustomAgentId, type CustomAgentDraft,
@@ -302,6 +303,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().addMessage('工位已满，最多再创建 3 个自定义 Agent');
       return false;
     }
+    assignAgentSeatSlots(OfficePath);
     const meta: AgentMeta = {
       id,
       name: draft.name.trim() || `Agent ${id}`,
@@ -379,15 +381,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     syncFurnitureToPathfinding(OfficePath.nodes, 'restaurant');
     syncFurnitureToPathfinding(OfficePath.nodes, 'casino');
     syncFurnitureToPathfinding(OfficePath.nodes, 'hall');
+    rebuildNavGraph(OfficePath);
     invalidateCollisionCache();
     const customMeta = loadCustomAgentMeta();
-    const bedPool = ['bed_1', 'bed_2', 'bed_3', 'bed_4', 'bed_5', 'bed_6'];
-    const pokerPool = ['poker_s1', 'poker_s2', 'poker_s3', 'poker_s4', 'poker_s5', 'poker_s6', 'poker_s7', 'poker_s8'];
     Object.entries(customMeta).forEach(([id], i) => {
       if (!OfficePath.deskByAgent[id]) registerCustomAgentSlots(OfficePath, id, i);
-      OfficePath.massageByAgent[id] = bedPool[i % 6];
-      OfficePath.pokerByAgent[id] = pokerPool[i % 8];
     });
+    assignAgentSeatSlots(OfficePath);
 
     const agents: Record<string, CharState> = {};
     const allIds = new Set([...Object.keys(AGENT_META), ...Object.keys(customMeta)]);
@@ -564,7 +564,13 @@ export function onPathComplete(char: CharState, now: number): CharState {
   if (node === OfficePath.boothByAgent[char.agentId] || node?.startsWith('rest_l')) return startActivity(char, 'rest', now, 9000);
   if (node === OfficePath.massageByAgent[char.agentId] || node?.startsWith('bed_')) return startActivity(char, 'massage', now, 10000);
   if (node === OfficePath.dineByAgent[char.agentId] || node?.startsWith('dine_')) return startActivity(char, 'dine', now, 9000);
-  if (node === OfficePath.pokerByAgent[char.agentId] || node?.startsWith('poker_')) return startActivity(char, 'poker', now, 12000);
+  if (node === OfficePath.pokerByAgent[char.agentId] || node?.startsWith('poker_s')) return startActivity(char, 'poker', now, 12000);
+  if (node?.startsWith('seat_')) {
+    return {
+      ...char, destNode: node, isWalking: false, pathQueue: [],
+      activityPose: 'desk', facing: 'n' as const,
+    };
+  }
   return { ...char, destNode: null, isWalking: false, pathQueue: [] };
 }
 
@@ -576,12 +582,15 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   const nodeId = char.destNode || seatMap[activity!]?.[char.agentId];
   const zoneMap = { dine: 'restaurant' as const, massage: 'spa' as const, poker: 'casino' as const, rest: 'hall' as const };
   const zone = activity ? zoneMap[activity] : null;
-  const paperSeat = activity && zone ? getActivitySeatPaper(activity, nodeId, char.agentId) : null;
-  const pos = nodeId ? OfficePath.nodes[nodeId] : null;
-  let wx = pos?.x ?? char.x, wz = pos?.z ?? char.z;
-  if (paperSeat && zone) {
-    const w = paperToWorld(zone, paperSeat.px, paperSeat.py);
+  const slot = activity ? resolveActivitySlot(activity, nodeId, char.agentId) : null;
+  let wx = char.x, wz = char.z;
+  let facing = char.facing;
+  let activityPose: CharState['activityPose'] = 'sit';
+  if (slot && zone) {
+    const w = paperToWorld(zone, slot.px, slot.py);
     wx = w.x; wz = w.z;
+    facing = slot.facing;
+    activityPose = slot.pose;
   }
   const store = useGameStore.getState();
   if (zone && activity) {
@@ -592,9 +601,8 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   }
   return {
     ...char, activity, activityUntil: now + dur + Math.random() * 5000,
-    travelIntent: null, isWalking: false, pathQueue: [], destNode: nodeId,
-    x: wx, z: wz,
-    facing: activity === 'massage' ? 's' : activity === 'poker' ? 'n' : 's',
+    travelIntent: null, isWalking: false, pathQueue: [], destNode: slot?.slotId ?? nodeId,
+    x: wx, z: wz, facing, activityPose,
     stress: activity === 'massage' ? Math.max(0, char.stress - 50)
       : activity === 'dine' ? Math.max(0, char.stress - 30)
       : activity === 'poker' ? 0

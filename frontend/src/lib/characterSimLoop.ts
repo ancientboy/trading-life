@@ -42,7 +42,7 @@ export function tickCharacterSim(dt: number) {
 
     if (c.activity && now < c.activityUntil) return;
     if (c.activity && now >= c.activityUntil) {
-      c = { ...c, activity: null, activityUntil: 0, moveTimer: 0, nextMoveTime: 1500, travelIntent: null };
+      c = { ...c, activity: null, activityUntil: 0, activityPose: undefined, moveTimer: 0, nextMoveTime: 1500, travelIntent: null };
       c = assignPath(c, OfficePath.deskByAgent[c.agentId]);
       addMessage(`${c.data.name} 结束休闲，返回工位`);
       patchChar(c.agentId, c);
@@ -97,9 +97,18 @@ export function tickCharacterSim(dt: number) {
           const nx = c.x + (dx / dist) * step;
           const nz = c.z + (dz / dist) * step;
           const moved = moveWithCollision(c.x, c.z, nx, nz);
-          if (moved.blocked && moved.x === c.x && moved.z === c.z) {
+          const newDist = Math.hypot(wp.x - moved.x, wp.z - moved.z);
+          if (newDist < dist - 0.04) {
+            stuckFrames.set(c.agentId, 0);
+            c.x = moved.x;
+            c.z = moved.z;
+          } else {
             const stuck = (stuckFrames.get(c.agentId) ?? 0) + 1;
             stuckFrames.set(c.agentId, stuck);
+            if (moved.x !== c.x || moved.z !== c.z) {
+              c.x = moved.x;
+              c.z = moved.z;
+            }
             if (stuck >= STUCK_SKIP_FRAMES) {
               c.x = wp.x;
               c.z = wp.z;
@@ -107,10 +116,6 @@ export function tickCharacterSim(dt: number) {
               stuckFrames.set(c.agentId, 0);
               if (c.pathIndex >= c.pathQueue.length) c = onPathComplete(c, now);
             }
-          } else {
-            stuckFrames.set(c.agentId, 0);
-            c.x = moved.x;
-            c.z = moved.z;
           }
         }
       }

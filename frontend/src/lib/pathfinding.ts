@@ -1,4 +1,5 @@
 import { p2 } from './constants';
+import { nearestNavNode } from './navGraph';
 
 export const OfficePath = {
   nodes: {
@@ -55,16 +56,11 @@ export const OfficePath = {
     return adj;
   },
   nearestNode(x: number, z: number) {
-    let best = '', bestD = Infinity;
-    Object.entries(this.nodes).forEach(([id, n]) => {
-      const d = (n.x - x) ** 2 + (n.z - z) ** 2;
-      if (d < bestD) { bestD = d; best = id; }
-    });
-    return best;
+    return nearestNavNode(this.nodes, x, z);
   },
   findPath(fromId: string, toId: string) {
     if (fromId === toId) return [this.nodes[toId]];
-    const adj = this._buildEdges();
+    const adj = this._edges ?? this._buildEdges();
     const q: string[][] = [[fromId]];
     const seen = new Set([fromId]);
     while (q.length) {

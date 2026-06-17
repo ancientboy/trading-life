@@ -4,12 +4,6 @@ import type { AgentHeadwear, HatStyleId } from './agentAppearance';
 
 /** 自定义 Agent 可分配的额外工位（第二排 6/7/8） */
 export const EXTRA_DESK_NODES = ['seat_6', 'seat_7', 'seat_8'] as const;
-const LEISURE_POOL = {
-  booth: ['rest_l_1', 'rest_l_2'],
-  massage: ['bed_1', 'bed_2', 'bed_3', 'bed_4', 'bed_5', 'bed_6'],
-  dine: ['dine_1', 'dine_2', 'dine_3', 'dine_4', 'dine_5', 'dine_6'],
-  poker: ['poker_s1', 'poker_s2', 'poker_s3', 'poker_s4', 'poker_s5', 'poker_s6', 'poker_s7', 'poker_s8'],
-};
 
 const CUSTOM_KEY = 'trading-life-custom-agents';
 
@@ -42,7 +36,7 @@ export function saveCustomAgentMeta(all: Record<string, AgentMeta>) {
   localStorage.setItem(CUSTOM_KEY, JSON.stringify(all));
 }
 
-/** 注册自定义 Agent 到寻路图（工位 + 休闲位） */
+/** 注册自定义 Agent 到寻路图（仅分配工位，休闲座位由 assignAgentSeatSlots 统一分配） */
 export function registerCustomAgentSlots(
   OfficePath: {
     deskByAgent: Record<string, string>;
@@ -52,17 +46,12 @@ export function registerCustomAgentSlots(
     pokerByAgent: Record<string, string>;
   },
   agentId: string,
-  index: number,
+  _index: number,
 ): string | null {
   const deskNode = EXTRA_DESK_NODES.find(n => !Object.values(OfficePath.deskByAgent).includes(n));
   if (!deskNode) return null;
 
-  const i = index % 3;
   OfficePath.deskByAgent[agentId] = deskNode;
-  OfficePath.boothByAgent[agentId] = LEISURE_POOL.booth[i];
-  OfficePath.massageByAgent[agentId] = LEISURE_POOL.massage[i % LEISURE_POOL.massage.length];
-  OfficePath.dineByAgent[agentId] = LEISURE_POOL.dine[i % LEISURE_POOL.dine.length];
-  OfficePath.pokerByAgent[agentId] = LEISURE_POOL.poker[i];
   return deskNode;
 }
 

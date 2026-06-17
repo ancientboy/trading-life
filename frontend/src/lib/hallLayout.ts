@@ -67,33 +67,21 @@ export function deskChartSeed(deskId: string, agentId?: string): number {
   return Math.abs(h);
 }
 
-/** 大厅碰撞障碍（纸面坐标矩形） */
+/** 大厅碰撞障碍 — 仅桌面，不挡椅子接近区与沙发区 */
 export function hallObstacleRects(): { x: number; y: number; w: number; h: number }[] {
   const rects: { x: number; y: number; w: number; h: number }[] = [];
   const dw = 82 * HALL_GRID.deskScale;
   const dh = 50 * HALL_GRID.deskScale;
   HALL_DESKS_8.forEach(d => {
     const p = deskPaperPos(d.row, d.col);
-    rects.push({ x: p.px - dw / 2, y: p.py - dh / 2, w: dw, h: dh });
+    rects.push({ x: p.px - dw / 2, y: p.py - dh / 2, w: dw, h: dh * 0.85 });
   });
-  rects.push({ x: 120, y: 470, w: 130, h: 70 });
-  rects.push({ x: 440, y: 470, w: 130, h: 70 });
-  rects.push({ x: 10, y: 280, w: 90, h: 55 });
-  rects.push({ x: 200, y: 55, w: 320, h: 75 });
+  // 行情大屏 — 缩小为屏幕本体，前方走道可通行
+  rects.push({ x: 240, y: 68, w: 240, h: 48 });
   return rects;
 }
 
-/** 大厅内部走道节点（纸面坐标） */
-const HALL_WALK = {
-  row0Y: 278,
-  row1Y: 428,
-  hubX: 340,
-  hubY: 360,
-  scrX: 360,
-  scrY: 95,
-};
-
-/** 同步工位/走道/枢纽到寻路，并连接 8 工位图 */
+/** 同步工位节点 — 完整导航图由 navGraph.rebuildNavGraph 构建 */
 export function ensureHallPathGraph(
   OfficePath: {
     nodes: Record<string, { x: number; z: number }>;
@@ -102,46 +90,6 @@ export function ensureHallPathGraph(
   },
 ) {
   syncHallDesksToPathfinding(OfficePath.nodes);
-
-  HALL_DESKS_8.forEach(d => {
-    const px = HALL_GRID.originX + d.col * HALL_GRID.colGap;
-    OfficePath.nodes[`walk_r0_c${d.col}`] = paperToWorld('hall', px, HALL_WALK.row0Y);
-    OfficePath.nodes[`walk_r1_c${d.col}`] = paperToWorld('hall', px, HALL_WALK.row1Y);
-  });
-  OfficePath.nodes.u_ctr = paperToWorld('hall', HALL_WALK.hubX, HALL_WALK.hubY);
-  OfficePath.nodes.scr_ctr = paperToWorld('hall', HALL_WALK.scrX, HALL_WALK.scrY);
-  OfficePath.nodes.hall_coffee = paperToWorld('hall', HALL_COFFEE.px, HALL_COFFEE.py);
-
-  OfficePath._edges = null;
-  const edges = OfficePath._buildEdges();
-  const add = (a: string, b: string) => {
-    if (!OfficePath.nodes[a] || !OfficePath.nodes[b]) return;
-    if (!edges[a]) edges[a] = [];
-    if (!edges[b]) edges[b] = [];
-    if (!edges[a].includes(b)) edges[a].push(b);
-    if (!edges[b].includes(a)) edges[b].push(a);
-  };
-
-  const row0 = ['seat_xau', 'seat_maj', 'seat_alt', 'seat_new'];
-  const row1 = ['seat_mom', 'seat_6', 'seat_7', 'seat_8'];
-  row0.forEach((id, c) => add(id, `walk_r0_c${c}`));
-  row1.forEach((id, c) => add(id, `walk_r1_c${c}`));
-  for (let c = 0; c < 3; c++) {
-    add(`walk_r0_c${c}`, `walk_r0_c${c + 1}`);
-    add(`walk_r1_c${c}`, `walk_r1_c${c + 1}`);
-  }
-  for (let c = 0; c < 4; c++) add(`walk_r0_c${c}`, `walk_r1_c${c}`);
-  add('walk_r1_c1', 'u_ctr');
-  add('walk_r1_c2', 'u_ctr');
-  add('u_ctr', 'scr_ctr');
-  add('walk_r1_c0', 'rest_l_1');
-  add('walk_r1_c3', 'rest_l_2');
-  add('walk_r1_c3', 'hall_coffee');
-  add('walk_r1_c3', 'door_ts');
-  add('walk_r0_c2', 'door_tr');
-  add('door_ts', 'spa_c');
-  add('door_tr', 'rest_d');
-  add('door_sc', 'cas_d');
 }
 
 export function paperToWorldHall(px: number, py: number) {

@@ -1,5 +1,6 @@
 import type { ZoneId } from '../store/useGameStore';
-import { PAPER, paperToWorld, worldToPaper } from './zoneProjection';
+import { paperToWorld, worldToPaper } from './zoneProjection';
+import { HALL_DESKS_8, seatPaperPos } from './hallLayout';
 
 /** 纸面坐标系下的分区家具（720×640） */
 export interface PaperPoint { px: number; py: number }
@@ -171,23 +172,71 @@ export function syncFurnitureToPathfinding(
   nodes: Record<string, { x: number; z: number }>,
   zone: ZoneId,
 ) {
-  SPA_BEDS.forEach(b => {
-    const w = paperSeatToWorld(zone, b.seat);
-    nodes[b.id] = w;
-  });
-  RESTAURANT_TABLES.forEach(t => {
-    const w = paperSeatToWorld(zone, { px: t.px, py: t.py });
-    nodes[t.id] = w;
-    t.chairs.forEach(c => { nodes[c.id] = paperSeatToWorld(zone, c); });
-  });
-  CASINO_SEATS.forEach(s => {
-    nodes[s.id] = paperSeatToWorld(zone, s);
-  });
-  nodes.poker_table = paperSeatToWorld(zone, { px: CASINO_TABLE.px, py: CASINO_TABLE.py });
-  HALL_REST_BOOTHS.forEach(b => {
-    nodes[b.id] = paperSeatToWorld(zone, { px: b.px, py: b.py });
-    b.seats.forEach(s => { nodes[s.id] = paperSeatToWorld(zone, s); });
-  });
+  if (zone === 'spa') {
+    SPA_BEDS.forEach(b => { nodes[b.id] = paperSeatToWorld(zone, b.seat); });
+    return;
+  }
+  if (zone === 'restaurant') {
+    RESTAURANT_TABLES.forEach(t => {
+      nodes[t.id] = paperSeatToWorld(zone, { px: t.px, py: t.py });
+      t.chairs.forEach(c => { nodes[c.id] = paperSeatToWorld(zone, c); });
+    });
+    return;
+  }
+  if (zone === 'casino') {
+    CASINO_SEATS.forEach(s => { nodes[s.id] = paperSeatToWorld(zone, s); });
+    nodes.poker_table = paperSeatToWorld(zone, { px: CASINO_TABLE.px, py: CASINO_TABLE.py });
+    return;
+  }
+  if (zone === 'hall') {
+    HALL_REST_BOOTHS.forEach(b => {
+      nodes[b.id] = paperSeatToWorld(zone, { px: b.px, py: b.py });
+      b.seats.forEach(s => { nodes[s.id] = paperSeatToWorld(zone, s); });
+    });
+  }
+}
+
+export type ActivityPose = 'stand' | 'sit' | 'lie' | 'desk';
+
+export interface ActivitySlot {
+  px: number;
+  py: number;
+  facing: 'n' | 's' | 'e' | 'w';
+  pose: ActivityPose;
+  slotId: string;
+}
+
+export function resolveActivitySlot(
+  activity: string,
+  nodeId: string | null,
+  agentId: string,
+): ActivitySlot | null {
+  if (activity === 'massage') {
+    const bed = SPA_BEDS.find(b => b.id === nodeId)
+      || SPA_BEDS.find(b => b.id === nodeId?.replace(/_lie$/, ''))
+      || SPA_BEDS[agentId.length % SPA_BEDS.length];
+    if (!bed) return null;
+    return { px: bed.seat.px, py: bed.seat.py, facing: 'n', pose: 'lie', slotId: bed.id };
+  }
+  if (activity === 'dine') {
+    const chair = RESTAURANT_TABLES.flatMap(t => t.chairs).find(c => c.id === nodeId);
+    if (chair) return { ...chair, pose: 'sit', slotId: chair.id };
+    const table = RESTAURANT_TABLES.find(t => t.id === nodeId) || RESTAURANT_TABLES[agentId.length % RESTAURANT_TABLES.length];
+    const ch = table.chairs[agentId.length % table.chairs.length];
+    return { ...ch, pose: 'sit', slotId: ch.id };
+  }
+  if (activity === 'poker') {
+    const seat = CASINO_SEATS.find(s => s.id === nodeId) || CASINO_SEATS[agentId.length % CASINO_SEATS.length];
+    return { px: seat.px, py: seat.py, facing: seat.facing, pose: 'sit', slotId: seat.id };
+  }
+  if (activity === 'rest') {
+    const seat = HALL_REST_BOOTHS.flatMap(b => b.seats).find(s => s.id === nodeId);
+    if (seat) return { ...seat, pose: 'sit', slotId: seat.id };
+    const booth = HALL_REST_BOOTHS.find(b => b.id === nodeId) || HALL_REST_BOOTHS[0];
+    const s = booth.seats[agentId.length % booth.seats.length];
+    return { ...s, pose: 'sit', slotId: s.id };
+  }
+  return null;
 }
 
 export function getActivitySeatPaper(
@@ -195,36 +244,26 @@ export function getActivitySeatPaper(
   nodeId: string | null,
   agentId: string,
 ): PaperPoint | null {
-  if (activity === 'massage') {
-    const bed = SPA_BEDS.find(b => b.id === nodeId) || SPA_BEDS.find(b => b.id === `bed_${(agentId.length % 6) + 1}`);
-    return bed?.seat ?? null;
-  }
-  if (activity === 'dine') {
-    const table = RESTAURANT_TABLES.find(t => t.id === nodeId);
-    if (table) return table.chairs[agentId.length % table.chairs.length];
-    const t = RESTAURANT_TABLES.find(t => t.id === nodeId?.replace(/_c\d$/, ''));
-    return t?.chairs[0] ?? null;
-  }
-  if (activity === 'poker') {
-    const seat = CASINO_SEATS.find(s => s.id === nodeId);
-    if (seat) return seat;
-    return CASINO_SEATS.find(s => s.id === `poker_s${(agentId.length % 8) + 1}`) ?? null;
-  }
-  if (activity === 'rest') {
-    const booth = HALL_REST_BOOTHS.find(b => b.id === nodeId);
-    if (booth) return booth.seats[agentId.length % booth.seats.length];
-    return HALL_REST_BOOTHS[0]?.seats[0] ?? null;
-  }
-  return null;
+  const slot = resolveActivitySlot(activity, nodeId, agentId);
+  return slot ? { px: slot.px, py: slot.py } : null;
 }
 
 export function getAgentPaperPos(
   zone: ZoneId,
-  char: { x: number; z: number; activity: string | null; destNode: string | null; agentId: string },
+  char: {
+    x: number; z: number; activity: string | null; destNode: string | null; agentId: string;
+    activityPose?: ActivityPose;
+  },
 ): { px: number; py: number } {
   if (char.activity) {
     const seat = getActivitySeatPaper(char.activity, char.destNode, char.agentId);
     if (seat) return seat;
+  }
+  if (char.activityPose === 'desk' && zone === 'hall') {
+    const desk = HALL_DESKS_8.find(d => d.seatId === char.destNode)
+      || HALL_DESKS_8[char.agentId.length % HALL_DESKS_8.length];
+    const seat = seatPaperPos(desk.row, desk.col);
+    return { px: seat.px, py: seat.py };
   }
   const w = worldToPaper(zone, char.x, char.z);
   return { px: w.x, py: w.y };

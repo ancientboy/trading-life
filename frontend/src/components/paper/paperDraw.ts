@@ -107,22 +107,24 @@ function drawMiniChart(
   }
 }
 
-/** 角色统一入口 — 根据朝向渲染正/背/侧面；就座时绘制坐姿 */
+/** 角色统一入口 — 根据朝向/姿势渲染正/背/侧面；就座/躺卧时绘制对应姿态 */
 export function drawAgent(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
   opts: {
     selected?: boolean; trading?: boolean; walking?: boolean; t?: number;
     activity?: AgentActivity; facing?: AgentFacing; sitting?: boolean;
+    pose?: 'stand' | 'sit' | 'lie' | 'desk';
     headwear?: AgentHeadwear; hatStyle?: HatStyleId;
   },
 ) {
   const act = opts.activity;
-  if (act === 'massage') {
-    drawAgentTop(ctx, x, y, color, { ...opts, facing: 's' });
+  const pose = opts.pose ?? (act === 'massage' ? 'lie' : (opts.sitting || act === 'dine' || act === 'poker' || act === 'rest') ? 'sit' : 'stand');
+  if (pose === 'lie') {
+    drawAgentTop(ctx, x, y, color, { ...opts, facing: 's', activity: act ?? 'massage' });
     return;
   }
-  if (opts.sitting || act === 'dine' || act === 'poker' || act === 'rest') {
-    drawAgentSitting(ctx, x, y, color, opts);
+  if (pose === 'sit' || pose === 'desk') {
+    drawAgentSitting(ctx, x, y, color, { ...opts, pose, activity: act });
     return;
   }
   const facing = opts.facing ?? 's';
@@ -135,22 +137,44 @@ function drawAgentSitting(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
   opts: {
     selected?: boolean; t?: number; activity?: AgentActivity; facing?: AgentFacing;
-    headwear?: AgentHeadwear; hatStyle?: HatStyleId;
+    pose?: 'sit' | 'desk';
+    headwear?: AgentHeadwear; hatStyle?: HatStyleId; trading?: boolean;
   },
 ) {
   const t = opts.t ?? 0;
-  const py = y - 4;
+  const facing = opts.facing ?? 's';
+  const py = y + (opts.activity === 'dine' ? Math.abs(Math.sin(t * 3)) * 1.5 : 0);
   const hw = agentHw(opts);
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 20, 18, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  dropShadow(ctx, x, py + 8, 30, 24, 0.1);
+  dropShadow(ctx, x, py + 6, 30, 22, 0.1);
   ctx.save(); ctx.translate(x, 0);
-  drawPenguinBody(ctx, py - 2);
-  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 2, color, 'front');
-  drawPenguinFace(ctx, py - 2);
-  if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'front');
+  if (facing === 'e' || facing === 'w') {
+    const flip = facing === 'w' ? -1 : 1;
+    ctx.fillStyle = PENGUIN.foot;
+    ctx.beginPath(); ctx.ellipse(flip * 6, py + 10, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    drawPenguinBody(ctx, py - 4, true);
+    if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 4, color, 'side', flip);
+    drawPenguinFace(ctx, py - 4, true, flip);
+    if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 6, hw.hatStyle, color, 'side', flip);
+  } else if (facing === 'n') {
+    drawPenguinBody(ctx, py - 4);
+    if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 4, color, 'back');
+    else if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 6, hw.hatStyle, color, 'back');
+  } else {
+    drawPenguinBody(ctx, py - 2);
+    if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 2, color, 'front');
+    drawPenguinFace(ctx, py - 2);
+    if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 4, hw.hatStyle, color, 'front');
+    if (opts.pose === 'desk' || opts.trading) {
+      ctx.fillStyle = '#4285F4';
+      ctx.fillRect(-14, py - 18, 28, 5);
+      ctx.fillStyle = '#1e1e22';
+      ctx.fillRect(-10, py - 16, 20, 3);
+    }
+  }
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }

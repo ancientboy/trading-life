@@ -253,13 +253,28 @@ export function renderZone(
 }
 
 function agentFacing(char: CharState): CharState['facing'] {
-  if (char.activity) return char.facing ?? 's';
+  if (char.activity || char.activityPose === 'desk') return char.facing ?? 'n';
   const desk = OfficePath.deskByAgent[char.agentId];
   const atDesk = desk && !char.isWalking && !char.activity && !char.travelIntent
     && OfficePath.nodes[desk]
     && Math.hypot(char.x - OfficePath.nodes[desk].x, char.z - OfficePath.nodes[desk].z) < 1.2;
   if (atDesk && (char.state === 'trading' || char.state === 'scanning')) return 'n';
   return char.facing ?? 's';
+}
+
+function agentPose(char: CharState): CharState['activityPose'] | undefined {
+  if (char.activity) {
+    if (char.activityPose) return char.activityPose;
+    return char.activity === 'massage' ? 'lie' : 'sit';
+  }
+  const desk = OfficePath.deskByAgent[char.agentId];
+  const atDesk = desk && !char.isWalking && !char.travelIntent
+    && OfficePath.nodes[desk]
+    && Math.hypot(char.x - OfficePath.nodes[desk].x, char.z - OfficePath.nodes[desk].z) < 1.2;
+  if (atDesk && (char.state === 'trading' || char.state === 'scanning' || char.activityPose === 'desk')) {
+    return 'desk';
+  }
+  return char.isWalking ? 'stand' : char.activityPose;
 }
 
 export function renderAgents(
@@ -274,16 +289,17 @@ export function renderAgents(
     if (!visible(char)) return;
     const paper = getAgentPaperPos(zone, char);
     const s = pt(cam, paper.px, paper.py);
-    const sitting = !!char.activity && char.activity !== 'massage';
+    const pose = agentPose(char);
+    const trading = char.state === 'trading' || char.state === 'scanning';
     drawAgent(ctx, s.x, s.y, char.data.color, {
       selected: char.agentId === opts.selectedId,
-      trading: char.state === 'trading' || char.state === 'scanning',
+      trading,
       walking: char.isWalking,
       activity: char.activity,
       headwear: char.data.headwear,
       hatStyle: char.data.hatStyle,
       facing: agentFacing(char),
-      sitting,
+      pose,
       t: opts.t,
     });
     const showName = char.agentId === opts.selectedId || char.activity || char.isWalking;
