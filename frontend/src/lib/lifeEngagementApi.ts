@@ -101,7 +101,36 @@ export async function joinPokerRoom(roomId: string, agentId: string, seatId = ''
 
 export async function playPokerRound(roomId: string) {
   const r = await fetch(`${API}/pvp/poker/rooms/${roomId}/play`, { method: 'POST', headers: headers() });
-  return parse<{ ok: boolean; results?: unknown[]; winner?: unknown; pot?: number; error?: string }>(r);
+  return parse<{
+    ok: boolean;
+    results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
+    winner?: unknown; pot?: number; won?: number; balance?: number; error?: string;
+  }>(r);
+}
+
+/** 单人练习：1 真人 + 3 NPC，立即开牌 */
+export async function pokerSolo(agentId: string, buyIn = 30) {
+  const r = await fetch(`${API}/pvp/poker/solo`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, buy_in: buyIn }),
+  });
+  return parse<{
+    ok: boolean; mode?: string; room_id?: string; balance?: number; won?: number; pot?: number;
+    results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
+    error?: string; cost?: number;
+  }>(r);
+}
+
+/** 快速加入：有公开房则进房，满员自动开牌；无房则单人 vs NPC */
+export async function pokerQuickJoin(agentId: string, buyIn = 30) {
+  const r = await fetch(`${API}/pvp/poker/quick-join`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, buy_in: buyIn }),
+  });
+  return parse<{
+    ok: boolean; mode?: string; room_id?: string; balance?: number; won?: number; pot?: number;
+    message?: string; players?: number; joined?: boolean;
+    results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
+    error?: string; cost?: number;
+  }>(r);
 }
 
 export async function listSeatAuctions() {
