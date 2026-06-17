@@ -6,8 +6,6 @@ import { CanvasControls } from '../ui/CanvasControls';
 import { Modals } from '../ui/Modals';
 import { GameCanvas } from '../scene/GameCanvas';
 import { useGameStore } from '../../store/useGameStore';
-import { SIDEBAR_ICONS } from '../icons/sidebarIcons';
-import { NavIcon } from '../icons/AppIcon';
 
 export function AppShell() {
   const leftExpanded = useGameStore(s => s.leftSidebarExpanded);
@@ -33,7 +31,6 @@ export function AppShell() {
       <RightPanel />
       <Modals />
       <MessageToast />
-      <MobileTabBar />
     </div>
   );
 }

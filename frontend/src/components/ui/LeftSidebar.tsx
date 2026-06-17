@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore, type SidebarAction } from '../../store/useGameStore';
 import { SIDEBAR_ICONS } from '../icons/sidebarIcons';
 import { NavIcon } from '../icons/AppIcon';
 
 const MAIN: { id: SidebarAction; label: string }[] = [
   { id: 'hall', label: '交易大厅' },
-  { id: 'agents', label: '我的 Agent' },
+  { id: 'agents', label: 'Agent 工坊' },
   { id: 'strategy', label: '策略编辑器' },
   { id: 'positions', label: '持仓交易' },
 ];
@@ -31,43 +31,74 @@ export function LeftSidebar() {
   const toggleMinimalUi = useGameStore(s => s.toggleMinimalUi);
   const agents = useGameStore(s => s.agents);
   const [hover, setHover] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const apply = () => setIsMobile(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
 
   const leisureActive = Object.values(agents).some(c => c.activity === 'dine' || c.activity === 'massage' || c.activity === 'poker');
 
+  const handleNav = (item: SidebarAction) => {
+    if (isMobile) setExpanded(false);
+    navigateSidebar(item);
+  };
+
   return (
-    <aside className="left-sidebar" onMouseEnter={() => setExpanded(true)} onMouseLeave={() => setExpanded(false)}>
-      <div style={{ flex: 1, overflowY: 'auto', paddingTop: 8 }}>
+    <>
+      {isMobile && expanded && (
+        <button type="button" className="sidebar-drawer-scrim" aria-label="关闭菜单" onClick={() => setExpanded(false)} />
+      )}
+      <aside className={`left-sidebar${isMobile && expanded ? ' mobile-drawer-open' : ''}`}>
+      {isMobile && (
+        <button type="button" className="sidebar-menu-toggle" onClick={() => setExpanded(!expanded)} title="菜单">
+          {expanded ? '✕' : '☰'}
+        </button>
+      )}
+      <div
+        className="left-sidebar-scroll"
+        onMouseEnter={() => { if (!isMobile) setExpanded(true); }}
+        onMouseLeave={() => { if (!isMobile) setExpanded(false); }}
+      >
         {MAIN.map(item => (
-          <SidebarBtn key={item.id} id={item.id} label={item.label} expanded={expanded}
+          <SidebarBtn key={item.id} id={item.id} label={item.label} expanded={expanded || isMobile}
             active={active === item.id} hover={hover === item.id}
-            onHover={setHover} onClick={() => navigateSidebar(item.id)} />
+            onHover={setHover} onClick={() => handleNav(item.id)} />
         ))}
         <div className="sidebar-divider" />
         <div className="sidebar-section-label" style={{ display: expanded ? 'block' : 'none' }}>休闲传送</div>
         {LEISURE.map(item => (
-          <SidebarBtn key={item.id} id={item.id} label={item.label} expanded={expanded}
+          <SidebarBtn key={item.id} id={item.id} label={item.label} expanded={expanded || isMobile}
             active={active === item.id} hover={hover === item.id} badge={leisureActive}
-            onHover={setHover} onClick={() => navigateSidebar(item.id)} />
+            onHover={setHover} onClick={() => handleNav(item.id)} />
         ))}
         <div className="sidebar-divider" />
         {OTHER.map(item => (
-          <SidebarBtn key={item.id} id={item.id} label={item.label} expanded={expanded}
+          <SidebarBtn key={item.id} id={item.id} label={item.label} expanded={expanded || isMobile}
             active={active === item.id} hover={hover === item.id}
             onHover={setHover} onClick={() => {
+              if (isMobile) setExpanded(false);
               if (item.id === 'tasks') {
                 setRightTab('tasks');
                 openModal('tasks');
+              } else if (item.id === 'logs') {
+                useGameStore.setState({ rightPanelCollapsed: false, rightTab: 'hall' });
               } else {
                 navigateSidebar(item.id);
               }
             }} />
         ))}
       </div>
-      <div style={{ padding: '8px 0', borderTop: '1px dashed #e0d8cc' }}>
-        <SidebarBtn id="minimal" label="极简 UI" expanded={expanded} hover={hover === 'minimal'}
-          onHover={setHover} onClick={toggleMinimalUi} icons={SIDEBAR_ICONS.minimal} />
+      <div className="left-sidebar-footer">
+        <SidebarBtn id="minimal" label="极简 UI" expanded={expanded || isMobile} hover={hover === 'minimal'}
+          onHover={setHover} onClick={() => { if (isMobile) setExpanded(false); toggleMinimalUi(); }} icons={SIDEBAR_ICONS.minimal} />
       </div>
     </aside>
+    </>
   );
 }
 

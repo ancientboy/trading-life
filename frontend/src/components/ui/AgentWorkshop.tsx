@@ -132,7 +132,7 @@ export function AgentWorkshop() {
   if (mode === 'create') {
     const entertainment = draft.agentType === 'entertainment';
     return (
-      <div style={{ color: '#3d3530', maxHeight: 520, overflowY: 'auto' }}>
+      <div style={{ color: '#3d3530', maxHeight: 520, overflowY: 'auto' }} className="workshop-create">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>创建新 Agent</div>
           <button className="ui-btn" onClick={() => setMode('list')}>返回列表</button>
@@ -157,7 +157,7 @@ export function AgentWorkshop() {
           </span>
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'start' }}>
+        <div className="workshop-grid-create" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'start' }}>
           <div>
             <Field label="名称">
               <input value={draft.name}
@@ -256,7 +256,7 @@ export function AgentWorkshop() {
   const tabs = (['info', 'soul'] as const).concat(showConfigTab ? (['config'] as const) : []);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 16, minHeight: 360, color: '#3d3530' }}>
+    <div className="workshop-grid-list" style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 16, minHeight: 360, color: '#3d3530' }}>
       <div style={{ borderRight: '1px dashed #e0d8cc', paddingRight: 12, overflowY: 'auto', maxHeight: 420 }}>
         <button className="ui-btn" style={{
           width: '100%', marginBottom: 10, padding: '8px 0', display: 'flex', alignItems: 'center',

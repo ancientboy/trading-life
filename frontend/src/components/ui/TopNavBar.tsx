@@ -7,7 +7,6 @@ import {
   Cog6ToothIcon as CogSolid, QuestionMarkCircleIcon as HelpSolid,
 } from '@heroicons/react/24/solid';
 import { useState } from 'react';
-import { PenguinAvatar } from './PenguinAvatar';
 import { useGameStore } from '../../store/useGameStore';
 import { AppIcon, NavIcon } from '../icons/AppIcon';
 import { getStoredAccount, clearAuthSession } from '../../lib/lifeAuth';
@@ -26,17 +25,13 @@ export function TopNavBar() {
   const ticker = useGameStore(s => s.ticker);
   const overview = useGameStore(s => s.overview);
   const points = useGameStore(s => s.points);
-  const selectedAgentId = useGameStore(s => s.selectedAgentId);
-  const agents = useGameStore(s => s.agents);
   const openModal = useGameStore(s => s.openModal);
-  const openWorkshop = useGameStore(s => s.openWorkshop);
   const [hover, setHover] = useState<string | null>(null);
 
+  const account = getStoredAccount();
   const pnl = overview.total_pnl || 0;
   const capital = overview.total_capital || 0;
   const pnlPct = capital ? (pnl / capital * 100) : 0;
-  const mainAgent = selectedAgentId ? agents[selectedAgentId]?.data : Object.values(agents)[0]?.data;
-  const account = getStoredAccount();
 
   const logout = async () => {
     await authLogout().catch(() => {});
@@ -46,25 +41,14 @@ export function TopNavBar() {
 
   return (
     <header className="top-nav">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 200 }}>
+      <div className="top-nav-brand">
         <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: 0.3, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span className="brand-mark" aria-hidden>🐧</span>
           <span style={{ color: '#3d3530' }}>交易人生</span>
         </div>
-        <button className="ui-btn" onClick={() => openWorkshop('list')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px' }}
-          title="我的 Agent">
-          {mainAgent
-            ? <PenguinAvatar color={mainAgent.color} headwear={mainAgent.headwear} hatStyle={mainAgent.hatStyle} size={28} />
-            : <PenguinAvatar color="#FFD700" headwear="scarf" size={28} />}
-          <span style={{ fontSize: 11, color: '#8A92A0' }}>{mainAgent?.name?.split(' ')[0] || 'Agent'}</span>
-        </button>
-        <button className="ui-btn" onClick={() => openWorkshop('create')} title="创建 Agent"
-          style={{ padding: '4px 8px', fontSize: 11, color: '#48d093', borderColor: '#48d093' }}>
-          + 创建
-        </button>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', gap: 12 }}>
+      <div className="top-nav-stats">
         <div className="stat-card">
           <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <AppIcon icon={WalletIcon} size="mini" color="gold" /> 总资产
@@ -95,7 +79,7 @@ export function TopNavBar() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+      <div className="top-nav-actions">
         {NAV_BTNS.map(b => (
           <button
             key={b.id}

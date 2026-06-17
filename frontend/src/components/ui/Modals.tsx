@@ -100,7 +100,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
         <div style={{ fontSize: 13, lineHeight: 1.6, color: '#6b5e4e' }}>
           <p><b>五大分区：</b>交易大厅 · 前厅接待 · 餐厅 · 按摩 · 德州扑克</p>
           <p><b>场景操作：</b>点击家具（餐桌/按摩床/牌桌/包厢）派遣 Agent；点击箭头切换区域；拖拽平移视角</p>
-          <p><b>创建 Agent：</b>顶部「+ 创建」或 Agent 工坊 → 填写名称、外形、策略定义 → 自动加入大厅工位</p>
+          <p><b>创建 Agent：</b>左侧「Agent 工坊」→ 点「创建 Agent」→ 填写名称、外形、SOUL</p>
           <p><b>自主活动：</b>无人操作时 Agent 会自行漫步、休息、前往休闲区，到达后播放对应互动动画</p>
           {tradeFeed.length > 0 && <p style={{ fontSize: 11, color: '#9a8b7a' }}>已加载 {tradeFeed.length} 条成交</p>}
         </div>
@@ -172,7 +172,7 @@ function LeisureModal({ type, title, lucide, items }: {
             </div>
           ) : (
             <div style={{ marginTop: 8, padding: 8, background: '#fff8e8', borderRadius: 8, fontSize: 12, color: '#8a6e3a' }}>
-              请先点顶部「+ 创建」制作你自己的 Agent，系统 Agent 无法派遣
+              请先点左侧「Agent 工坊」创建你自己的 Agent，系统 Agent 无法派遣
             </div>
           )}
         </div>
@@ -190,7 +190,7 @@ function LeisureModal({ type, title, lucide, items }: {
       <button className="ui-btn" style={{ width: '100%', marginTop: 12, padding: '10px 0' }}
         disabled={!agent || busy || !canAfford} onClick={async () => {
         if (!agent) {
-          addMessage('请先创建你自己的 Agent（顶部 + 创建）');
+          addMessage('请先在左侧 Agent 工坊创建你自己的 Agent');
           return;
         }
         setBusy(true);
