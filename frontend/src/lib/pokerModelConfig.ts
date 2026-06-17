@@ -9,8 +9,8 @@ export const POKER_MODEL = {
   /** 绕 Y 轴旋转（弧度）— 对齐 8 座座位 */
   rotY: 0,
   /** 相机俯仰（弧度，负值 = 从上往下看） */
-  cameraPitch: 0.72,
+  cameraPitch: -1.05,
   cameraDistance: 4.2,
   /** 模型垂直偏移 */
-  offsetY: -0.15,
+  offsetY: 0,
 };
