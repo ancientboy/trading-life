@@ -2,12 +2,15 @@ export const S = 0.01;
 export const WORLD = { W: 56, H: 30, MID_X: 28, MID_Y: 15 };
 
 export const AGENT_META: Record<string, AgentMeta> = {
-  xau: { id: 'xau', name: 'XAU Agent', color: '#FFD700', headwear: 'scarf', hatStyle: 'beanie', desc: '黄金趋势交易', strategy: '趋势跟踪', market: 'XAUUSDT', interval: '15m/1h', risk: '中', agentType: 'trading' },
-  major: { id: 'major', name: 'Major Agent', color: '#3B82F6', headwear: 'hat', hatStyle: 'cap', desc: '主流币趋势', strategy: '趋势+反转', market: 'BTC/ETH', interval: '1h/4h', risk: '中', agentType: 'trading' },
-  altcoin: { id: 'altcoin', name: 'Altcoin Agent', color: '#F59E0B', headwear: 'scarf', hatStyle: 'beanie', desc: '山寨波段', strategy: '波段动量', market: 'Alt', interval: '15m/1h', risk: '中高', agentType: 'trading' },
-  newcoin: { id: 'newcoin', name: 'Newcoin Agent', color: '#A855F7', headwear: 'hat', hatStyle: 'bobble', desc: '新币猎手', strategy: '趋势突破', market: '新币', interval: '5m/15m', risk: '高', agentType: 'trading' },
-  momentum: { id: 'momentum', name: 'Momentum Agent', color: '#EF4444', headwear: 'hat', hatStyle: 'top', desc: '动量快打', strategy: '动量追踪', market: '高波动', interval: '5m/15m', risk: '高', agentType: 'trading' },
+  xau: { id: 'xau', name: 'XAU Agent', color: '#FFD700', headwear: 'scarf', hatStyle: 'beanie', desc: '黄金趋势交易', strategy: '趋势跟踪', market: 'XAUUSDT', interval: '15m/1h', risk: '中', agentType: 'trading', owner: 'system' },
+  major: { id: 'major', name: 'Major Agent', color: '#3B82F6', headwear: 'hat', hatStyle: 'cap', desc: '主流币趋势', strategy: '趋势+反转', market: 'BTC/ETH', interval: '1h/4h', risk: '中', agentType: 'trading', owner: 'system' },
+  altcoin: { id: 'altcoin', name: 'Altcoin Agent', color: '#F59E0B', headwear: 'scarf', hatStyle: 'beanie', desc: '山寨波段', strategy: '波段动量', market: 'Alt', interval: '15m/1h', risk: '中高', agentType: 'trading', owner: 'system' },
+  newcoin: { id: 'newcoin', name: 'Newcoin Agent', color: '#A855F7', headwear: 'hat', hatStyle: 'bobble', desc: '新币猎手', strategy: '趋势突破', market: '新币', interval: '5m/15m', risk: '高', agentType: 'trading', owner: 'system' },
+  momentum: { id: 'momentum', name: 'Momentum Agent', color: '#EF4444', headwear: 'hat', hatStyle: 'top', desc: '动量快打', strategy: '动量追踪', market: '高波动', interval: '5m/15m', risk: '高', agentType: 'trading', owner: 'system' },
 };
+
+/** 系统内置 Agent（归属 admin，全员可见） */
+export const SYSTEM_AGENT_IDS = Object.keys(AGENT_META);
 
 export type AgentType = 'trading' | 'entertainment';
 
@@ -18,6 +21,8 @@ export interface AgentMeta {
   desc: string; strategy: string; market: string; interval: string; risk: string;
   /** trading=策略交易；entertainment=纯娱乐陪伴 */
   agentType?: AgentType;
+  /** system=系统内置（admin）；user=当前用户自建 */
+  owner?: 'system' | 'user';
   /** 自定义 Agent 的 SOUL 文档（本地存储） */
   soulMd?: string;
 }

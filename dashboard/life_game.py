@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 import life_db
-from life_auth import router as auth_router, resolve_account_id
+from life_auth import router as auth_router, resolve_account_id, ensure_admin_account
 from life_engagement import social_router, pvp_router, season_router
 
 CST = timezone(timedelta(hours=8))
@@ -44,6 +44,10 @@ SHOP_CATALOG = [
 
 DEFAULT_FREE_UNLOCKS = life_db.DEFAULT_FREE_UNLOCKS
 
+# 系统内置交易 Agent — 归属 admin，所有用户可见，仅 admin 可操作
+SYSTEM_AGENT_IDS = ["xau", "major", "altcoin", "newcoin", "momentum"]
+ADMIN_USERNAME = "admin"
+
 router = APIRouter()
 router.include_router(auth_router)
 router.include_router(social_router)
@@ -56,6 +60,7 @@ _zhipu_key: str = ""
 def init_life_game(data_dir: Path, zhipu_api_key: str = "") -> None:
     global _zhipu_key
     life_db.init_db(data_dir)
+    ensure_admin_account()
     _zhipu_key = zhipu_api_key
 
 
@@ -100,7 +105,21 @@ def _count_agents(custom: dict) -> tuple[int, int]:
     return ent, trading
 
 
-def _public_state(user: dict) -> dict:
+def _permissions_for(account_id: str, user: dict) -> dict:
+    acc = life_db.get_account_by_id(account_id) if account_id else None
+    is_admin = bool(acc and str(acc.get("username", "")).lower() == ADMIN_USERNAME)
+    custom_ids = list((user.get("custom_agents") or {}).keys())
+    operable = list(custom_ids)
+    if is_admin:
+        operable = list(dict.fromkeys(SYSTEM_AGENT_IDS + custom_ids))
+    return {
+        "is_admin": is_admin,
+        "operable_agent_ids": operable,
+        "system_agent_ids": SYSTEM_AGENT_IDS,
+    }
+
+
+def _public_state(user: dict, account_id: str = "") -> dict:
     return {
         "points": user["points"],
         "last_idle_tick": user.get("last_idle_tick", 0),
@@ -122,6 +141,7 @@ def _public_state(user: dict) -> dict:
             "max_agents": IDLE_MAX_AGENTS,
         },
         "stats": user.get("stats", {}),
+        "permissions": _permissions_for(account_id, user),
     }
 
 
@@ -208,7 +228,7 @@ async def life_state(account_id: str = Depends(resolve_account_id)):
     uid = _validate_user_id(account_id)
     user = load_user(uid)
     save_user(uid, user)
-    return _public_state(user)
+    return _public_state(user, uid)
 
 
 @router.post("/migrate")
@@ -216,7 +236,7 @@ async def life_migrate(body: MigrateBody, account_id: str = Depends(resolve_acco
     uid = _validate_user_id(account_id)
     life_db.migrate_user(uid, body.points, body.last_idle_tick, body.custom_agents, body.shop_unlocks)
     user = load_user(uid)
-    return {"ok": True, **_public_state(user)}
+    return {"ok": True, **_public_state(user, uid)}
 
 
 @router.post("/points/spend")
@@ -394,7 +414,7 @@ async def life_create_agent(body: CustomAgentBody, account_id: str = Depends(res
     }
     custom[aid] = meta
     save_user(uid, user)
-    return {"ok": True, "agent": meta, "state": _public_state(user)}
+    return {"ok": True, "agent": meta, "state": _public_state(user, uid)}
 
 
 @router.put("/agents/{agent_id}/soul")

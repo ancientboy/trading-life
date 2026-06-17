@@ -3,10 +3,17 @@ import { normalizeAgentMeta, HAT_STYLE_IDS } from './agentAppearance';
 import type { AgentHeadwear, HatStyleId } from './agentAppearance';
 import { HALL_REST_BOOTHS } from './zoneFurniture';
 
+import { getStoredAccount } from './lifeAuth';
+
 /** 自定义 Agent 可分配的额外工位（第二排 6/7/8） */
 export const EXTRA_DESK_NODES = ['seat_6', 'seat_7', 'seat_8'] as const;
 
-const CUSTOM_KEY = 'trading-life-custom-agents';
+const CUSTOM_KEY_PREFIX = 'trading-life-custom-agents';
+
+function customStorageKey(accountId?: string | null): string {
+  const id = accountId ?? getStoredAccount()?.id;
+  return id ? `${CUSTOM_KEY_PREFIX}-${id}` : CUSTOM_KEY_PREFIX;
+}
 
 export interface CustomAgentDraft {
   agentType: AgentType;
@@ -76,29 +83,29 @@ export function createLimitMessage(type: import('./constants').AgentType) {
     : '交易 Agent 已达上限（最多 3 个）';
 }
 
-export function updateCustomAgentMeta(agentId: string, patch: Partial<import('./constants').AgentMeta>) {
-  const all = loadCustomAgentMeta();
+export function updateCustomAgentMeta(agentId: string, patch: Partial<import('./constants').AgentMeta>, accountId?: string | null) {
+  const all = loadCustomAgentMeta(accountId);
   if (!all[agentId]) return false;
   all[agentId] = { ...all[agentId], ...patch };
-  saveCustomAgentMeta(all);
+  saveCustomAgentMeta(all, accountId);
   return true;
 }
 
-export function loadCustomAgentMeta(): Record<string, AgentMeta> {
+export function loadCustomAgentMeta(accountId?: string | null): Record<string, AgentMeta> {
   try {
-    const raw = localStorage.getItem(CUSTOM_KEY);
+    const raw = localStorage.getItem(customStorageKey(accountId));
     if (!raw) return {};
     const parsed = JSON.parse(raw) as Record<string, AgentMeta>;
     const out: Record<string, AgentMeta> = {};
-    for (const [k, v] of Object.entries(parsed)) out[k] = normalizeAgentMeta(v);
+    for (const [k, v] of Object.entries(parsed)) out[k] = normalizeAgentMeta({ ...v, owner: 'user' });
     return out;
   } catch {
     return {};
   }
 }
 
-export function saveCustomAgentMeta(all: Record<string, AgentMeta>) {
-  localStorage.setItem(CUSTOM_KEY, JSON.stringify(all));
+export function saveCustomAgentMeta(all: Record<string, AgentMeta>, accountId?: string | null) {
+  localStorage.setItem(customStorageKey(accountId), JSON.stringify(all));
 }
 
 /** 注册自定义 Agent 槽位 — 娱乐不占工位，交易占 seat_6/7/8 */

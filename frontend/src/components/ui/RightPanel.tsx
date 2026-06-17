@@ -58,6 +58,7 @@ export function RightPanel() {
   const activeZone = useGameStore(s => s.activeZone);
   const navigateSidebar = useGameStore(s => s.navigateSidebar);
   const sendAgentToLeisure = useGameStore(s => s.sendAgentToLeisure);
+  const canOperateAgent = useGameStore(s => s.canOperateAgent);
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
@@ -136,12 +137,13 @@ export function RightPanel() {
           <Row k="有持仓" v={`${trading} 个`} />
           <Row k="总盈亏" v={(overview.total_pnl != null ? (overview.total_pnl >= 0 ? '+' : '') + '$' + Math.round(overview.total_pnl).toLocaleString() : '--')} className={(overview.total_pnl || 0) >= 0 ? 'profit' : 'loss'} icon={(overview.total_pnl || 0) >= 0 ? <ProfitIcon /> : <LossIcon />} />
         </div>
-        <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>点击 Agent 查看详情并跟随镜头</div>
+        <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>系统 Agent 仅供观摩；请创建自己的 Agent 进行派遣</div>
         {agentList.map(a => (
           <AgentCard
             key={a.agentId}
             char={a}
             selected={selectedAgentId === a.agentId}
+            operable={canOperateAgent(a.agentId)}
             onSelect={() => { focusAgent(a.agentId); flyToZone('hall'); }}
           />
         ))}
@@ -166,14 +168,20 @@ export function RightPanel() {
         <>
           <p style={{ color: '#9a8b7a', marginBottom: 12 }}>从下方选择 Agent，或点击场景中的 Gugugaga</p>
           {agentList.map(a => (
-            <AgentCard key={a.agentId} char={a} selected={false} onSelect={() => selectAgent(a.agentId)} />
+            <AgentCard key={a.agentId} char={a} selected={false} operable={canOperateAgent(a.agentId)} onSelect={() => selectAgent(a.agentId)} />
           ))}
         </>
       );
     }
     const pnl = d.pnl || 0;
+    const operable = canOperateAgent(agent.agentId);
     return (
       <>
+        {!operable && (
+          <div style={{ padding: 8, marginBottom: 10, background: '#fff8e8', borderRadius: 8, fontSize: 11, color: '#8a6e3a', border: '1px solid #f0e0b8' }}>
+            系统 Agent（admin 专属）— 仅供观摩交易状态，无法派遣或修改
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
           <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={44} />
           <div style={{ flex: 1 }}>
@@ -213,32 +221,34 @@ export function RightPanel() {
 
         {panelTab === 'config' && (
           <>
-            {schema.length === 0 && <p style={{ color: '#999', fontSize: 12 }}>加载参数中…</p>}
-            {schema.map(f => (
+            {!operable && <p style={{ color: '#9a8b7a', fontSize: 12 }}>系统 Agent 参数不可修改</p>}
+            {operable && schema.length === 0 && <p style={{ color: '#999', fontSize: 12 }}>加载参数中…</p>}
+            {operable && schema.map(f => (
               <div key={f.key} style={{ marginBottom: 8 }}>
                 <label style={{ fontSize: 11, color: '#7a6e62' }}>{f.label}</label>
                 <input type="number" defaultValue={String(config[f.key] ?? '')} id={'cfg-' + f.key}
                   style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #d4c8b8', marginTop: 3 }} />
               </div>
             ))}
-            <button className="ui-btn" style={{ width: '100%', marginTop: 6 }} onClick={async () => {
+            {operable && <button className="ui-btn" style={{ width: '100%', marginTop: 6 }} onClick={async () => {
               if (!selectedAgentId) return;
               const body: Record<string, unknown> = {};
               schema.forEach(f => { const el = document.getElementById('cfg-' + f.key) as HTMLInputElement; if (el?.value) body[f.key] = el.value; });
               const r = await saveAgentConfig(selectedAgentId, body);
               setMsg(r.message || (r.ok ? '已保存' : '保存失败'));
-            }}>保存参数</button>
+            }}>保存参数</button>}
           </>
         )}
 
         {panelTab === 'soul' && (
           <>
-            <textarea defaultValue={soulMd} id="soul-ed" style={{ width: '100%', minHeight: 140, padding: 8, borderRadius: 6, border: '1px solid #d4c8b8', fontFamily: 'monospace', fontSize: 12 }} />
-            <button className="ui-btn" style={{ width: '100%', marginTop: 6 }} onClick={async () => {
+            {!operable && <p style={{ color: '#9a8b7a', fontSize: 12, marginBottom: 8 }}>系统 Agent 的 SOUL 由 admin 管理</p>}
+            <textarea defaultValue={soulMd} id="soul-ed" readOnly={!operable} style={{ width: '100%', minHeight: 140, padding: 8, borderRadius: 6, border: '1px solid #d4c8b8', fontFamily: 'monospace', fontSize: 12, opacity: operable ? 1 : 0.7 }} />
+            {operable && <button className="ui-btn" style={{ width: '100%', marginTop: 6 }} onClick={async () => {
               if (!selectedAgentId) return;
               const r = await saveAgentSoul(selectedAgentId, (document.getElementById('soul-ed') as HTMLTextAreaElement).value);
               setMsg(r.message || (r.ok ? '已保存' : '保存失败'));
-            }}>保存 SOUL</button>
+            }}>保存 SOUL</button>}
           </>
         )}
         {msg && <div style={{ marginTop: 6, fontSize: 11, color: '#48d093' }}>{msg}</div>}
@@ -353,7 +363,7 @@ export function RightPanel() {
         <>
           <p style={{ color: '#9a8b7a', marginBottom: 8 }}>选择 Agent 查看策略</p>
           {agentList.map(a => (
-            <AgentCard key={a.agentId} char={a} selected={false} onSelect={() => selectAgent(a.agentId)} />
+            <AgentCard key={a.agentId} char={a} selected={false} operable={canOperateAgent(a.agentId)} onSelect={() => selectAgent(a.agentId)} />
           ))}
         </>
       );
@@ -395,10 +405,11 @@ export function RightPanel() {
   }
 }
 
-function AgentCard({ char, selected, onSelect }: { char: CharState; selected: boolean; onSelect: () => void }) {
+function AgentCard({ char, selected, operable, onSelect }: { char: CharState; selected: boolean; operable?: boolean; onSelect: () => void }) {
   const d = char.data;
   const pnl = d.pnl || 0;
   const posCount = d.positions?.length || 0;
+  const isSystem = d.owner === 'system' || !operable;
   return (
     <div
       className={`agent-card ${selected ? 'selected' : ''}`}
@@ -407,12 +418,17 @@ function AgentCard({ char, selected, onSelect }: { char: CharState; selected: bo
         padding: 10, marginBottom: 6, borderRadius: 8, cursor: 'pointer',
         background: selected ? '#eef8f0' : '#faf6ef',
         border: `1px solid ${selected ? '#48d093' : '#e8e0d4'}`,
+        opacity: operable === false ? 0.72 : 1,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 13 }}>{d.name}</div>
+          <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+            {d.name}
+            {isSystem && <span style={{ fontSize: 9, color: '#9a8b7a', background: '#eee8dc', padding: '1px 5px', borderRadius: 4 }}>系统</span>}
+            {operable && <span style={{ fontSize: 9, color: '#48d093', background: '#eef8f0', padding: '1px 5px', borderRadius: 4 }}>我的</span>}
+          </div>
           <div style={{ fontSize: 10, color: '#8a7e72' }}>
             {d.running ? '🟢' : '⚪'} {STATE_LABEL[char.state]} · 压力 {Math.round(char.stress)}%
             {posCount > 0 && ` · ${posCount} 持仓`}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { getStoredAccount } from '../../lib/lifeAuth';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { useGameStore } from '../../store/useGameStore';
 import { AppIcon } from '../icons/AppIcon';
@@ -53,7 +53,7 @@ export function AgentWorkshop() {
 
   const shopUnlocks = useGameStore(s => s.shopUnlocks);
   const shopCatalog = useGameStore(s => s.shopCatalog);
-  const customMeta = loadCustomAgentMeta();
+  const customMeta = loadCustomAgentMeta(getStoredAccount()?.id);
   const limits = countCustomByType(customMeta);
 
   const agentList = Object.values(agents) as CharState[];

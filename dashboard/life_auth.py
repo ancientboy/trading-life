@@ -4,12 +4,13 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import secrets
-from typing import Optional
+from typing import Optional, Tuple
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 import life_db
 
@@ -17,6 +18,8 @@ router = APIRouter()
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,20}$")
 _PBKDF2_ROUNDS = 260_000
+ADMIN_USERNAME = "admin"
+ADMIN_DEFAULT_PASSWORD = os.environ.get("LIFE_ADMIN_PASSWORD", "admin1234")
 
 
 def hash_password(password: str) -> str:
@@ -35,11 +38,20 @@ def verify_password(password: str, stored: str) -> bool:
         return False
 
 
-def _validate_username(username: str) -> str:
+def _validate_username(username: str) -> Tuple[Optional[str], Optional[str]]:
     u = (username or "").strip()
     if not _USERNAME_RE.match(u):
-        raise HTTPException(400, "用户名须为 3-20 位字母、数字或下划线")
-    return u.lower()
+        return None, "用户名须为 3-20 位字母、数字或下划线"
+    return u.lower(), None
+
+
+def ensure_admin_account() -> None:
+    """确保 admin 账户存在（系统默认 Agent 归属 admin）"""
+    if life_db.get_account_by_username(ADMIN_USERNAME):
+        return
+    res = life_db.create_account(ADMIN_USERNAME, hash_password(ADMIN_DEFAULT_PASSWORD), "管理员")
+    if res.get("ok"):
+        print(f"[life_auth] 已创建 admin 账户，默认密码见 LIFE_ADMIN_PASSWORD 环境变量")
 
 
 def resolve_account_id(
@@ -64,13 +76,13 @@ def resolve_account_id(
 
 class RegisterBody(BaseModel):
     username: str
-    password: str = Field(min_length=6, max_length=64)
+    password: str
     display_name: str = ""
 
 
 class LoginBody(BaseModel):
     username: str
-    password: str = Field(min_length=1, max_length=64)
+    password: str
 
 
 def _account_public(acc: dict) -> dict:
@@ -83,8 +95,15 @@ def _account_public(acc: dict) -> dict:
 
 @router.post("/auth/register")
 async def auth_register(body: RegisterBody):
-    username = _validate_username(body.username)
-    pw_hash = hash_password(body.password)
+    username, err = _validate_username(body.username)
+    if err:
+        return {"ok": False, "error": err}
+    password = body.password or ""
+    if len(password) < 6:
+        return {"ok": False, "error": "密码至少 6 位"}
+    if len(password) > 64:
+        return {"ok": False, "error": "密码不能超过 64 位"}
+    pw_hash = hash_password(password)
     res = life_db.create_account(username, pw_hash, (body.display_name or "").strip()[:32])
     if not res.get("ok"):
         return {"ok": False, "error": "用户名已被占用"}
@@ -99,13 +118,17 @@ async def auth_register(body: RegisterBody):
         "ok": True,
         "token": token,
         "account": _account_public(acc or {"id": account_id, "username": username, "display_name": username}),
-        "state": _public_state(user),
+        "state": _public_state(user, account_id),
     }
 
 
 @router.post("/auth/login")
 async def auth_login(body: LoginBody):
-    username = _validate_username(body.username)
+    username, err = _validate_username(body.username)
+    if err:
+        return {"ok": False, "error": err}
+    if not (body.password or "").strip():
+        return {"ok": False, "error": "请输入密码"}
     acc = life_db.get_account_by_username(username)
     if not acc or not verify_password(body.password, acc["password_hash"]):
         return {"ok": False, "error": "用户名或密码错误"}
@@ -118,7 +141,7 @@ async def auth_login(body: LoginBody):
         "ok": True,
         "token": token,
         "account": _account_public(acc),
-        "state": _public_state(user),
+        "state": _public_state(user, acc["id"]),
     }
 
 
@@ -139,4 +162,4 @@ async def auth_me(account_id: str = Depends(resolve_account_id)):
     from life_game import load_user, _public_state
 
     user = load_user(account_id)
-    return {"ok": True, "account": _account_public(acc), "state": _public_state(user)}
+    return {"ok": True, "account": _account_public(acc), "state": _public_state(user, account_id)}

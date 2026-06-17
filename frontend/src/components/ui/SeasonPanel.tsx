@@ -30,7 +30,12 @@ export function SeasonPanel() {
     Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>
   >([]);
 
-  const selectedAgent = () => selectedAgentId || Object.keys(agents)[0] || '';
+  const selectedAgent = () => {
+    const aid = selectedAgentId || Object.keys(agents)[0] || '';
+    if (aid && useGameStore.getState().canOperateAgent(aid)) return aid;
+    const operable = Object.keys(agents).filter(id => useGameStore.getState().canOperateAgent(id));
+    return operable[0] || aid;
+  };
 
   const showPokerResults = (results?: Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>, won?: number) => {
     if (!results?.length) return;

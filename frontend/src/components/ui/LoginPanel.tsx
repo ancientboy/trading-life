@@ -16,11 +16,24 @@ export function LoginPanel() {
 
   const submit = async () => {
     setError('');
+    const name = username.trim();
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(name)) {
+      setError('用户名须为 3-20 位字母、数字或下划线');
+      return;
+    }
+    if (mode === 'register' && password.length < 6) {
+      setError('密码至少 6 位');
+      return;
+    }
+    if (!password) {
+      setError('请输入密码');
+      return;
+    }
     setBusy(true);
     try {
       const res = mode === 'login'
-        ? await authLogin(username.trim(), password)
-        : await authRegister(username.trim(), password, displayName.trim());
+        ? await authLogin(name, password)
+        : await authRegister(name, password, displayName.trim());
       if (!res.ok || !res.token || !res.account) {
         setError(res.error || '操作失败');
         return;
@@ -80,8 +93,8 @@ export function LoginPanel() {
         </button>
 
         <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
-          每个账户独立积分、任务与自定义 Agent<br />
-          挂机积分仅在登录且页面打开时累计
+          用户名仅限英文字母、数字、下划线（3-20 位）<br />
+          每个账户独立积分、任务与自定义 Agent
         </p>
       </div>
     </div>

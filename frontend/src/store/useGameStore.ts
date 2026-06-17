@@ -24,7 +24,7 @@ import { resolveAvailableSeat, hasFreeSeat, type SeatMap } from '../lib/seatRegi
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
 import { homeNodeForAgent } from '../lib/agentHome';
-import { isLoggedIn } from '../lib/lifeAuth';
+import { isLoggedIn, getStoredAccount } from '../lib/lifeAuth';
 import {
   fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
   chatChannelForZone, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
@@ -98,6 +98,11 @@ interface GameStore {
   activeNpcBuffs: Record<string, number>;
   /** 上次客户端挂机 tick 时间（performance.now） */
   lastIdleClientTick: number;
+  /** 当前用户可操作（派遣/编辑）的 Agent */
+  operableAgentIds: string[];
+  isAdmin: boolean;
+
+  canOperateAgent: (id: string) => boolean;
 
   setCameraMode: (m: CameraMode) => void;
   setQuality: (q: QualityTier) => void;
@@ -208,6 +213,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   mentorPairs: [],
   activeNpcBuffs: {},
   lastIdleClientTick: 0,
+  operableAgentIds: [],
+  isAdmin: false,
+
+  canOperateAgent: (id) => get().operableAgentIds.includes(id),
 
   setCameraMode: (m) => set({ cameraMode: m }),
   setQuality: (q) => set({ quality: q }),
@@ -266,7 +275,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
     switch (action) {
       case 'agents': {
-        const firstId = s.selectedAgentId || Object.keys(s.agents)[0] || 'xau';
+        const operable = Object.keys(s.agents).filter(id => get().canOperateAgent(id));
+        const firstId = (s.selectedAgentId && get().canOperateAgent(s.selectedAgentId) ? s.selectedAgentId : operable[0]) || Object.keys(s.agents)[0] || null;
         set({
           rightPanelCollapsed: false,
           sidebarActive: 'agents',
@@ -333,6 +343,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const s = get();
     const id = opts?.agentId || s.selectedAgentId || Object.values(s.agents).sort((a, b) => b.stress - a.stress)[0]?.agentId;
     if (!id || !s.agents[id]) return false;
+    if (!get().canOperateAgent(id)) {
+      get().addMessage(`${s.agents[id].data.name} 是系统 Agent，请前往工坊创建你自己的 Agent`);
+      return false;
+    }
 
     const cost = opts?.cost ?? s.facilityCosts[action] ?? FACILITY_BASE_COST[action];
     if (!opts?.skipCost && cost > 0) {
@@ -384,7 +398,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   createAgent: async (draft) => {
     const s = get();
-    const customMeta = loadCustomAgentMeta();
+    const accountId = getStoredAccount()?.id;
+    const customMeta = loadCustomAgentMeta(accountId);
     if (!canCreateAgentType(draft.agentType, customMeta)) {
       get().addMessage(createLimitMessage(draft.agentType));
       return false;
@@ -396,7 +411,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return false;
     }
 
-    const meta = normalizeAgentMeta(apiRes.agent);
+    const meta = normalizeAgentMeta({ ...apiRes.agent, owner: 'user' });
     const id = meta.id;
     const slot = registerCustomAgentSlots(OfficePath, id, draft.agentType);
     if (!slot) {
@@ -404,7 +419,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return false;
     }
     assignAgentSeatSlots(OfficePath);
-    saveCustomAgentMeta({ ...customMeta, [id]: meta });
+    saveCustomAgentMeta({ ...customMeta, [id]: meta }, accountId);
     if (apiRes.state) get().applyLifeState(apiRes.state);
 
     const pos = OfficePath.nodes[slot];
@@ -473,7 +488,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     syncFurnitureToPathfinding(OfficePath.nodes, 'hall');
     rebuildNavGraph(OfficePath);
     invalidateCollisionCache();
-    const customMeta = loadCustomAgentMeta();
+    const customMeta = loadCustomAgentMeta(getStoredAccount()?.id);
     Object.entries(customMeta).forEach(([id, meta]) => {
       if (!OfficePath.deskByAgent[id] && !OfficePath.boothByAgent[id]) {
         registerCustomAgentSlots(OfficePath, id, meta.agentType ?? 'trading');
@@ -509,10 +524,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncLifeState: async () => {
     if (!isLoggedIn()) return;
+    const accountId = getStoredAccount()?.id;
     try {
       await lifeSessionStart().catch(() => {});
       let state = await fetchLifeState();
-      const localMeta = loadCustomAgentMeta();
+      const localMeta = loadCustomAgentMeta(accountId);
       const localPoints = loadPoints();
       if (Object.keys(localMeta).length && !Object.keys(state.custom_agents || {}).length) {
         const migrated = await migrateLifeState({
@@ -524,9 +540,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
       get().applyLifeState(state);
       if (state.custom_agents && Object.keys(state.custom_agents).length) {
-        saveCustomAgentMeta(state.custom_agents);
-        get().initAgents();
+        const owned = Object.fromEntries(
+          Object.entries(state.custom_agents).map(([k, v]) => [k, normalizeAgentMeta({ ...v, owner: 'user' })]),
+        );
+        saveCustomAgentMeta(owned, accountId);
       }
+      get().initAgents();
       await get().syncSeats();
     } catch {
       /* 离线时沿用本地缓存 */
@@ -569,7 +588,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   applyLifeState: (state) => {
-    set({
+    const perms = state.permissions;
+    const operable = perms?.operable_agent_ids ?? [];
+    const patch: Partial<GameStore> = {
       points: state.points ?? get().points,
       dailyTasks: state.daily_tasks ?? get().dailyTasks,
       dailyTaskDefs: state.daily_task_defs ?? get().dailyTaskDefs,
@@ -577,7 +598,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       shopUnlocks: state.shop_unlocks ?? get().shopUnlocks,
       shopCatalog: state.shop_catalog ?? get().shopCatalog,
       facilityCosts: state.facility_costs ?? get().facilityCosts,
-    });
+      operableAgentIds: operable,
+      isAdmin: perms?.is_admin ?? false,
+    };
+    set(patch);
+    const curSel = get().selectedAgentId;
+    if (curSel && operable.length && !operable.includes(curSel)) {
+      set({ selectedAgentId: operable[0] ?? null });
+    }
   },
 
   updateFromOverview: (data) => {
@@ -608,7 +636,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return tb.localeCompare(ta);
     });
 
-    const selectedAgentId = prev.selectedAgentId || Object.keys(agents)[0] || null;
+    const selectedAgentId = (() => {
+      if (prev.selectedAgentId && get().canOperateAgent(prev.selectedAgentId)) return prev.selectedAgentId;
+      const operable = Object.keys(agents).filter(id => get().canOperateAgent(id));
+      if (operable.length) return operable[0];
+      return prev.selectedAgentId || Object.keys(agents)[0] || null;
+    })();
 
     set({
       agents,
@@ -661,10 +694,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       agents[agentId] = { ...agents[agentId], data: { ...agents[agentId].data, soulMd: content } };
       set({ agents, soulMd: content });
     }
-    const customMeta = loadCustomAgentMeta();
+    const customMeta = loadCustomAgentMeta(getStoredAccount()?.id);
     if (customMeta[agentId]) {
       customMeta[agentId] = { ...customMeta[agentId], soulMd: content };
-      saveCustomAgentMeta(customMeta);
+      saveCustomAgentMeta(customMeta, getStoredAccount()?.id);
     }
     return true;
   },

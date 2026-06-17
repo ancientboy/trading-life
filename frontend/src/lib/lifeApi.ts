@@ -23,11 +23,41 @@ export interface LifeState {
   activity_rewards: Record<string, number>;
   facility_costs: Record<string, number>;
   limits: { max_entertainment: number; max_trading_custom: number };
+  permissions?: {
+    is_admin: boolean;
+    operable_agent_ids: string[];
+    system_agent_ids: string[];
+  };
   stats: Record<string, unknown>;
 }
 
 async function parse<T>(r: Response): Promise<T> {
   return r.json() as Promise<T>;
+}
+
+function extractApiError(data: Record<string, unknown>, fallback: string): string {
+  const detail = data.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    const msgs = detail
+      .map((d) => (typeof d === 'object' && d && 'msg' in d ? String((d as { msg: string }).msg) : ''))
+      .filter(Boolean);
+    if (msgs.length) return msgs.join('；');
+  }
+  if (typeof data.error === 'string') return data.error;
+  return fallback;
+}
+
+async function parseAuth<T extends { ok?: boolean; error?: string }>(r: Response): Promise<T> {
+  const data = await r.json() as T & { detail?: unknown; error?: string };
+  if (!r.ok) {
+    return {
+      ...data,
+      ok: false,
+      error: extractApiError(data as Record<string, unknown>, r.status === 401 ? '请先登录' : '请求失败'),
+    };
+  }
+  return data;
 }
 
 export async function fetchLifeState(): Promise<LifeState & { ok?: boolean }> {
@@ -85,7 +115,7 @@ export async function authRegister(username: string, password: string, displayNa
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password, display_name: displayName }),
   });
-  return parse<{
+  return parseAuth<{
     ok: boolean; token?: string;
     account?: { id: string; username: string; display_name: string };
     state?: LifeState; error?: string;
@@ -97,7 +127,7 @@ export async function authLogin(username: string, password: string) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   });
-  return parse<{
+  return parseAuth<{
     ok: boolean; token?: string;
     account?: { id: string; username: string; display_name: string };
     state?: LifeState; error?: string;
