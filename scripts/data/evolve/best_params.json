@@ -1,0 +1,49 @@
+{
+  "momentum_quick": {
+    "QUICK_SURGE_BARS": 6,
+    "QUICK_MIN_SURGE": 5.0,
+    "QUICK_TRAIL_PCT": 0.5,
+    "QUICK_MAX_HOLD": 24,
+    "QUICK_MIN_VOL_RATIO": 0.5,
+    "_metadata": {
+      "source": "self_evolution",
+      "test_pnl": 9.017189396876827,
+      "degradation": -75.16973342562385,
+      "timestamp": "2026-05-28T00:16:04",
+      "regime": "bear_weak"
+    }
+  },
+  "momentum_wave": {
+    "WAVE_BREAKOUT_BARS": 20,
+    "WAVE_MIN_VOL_RATIO": 0.8,
+    "WAVE_STOP_PCT": 8.0,
+    "WAVE_EMA_EXIT": 12,
+    "WAVE_MAX_HOLD": 60,
+    "_metadata": {
+      "source": "self_evolution",
+      "test_pnl": 7.267894712082334,
+      "degradation": -132.50173553640806,
+      "timestamp": "2026-05-28T00:22:50",
+      "regime": "bear_weak"
+    }
+  },
+  "momentum_newcoin": {
+    "NEWCOIN_MAX_DAYS": 60,
+    "NEWCOIN_STOP_PCT": 25.0,
+    "NEWCOIN_EMA_EXIT": 10,
+    "NEWCOIN_MAX_HOLD": 120,
+    "NEWCOIN_MIN_VOL_RATIO": 2.0
+  },
+  "risk": {
+    "max_positions": 6,
+    "max_single_risk_pct": 0.03,
+    "circuit_break_limit": 8
+  },
+  "meta": {
+    "last_evolve": "2026-05-22T19:01:52.367885+00:00",
+    "generation": 4,
+    "total_evaluations": 0,
+    "best_pnl": 0,
+    "_factor_weights_evolved": true
+  }
+}

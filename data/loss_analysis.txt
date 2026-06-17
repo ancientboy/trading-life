@@ -1,0 +1,35 @@
+Loss Analysis Report (30d)
+==================================================
+Total closes: 310 | Wins: 173 | Losses: 132
+Total win: $+43,823 | Total loss: $-33,245
+Win/Loss ratio: 1.32
+
+Top 10 worst coins:
+  UBUSDT: 6x $-2,526 (avg $-421)
+  QUSDT: 5x $-1,990 (avg $-398)
+  IRYSUSDT: 9x $-1,500 (avg $-167)
+  XRPUSDT: 5x $-1,424 (avg $-285)
+  DOGEUSDT: 7x $-1,275 (avg $-182)
+  STARUSDT: 5x $-1,225 (avg $-245)
+  PHAROSUSDT: 2x $-1,037 (avg $-518)
+  XAGUSDT: 7x $-1,032 (avg $-147)
+  SAPIENUSDT: 1x $-1,028 (avg $-1,028)
+  SAGAUSDT: 4x $-980 (avg $-245)
+
+Stop type breakdown:
+  other(unknown): 131x $-33,202
+  other(SELF_HEAL_SL_BREACH): 1x $-43
+
+Worst hours (UTC):
+  05:00 -> $-4,648
+  19:00 -> $-4,625
+  04:00 -> $-3,464
+  03:00 -> $-3,095
+  13:00 -> $-2,802
+
+Direction breakdown:
+  LONG: 132x $-33,245
+
+Action items:
+  1. Blacklist/reduce weight: UBUSDT, QUSDT, IRYSUSDT
+  3. Avg loss $-252 too large, consider tighter stops or lower leverage

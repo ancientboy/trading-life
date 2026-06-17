@@ -1,0 +1,2012 @@
+{
+  "version": 2,
+  "signals": [
+    {
+      "agent_type": "momentum",
+      "symbol": "TRUSTUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.07954,
+      "score": 73,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:08:04.658646+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.07155,
+          "change_pct": -10.05,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.07094,
+          "change_pct": -10.81,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.07447,
+          "change_pct": -6.37,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "ZECUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 657.86,
+      "score": 60,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:08:04.673405+00:00",
+      "checks": {
+        "4h": {
+          "price": 674.65,
+          "change_pct": 2.55,
+          "hit": true
+        },
+        "8h": {
+          "price": 675.36,
+          "change_pct": 2.66,
+          "hit": true
+        },
+        "24h": {
+          "price": 672.08,
+          "change_pct": 2.16,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "TAGUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.0015017,
+      "score": 64,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:09:21.034015+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.0014908,
+          "change_pct": -0.73,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.0014662,
+          "change_pct": -2.36,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.0015898,
+          "change_pct": 5.87,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "BEATUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 1.2025,
+      "score": 74,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:09:21.052099+00:00",
+      "checks": {
+        "4h": {
+          "price": 1.2453,
+          "change_pct": 3.56,
+          "hit": true
+        },
+        "8h": {
+          "price": 1.1294,
+          "change_pct": -6.08,
+          "hit": false
+        },
+        "24h": {
+          "price": 1.0933,
+          "change_pct": -9.08,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "LITUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 1.3625,
+      "score": 68,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:09:21.052517+00:00",
+      "checks": {
+        "4h": {
+          "price": 1.3389,
+          "change_pct": -1.73,
+          "hit": false
+        },
+        "8h": {
+          "price": 1.3628,
+          "change_pct": 0.02,
+          "hit": false
+        },
+        "24h": {
+          "price": 1.2994,
+          "change_pct": -4.63,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "FIDAUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.03711,
+      "score": 80,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:10:25.954657+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.03848,
+          "change_pct": 3.69,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.03538,
+          "change_pct": -4.66,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.03613,
+          "change_pct": -2.64,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "ONDOUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.4498,
+      "score": 59,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:13:43.427559+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.4479,
+          "change_pct": -0.42,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.4247,
+          "change_pct": -5.58,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.4351,
+          "change_pct": -3.27,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "NEARUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 2.407,
+      "score": 55,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:14:58.654257+00:00",
+      "checks": {
+        "4h": {
+          "price": 2.425,
+          "change_pct": 0.75,
+          "hit": true
+        },
+        "8h": {
+          "price": 2.41,
+          "change_pct": 0.12,
+          "hit": false
+        },
+        "24h": {
+          "price": 2.516,
+          "change_pct": 4.53,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "NILUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.06442,
+      "score": 75,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:19:16.668059+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.08019,
+          "change_pct": 24.48,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.07523,
+          "change_pct": 16.78,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.08339,
+          "change_pct": 29.45,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "BEATUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 1.2229,
+      "score": 52,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:41:38.209764+00:00",
+      "checks": {
+        "4h": {
+          "price": 1.2804,
+          "change_pct": 4.7,
+          "hit": true
+        },
+        "8h": {
+          "price": 1.1711,
+          "change_pct": -4.24,
+          "hit": false
+        },
+        "24h": {
+          "price": 1.122,
+          "change_pct": -8.25,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "ASTERUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.7249,
+      "score": 63,
+      "reasoning": "",
+      "timestamp": "2026-05-24T13:43:50.067795+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.7023,
+          "change_pct": -3.12,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.7084,
+          "change_pct": -2.28,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.7022,
+          "change_pct": -3.13,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "major",
+      "symbol": "BTCUSDT",
+      "entry_type": "trend",
+      "entry_price": 76420.1,
+      "score": 80,
+      "reasoning": "",
+      "timestamp": "2026-05-24T15:16:39.986294+00:00",
+      "checks": {
+        "4h": {
+          "price": 76620.1,
+          "change_pct": 0.26,
+          "hit": false
+        },
+        "8h": {
+          "price": 77412.2,
+          "change_pct": 1.3,
+          "hit": true
+        },
+        "24h": {
+          "price": 77638.6,
+          "change_pct": 1.59,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "major",
+      "symbol": "ETHUSDT",
+      "entry_type": "trend",
+      "entry_price": 2095.38,
+      "score": 80,
+      "reasoning": "",
+      "timestamp": "2026-05-24T15:16:39.986973+00:00",
+      "checks": {
+        "4h": {
+          "price": 2095.99,
+          "change_pct": 0.03,
+          "hit": false
+        },
+        "8h": {
+          "price": 2106.85,
+          "change_pct": 0.55,
+          "hit": true
+        },
+        "24h": {
+          "price": 2126.15,
+          "change_pct": 1.47,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "DOTUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 1.258,
+      "score": 71,
+      "reasoning": "",
+      "timestamp": "2026-05-24T15:16:52.125280+00:00",
+      "checks": {
+        "4h": {
+          "price": 1.253,
+          "change_pct": -0.4,
+          "hit": false
+        },
+        "8h": {
+          "price": 1.257,
+          "change_pct": -0.08,
+          "hit": false
+        },
+        "24h": {
+          "price": 1.277,
+          "change_pct": 1.51,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "RIFUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.05096,
+      "score": 69,
+      "reasoning": "",
+      "timestamp": "2026-05-24T15:16:52.131183+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.04983,
+          "change_pct": -2.22,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.05181,
+          "change_pct": 1.67,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.05789,
+          "change_pct": 13.6,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "VVVUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 19.872,
+      "score": 57,
+      "reasoning": "",
+      "timestamp": "2026-05-24T15:17:58.774961+00:00",
+      "checks": {
+        "4h": {
+          "price": 19.868,
+          "change_pct": -0.02,
+          "hit": false
+        },
+        "8h": {
+          "price": 18.923,
+          "change_pct": -4.78,
+          "hit": false
+        },
+        "24h": {
+          "price": 18.597,
+          "change_pct": -6.42,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "AKTUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.8559,
+      "score": 59,
+      "reasoning": "",
+      "timestamp": "2026-05-24T15:17:58.775423+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.8435,
+          "change_pct": -1.45,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.8763,
+          "change_pct": 2.38,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.8748,
+          "change_pct": 2.21,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "BASUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.022771,
+      "score": 51,
+      "reasoning": "",
+      "timestamp": "2026-05-24T15:21:09.833232+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.023258,
+          "change_pct": 2.14,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.022955,
+          "change_pct": 0.81,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.022703,
+          "change_pct": -0.3,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "ZECUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 658.02,
+      "score": 61,
+      "reasoning": "",
+      "timestamp": "2026-05-24T15:46:33.255699+00:00",
+      "checks": {
+        "4h": {
+          "price": 667.96,
+          "change_pct": 1.51,
+          "hit": true
+        },
+        "8h": {
+          "price": 660.0,
+          "change_pct": 0.3,
+          "hit": false
+        },
+        "24h": {
+          "price": 672.29,
+          "change_pct": 2.17,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "COSUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.00121,
+      "score": 78,
+      "reasoning": "",
+      "timestamp": "2026-05-24T15:46:33.256277+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.001191,
+          "change_pct": -1.57,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.00119,
+          "change_pct": -1.65,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.00119,
+          "change_pct": -1.65,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "DEXEUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 14.99,
+      "score": 63,
+      "reasoning": "",
+      "timestamp": "2026-05-24T15:47:35.981852+00:00",
+      "checks": {
+        "4h": {
+          "price": 15.362,
+          "change_pct": 2.48,
+          "hit": true
+        },
+        "8h": {
+          "price": 17.543,
+          "change_pct": 17.03,
+          "hit": true
+        },
+        "24h": {
+          "price": 17.43,
+          "change_pct": 16.28,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "TAOUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 276.02,
+      "score": 75,
+      "reasoning": "",
+      "timestamp": "2026-05-24T16:04:26.193798+00:00",
+      "checks": {
+        "4h": {
+          "price": 274.19,
+          "change_pct": -0.66,
+          "hit": false
+        },
+        "8h": {
+          "price": 275.14,
+          "change_pct": -0.32,
+          "hit": false
+        },
+        "24h": {
+          "price": 276.76,
+          "change_pct": 0.27,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "DASHUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 46.61,
+      "score": 63,
+      "reasoning": "",
+      "timestamp": "2026-05-24T17:33:05.931767+00:00",
+      "checks": {
+        "4h": {
+          "price": 45.05,
+          "change_pct": -3.35,
+          "hit": false
+        },
+        "8h": {
+          "price": 46.07,
+          "change_pct": -1.16,
+          "hit": false
+        },
+        "24h": {
+          "price": 45.47,
+          "change_pct": -2.45,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "DEXEUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 15.278,
+      "score": 62,
+      "reasoning": "",
+      "timestamp": "2026-05-24T18:22:22.622925+00:00",
+      "checks": {
+        "4h": {
+          "price": 17.547,
+          "change_pct": 14.85,
+          "hit": true
+        },
+        "8h": {
+          "price": 17.547,
+          "change_pct": 14.85,
+          "hit": true
+        },
+        "24h": {
+          "price": 17.467,
+          "change_pct": 14.33,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "DOTUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 1.259,
+      "score": 71,
+      "reasoning": "",
+      "timestamp": "2026-05-24T18:27:39.377262+00:00",
+      "checks": {
+        "4h": {
+          "price": 1.257,
+          "change_pct": -0.16,
+          "hit": false
+        },
+        "8h": {
+          "price": 1.257,
+          "change_pct": -0.16,
+          "hit": false
+        },
+        "24h": {
+          "price": 1.279,
+          "change_pct": 1.59,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "FHEUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.02953,
+      "score": 73,
+      "reasoning": "",
+      "timestamp": "2026-05-24T18:29:47.352649+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.02833,
+          "change_pct": -4.06,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.02833,
+          "change_pct": -4.06,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.02735,
+          "change_pct": -7.38,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "HANAUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.04134,
+      "score": 78,
+      "reasoning": "",
+      "timestamp": "2026-05-24T20:21:36.876390+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.03721,
+          "change_pct": -9.99,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.03721,
+          "change_pct": -9.99,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.03584,
+          "change_pct": -13.3,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "MORPHOUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 2.2354,
+      "score": 70,
+      "reasoning": "",
+      "timestamp": "2026-05-24T20:28:02.926537+00:00",
+      "checks": {
+        "4h": {
+          "price": 2.2768,
+          "change_pct": 1.85,
+          "hit": true
+        },
+        "8h": {
+          "price": 2.2768,
+          "change_pct": 1.85,
+          "hit": true
+        },
+        "24h": {
+          "price": 2.2403,
+          "change_pct": 0.22,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "RIFUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.05199,
+      "score": 66,
+      "reasoning": "",
+      "timestamp": "2026-05-24T20:58:55.662976+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.05181,
+          "change_pct": -0.35,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.05194,
+          "change_pct": -0.1,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.05914,
+          "change_pct": 13.75,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "DEXEUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 15.134,
+      "score": 73,
+      "reasoning": "",
+      "timestamp": "2026-05-24T21:05:15.186029+00:00",
+      "checks": {
+        "4h": {
+          "price": 17.547,
+          "change_pct": 15.94,
+          "hit": true
+        },
+        "8h": {
+          "price": 17.629,
+          "change_pct": 16.49,
+          "hit": true
+        },
+        "24h": {
+          "price": 17.138,
+          "change_pct": 13.24,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "GENIUSUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.7256,
+      "score": 48,
+      "reasoning": "",
+      "timestamp": "2026-05-24T21:30:37.192112+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.7119,
+          "change_pct": -1.89,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.7036,
+          "change_pct": -3.03,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.6186,
+          "change_pct": -14.75,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "TRUSTUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.07031,
+      "score": 70,
+      "reasoning": "",
+      "timestamp": "2026-05-24T21:40:05.118240+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.07201,
+          "change_pct": 2.42,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.07206,
+          "change_pct": 2.49,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.07508,
+          "change_pct": 6.78,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "COSUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.001172,
+      "score": 78,
+      "reasoning": "",
+      "timestamp": "2026-05-24T21:41:28.411231+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.00119,
+          "change_pct": 1.54,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.001187,
+          "change_pct": 1.28,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.001208,
+          "change_pct": 3.07,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "HANAUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.03655,
+      "score": 85,
+      "reasoning": "",
+      "timestamp": "2026-05-24T21:42:47.495875+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.03721,
+          "change_pct": 1.81,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.03788,
+          "change_pct": 3.64,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.03583,
+          "change_pct": -1.97,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "AVNTUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.1485,
+      "score": 77,
+      "reasoning": "",
+      "timestamp": "2026-05-24T21:48:03.462323+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.1536,
+          "change_pct": 3.43,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.1531,
+          "change_pct": 3.1,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.1548,
+          "change_pct": 4.24,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "WLDUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 0.2961,
+      "score": 74,
+      "reasoning": "",
+      "timestamp": "2026-05-25T07:15:53.701629+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.3042,
+          "change_pct": 2.74,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.3011,
+          "change_pct": 1.69,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.3542,
+          "change_pct": 19.62,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "BSBUSDT",
+      "entry_type": "prelaunch_ambush",
+      "entry_price": 0.88105,
+      "score": 97,
+      "reasoning": "",
+      "timestamp": "2026-05-25T08:09:22.381906+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.88653,
+          "change_pct": 0.62,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.77652,
+          "change_pct": -11.86,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.67267,
+          "change_pct": -23.65,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "ZECUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 674.06,
+      "score": 74,
+      "reasoning": "",
+      "timestamp": "2026-05-25T12:09:20.591701+00:00",
+      "checks": {
+        "4h": {
+          "price": 668.32,
+          "change_pct": -0.85,
+          "hit": false
+        },
+        "8h": {
+          "price": 649.58,
+          "change_pct": -3.63,
+          "hit": false
+        },
+        "24h": {
+          "price": 614.68,
+          "change_pct": -8.81,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "INUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.09581,
+      "score": 66,
+      "reasoning": "",
+      "timestamp": "2026-05-25T13:58:11.640847+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.09145,
+          "change_pct": -4.55,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.09325,
+          "change_pct": -2.67,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.09701,
+          "change_pct": 1.25,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "JUPUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.2049,
+      "score": 54,
+      "reasoning": "",
+      "timestamp": "2026-05-25T14:05:36.062932+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.2033,
+          "change_pct": -0.78,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.2002,
+          "change_pct": -2.29,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.2091,
+          "change_pct": 2.05,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "GENIUSUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 0.6569,
+      "score": 75,
+      "reasoning": "",
+      "timestamp": "2026-05-25T14:09:49.702019+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.6075,
+          "change_pct": -7.52,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.6301,
+          "change_pct": -4.08,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.6931,
+          "change_pct": 5.51,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "ZECUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 677.29,
+      "score": 74,
+      "reasoning": "",
+      "timestamp": "2026-05-25T14:32:56.429310+00:00",
+      "checks": {
+        "4h": {
+          "price": 661.48,
+          "change_pct": -2.33,
+          "hit": false
+        },
+        "8h": {
+          "price": 646.69,
+          "change_pct": -4.52,
+          "hit": false
+        },
+        "24h": {
+          "price": 607.88,
+          "change_pct": -10.25,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "STRKUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.04183,
+      "score": 68,
+      "reasoning": "",
+      "timestamp": "2026-05-25T14:42:19.893906+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.04125,
+          "change_pct": -1.39,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.04058,
+          "change_pct": -2.99,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.04152,
+          "change_pct": -0.74,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "AGTUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.019095,
+      "score": 66,
+      "reasoning": "",
+      "timestamp": "2026-05-25T15:22:56.132307+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.019999,
+          "change_pct": 4.73,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.018697,
+          "change_pct": -2.08,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.017569,
+          "change_pct": -7.99,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "GRASSUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.5167,
+      "score": 73,
+      "reasoning": "",
+      "timestamp": "2026-05-25T15:29:22.284000+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.5587,
+          "change_pct": 8.13,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.5719,
+          "change_pct": 10.68,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.5821,
+          "change_pct": 12.66,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "XAGUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 78.16,
+      "score": 75,
+      "reasoning": "",
+      "timestamp": "2026-05-25T22:03:29.636630+00:00",
+      "checks": {
+        "4h": {
+          "price": 76.55,
+          "change_pct": -2.06,
+          "hit": false
+        },
+        "8h": {
+          "price": 76.56,
+          "change_pct": -2.05,
+          "hit": false
+        },
+        "24h": {
+          "price": 75.43,
+          "change_pct": -3.49,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "OPGUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.2084,
+      "score": 57,
+      "reasoning": "",
+      "timestamp": "2026-05-26T06:23:26.948619+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.2029,
+          "change_pct": -2.64,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.2143,
+          "change_pct": 2.83,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.2038,
+          "change_pct": -2.21,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "WLDUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.3588,
+      "score": 62,
+      "reasoning": "",
+      "timestamp": "2026-05-26T07:03:27.490959+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.3943,
+          "change_pct": 9.89,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.393,
+          "change_pct": 9.53,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.354,
+          "change_pct": -1.34,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "PHAUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.04605,
+      "score": 46,
+      "reasoning": "",
+      "timestamp": "2026-05-26T07:06:40.229677+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.05243,
+          "change_pct": 13.85,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.05312,
+          "change_pct": 15.35,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.04943,
+          "change_pct": 7.34,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "HANAUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.03674,
+      "score": 60,
+      "reasoning": "",
+      "timestamp": "2026-05-26T07:12:59.735449+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.033,
+          "change_pct": -10.18,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.03343,
+          "change_pct": -9.01,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.03284,
+          "change_pct": -10.62,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "OPGUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.2108,
+      "score": 61,
+      "reasoning": "",
+      "timestamp": "2026-05-26T07:29:03.962183+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.2029,
+          "change_pct": -3.75,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.2198,
+          "change_pct": 4.27,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.2038,
+          "change_pct": -3.32,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "PHAUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.04753,
+      "score": 63,
+      "reasoning": "",
+      "timestamp": "2026-05-26T08:09:11.424301+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.0522,
+          "change_pct": 9.83,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.04943,
+          "change_pct": 4.0,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.04942,
+          "change_pct": 3.98,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "HANAUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.03644,
+      "score": 83,
+      "reasoning": "",
+      "timestamp": "2026-05-26T08:18:45.542843+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.033,
+          "change_pct": -9.44,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.03284,
+          "change_pct": -9.88,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.03284,
+          "change_pct": -9.88,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "VIRTUALUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.802,
+      "score": 63,
+      "reasoning": "",
+      "timestamp": "2026-05-26T08:19:54.495576+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.8204,
+          "change_pct": 2.29,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.8027,
+          "change_pct": 0.09,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.8027,
+          "change_pct": 0.09,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "BASUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.025066,
+      "score": 73,
+      "reasoning": "",
+      "timestamp": "2026-05-26T08:34:41.244438+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.025991,
+          "change_pct": 3.69,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.028375,
+          "change_pct": 13.2,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.028375,
+          "change_pct": 13.2,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "BILLUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.0895,
+      "score": 64,
+      "reasoning": "",
+      "timestamp": "2026-05-26T08:51:40.100109+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.08777,
+          "change_pct": -1.93,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.07762,
+          "change_pct": -13.27,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.07762,
+          "change_pct": -13.27,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "RENDERUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 2.36,
+      "score": 62,
+      "reasoning": "",
+      "timestamp": "2026-05-26T09:00:13.585982+00:00",
+      "checks": {
+        "4h": {
+          "price": 2.342,
+          "change_pct": -0.76,
+          "hit": false
+        },
+        "8h": {
+          "price": 2.202,
+          "change_pct": -6.69,
+          "hit": false
+        },
+        "24h": {
+          "price": 2.202,
+          "change_pct": -6.69,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "HANAUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.03617,
+      "score": 83,
+      "reasoning": "",
+      "timestamp": "2026-05-26T09:34:30.958302+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.03348,
+          "change_pct": -7.44,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.03284,
+          "change_pct": -9.21,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.03284,
+          "change_pct": -9.21,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "BASUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.025204,
+      "score": 64,
+      "reasoning": "",
+      "timestamp": "2026-05-26T09:35:39.678520+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.02624,
+          "change_pct": 4.11,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.028375,
+          "change_pct": 12.58,
+          "hit": true
+        },
+        "24h": {
+          "price": 0.028375,
+          "change_pct": 12.58,
+          "hit": true
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "FETUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.242,
+      "score": 57,
+      "reasoning": "",
+      "timestamp": "2026-05-26T09:42:07.932094+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.2519,
+          "change_pct": 4.09,
+          "hit": true
+        },
+        "8h": {
+          "price": 0.2416,
+          "change_pct": -0.17,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.2415,
+          "change_pct": -0.21,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "REDUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.1349,
+      "score": 73,
+      "reasoning": "",
+      "timestamp": "2026-05-26T09:44:16.876648+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.1351,
+          "change_pct": 0.15,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.1296,
+          "change_pct": -3.93,
+          "hit": false
+        },
+        "24h": {
+          "price": 0.1296,
+          "change_pct": -3.93,
+          "hit": false
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "ADAUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 0.2451,
+      "score": 74,
+      "reasoning": "",
+      "timestamp": "2026-05-26T12:57:58.020067+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.2393,
+          "change_pct": -2.37,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.2393,
+          "change_pct": -2.37,
+          "hit": false
+        }
+      },
+      "final_result": null
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "HYPEUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 62.042,
+      "score": 78,
+      "reasoning": "",
+      "timestamp": "2026-05-26T12:57:58.022398+00:00",
+      "checks": {
+        "4h": {
+          "price": 63.266,
+          "change_pct": 1.97,
+          "hit": true
+        },
+        "8h": {
+          "price": 63.266,
+          "change_pct": 1.97,
+          "hit": true
+        }
+      },
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "BERAUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.3856,
+      "score": 72,
+      "reasoning": "",
+      "timestamp": "2026-05-26T13:12:51.688896+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.3661,
+          "change_pct": -5.06,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.3662,
+          "change_pct": -5.03,
+          "hit": false
+        }
+      },
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "INJUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 5.846,
+      "score": 70,
+      "reasoning": "",
+      "timestamp": "2026-05-26T13:13:57.434078+00:00",
+      "checks": {
+        "4h": {
+          "price": 5.645,
+          "change_pct": -3.44,
+          "hit": false
+        },
+        "8h": {
+          "price": 5.644,
+          "change_pct": -3.46,
+          "hit": false
+        }
+      },
+      "final_result": null
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "ZECUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 622.7,
+      "score": 74,
+      "reasoning": "",
+      "timestamp": "2026-05-26T13:47:42.123280+00:00",
+      "checks": {
+        "4h": {
+          "price": 565.02,
+          "change_pct": -9.26,
+          "hit": false
+        },
+        "8h": {
+          "price": 565.02,
+          "change_pct": -9.26,
+          "hit": false
+        }
+      },
+      "final_result": null
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "TONUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 1.9646,
+      "score": 74,
+      "reasoning": "",
+      "timestamp": "2026-05-26T13:47:42.127693+00:00",
+      "checks": {
+        "4h": {
+          "price": 1.8951,
+          "change_pct": -3.54,
+          "hit": false
+        },
+        "8h": {
+          "price": 1.8951,
+          "change_pct": -3.54,
+          "hit": false
+        }
+      },
+      "final_result": null
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "TAOUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 290.62,
+      "score": 78,
+      "reasoning": "",
+      "timestamp": "2026-05-26T14:27:51.320219+00:00",
+      "checks": {
+        "4h": {
+          "price": 274.96,
+          "change_pct": -5.39,
+          "hit": false
+        },
+        "8h": {
+          "price": 274.86,
+          "change_pct": -5.42,
+          "hit": false
+        }
+      },
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "PLUMEUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.01499,
+      "score": 76,
+      "reasoning": "",
+      "timestamp": "2026-05-26T14:28:53.423068+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.0134,
+          "change_pct": -10.61,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.0134,
+          "change_pct": -10.61,
+          "hit": false
+        }
+      },
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "AKTUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.8933,
+      "score": 79,
+      "reasoning": "",
+      "timestamp": "2026-05-26T14:35:14.391402+00:00",
+      "checks": {
+        "4h": {
+          "price": 0.8611,
+          "change_pct": -3.6,
+          "hit": false
+        },
+        "8h": {
+          "price": 0.8611,
+          "change_pct": -3.6,
+          "hit": false
+        }
+      },
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "COSUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.0012,
+      "score": 78,
+      "reasoning": "",
+      "timestamp": "2026-05-27T09:47:07.245338+00:00",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "INUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.09452,
+      "score": 76,
+      "reasoning": "",
+      "timestamp": "2026-05-27T09:47:07.248736+00:00",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "DYMUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.0246,
+      "score": 58,
+      "reasoning": "",
+      "timestamp": "2026-05-27T09:48:15.648835+00:00",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "BEATUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 1.1838,
+      "score": 70,
+      "reasoning": "",
+      "timestamp": "2026-05-27T09:59:03.040807+00:00",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "BUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.2517,
+      "score": 70,
+      "reasoning": "",
+      "timestamp": "2026-05-27T10:10:50.271708+00:00",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "SOLUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 83.93,
+      "score": 100,
+      "reasoning": "",
+      "timestamp": "2026-05-27T10:18:24.703989+00:00",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "agent_type": "altcoin",
+      "symbol": "BNBUSDT",
+      "entry_type": "watch_pool_breakout",
+      "entry_price": 655.38,
+      "score": 100,
+      "reasoning": "",
+      "timestamp": "2026-05-27T10:18:24.712375+00:00",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "BASUSDT",
+      "entry_type": "surge_quick",
+      "entry_price": 0.028494,
+      "score": 64,
+      "reasoning": "",
+      "timestamp": "2026-05-27T10:39:40.627819+00:00",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "DYMUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 0.02473,
+      "score": 85,
+      "reasoning": "",
+      "timestamp": "2026-05-27T10:40:42.447822+00:00",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "agent_type": "momentum",
+      "symbol": "NEARUSDT",
+      "entry_type": "surge_wave",
+      "entry_price": 2.513,
+      "score": 83,
+      "reasoning": "",
+      "timestamp": "2026-05-27T11:30:47.503484+00:00",
+      "checks": {},
+      "final_result": null
+    }
+  ],
+  "stats": {
+    "momentum": {
+      "total": 58,
+      "by_entry_type": {
+        "surge_quick": {
+          "total": 32,
+          "checked_24h": 31,
+          "wins": 14,
+          "win_rate": 45.2,
+          "avg_change": 0.77
+        },
+        "surge_wave": {
+          "total": 26,
+          "checked_24h": 21,
+          "wins": 9,
+          "win_rate": 42.9,
+          "avg_change": 0.44
+        }
+      }
+    },
+    "major": {
+      "total": 2,
+      "by_entry_type": {
+        "trend": {
+          "total": 2,
+          "checked_24h": 2,
+          "wins": 2,
+          "win_rate": 100.0,
+          "avg_change": 1.53
+        }
+      }
+    },
+    "altcoin": {
+      "total": 12,
+      "by_entry_type": {
+        "watch_pool_breakout": {
+          "total": 11,
+          "checked_24h": 6,
+          "wins": 2,
+          "win_rate": 33.3,
+          "avg_change": 0.48
+        },
+        "prelaunch_ambush": {
+          "total": 1,
+          "checked_24h": 1,
+          "wins": 0,
+          "win_rate": 0.0,
+          "avg_change": -23.65
+        }
+      }
+    }
+  }
+}

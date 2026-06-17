@@ -1,0 +1,10 @@
+{
+  "version": "v15",
+  "reset_at": "2026-05-13T17:43:22Z",
+  "score_threshold": 65,
+  "tune_reason": "自动监控调整：胜率仅11.1%，阈值从35提升到65，过滤低质量信号",
+  "sl_widen": false,
+  "updated_at": "2026-05-16T01:30:00Z",
+  "total_trades": 267,
+  "win_rate": 65.2
+}

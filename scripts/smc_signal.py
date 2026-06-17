@@ -1,0 +1,698 @@
+"""
+小风交易系统 - SMC 独立信号引擎 (验证模式)
+
+核心理念: 大周期定方向，小周期找入场
+- 4h/1h 的最后一个 CHoCH/BOS 定方向 (只看最后一个有意义的结构突破)
+- 15m 的 Order Block 定精准入场区间
+- 反向 OB/支撑阻力 定止盈目标
+- 入场OB的对面边界 定止损
+
+独立于现有技术面评分，平行运行验证
+结果写入Redis，供AI参考 + 后续统计胜率
+"""
+import logging
+import json
+import time
+from typing import Dict, List, Optional
+from datetime import datetime, timezone
+
+logger = logging.getLogger("SMCSignal")
+
+
+def _fmt_price(price: float) -> str:
+    """智能价格格式化：小币种显示更多小数位"""
+    if price == 0:
+        return "$0"
+    abs_price = abs(price)
+    if abs_price >= 100:
+        return f"${price:,.1f}"
+    elif abs_price >= 1:
+        return f"${price:,.2f}"
+    elif abs_price >= 0.01:
+        return f"${price:,.4f}"
+    else:
+        return f"${price:,.6f}"
+
+# ============================================
+# 1. 大周期定方向 (4h → 1h 优先级)
+# ============================================
+def determine_direction(klines_by_interval: dict) -> dict:
+    """
+    从大周期到小周期，找最后一个有意义的结构突破来定方向
+    
+    优先级: 4h > 1h > 15m
+    只看最新的 CHoCH (趋势反转信号最可靠)
+    BOS 只做确认，不单独改变方向
+    
+    返回: {
+        direction: "LONG"/"SHORT"/"NEUTRAL",
+        confidence: 0-100,
+        reason: str,
+        source_interval: str,
+        details: {...}
+    }
+    """
+    from analyst_smc import find_swing_points, detect_structure_breaks
+    
+    direction = "NEUTRAL"
+    confidence = 0
+    reason = ""
+    source_interval = ""
+    
+    # 从大到小分析
+    for interval in ["4h", "1h", "15m"]:
+        klines = klines_by_interval.get(interval, [])
+        if len(klines) < 20:
+            continue
+        
+        swings = find_swing_points(klines, left=3, right=3)
+        if len(swings) < 3:
+            continue
+        
+        breaks = detect_structure_breaks(klines, swings)
+        if not breaks:
+            continue
+        
+        # 只看最后2个结构突破
+        recent = sorted(breaks, key=lambda b: b.break_index, reverse=True)[:2]
+        
+        # 优先找 CHoCH (趋势反转)
+        choch = [b for b in recent if b.type == "CHoCH"]
+        bos = [b for b in recent if b.type == "BOS"]
+        
+        if choch:
+            last = choch[0]
+            direction = "LONG" if last.direction == "bullish" else "SHORT"
+            
+            # 置信度: 4h CHoCH = 最高, 越小周期越低
+            base_conf = {"4h": 75, "1h": 60, "15m": 45}[interval]
+            
+            # 如果BOS方向一致，加确认
+            if bos and bos[0].direction == last.direction:
+                base_conf += 10
+            
+            confidence = base_conf
+            tag = "CHoCH"
+            reason = f"[{interval}] {tag} {last.direction} @ {_fmt_price(last.price)}"
+            source_interval = interval
+            break  # 大周期定了就不看小周期
+            
+        elif bos:
+            last = bos[0]
+            direction = "LONG" if last.direction == "bullish" else "SHORT"
+            base_conf = {"4h": 65, "1h": 50, "15m": 35}[interval]
+            confidence = base_conf
+            reason = f"[{interval}] BOS {last.direction} @ {_fmt_price(last.price)}"
+            source_interval = interval
+            break
+    
+    return {
+        "direction": direction,
+        "confidence": confidence,
+        "reason": reason,
+        "source_interval": source_interval,
+    }
+
+
+# ============================================
+# 2. 小周期找精准入场区 (15m OB)
+# ============================================
+def find_entry_zone(klines_by_interval: dict, direction: str) -> dict:
+    """
+    多周期OB汇聚，选距当前价格最近的OB作为入场区
+    
+    核心逻辑:
+    - 同时从4h/1h/15m三个周期收集所有同方向OB
+    - 按距离当前价格最近排序，选最近的
+    - 小周期OB（15m）虽然单个弱，但距离近→止损小→实际可用
+    - 大周期OB（4h）虽然强，但太远→止损距过大→无法开仓
+    
+    做多: 找看多OB(支撑位)，等价格回踩
+    做空: 找看空OB(阻力位)，等价格反弹
+    
+    返回: {
+        entry_zone: [low, high],
+        ob_direction: str,
+        immediate: bool,
+        distance_pct: float,
+        interval: str,  # OB来源周期
+    }
+    """
+    from analyst_smc import find_swing_points, detect_structure_breaks, find_order_blocks
+    
+    current_price = None
+    
+    # ★ 从所有周期收集候选OB
+    candidates = []  # [(distance, ob, interval), ...]
+    MAX_OB_DISTANCE = 0.25  # OB距当前价格超过25%视为不相关（数据支撑：101次>100%极远跳过）
+    
+    # ★ 预计算止损距离上限（数据支撑：STORJUSDT/LABUSDT/IOUSDT等因宽OB反复被跳过，跳过率95%）
+    # auto_runner.py中止损距离阈值为15%，这里用14%留1%余量
+    OB_SL_BUFFER = 0.003  # OB止损缓冲（与auto_runner.py一致：OB外围±0.3%）
+    MAX_SL_DIST = 0.14    # 预计算止损距离上限
+    
+    for interval in ["4h", "1h", "15m"]:
+        klines = klines_by_interval.get(interval, [])
+        if len(klines) < 15:
+            continue
+        
+        current_price = klines[-1]["close"]
+        swings = find_swing_points(klines, left=3, right=3)
+        breaks = detect_structure_breaks(klines, swings)
+        obs = find_order_blocks(klines, swings, breaks, max_count=15)
+        
+        # 筛选: 做多找看多OB(bullish/支撑位)，做空找看空OB(bearish/阻力位)
+        # 注意: OB.direction 用 'bullish'/'bearish'，不是 'long'/'short'
+        ob_dir = "bullish" if direction == "LONG" else "bearish"
+        for ob in obs:
+            if ob.direction != ob_dir:
+                continue
+            if direction == "LONG" and ob.low < current_price:
+                dist = (current_price - ob.high) / current_price
+                if abs(dist) <= MAX_OB_DISTANCE:
+                    # ★ 预计算止损距离：排除宽OB导致止损过远（STORJUSDT: 入场距2%但止损距26%）
+                    sl = ob.low * (1 - OB_SL_BUFFER)
+                    sl_dist = (current_price - sl) / current_price
+                    if sl_dist <= MAX_SL_DIST:
+                        candidates.append((dist, ob, interval))
+            elif direction == "SHORT" and ob.high > current_price:
+                dist = (ob.low - current_price) / current_price
+                if abs(dist) <= MAX_OB_DISTANCE:
+                    # ★ 预计算止损距离：排除宽OB导致止损过远
+                    sl = ob.high * (1 + OB_SL_BUFFER)
+                    sl_dist = (sl - current_price) / current_price
+                    if sl_dist <= MAX_SL_DIST:
+                        candidates.append((dist, ob, interval))
+    
+    # ★ 选距离最近的OB（不管来自哪个周期）
+    if candidates:
+        candidates.sort(key=lambda x: x[0])
+        best_dist, best_ob, best_interval = candidates[0]
+        
+        # 判断价格是否已在OB内
+        in_zone = best_ob.low <= current_price <= best_ob.high
+        if in_zone:
+            distance_pct = 0
+        elif direction == "LONG":
+            distance_pct = (current_price - best_ob.high) / current_price * 100
+        else:
+            distance_pct = (best_ob.low - current_price) / current_price * 100
+        
+        total_count = len(candidates)
+        return {
+            "entry_zone": [round(best_ob.low, 4), round(best_ob.high, 4)],
+            "ob_direction": best_ob.direction,
+            "immediate": in_zone,
+            "distance_pct": round(abs(distance_pct), 2),
+            "strength": best_ob.strength,
+            "interval": best_interval,
+            "reason": f"[{best_interval}] {'已在' if in_zone else '等待回踩到'}OB {_fmt_price(best_ob.low)}~{_fmt_price(best_ob.high)} (x{best_ob.strength})",
+        }
+    
+    # 备用方案: 用最近的swing point作为入场参考
+    if not current_price:
+        for interval in ["4h", "1h", "15m"]:
+            klines = klines_by_interval.get(interval, [])
+            if len(klines) >= 15:
+                current_price = klines[-1]["close"]
+                break
+    
+    if not current_price:
+        return {
+            "entry_zone": None,
+            "ob_direction": None,
+            "immediate": False,
+            "distance_pct": 999,
+            "interval": None,
+            "reason": "无K线数据",
+        }
+    
+    fallback_zone = None
+    for interval in ["4h", "1h", "15m"]:
+        klines = klines_by_interval.get(interval, [])
+        if len(klines) < 15:
+            continue
+        swings = find_swing_points(klines, left=3, right=3)
+        
+        if direction == "LONG":
+            lows = [s for s in swings if s.type == "low" and s.price < current_price]
+            if lows:
+                nearest = max(lows, key=lambda s: s.price)
+                # ★ Swing fallback也加距离过滤：超过25%的swing点不相关
+                if abs(nearest.price - current_price) / current_price <= MAX_OB_DISTANCE:
+                    zone_width = current_price * 0.005
+                    fallback_zone = [round(nearest.price * 0.998, 4), round(nearest.price + zone_width, 4)]
+                    break
+        else:
+            highs = [s for s in swings if s.type == "high" and s.price > current_price]
+            if highs:
+                nearest = min(highs, key=lambda s: s.price)
+                # ★ Swing fallback也加距离过滤：超过25%的swing点不相关
+                if abs(nearest.price - current_price) / current_price <= MAX_OB_DISTANCE:
+                    zone_width = current_price * 0.005
+                    fallback_zone = [round(nearest.price - zone_width, 4), round(nearest.price * 1.002, 4)]
+                    break
+    
+    if fallback_zone:
+        return {
+            "entry_zone": fallback_zone,
+            "ob_direction": direction.lower(),
+            "immediate": fallback_zone[0] <= current_price <= fallback_zone[1],
+            "distance_pct": round(abs(current_price - (fallback_zone[0] + fallback_zone[1]) / 2) / current_price * 100, 2),
+            "strength": 0.5,
+            "interval": "swing",
+            "reason": f"备用: Swing{'Low' if direction == 'LONG' else 'High'} {_fmt_price(fallback_zone[0])}~{_fmt_price(fallback_zone[1])}",
+        }
+    
+    return {
+        "entry_zone": None,
+        "ob_direction": None,
+        "immediate": False,
+        "distance_pct": 999,
+        "interval": None,
+        "reason": "未找到合适的OB入场区",
+    }
+
+
+# ============================================
+# 3. SMC 动态止盈止损 (核心!)
+# ============================================
+def calc_smc_targets(klines_by_interval: dict, direction: str, entry_price: float) -> dict:
+    """
+    基于SMC市场结构计算止盈止损，比固定百分比科学
+    
+    止损逻辑:
+    - 做多: 止损放在看多OB的下方 (OB被跌破 = 结构失效)
+    - 做空: 止损放在看空OB的上方
+    
+    止盈逻辑:
+    - 做多: 找上方最近的 看空OB / 阻力位 / 看空FVG → 这些是价格会受阻的地方
+    - 做空: 找下方最近的 看多OB / 支撑位 / 看多FVG → 这些是价格会获得支撑的地方
+    
+    多层止盈:
+    - TP1: 最近的一个反向关键位 (50%仓位)
+    - TP2: 第二个关键位 (再平30%)
+    - TP3: 让趋势跑，跟踪止损
+    
+    返回: {
+        stop_loss: float,
+        targets: [{price, type, pct, desc}],
+        risk_reward: float,
+    }
+    """
+    from analyst_smc import (
+        find_swing_points, detect_structure_breaks,
+        find_order_blocks, find_fair_value_gaps,
+        find_equal_levels, calc_premium_discount,
+    )
+    
+    all_targets = []  # 反向关键位列表
+    stop_loss = None
+    
+    for interval in ["15m", "1h", "4h"]:
+        klines = klines_by_interval.get(interval, [])
+        if len(klines) < 15:
+            continue
+        
+        swings = find_swing_points(klines, left=3, right=3)
+        breaks = detect_structure_breaks(klines, swings)
+        obs = find_order_blocks(klines, swings, breaks, max_count=10)
+        fvgs = find_fair_value_gaps(klines)
+        equals = find_equal_levels(swings)
+        
+        current_price = klines[-1]["close"]
+        
+        if direction == "LONG":
+            # --- 止损: 找最近的看多OB，止损在其下方 ---
+            bullish_obs = [ob for ob in obs if ob.direction == "bullish" and ob.low < entry_price]
+            # 找离入场价最近的那个
+            for ob in sorted(bullish_obs, key=lambda o: abs(entry_price - o.low)):
+                sl = ob.low * 0.998  # OB下方留0.2%缓冲
+                if stop_loss is None or sl > stop_loss:  # 取更高的止损(更紧)
+                    stop_loss = sl
+            
+            # 没有OB时用最近的swing low
+            if stop_loss is None:
+                swing_lows = [s for s in swings if s.type == "low" and s.price < entry_price]
+                if swing_lows:
+                    stop_loss = max(s.price for s in swing_lows) * 0.998
+            
+            # --- 止盈: 找上方所有反向关键位 ---
+            # 1) 看空OB (阻力) — OB上沿在入场价上方即为阻力
+            for ob in obs:
+                if ob.direction == "bearish" and ob.high > entry_price:
+                    all_targets.append({
+                        "price": round(ob.low, 4),
+                        "type": f"[{interval}] 看空OB {_fmt_price(ob.low)}~{_fmt_price(ob.high)}",
+                        "interval": interval,
+                        "weight": 2.0 if interval in ["1h", "4h"] else 1.0,
+                    })
+            
+            # 2) Swing High (前高阻力)
+            for s in swings:
+                if s.type == "high" and s.price > entry_price:
+                    all_targets.append({
+                        "price": round(s.price, 4),
+                        "type": f"[{interval}] 前高 {_fmt_price(s.price)}",
+                        "interval": interval,
+                        "weight": 1.5 if interval in ["1h", "4h"] else 1.0,
+                    })
+            
+            # 3) 看空FVG (回补目标)
+            for f in fvgs:
+                if f.direction == "bearish" and not f.filled and f.low > entry_price:
+                    all_targets.append({
+                        "price": round(f.low, 4),
+                        "type": f"[{interval}] 看空FVG ${f.low:,.1f}~${f.high:,.1f}",
+                        "interval": interval,
+                        "weight": 1.5,
+                    })
+            
+            # 4) Equal Highs (止损猎取区，突破后加速)
+            for eq in equals:
+                if eq["type"] == "equal_highs" and eq["price"] > entry_price:
+                    all_targets.append({
+                        "price": eq["price"],
+                        "type": f"[{interval}] 等高(EH) ${eq['price']:,.1f}",
+                        "interval": interval,
+                        "weight": 1.0,
+                    })
+        
+        else:  # SHORT
+            # --- 止损: 找最近的看空OB，止损在其上方 ---
+            bearish_obs = [ob for ob in obs if ob.direction == "bearish" and ob.high > entry_price]
+            for ob in sorted(bearish_obs, key=lambda o: abs(entry_price - o.high)):
+                sl = ob.high * 1.002
+                if stop_loss is None or sl < stop_loss:
+                    stop_loss = sl
+            
+            if stop_loss is None:
+                swing_highs = [s for s in swings if s.type == "high" and s.price > entry_price]
+                if swing_highs:
+                    stop_loss = min(s.price for s in swing_highs) * 1.002
+            
+            # --- 止盈: 找下方所有反向关键位 ---
+            # 1) 看多OB (支撑) — OB下沿在入场价下方即为支撑
+            for ob in obs:
+                if ob.direction == "bullish" and ob.low < entry_price:
+                    all_targets.append({
+                        "price": round(ob.high, 4),
+                        "type": f"[{interval}] 看多OB ${ob.low:,.1f}~${ob.high:,.1f}",
+                        "interval": interval,
+                        "weight": 2.0 if interval in ["1h", "4h"] else 1.0,
+                    })
+            
+            # 2) Swing Low (前低支撑)
+            for s in swings:
+                if s.type == "low" and s.price < entry_price:
+                    all_targets.append({
+                        "price": round(s.price, 4),
+                        "type": f"[{interval}] 前低 ${s.price:,.1f}",
+                        "interval": interval,
+                        "weight": 1.5 if interval in ["1h", "4h"] else 1.0,
+                    })
+            
+            # 3) 看多FVG
+            for f in fvgs:
+                if f.direction == "bullish" and not f.filled and f.high < entry_price:
+                    all_targets.append({
+                        "price": round(f.high, 4),
+                        "type": f"[{interval}] 看多FVG ${f.low:,.1f}~${f.high:,.1f}",
+                        "interval": interval,
+                        "weight": 1.5,
+                    })
+            
+            # 4) Equal Lows
+            for eq in equals:
+                if eq["type"] == "equal_lows" and eq["price"] < entry_price:
+                    all_targets.append({
+                        "price": eq["price"],
+                        "type": f"[{interval}] 等低(EL) ${eq['price']:,.1f}",
+                        "interval": interval,
+                        "weight": 1.0,
+                    })
+    
+    # 去重 + 按距离排序
+    seen_prices = set()
+    unique_targets = []
+    for t in all_targets:
+        key = round(t["price"], 2)
+        if key not in seen_prices:
+            seen_prices.add(key)
+            unique_targets.append(t)
+    
+    # 按价格排序: LONG从近到远，SHORT从近到远
+    if direction == "LONG":
+        unique_targets.sort(key=lambda t: t["price"])
+    else:
+        unique_targets.sort(key=lambda t: -t["price"])
+    
+    # 按权重调整: 大周期的目标更重要
+    unique_targets.sort(key=lambda t: -t["weight"])
+    # 再按距离重新排序(距离优先)
+    if direction == "LONG":
+        unique_targets.sort(key=lambda t: t["price"])
+    else:
+        unique_targets.sort(key=lambda t: -t["price"])
+    
+    # 取前3个作为TP1/TP2/TP3
+    targets = unique_targets[:3]
+    
+    # 如果没找到SMC目标，用默认值
+    if not targets:
+        if direction == "LONG":
+            targets = [{"price": round(entry_price * 1.02, 4), "type": "默认+2%", "weight": 1}]
+        else:
+            targets = [{"price": round(entry_price * 0.98, 4), "type": "默认-2%", "weight": 1}]
+    
+    # 默认止损 (用ATR思路: 最近N根K线的平均波幅的1.5倍)
+    if stop_loss is None:
+        # 取15m最近10根K线的平均波幅
+        ref_klines = klines_by_interval.get("15m", klines_by_interval.get("1h", []))
+        if ref_klines and len(ref_klines) >= 5:
+            avg_range = sum(k["high"] - k["low"] for k in ref_klines[-10:]) / min(len(ref_klines), 10)
+            stop_distance = avg_range * 1.5
+            if direction == "LONG":
+                stop_loss = entry_price - stop_distance
+            else:
+                stop_loss = entry_price + stop_distance
+        else:
+            if direction == "LONG":
+                stop_loss = entry_price * 0.985
+            else:
+                stop_loss = entry_price * 1.015
+    
+    # 风险回报比
+    risk = abs(entry_price - stop_loss)
+    reward = abs(targets[0]["price"] - entry_price) if targets else risk
+    rr = round(reward / risk, 2) if risk > 0 else 0
+    
+    # 给每个目标加上百分比
+    for t in targets:
+        pct = (t["price"] - entry_price) / entry_price * 100
+        t["pct"] = round(pct, 2)
+    
+    return {
+        "stop_loss": round(stop_loss, 4),
+        "targets": targets,
+        "risk_reward": rr,
+        "all_levels_count": len(unique_targets),
+    }
+
+
+# ============================================
+# 4. 综合信号生成 (独立SMC分析师)
+# ============================================
+def generate_smc_signal(symbol: str, klines_by_interval: dict) -> Optional[dict]:
+    """
+    SMC 独立信号生成
+    
+    流程:
+    1. 大周期(4h/1h)定方向 — 只看最后一个CHoCH/BOS
+    2. 小周期(15m)找OB入场区
+    3. 全周期找反向关键位定止盈
+    4. 入场OB定止损
+    
+    输出: SMC独立交易建议，供AI参考
+    """
+    # 1. 定方向
+    dir_info = determine_direction(klines_by_interval)
+    
+    if dir_info["direction"] == "NEUTRAL":
+        return {
+            "symbol": symbol,
+            "direction": "NEUTRAL",
+            "confidence": 0,
+            "reason": "SMC未检测到明确结构突破",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    
+    direction = dir_info["direction"]
+    current_price = None
+    for interval in ["15m", "1h", "4h"]:
+        kl = klines_by_interval.get(interval, [])
+        if kl:
+            current_price = kl[-1]["close"]
+            break
+    
+    if not current_price:
+        return None
+    
+    # 2. 找入场区
+    entry_info = find_entry_zone(klines_by_interval, direction)
+    
+    # 3. 定止盈止损
+    target_info = calc_smc_targets(klines_by_interval, direction, current_price)
+    
+    # 4. 综合评分
+    # 基础分 = 大周期方向置信度
+    score = dir_info["confidence"]
+    
+    # 加分项
+    bonuses = []
+    
+    # 入场在OB内 = 精准入场
+    if entry_info["immediate"]:
+        score += 10
+        bonuses.append("价格在OB内(精准入场)")
+    
+    # OB强度 > 1.5x = 强OB
+    if entry_info.get("strength", 0) > 1.5:
+        score += 5
+        bonuses.append(f"强OB x{entry_info['strength']}")
+    
+    # 风险回报比 > 2 = 好
+    if target_info["risk_reward"] >= 2.0:
+        score += 5
+        bonuses.append(f"RR={target_info['risk_reward']}")
+    
+    # 折价区做多 / 溢价区做空 加分
+    from analyst_smc import calc_premium_discount
+    for interval in ["4h", "1h"]:
+        kl = klines_by_interval.get(interval, [])
+        if kl:
+            pd = calc_premium_discount(kl)
+            if direction == "LONG" and pd["zone"] == "discount":
+                score += 5
+                bonuses.append(f"[{interval}]折价区做多")
+            elif direction == "SHORT" and pd["zone"] == "premium":
+                score += 5
+                bonuses.append(f"[{interval}]溢价区做空")
+            break
+    
+    score = min(100, score)
+    
+    # 构建信号
+    signal = {
+        "symbol": symbol,
+        "direction": direction,
+        "confidence": score,
+        "current_price": current_price,
+        "entry_zone": entry_info["entry_zone"],
+        "entry_immediate": entry_info["immediate"],
+        "entry_distance": entry_info["distance_pct"],
+        "stop_loss": target_info["stop_loss"],
+        "targets": target_info["targets"],
+        "risk_reward": target_info["risk_reward"],
+        "direction_reason": dir_info["reason"],
+        "entry_reason": entry_info.get("reason", ""),
+        "bonuses": bonuses,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        # 用于AI参考的简短描述
+        "ai_brief": _build_ai_brief(direction, dir_info, entry_info, target_info, current_price),
+    }
+    
+    return signal
+
+
+def _build_ai_brief(direction, dir_info, entry_info, target_info, price) -> str:
+    """生成给AI看的简短SMC分析摘要"""
+    parts = []
+    
+    # 方向
+    parts.append(f"SMC方向={direction}")
+    parts.append(dir_info["reason"])
+    
+    # 入场
+    if entry_info["immediate"]:
+        parts.append(f"价格已在OB入场区 ${entry_info['entry_zone'][0]:,.1f}~${entry_info['entry_zone'][1]:,.1f}")
+    else:
+        parts.append(f"等待价格回到OB入场区(距{entry_info['distance_pct']:.1f}%)")
+    
+    # 止盈目标
+    for i, t in enumerate(target_info["targets"][:2]):
+        parts.append(f"TP{i+1}={t['type']} ({t.get('pct', 0):+.1f}%)")
+    
+    # 止损
+    sl_pct = (target_info["stop_loss"] - price) / price * 100
+    parts.append(f"SL=${target_info['stop_loss']:,.1f} ({sl_pct:+.2f}%) RR={target_info['risk_reward']}")
+    
+    return " | ".join(parts)
+
+
+# ============================================
+# 5. Redis 存储 + 统计
+# ============================================
+def save_smc_signal(signal: dict, redis_client=None):
+    """保存SMC信号到Redis，用于后续统计"""
+    if not redis_client or not signal:
+        return
+    
+    try:
+        # 最新信号
+        key = f"smc:signal:{signal['symbol']}"
+        redis_client.setex(key, 3600, json.dumps(signal))  # 1小时过期
+        
+        # 历史记录 (用于统计)
+        history_key = f"smc:history:{datetime.now().strftime('%Y%m%d')}"
+        record = {
+            "symbol": signal["symbol"],
+            "direction": signal["direction"],
+            "confidence": signal["confidence"],
+            "price": signal.get("current_price", 0),
+            "timestamp": signal["timestamp"],
+        }
+        redis_client.rpush(history_key, json.dumps(record))
+        redis_client.expire(history_key, 86400 * 7)  # 7天过期
+    except Exception as e:
+        logger.error(f"保存SMC信号失败: {e}")
+
+
+def get_smc_signal(symbol: str, redis_client=None) -> Optional[dict]:
+    """从Redis获取最新SMC信号"""
+    if not redis_client:
+        return None
+    try:
+        data = redis_client.get(f"smc:signal:{symbol}")
+        return json.loads(data) if data else None
+    except:
+        return None
+
+
+def get_smc_stats(redis_client=None, days: int = 3) -> dict:
+    """获取SMC信号统计"""
+    if not redis_client:
+        return {}
+    
+    stats = {"total": 0, "long": 0, "short": 0, "neutral": 0, "avg_confidence": 0}
+    all_conf = []
+    
+    for d in range(days):
+        date_str = (datetime.now() - __import__('datetime').timedelta(days=d)).strftime('%Y%m%d')
+        key = f"smc:history:{date_str}"
+        records = redis_client.lrange(key, 0, -1)
+        for r in records:
+            rec = json.loads(r)
+            stats["total"] += 1
+            if rec["direction"] == "LONG":
+                stats["long"] += 1
+            elif rec["direction"] == "SHORT":
+                stats["short"] += 1
+            else:
+                stats["neutral"] += 1
+            all_conf.append(rec.get("confidence", 0))
+    
+    if all_conf:
+        stats["avg_confidence"] = round(sum(all_conf) / len(all_conf), 1)
+    
+    return stats

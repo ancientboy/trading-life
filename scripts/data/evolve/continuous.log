@@ -1,0 +1,1468 @@
+=== Sun May 24 01:13:53 PM CST 2026 持续进化开始 (目标50轮) ===
+  初始记录: 47条
+
+--- 迭代 1/50 13:13:53 ---
+2026-05-24 13:14:00,326 
+======================================================================
+2026-05-24 13:14:00,326 🚀 Full Evolution Cycle | agent=momentum | 60天 | 2代
+2026-05-24 13:14:00,326 ======================================================================
+2026-05-24 13:14:00,326 
+>>> 策略: momentum_quick <<<
+2026-05-24 13:14:09,703 当前基线: PnL=$+45,491 WR52.1% Score=626.3
+2026-05-24 13:14:09,703 
+--- Phase 1: Auto-Optimizer (Grid Search) ---
+2026-05-24 13:14:09,703 
+============================================================
+2026-05-24 13:14:09,703 🔬 Auto-Optimizer: momentum_quick | 60天回测
+2026-05-24 13:14:09,703 ============================================================
+2026-05-24 13:14:09,764 参数空间: 100组 (总空间10080)
+2026-05-24 13:14:27,168   进度: 20/100 | 当前最佳: PnL=$+55,125 WR70.1% Score=562.2
+2026-05-24 13:14:45,008   进度: 40/100 | 当前最佳: PnL=$+34,457 WR53.6% Score=577.4
+2026-05-24 13:15:02,554   进度: 60/100 | 当前最佳: PnL=$+37,722 WR57.1% Score=596.1
+2026-05-24 13:15:22,402   进度: 80/100 | 当前最佳: PnL=$+45,099 WR52.8% Score=603.5
+2026-05-24 13:15:43,689   进度: 100/100 | 当前最佳: PnL=$+45,099 WR52.8% Score=603.5
+2026-05-24 13:15:43,689 
+🏆 最优参数 (momentum_quick):
+2026-05-24 13:15:43,689   PnL: $+45,099 | WR: 52.8% | Score: 603.5
+2026-05-24 13:15:43,689   参数: {"QUICK_SURGE_BARS": 2, "QUICK_MIN_SURGE": 3.0, "QUICK_TRAIL_PCT": 2.0, "QUICK_MAX_HOLD": 24, "QUICK_MIN_VOL_RATIO": 0.8}
+2026-05-24 13:15:43,689 
+--- Phase 2: Strategy Mutator (GA) ---
+2026-05-24 13:15:43,689 
+============================================================
+2026-05-24 13:15:43,690 🧬 Strategy Mutator: momentum_quick | 2代 x 15个体
+2026-05-24 13:15:43,690 ============================================================
+2026-05-24 13:15:43,690 
+--- Generation 1/2 ---
+2026-05-24 13:15:51,424   评估 10/15 | 最佳: $+44,831 WR56.8%
+2026-05-24 13:15:54,927 
+📊 Gen 1 最佳: PnL=$+60,211 WR49.2% Score=706.1
+2026-05-24 13:15:54,928 
+--- Generation 2/2 ---
+2026-05-24 13:16:00,729   评估 10/15 | 最佳: $+63,496 WR53.6%
+2026-05-24 13:16:03,300 
+📊 Gen 2 最佳: PnL=$+63,496 WR53.6% Score=779.7
+2026-05-24 13:16:03,300 
+🏆 进化完成 (momentum_quick):
+2026-05-24 13:16:03,300   PnL: $+63,496 | WR: 53.6% | Score: 779.7
+2026-05-24 13:16:03,300   参数: {"QUICK_SURGE_BARS": 2, "QUICK_MIN_SURGE": 4.0, "QUICK_TRAIL_PCT": 1.5, "QUICK_MAX_HOLD": 60, "QUICK_MIN_VOL_RATIO": 0.8, "_factor_weights": {"score_threshold": 45, "ms_blend": 0.15}}
+2026-05-24 13:16:03,301 
+--- Phase 3: Factor Weight Evolution ---
+2026-05-24 13:16:03,301 
+============================================================
+2026-05-24 13:16:03,301 ⚖️ 因子权重进化: momentum_quick
+2026-05-24 13:16:03,301 ============================================================
+2026-05-24 13:16:03,301 因子权重空间: 39321600组
+  新增: 3条 | 总计: 50条
+
+--- 迭代 2/50 13:21:17 ---
+=== Sun May 24 01:56:51 PM CST 2026 持续进化开始 (目标30轮) ===
+  初始记录: 50条
+
+--- 迭代 1/30 13:56:51 ---
+2026-05-24 13:57:01,509 
+======================================================================
+2026-05-24 13:57:01,509 🚀 Full Evolution Cycle | agent=momentum | 60天 | 2代
+2026-05-24 13:57:01,510 ======================================================================
+2026-05-24 13:57:01,510 
+>>> 策略: momentum_quick <<<
+2026-05-24 13:57:14,740   拉取 TAOUSDT 4h 60天...
+2026-05-24 13:57:14,959 当前基线: PnL=$+38,619 WR50.5% Score=575.4
+2026-05-24 13:57:14,959 
+--- Phase 1: Auto-Optimizer (Grid Search) ---
+2026-05-24 13:57:14,959 
+============================================================
+2026-05-24 13:57:14,959 🔬 Auto-Optimizer: momentum_quick | 60天回测
+2026-05-24 13:57:14,959 ============================================================
+2026-05-24 13:57:15,080 参数空间: 100组 (总空间10080)
+2026-05-24 13:57:42,770   进度: 20/100 | 当前最佳: PnL=$+39,709 WR52.5% Score=545.0
+=== Sun May 24 01:57:46 PM CST 2026 持续进化开始 (目标30轮, 低内存模式) ===
+  初始记录: 50条
+
+--- 迭代 1/30 13:57:46 ---
+2026-05-24 13:57:56,845 
+======================================================================
+2026-05-24 13:57:56,845 🚀 Full Evolution Cycle | agent=momentum | 60天 | 2代
+2026-05-24 13:57:56,845 ======================================================================
+2026-05-24 13:57:56,845 
+>>> 策略: momentum_quick <<<
+2026-05-24 13:58:09,619 当前基线: PnL=$+43,934 WR50.9% Score=617.1
+2026-05-24 13:58:09,620 
+--- Phase 1: Auto-Optimizer (Grid Search) ---
+2026-05-24 13:58:09,620 
+============================================================
+2026-05-24 13:58:09,620 🔬 Auto-Optimizer: momentum_quick | 60天回测
+2026-05-24 13:58:09,620 ============================================================
+2026-05-24 13:58:09,687 参数空间: 100组 (总空间10080)
+2026-05-24 13:58:12,684   进度: 40/100 | 当前最佳: PnL=$+39,709 WR52.5% Score=545.0
+2026-05-24 13:58:38,170   进度: 20/100 | 当前最佳: PnL=$+50,690 WR66.3% Score=652.0
+2026-05-24 13:58:42,876   进度: 60/100 | 当前最佳: PnL=$+39,709 WR52.5% Score=545.0
+2026-05-24 13:59:10,029   进度: 40/100 | 当前最佳: PnL=$+50,690 WR66.3% Score=652.0
+2026-05-24 13:59:12,126   进度: 80/100 | 当前最佳: PnL=$+39,709 WR52.5% Score=545.0
+2026-05-24 13:59:39,872   进度: 60/100 | 当前最佳: PnL=$+50,690 WR66.3% Score=652.0
+2026-05-24 13:59:40,627   进度: 100/100 | 当前最佳: PnL=$+39,709 WR52.5% Score=545.0
+2026-05-24 13:59:40,627 
+🏆 最优参数 (momentum_quick):
+2026-05-24 13:59:40,627   PnL: $+39,709 | WR: 52.5% | Score: 545.0
+2026-05-24 13:59:40,627   参数: {"QUICK_SURGE_BARS": 4, "QUICK_MIN_SURGE": 4.0, "QUICK_TRAIL_PCT": 2.0, "QUICK_MAX_HOLD": 36, "QUICK_MIN_VOL_RATIO": 0.5}
+2026-05-24 13:59:40,628 
+--- Phase 2: Strategy Mutator (GA) ---
+2026-05-24 13:59:40,628 
+============================================================
+2026-05-24 13:59:40,628 🧬 Strategy Mutator: momentum_quick | 2代 x 15个体
+2026-05-24 13:59:40,628 ============================================================
+2026-05-24 13:59:40,628 
+--- Generation 1/2 ---
+2026-05-24 13:59:52,370   评估 10/15 | 最佳: $+64,196 WR50.1%
+2026-05-24 13:59:57,599 
+📊 Gen 1 最佳: PnL=$+64,196 WR50.1% Score=723.8
+2026-05-24 13:59:57,600 
+--- Generation 2/2 ---
+2026-05-24 14:00:10,442   评估 10/15 | 最佳: $+60,796 WR48.6%
+2026-05-24 14:00:13,253   进度: 80/100 | 当前最佳: PnL=$+50,690 WR66.3% Score=652.0
+2026-05-24 14:00:15,798 
+📊 Gen 2 最佳: PnL=$+68,232 WR70.4% Score=837.0
+2026-05-24 14:00:15,798 
+🏆 进化完成 (momentum_quick):
+2026-05-24 14:00:15,798   PnL: $+68,232 | WR: 70.4% | Score: 837.0
+2026-05-24 14:00:15,798   参数: {"QUICK_SURGE_BARS": 5, "QUICK_MIN_SURGE": 2.0, "QUICK_TRAIL_PCT": 0.5, "QUICK_MAX_HOLD": 60, "QUICK_MIN_VOL_RATIO": 0.5, "_factor_weights": {"score_threshold": 45, "ms_blend": 0.15}}
+2026-05-24 14:00:15,798 
+--- Phase 3: Factor Weight Evolution ---
+2026-05-24 14:00:15,798 
+============================================================
+2026-05-24 14:00:15,798 ⚖️ 因子权重进化: momentum_quick
+2026-05-24 14:00:15,799 ============================================================
+2026-05-24 14:00:15,799 因子权重空间: 39321600组
+14:51:31 
+=== 持续进化开始 (目标30轮) ===
+14:51:31   初始记录: 53条
+14:51:31 
+--- 迭代 1/30 ---
+14:51:38   momentum_quick: Score=512 PnL=$+35,865
+14:51:38   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:51:48 
+--- 迭代 2/30 ---
+14:51:55   momentum_quick: Score=528 PnL=$+38,151
+14:51:55   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:52:05 
+--- 迭代 3/30 ---
+14:52:12   momentum_quick: Score=495 PnL=$+26,034
+14:52:12   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:52:22 
+--- 迭代 4/30 ---
+14:52:29   momentum_quick: Score=524 PnL=$+36,510
+14:52:29   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:52:33 
+=== 持续进化开始 (目标30轮) ===
+14:52:33   初始记录: 57条
+14:52:33 
+--- 迭代 1/30 ---
+14:52:39 
+--- 迭代 5/30 ---
+14:52:39   momentum_quick: Score=515 PnL=$+36,779
+14:52:39   ❌ 错误: EvolutionEngine.evolve_generation() got an unexpected keyword argument 'generations'
+14:52:46   momentum_quick: Score=531 PnL=$+38,612
+14:52:46   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:52:49 
+--- 迭代 2/30 ---
+14:52:56 
+--- 迭代 6/30 ---
+14:52:56   momentum_quick: Score=522 PnL=$+27,311
+14:52:56   ❌ 错误: EvolutionEngine.evolve_generation() got an unexpected keyword argument 'generations'
+14:53:03   momentum_quick: Score=477 PnL=$+34,189
+14:53:03   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:53:06 
+--- 迭代 3/30 ---
+14:53:13 
+--- 迭代 7/30 ---
+14:53:14   momentum_quick: Score=549 PnL=$+28,581
+14:53:14   ❌ 错误: EvolutionEngine.evolve_generation() got an unexpected keyword argument 'generations'
+14:53:16 
+=== 持续进化开始 (目标30轮) ===
+14:53:16   初始记录: 62条
+14:53:16 
+--- 迭代 1/30 ---
+14:53:20   momentum_quick: Score=485 PnL=$+28,155
+14:53:20   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:53:23   momentum_quick: Score=536 PnL=$+37,535
+14:53:24 
+--- 迭代 4/30 ---
+14:53:25   momentum_quick GA: Score=659 PnL=$+47,054
+14:53:29   momentum_wave: Score=480 PnL=$+26,059
+14:53:30 
+--- 迭代 8/30 ---
+14:53:31   momentum_wave GA: Score=752 PnL=$+46,344
+14:53:31   ❌ 错误: EvolutionEngine._deploy_to_agents() missing 1 required positional argument: 'changes'
+14:53:31   momentum_quick: Score=524 PnL=$+36,632
+14:53:31   ❌ 错误: EvolutionEngine.evolve_generation() got an unexpected keyword argument 'generations'
+14:53:36   momentum_quick: Score=516 PnL=$+27,067
+14:53:36   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:53:41 
+--- 迭代 2/30 ---
+14:53:42 
+--- 迭代 5/30 ---
+14:53:47 
+--- 迭代 9/30 ---
+14:53:48   momentum_quick: Score=510 PnL=$+25,889
+14:53:50   momentum_quick: Score=534 PnL=$+37,798
+14:53:50   ❌ 错误: EvolutionEngine.evolve_generation() got an unexpected keyword argument 'generations'
+14:53:50   momentum_quick GA: Score=667 PnL=$+51,395
+14:53:54   momentum_wave: Score=483 PnL=$+25,073
+14:53:54   momentum_quick: Score=500 PnL=$+37,009
+14:53:54   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:53:55   momentum_wave GA: Score=752 PnL=$+46,344
+14:53:55   ❌ 错误: EvolutionEngine._deploy_to_agents() missing 1 required positional argument: 'changes'
+14:54:00 
+--- 迭代 6/30 ---
+14:54:04 
+=== 持续进化开始 (30轮) ===
+14:54:04   初始: 79条
+14:54:04 
+--- #1/30 ---
+14:54:04 
+--- 迭代 10/30 ---
+14:54:06 
+--- 迭代 3/30 ---
+14:54:07   momentum_quick: Score=508 PnL=$+35,693
+14:54:07   ❌ 错误: EvolutionEngine.evolve_generation() got an unexpected keyword argument 'generations'
+14:54:09   momentum_quick grid: 470 $+32,788
+14:54:11   momentum_quick ga: 605 $+43,060
+14:54:12   momentum_quick: Score=527 PnL=$+36,498
+14:54:12   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:54:13   momentum_quick: Score=544 PnL=$+38,136
+14:54:14   momentum_wave grid: 516 $+31,242
+14:54:15   momentum_quick GA: Score=721 PnL=$+60,353
+14:54:15   momentum_wave ga: 784 $+52,144
+14:54:15   +11 = 90
+14:54:17 
+--- #2/30 ---
+14:54:18 
+--- 迭代 7/30 ---
+14:54:19   momentum_wave: Score=483 PnL=$+27,037
+14:54:21   momentum_wave GA: Score=785 PnL=$+49,478
+14:54:21   ❌ 错误: EvolutionEngine._deploy_to_agents() missing 1 required positional argument: 'changes'
+14:54:22 
+--- 迭代 11/30 ---
+14:54:23   momentum_quick grid: 530 $+39,689
+14:54:25   momentum_quick: Score=519 PnL=$+37,987
+14:54:25   ❌ 错误: EvolutionEngine.evolve_generation() got an unexpected keyword argument 'generations'
+14:54:25   momentum_quick ga: 740 $+57,661
+14:54:28   momentum_wave grid: 477 $+23,022
+14:54:29   momentum_quick: Score=504 PnL=$+51,730
+14:54:29   ❌ 错误: 'EvolutionEngine' object has no attribute 'genetic_evolve'
+14:54:30   momentum_wave ga: 784 $+49,156
+14:54:30   +11 = 101
+14:54:31 
+--- 迭代 4/30 ---
+14:54:32 
+--- #3/30 ---
+14:54:35 
+--- 迭代 8/30 ---
+14:54:39   momentum_quick grid: 504 $+35,580
+14:54:39   momentum_quick: Score=501 PnL=$+26,031
+14:54:39 
+--- 迭代 12/30 ---
+14:54:40   momentum_quick ga: 711 $+55,010
+14:54:40   momentum_quick GA: Score=719 PnL=$+58,314
+14:54:43   momentum_quick: Score=516 PnL=$+36,850
+14:54:43   ❌ 错误: EvolutionEngine.evolve_generation() got an unexpected keyword argument 'generations'
+14:54:44   momentum_wave grid: 482 $+26,469
+14:54:46   momentum_wave ga: 784 $+52,144
+14:54:46   +10 = 111
+14:54:48 
+--- #4/30 ---
+14:54:54   momentum_quick grid: 520 $+27,398
+14:54:56   momentum_quick ga: 721 $+61,770
+14:54:59   momentum_wave grid: 481 $+26,759
+14:55:01   momentum_wave ga: 784 $+52,144
+14:55:01   +6 = 117
+14:55:03 
+--- #5/30 ---
+14:55:09   momentum_quick grid: 539 $+29,032
+14:55:11   momentum_quick ga: 709 $+58,822
+14:55:13   momentum_wave grid: 514 $+28,316
+14:55:15   momentum_wave ga: 736 $+45,499
+14:55:16   +6 = 123
+14:55:18 
+--- #6/30 ---
+14:55:23   momentum_quick grid: 500 $+37,009
+14:55:25   momentum_quick ga: 770 $+77,407
+14:55:28   momentum_wave grid: 488 $+29,854
+14:55:30   momentum_wave ga: 709 $+52,076
+14:55:30   +6 = 129
+14:55:32 
+--- #7/30 ---
+14:55:38   momentum_quick grid: 533 $+56,832
+14:55:40   momentum_quick ga: 605 $+43,060
+14:55:43   momentum_wave grid: 510 $+27,836
+14:55:45   momentum_wave ga: 753 $+46,752
+14:55:45   +6 = 135
+14:55:47 
+--- #8/30 ---
+14:55:53   momentum_quick grid: 508 $+27,166
+14:55:55   momentum_quick ga: 593 $+41,702
+14:55:58   momentum_wave grid: 485 $+25,698
+14:56:00   momentum_wave ga: 777 $+49,999
+14:56:00   +6 = 141
+14:56:02 
+--- #9/30 ---
+14:56:08   momentum_quick grid: 521 $+38,521
+14:56:10   momentum_quick ga: 593 $+41,702
+14:56:13   momentum_wave grid: 487 $+27,124
+14:56:15   momentum_wave ga: 776 $+49,803
+14:56:15   +6 = 147
+14:56:17 
+--- #10/30 ---
+14:56:23   momentum_quick grid: 516 $+51,231
+14:56:24   momentum_quick ga: 663 $+50,639
+14:56:28   momentum_wave grid: 477 $+23,022
+14:56:29   momentum_wave ga: 785 $+49,478
+14:56:30   +6 = 153
+14:56:32 
+--- #11/30 ---
+14:56:38   momentum_quick grid: 541 $+38,645
+14:56:40   momentum_quick ga: 632 $+49,432
+14:56:43   momentum_wave grid: 517 $+28,910
+14:56:45   momentum_wave ga: 757 $+45,263
+14:56:45   +6 = 159
+14:56:47 
+--- #12/30 ---
+14:56:53   momentum_quick grid: 533 $+56,832
+14:56:54   momentum_quick ga: 701 $+54,134
+14:56:57   momentum_wave grid: 512 $+27,798
+14:56:59   momentum_wave ga: 742 $+46,695
+14:57:00   +6 = 165
+14:57:02 
+--- #13/30 ---
+14:57:07   momentum_quick grid: 550 $+41,198
+14:57:09   momentum_quick ga: 712 $+52,934
+14:57:12   momentum_wave grid: 513 $+27,871
+14:57:13   momentum_wave ga: 743 $+46,983
+14:57:13   +6 = 171
+14:57:15 
+--- #14/30 ---
+14:57:21   momentum_quick grid: 535 $+38,471
+14:57:22   momentum_quick ga: 774 $+68,826
+14:57:25   momentum_wave grid: 528 $+26,828
+14:57:27   momentum_wave ga: 750 $+46,015
+14:57:27   +6 = 177
+14:57:29 
+--- #15/30 ---
+14:57:35   momentum_quick grid: 480 $+49,037
+14:57:37   momentum_quick ga: 740 $+60,345
+14:57:40   momentum_wave grid: 548 $+29,029
+14:57:42   momentum_wave ga: 785 $+49,478
+14:57:42   +6 = 183
+14:57:44 
+--- #16/30 ---
+14:57:49   momentum_quick grid: 501 $+26,031
+14:57:51   momentum_quick ga: 709 $+58,822
+14:57:54   momentum_wave grid: 438 $+23,444
+14:57:55   momentum_wave ga: 749 $+45,939
+14:57:56   +6 = 189
+14:57:58 
+--- #17/30 ---
+14:58:04   momentum_quick grid: 537 $+40,807
+14:58:05   momentum_quick ga: 594 $+42,641
+14:58:09   momentum_wave grid: 544 $+32,112
+14:58:11   momentum_wave ga: 707 $+43,426
+14:58:11   +6 = 195
+14:58:13 
+--- #18/30 ---
+14:58:19   momentum_quick grid: 507 $+35,662
+14:58:20   momentum_quick ga: 620 $+41,988
+14:58:23   momentum_wave grid: 497 $+28,013
+14:58:26   momentum_wave ga: 758 $+45,671
+14:58:26   +6 = 201
+14:58:28 
+--- #19/30 ---
+14:58:33   momentum_quick grid: 515 $+37,112
+14:58:35   momentum_quick ga: 589 $+36,600
+14:58:38   momentum_wave grid: 455 $+24,322
+14:58:40   momentum_wave ga: 749 $+45,727
+14:58:40   +6 = 207
+14:58:42 
+--- #20/30 ---
+14:58:48   momentum_quick grid: 528 $+38,151
+14:58:50   momentum_quick ga: 634 $+43,262
+14:58:53   momentum_wave grid: 465 $+26,010
+14:58:55   momentum_wave ga: 743 $+46,983
+14:58:55   +6 = 213
+14:58:57 
+--- #21/30 ---
+14:59:03   momentum_quick grid: 539 $+28,276
+14:59:05   momentum_quick ga: 620 $+41,988
+14:59:08   momentum_wave grid: 517 $+31,231
+14:59:09   momentum_wave ga: 735 $+45,304
+14:59:09   +6 = 219
+14:59:11 
+--- #22/30 ---
+14:59:17   momentum_quick grid: 504 $+34,854
+14:59:19   momentum_quick ga: 722 $+57,539
+14:59:22   momentum_wave grid: 497 $+28,013
+14:59:24   momentum_wave ga: 777 $+49,999
+14:59:24   +6 = 225
+14:59:26 
+--- #23/30 ---
+14:59:32   momentum_quick grid: 531 $+38,381
+14:59:34   momentum_quick ga: 634 $+43,262
+14:59:37   momentum_wave grid: 513 $+27,871
+14:59:39   momentum_wave ga: 748 $+45,744
+14:59:39   +6 = 231
+14:59:41 
+--- #24/30 ---
+14:59:46   momentum_quick grid: 542 $+29,147
+14:59:48   momentum_quick ga: 621 $+44,972
+14:59:51   momentum_wave grid: 524 $+28,331
+14:59:52   momentum_wave ga: 749 $+45,727
+14:59:53   +6 = 237
+14:59:55 
+--- #25/30 ---
+15:00:00   momentum_quick grid: 531 $+38,381
+15:00:03   momentum_quick ga: 709 $+58,822
+15:00:06   momentum_wave grid: 473 $+35,976
+15:00:08   momentum_wave ga: 776 $+49,803
+15:00:08   +6 = 243
+15:00:10 
+--- #26/30 ---
+15:00:17   momentum_quick grid: 541 $+38,645
+15:00:19   momentum_quick ga: 671 $+47,589
+15:00:23   momentum_wave grid: 471 $+25,716
+15:00:25   momentum_wave ga: 791 $+51,387
+15:00:25   +6 = 249
+15:00:27 
+--- #27/30 ---
+15:00:33   momentum_quick grid: 516 $+28,759
+15:00:35   momentum_quick ga: 842 $+83,098
+15:00:39   momentum_wave grid: 575 $+32,612
+15:00:41   momentum_wave ga: 785 $+49,478
+15:00:41   +6 = 255
+15:00:43 
+--- #28/30 ---
+15:00:50   momentum_quick grid: 492 $+35,194
+15:00:52   momentum_quick ga: 917 $+93,347
+15:00:54   momentum_wave grid: 520 $+27,960
+15:00:56   momentum_wave ga: 766 $+53,535
+15:00:56   +6 = 261
+15:00:58 
+--- #29/30 ---
+15:01:05   momentum_quick grid: 517 $+26,560
+15:01:08   momentum_quick ga: 755 $+68,278
+15:01:11   momentum_wave grid: 497 $+26,985
+15:01:14   momentum_wave ga: 736 $+45,499
+15:01:14   +6 = 267
+15:01:16 
+--- #30/30 ---
+15:01:23   momentum_quick grid: 530 $+29,040
+15:01:25   momentum_quick ga: 702 $+61,662
+15:01:28   momentum_wave grid: 479 $+27,042
+15:01:31   momentum_wave ga: 784 $+52,144
+15:01:31   +6 = 273
+15:01:33 
+=== 完成 (30轮, 273条) ===
+15:52:58 
+=== 持续进化开始 (50轮) ===
+15:52:58   初始: 273条
+15:52:58 
+--- #1/50 ---
+15:53:07   momentum_quick grid: 590 $+33,062
+15:53:10   momentum_quick ga: 1000 $+98,490
+15:53:14   momentum_wave grid: 523 $+29,647
+15:53:16   momentum_wave ga: 765 $+49,366
+15:53:16   +6 = 279
+15:53:18 
+--- #2/50 ---
+15:53:26   momentum_quick grid: 551 $+31,020
+15:53:28   momentum_quick ga: 971 $+98,889
+15:53:32   momentum_wave grid: 513 $+28,708
+15:53:34   momentum_wave ga: 765 $+49,366
+15:53:34   +6 = 285
+15:53:36 
+--- #3/50 ---
+15:53:44   momentum_quick grid: 587 $+44,950
+15:53:47   momentum_quick ga: 934 $+92,037
+15:53:50   momentum_wave grid: 514 $+28,964
+15:53:53   momentum_wave ga: 718 $+45,600
+15:53:53   +6 = 291
+15:53:55 
+--- #4/50 ---
+15:54:03   momentum_quick grid: 583 $+31,869
+15:54:05   momentum_quick ga: 915 $+87,879
+15:54:10   momentum_wave grid: 498 $+27,685
+15:54:12   momentum_wave ga: 753 $+48,824
+15:54:12   +6 = 297
+15:54:14 
+--- #5/50 ---
+15:54:22   momentum_quick grid: 603 $+45,864
+15:54:25   momentum_quick ga: 934 $+92,037
+15:54:28   momentum_wave grid: 453 $+23,771
+15:54:31   momentum_wave ga: 792 $+53,271
+15:54:31   +6 = 303
+15:54:33 
+--- #6/50 ---
+15:54:41   momentum_quick grid: 545 $+55,567
+15:54:43   momentum_quick ga: 971 $+98,889
+15:54:48   momentum_wave grid: 517 $+29,427
+15:54:50   momentum_wave ga: 750 $+48,245
+15:54:50   +6 = 309
+15:54:52 
+--- #7/50 ---
+15:55:00   momentum_quick grid: 575 $+30,841
+15:55:02   momentum_quick ga: 1000 $+98,490
+15:55:07   momentum_wave grid: 500 $+28,000
+15:55:10   momentum_wave ga: 722 $+46,620
+15:55:10   +6 = 315
+15:55:12 
+--- #8/50 ---
+15:55:20   momentum_quick grid: 560 $+31,261
+15:55:22   momentum_quick ga: 934 $+92,037
+15:55:26   momentum_wave grid: 516 $+28,141
+15:55:29   momentum_wave ga: 727 $+45,199
+15:55:29   +6 = 321
+15:55:31 
+--- #9/50 ---
+15:55:39   momentum_quick grid: 541 $+38,875
+15:55:41   momentum_quick ga: 934 $+92,037
+15:55:45   momentum_wave grid: 510 $+30,058
+15:55:47   momentum_wave ga: 751 $+48,588
+15:55:47   +6 = 327
+15:55:49 
+--- #10/50 ---
+15:55:58   momentum_quick grid: 594 $+35,070
+15:56:00   momentum_quick ga: 1000 $+98,490
+15:56:04   momentum_wave grid: 578 $+32,954
+15:56:06   momentum_wave ga: 765 $+49,138
+15:56:06   +6 = 333
+15:56:08 
+--- #11/50 ---
+15:56:15   momentum_quick grid: 544 $+39,003
+15:56:18   momentum_quick ga: 1000 $+98,490
+15:56:22   momentum_wave grid: 530 $+31,032
+15:56:24   momentum_wave ga: 759 $+50,133
+15:56:24   +6 = 339
+15:56:26 
+--- #12/50 ---
+15:56:34   momentum_quick grid: 556 $+30,987
+15:56:37   momentum_quick ga: 971 $+98,889
+15:56:42   momentum_wave grid: 536 $+33,023
+15:56:45   momentum_wave ga: 721 $+46,488
+15:56:45   +6 = 345
+15:56:47 
+--- #13/50 ---
+15:56:54   momentum_quick grid: 672 $+50,036
+15:56:56   momentum_quick ga: 917 $+75,707
+15:57:00   momentum_wave grid: 553 $+28,716
+15:57:03   momentum_wave ga: 786 $+51,648
+15:57:03   +6 = 351
+15:57:05 
+--- #14/50 ---
+15:57:13   momentum_quick grid: 526 $+38,011
+15:57:16   momentum_quick ga: 1000 $+98,490
+15:57:21   momentum_wave grid: 511 $+30,803
+15:57:25   momentum_wave ga: 750 $+48,456
+15:57:25   +6 = 357
+15:57:27 
+--- #15/50 ---
+15:57:35   momentum_quick grid: 601 $+44,704
+15:57:38   momentum_quick ga: 1000 $+98,490
+15:57:42   momentum_wave grid: 542 $+30,957
+15:57:45   momentum_wave ga: 759 $+50,133
+15:57:45   +6 = 363
+15:57:47 
+--- #16/50 ---
+15:57:55   momentum_quick grid: 580 $+32,081
+15:57:58   momentum_quick ga: 971 $+98,889
+15:58:02   momentum_wave grid: 507 $+28,216
+15:58:05   momentum_wave ga: 792 $+53,271
+15:58:05   +6 = 369
+15:58:07 
+--- #17/50 ---
+15:58:15   momentum_quick grid: 610 $+33,995
+15:58:18   momentum_quick ga: 934 $+92,037
+15:58:22   momentum_wave grid: 578 $+32,954
+15:58:25   momentum_wave ga: 765 $+49,138
+15:58:25   +6 = 375
+15:58:27 
+--- #18/50 ---
+15:58:36   momentum_quick grid: 496 $+27,543
+15:58:38   momentum_quick ga: 1000 $+98,490
+15:58:43   momentum_wave grid: 511 $+30,032
+15:58:46   momentum_wave ga: 759 $+50,133
+15:58:46   +6 = 381
+15:58:48 
+--- #19/50 ---
+15:58:56   momentum_quick grid: 560 $+31,261
+15:58:58   momentum_quick ga: 934 $+92,037
+15:59:03   momentum_wave grid: 571 $+32,468
+15:59:05   momentum_wave ga: 792 $+53,271
+15:59:06   +6 = 387
+15:59:08 
+--- #20/50 ---
+15:59:15   momentum_quick grid: 540 $+39,656
+15:59:17   momentum_quick ga: 1000 $+98,490
+15:59:21   momentum_wave grid: 564 $+33,461
+15:59:24   momentum_wave ga: 757 $+50,581
+15:59:24   +6 = 393
+15:59:26 
+--- #21/50 ---
+15:59:33   momentum_quick grid: 585 $+33,135
+15:59:36   momentum_quick ga: 1000 $+98,490
+15:59:40   momentum_wave grid: 523 $+30,548
+15:59:43   momentum_wave ga: 759 $+50,133
+15:59:44   +6 = 399
+15:59:46 
+--- #22/50 ---
+15:59:54   momentum_quick grid: 575 $+32,312
+15:59:56   momentum_quick ga: 1000 $+98,490
+16:00:00   momentum_wave grid: 554 $+29,407
+16:00:05   momentum_wave ga: 723 $+44,574
+16:00:05   +6 = 405
+16:00:07 
+--- #23/50 ---
+16:00:17   momentum_quick grid: 578 $+31,775
+16:00:22   momentum_quick ga: 934 $+92,037
+16:00:29   momentum_wave grid: 508 $+29,282
+16:00:34   momentum_wave ga: 796 $+55,895
+16:00:34   +6 = 411
+16:00:36 
+--- #24/50 ---
+16:00:47   momentum_quick grid: 574 $+40,179
+16:00:51   momentum_quick ga: 971 $+98,889
+16:00:59   momentum_wave grid: 569 $+32,546
+16:01:03   momentum_wave ga: 792 $+53,271
+16:01:03   +9 = 420
+16:04:07 
+--- #25/50 ---
+16:04:21   momentum_quick grid: 554 $+39,298
+16:04:24   momentum_quick ga: 1000 $+98,490
+16:04:29   momentum_wave grid: 474 $+25,425
+16:04:32   momentum_wave ga: 751 $+48,588
+16:04:33   +6 = 426
+16:04:35 
+--- #26/50 ---
+16:04:44   momentum_quick grid: 597 $+43,471
+16:04:47   momentum_quick ga: 934 $+92,037
+16:04:52   momentum_wave grid: 568 $+32,312
+16:04:56   momentum_wave ga: 759 $+50,133
+16:04:56   +6 = 432
+16:04:58 
+--- #27/50 ---
+16:05:07   momentum_quick grid: 590 $+33,062
+16:05:09   momentum_quick ga: 1000 $+98,490
+16:05:15   momentum_wave grid: 542 $+30,957
+16:05:19   momentum_wave ga: 723 $+46,697
+16:05:19   +6 = 438
+16:05:21 
+--- #28/50 ---
+16:05:31   momentum_quick grid: 574 $+43,075
+16:05:34   momentum_quick ga: 1000 $+98,490
+16:05:38   momentum_wave grid: 530 $+31,299
+16:05:42   momentum_wave ga: 792 $+53,271
+16:05:42   +6 = 444
+16:05:44 
+--- #29/50 ---
+16:05:54   momentum_quick grid: 554 $+42,062
+16:05:57   momentum_quick ga: 1000 $+98,490
+16:06:03   momentum_wave grid: 569 $+32,732
+16:06:07   momentum_wave ga: 728 $+45,594
+16:06:07   +6 = 450
+16:06:09 
+--- #30/50 ---
+16:06:19   momentum_quick grid: 487 $+49,065
+16:06:23   momentum_quick ga: 925 $+85,815
+16:06:28   momentum_wave grid: 522 $+32,481
+16:06:31   momentum_wave ga: 792 $+53,271
+16:06:31   +6 = 456
+16:06:33 
+--- #31/50 ---
+16:06:43   momentum_quick grid: 529 $+28,706
+16:06:46   momentum_quick ga: 1000 $+98,490
+16:06:52   momentum_wave grid: 564 $+33,461
+16:06:55   momentum_wave ga: 741 $+54,797
+16:06:55   +6 = 462
+16:06:57 
+--- #32/50 ---
+16:07:06   momentum_quick grid: 594 $+35,070
+16:07:09   momentum_quick ga: 1000 $+98,490
+16:07:16   momentum_wave grid: 534 $+29,805
+16:07:19   momentum_wave ga: 728 $+45,594
+16:07:19   +6 = 468
+16:07:21 
+--- #33/50 ---
+16:07:30   momentum_quick grid: 575 $+32,312
+16:07:33   momentum_quick ga: 1000 $+98,490
+16:07:38   momentum_wave grid: 513 $+28,708
+16:07:41   momentum_wave ga: 723 $+44,574
+16:07:42   +6 = 474
+16:07:44 
+--- #34/50 ---
+16:07:51   momentum_quick grid: 558 $+29,686
+16:07:55   momentum_quick ga: 971 $+98,889
+16:08:01   momentum_wave grid: 502 $+28,168
+16:08:05   momentum_wave ga: 765 $+49,366
+16:08:06   +6 = 480
+16:08:08 
+--- #35/50 ---
+16:08:17   momentum_quick grid: 499 $+26,467
+16:08:21   momentum_quick ga: 1000 $+98,490
+16:08:26   momentum_wave grid: 503 $+28,334
+16:08:29   momentum_wave ga: 765 $+49,138
+16:08:29   +6 = 486
+16:08:31 
+--- #36/50 ---
+16:08:40   momentum_quick grid: 531 $+29,327
+16:08:45   momentum_quick ga: 1000 $+98,490
+16:08:50   momentum_wave grid: 484 $+26,428
+16:08:55   momentum_wave ga: 759 $+50,133
+16:08:55   +6 = 492
+16:08:57 
+--- #37/50 ---
+16:09:07   momentum_quick grid: 546 $+39,485
+16:09:11   momentum_quick ga: 934 $+92,037
+16:09:16   momentum_wave grid: 609 $+35,826
+16:09:19   momentum_wave ga: 792 $+53,139
+16:09:19   +6 = 498
+16:09:21 
+--- #38/50 ---
+16:09:31   momentum_quick grid: 576 $+41,970
+16:09:35   momentum_quick ga: 934 $+92,037
+16:09:40   momentum_wave grid: 609 $+35,826
+16:09:43   momentum_wave ga: 722 $+46,620
+16:09:44   +6 = 504
+16:09:46 
+--- #39/50 ---
+16:09:55   momentum_quick grid: 558 $+39,659
+16:09:59   momentum_quick ga: 1000 $+98,490
+16:10:05   momentum_wave grid: 521 $+32,335
+16:10:10   momentum_wave ga: 718 $+45,600
+16:10:10   +6 = 510
+16:10:12 
+--- #40/50 ---
+16:10:23   momentum_quick grid: 568 $+42,649
+16:10:26   momentum_quick ga: 915 $+87,879
+16:10:33   momentum_wave grid: 480 $+28,301
+16:10:37   momentum_wave ga: 765 $+49,138
+16:10:37   +6 = 516
+16:10:39 
+--- #41/50 ---
+16:10:52   momentum_quick grid: 507 $+30,262
+16:10:56   momentum_quick ga: 971 $+98,889
+16:11:03   momentum_wave grid: 546 $+31,969
+16:11:08   momentum_wave ga: 723 $+44,574
+16:11:08   +6 = 522
+16:11:10 
+--- #42/50 ---
+16:11:22   momentum_quick grid: 526 $+54,097
+16:11:26   momentum_quick ga: 915 $+87,879
+16:11:34   momentum_wave grid: 515 $+28,009
+16:11:39   momentum_wave ga: 750 $+48,245
+16:11:39   +6 = 528
+16:11:41 
+--- #43/50 ---
+16:11:52   momentum_quick grid: 611 $+34,370
+16:11:55   momentum_quick ga: 1000 $+98,490
+16:12:02   momentum_wave grid: 528 $+31,551
+16:12:06   momentum_wave ga: 765 $+49,138
+16:12:06   +6 = 534
+16:12:08 
+--- #44/50 ---
+16:12:20   momentum_quick grid: 495 $+38,155
+16:12:24   momentum_quick ga: 915 $+87,879
+16:12:30   momentum_wave grid: 490 $+27,926
+16:12:34   momentum_wave ga: 755 $+49,231
+16:12:34   +6 = 540
+16:12:36 
+--- #45/50 ---
+16:12:46   momentum_quick grid: 585 $+44,327
+16:12:50   momentum_quick ga: 1000 $+98,490
+16:12:58   momentum_wave grid: 503 $+28,334
+16:13:04   momentum_wave ga: 785 $+51,390
+16:13:05   +6 = 546
+16:13:07 
+--- #46/50 ---
+16:13:17   momentum_quick grid: 579 $+31,553
+16:13:20   momentum_quick ga: 1000 $+98,490
+16:13:26   momentum_wave grid: 542 $+30,248
+16:13:30   momentum_wave ga: 722 $+46,620
+16:13:31   +6 = 552
+16:13:33 
+--- #47/50 ---
+16:13:43   momentum_quick grid: 545 $+55,567
+16:13:47   momentum_quick ga: 915 $+87,879
+16:13:54   momentum_wave grid: 554 $+29,407
+16:13:57   momentum_wave ga: 757 $+50,581
+16:13:57   +6 = 558
+16:13:59 
+--- #48/50 ---
+16:14:08   momentum_quick grid: 555 $+40,872
+16:14:12   momentum_quick ga: 934 $+92,037
+16:14:18   momentum_wave grid: 516 $+28,141
+16:14:22   momentum_wave ga: 759 $+50,361
+16:14:22   +6 = 564
+16:14:24 
+--- #49/50 ---
+16:14:36   momentum_quick grid: 556 $+39,405
+16:14:39   momentum_quick ga: 934 $+92,037
+16:14:45   momentum_wave grid: 536 $+30,681
+16:14:49   momentum_wave ga: 765 $+49,366
+16:14:49   +6 = 570
+16:14:51 
+--- #50/50 ---
+16:15:02   momentum_quick grid: 569 $+30,939
+16:15:06   momentum_quick ga: 1000 $+98,490
+16:15:13   momentum_wave grid: 507 $+27,249
+16:15:17   momentum_wave ga: 786 $+51,648
+16:15:17   +6 = 576
+16:15:19 
+=== 完成 (50轮, 576条) ===
+16:00:01 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+16:00:01   初始: 579条
+16:00:01 
+--- #1/30 ---
+16:01:40   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (89s)
+16:02:53   momentum_wave VBT全扫: Score=546 PnL=+105.9% (73s)
+16:03:09   momentum_quick GA补充: Score=686 $+51,114
+16:03:11   momentum_wave GA补充: Score=524 $+37,827
+16:03:11   +4 = 583
+16:03:13 
+--- #2/30 ---
+16:04:40   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (87s)
+16:05:50   momentum_wave VBT全扫: Score=546 PnL=+105.9% (70s)
+16:05:56   momentum_quick GA补充: Score=589 $+58,302
+16:05:58   momentum_wave GA补充: Score=510 $+41,296
+16:05:58   +4 = 587
+16:06:00 
+--- #3/30 ---
+16:07:29   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (89s)
+16:08:36   momentum_wave VBT全扫: Score=546 PnL=+105.9% (67s)
+16:08:41   momentum_quick GA补充: Score=552 $+28,994
+16:08:43   momentum_wave GA补充: Score=521 $+39,998
+16:08:43   +4 = 591
+16:08:45 
+--- #4/30 ---
+16:10:17   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (92s)
+16:11:24   momentum_wave VBT全扫: Score=546 PnL=+105.9% (66s)
+16:11:29   momentum_quick GA补充: Score=736 $+51,289
+16:11:31   momentum_wave GA补充: Score=448 $+30,742
+16:11:32   +4 = 595
+16:11:34 
+--- #5/30 ---
+16:13:00   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (87s)
+16:14:08   momentum_wave VBT全扫: Score=546 PnL=+105.9% (68s)
+16:14:14   momentum_quick GA补充: Score=589 $+59,481
+16:14:16   momentum_wave GA补充: Score=496 $+40,404
+16:14:16   +4 = 599
+16:14:18 
+--- #6/30 ---
+16:16:04   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (105s)
+16:17:12   momentum_wave VBT全扫: Score=546 PnL=+105.9% (68s)
+16:17:17   momentum_quick GA补充: Score=659 $+46,115
+16:17:19   momentum_wave GA补充: Score=505 $+37,137
+16:17:20   +4 = 603
+16:17:22 
+--- #7/30 ---
+16:18:55   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (94s)
+16:20:04   momentum_wave VBT全扫: Score=546 PnL=+105.9% (68s)
+16:20:11   momentum_quick GA补充: Score=590 $+60,185
+16:20:13   momentum_wave GA补充: Score=548 $+40,764
+16:20:14   +4 = 607
+16:20:16 
+--- #8/30 ---
+16:22:05   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (110s)
+16:23:18   momentum_wave VBT全扫: Score=546 PnL=+105.9% (72s)
+16:23:23   momentum_quick GA补充: Score=565 $+53,655
+16:23:25   momentum_wave GA补充: Score=436 $+33,558
+16:23:25   +4 = 611
+16:23:27 
+--- #9/30 ---
+16:24:57   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (89s)
+16:26:25   momentum_wave VBT全扫: Score=546 PnL=+105.9% (88s)
+16:26:31   momentum_quick GA补充: Score=634 $+44,038
+16:26:34   momentum_wave GA补充: Score=498 $+37,851
+16:26:34   +4 = 615
+16:26:36 
+--- #10/30 ---
+16:28:06   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (90s)
+16:29:09   momentum_wave VBT全扫: Score=546 PnL=+105.9% (63s)
+16:29:14   momentum_quick GA补充: Score=769 $+53,742
+16:29:16   momentum_wave GA补充: Score=526 $+41,505
+16:29:17   +4 = 619
+16:29:19 
+--- #11/30 ---
+16:31:00   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (102s)
+16:32:22   momentum_wave VBT全扫: Score=546 PnL=+105.9% (81s)
+16:32:27   momentum_quick GA补充: Score=567 $+44,835
+16:32:29   momentum_wave GA补充: Score=541 $+31,667
+16:32:30   +4 = 623
+16:32:32 
+--- #12/30 ---
+16:33:57   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (85s)
+16:35:05   momentum_wave VBT全扫: Score=546 PnL=+105.9% (68s)
+16:35:12   momentum_quick GA补充: Score=656 $+64,689
+16:35:14   momentum_wave GA补充: Score=533 $+37,901
+16:35:14   +4 = 627
+16:35:16 
+--- #13/30 ---
+16:37:12   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (116s)
+16:38:23   momentum_wave VBT全扫: Score=546 PnL=+105.9% (71s)
+16:38:28   momentum_quick GA补充: Score=627 $+65,002
+16:38:31   momentum_wave GA补充: Score=569 $+42,597
+16:38:31   +4 = 631
+16:38:33 
+--- #14/30 ---
+16:40:05   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (92s)
+16:41:28   momentum_wave VBT全扫: Score=546 PnL=+105.9% (83s)
+16:41:34   momentum_quick GA补充: Score=675 $+45,774
+16:41:37   momentum_wave GA补充: Score=462 $+34,660
+16:41:37   +4 = 635
+16:41:39 
+--- #15/30 ---
+16:43:13   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (94s)
+16:44:20   momentum_wave VBT全扫: Score=546 PnL=+105.9% (67s)
+16:44:25   momentum_quick GA补充: Score=576 $+41,575
+16:44:27   momentum_wave GA补充: Score=522 $+37,830
+16:44:27   +4 = 639
+16:44:29 
+--- #16/30 ---
+16:46:14   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (104s)
+16:47:38   momentum_wave VBT全扫: Score=546 PnL=+105.9% (84s)
+16:47:43   momentum_quick GA补充: Score=602 $+42,146
+16:47:45   momentum_wave GA补充: Score=488 $+40,752
+16:47:45   +4 = 643
+16:47:47 
+--- #17/30 ---
+16:49:18   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (91s)
+16:50:41   momentum_wave VBT全扫: Score=546 PnL=+105.9% (83s)
+16:50:48   momentum_quick GA补充: Score=570 $+43,597
+16:50:51   momentum_wave GA补充: Score=526 $+40,341
+16:50:51   +4 = 647
+16:50:53 
+--- #18/30 ---
+16:53:00   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (126s)
+16:54:15   momentum_wave VBT全扫: Score=546 PnL=+105.9% (75s)
+16:54:21   momentum_quick GA补充: Score=566 $+53,669
+16:54:23   momentum_wave GA补充: Score=524 $+40,966
+16:54:23   +4 = 651
+16:54:25 
+--- #19/30 ---
+16:56:23   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (118s)
+16:57:55   momentum_wave VBT全扫: Score=546 PnL=+105.9% (92s)
+16:58:02   momentum_quick GA补充: Score=769 $+53,742
+16:58:05   momentum_wave GA补充: Score=482 $+39,707
+16:58:06   +4 = 655
+16:58:08 
+--- #20/30 ---
+16:59:47   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (99s)
+17:01:25   momentum_wave VBT全扫: Score=546 PnL=+105.9% (98s)
+17:01:32   momentum_quick GA补充: Score=607 $+60,842
+17:01:36   momentum_wave GA补充: Score=513 $+37,277
+17:01:36   +4 = 659
+17:01:38 
+--- #21/30 ---
+17:03:47   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (129s)
+17:05:20   momentum_wave VBT全扫: Score=546 PnL=+105.9% (92s)
+17:05:27   momentum_quick GA补充: Score=612 $+60,782
+17:05:30   momentum_wave GA补充: Score=548 $+40,552
+17:05:30   +4 = 663
+17:05:32 
+--- #22/30 ---
+17:07:45   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (132s)
+17:09:16   momentum_wave VBT全扫: Score=546 PnL=+105.9% (91s)
+17:09:22   momentum_quick GA补充: Score=612 $+60,192
+17:09:25   momentum_wave GA补充: Score=495 $+36,054
+17:09:25   +4 = 667
+17:09:27 
+--- #23/30 ---
+17:11:48   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (141s)
+17:13:19   momentum_wave VBT全扫: Score=546 PnL=+105.9% (91s)
+17:13:27   momentum_quick GA补充: Score=627 $+62,048
+17:13:31   momentum_wave GA补充: Score=490 $+36,644
+17:13:32   +4 = 671
+17:13:34 
+--- #24/30 ---
+17:15:44   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (130s)
+17:17:22   momentum_wave VBT全扫: Score=546 PnL=+105.9% (98s)
+17:17:30   momentum_quick GA补充: Score=734 $+52,311
+17:17:32   momentum_wave GA补充: Score=536 $+39,475
+17:17:33   +4 = 675
+17:17:35 
+--- #25/30 ---
+17:19:40   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (126s)
+17:21:29   momentum_wave VBT全扫: Score=546 PnL=+105.9% (108s)
+17:21:36   momentum_quick GA补充: Score=615 $+63,029
+17:21:39   momentum_wave GA补充: Score=468 $+36,579
+17:21:40   +4 = 679
+17:21:42 
+--- #26/30 ---
+17:23:47   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (125s)
+17:25:14   momentum_wave VBT全扫: Score=546 PnL=+105.9% (87s)
+17:25:22   momentum_quick GA补充: Score=721 $+51,154
+17:25:25   momentum_wave GA补充: Score=513 $+40,947
+17:25:26   +4 = 683
+17:25:28 
+--- #27/30 ---
+17:27:42   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (135s)
+17:29:10   momentum_wave VBT全扫: Score=546 PnL=+105.9% (87s)
+17:29:16   momentum_quick GA补充: Score=567 $+29,640
+17:29:19   momentum_wave GA补充: Score=535 $+31,723
+17:29:20   +4 = 687
+17:29:22 
+--- #28/30 ---
+17:31:43   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (142s)
+17:33:15   momentum_wave VBT全扫: Score=546 PnL=+105.9% (91s)
+17:33:22   momentum_quick GA补充: Score=588 $+32,026
+17:33:24   momentum_wave GA补充: Score=510 $+41,296
+17:33:25   +4 = 691
+17:33:27 
+--- #29/30 ---
+17:35:30   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (123s)
+17:37:15   momentum_wave VBT全扫: Score=546 PnL=+105.9% (105s)
+17:37:21   momentum_quick GA补充: Score=637 $+43,930
+17:37:24   momentum_wave GA补充: Score=552 $+40,389
+17:37:24   +4 = 695
+17:37:26 
+--- #30/30 ---
+17:39:43   momentum_quick VBT全扫: Score=3478 PnL=+565.6% (136s)
+17:41:52   momentum_wave VBT全扫: Score=546 PnL=+105.9% (129s)
+17:42:01   momentum_quick GA补充: Score=612 $+45,416
+17:42:04   momentum_wave GA补充: Score=516 $+40,973
+17:42:05   +4 = 699
+17:42:07 
+=== 完成 (30轮, 699条) ===
+20:00:01 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+20:00:01   初始: 699条
+20:00:01 
+--- #1/30 ---
+20:01:40   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (94s)
+20:02:47   momentum_wave VBT全扫: Score=546 PnL=+105.9% (67s)
+20:02:53   momentum_quick GA补充: Score=576 $+54,741
+20:02:56   momentum_wave GA补充: Score=556 $+36,958
+20:02:56   +4 = 703
+20:02:58 
+--- #2/30 ---
+20:04:37   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (98s)
+20:06:06   momentum_wave VBT全扫: Score=546 PnL=+105.9% (89s)
+20:06:11   momentum_quick GA补充: Score=564 $+57,271
+20:06:14   momentum_wave GA补充: Score=536 $+35,894
+20:06:14   +4 = 707
+20:06:16 
+--- #3/30 ---
+20:08:04   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (109s)
+20:09:14   momentum_wave VBT全扫: Score=546 PnL=+105.9% (70s)
+20:09:20   momentum_quick GA补充: Score=639 $+62,955
+20:09:22   momentum_wave GA补充: Score=509 $+32,942
+20:09:22   +4 = 711
+20:09:24 
+--- #4/30 ---
+20:11:10   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (106s)
+20:12:32   momentum_wave VBT全扫: Score=546 PnL=+105.9% (82s)
+20:12:37   momentum_quick GA补充: Score=719 $+72,712
+20:12:39   momentum_wave GA补充: Score=524 $+36,352
+20:12:39   +4 = 715
+20:12:41 
+--- #5/30 ---
+20:14:13   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (92s)
+20:15:24   momentum_wave VBT全扫: Score=546 PnL=+105.9% (71s)
+20:15:31   momentum_quick GA补充: Score=569 $+56,886
+20:15:34   momentum_wave GA补充: Score=468 $+33,800
+20:15:34   +4 = 719
+20:15:36 
+--- #6/30 ---
+20:17:31   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (115s)
+20:18:44   momentum_wave VBT全扫: Score=546 PnL=+105.9% (73s)
+20:18:49   momentum_quick GA补充: Score=570 $+56,001
+20:18:51   momentum_wave GA补充: Score=469 $+32,974
+20:18:52   +4 = 723
+20:18:54 
+--- #7/30 ---
+20:20:32   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (99s)
+20:22:02   momentum_wave VBT全扫: Score=546 PnL=+105.9% (89s)
+20:22:08   momentum_quick GA补充: Score=637 $+60,684
+20:22:10   momentum_wave GA补充: Score=528 $+36,660
+20:22:11   +4 = 727
+20:22:13 
+--- #8/30 ---
+20:24:03   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (111s)
+20:25:14   momentum_wave VBT全扫: Score=546 PnL=+105.9% (71s)
+20:25:21   momentum_quick GA补充: Score=528 $+51,121
+20:25:24   momentum_wave GA补充: Score=500 $+35,165
+20:25:24   +4 = 731
+20:25:26 
+--- #9/30 ---
+20:27:28   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (121s)
+20:28:53   momentum_wave VBT全扫: Score=546 PnL=+105.9% (85s)
+20:28:58   momentum_quick GA补充: Score=566 $+40,738
+20:29:00   momentum_wave GA补充: Score=586 $+38,516
+20:29:00   +4 = 735
+20:29:02 
+--- #10/30 ---
+20:30:47   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (105s)
+20:32:21   momentum_wave VBT全扫: Score=546 PnL=+105.9% (94s)
+20:32:27   momentum_quick GA补充: Score=533 $+52,551
+20:32:30   momentum_wave GA补充: Score=564 $+36,329
+20:32:30   +4 = 739
+20:32:32 
+--- #11/30 ---
+20:34:33   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (121s)
+20:35:57   momentum_wave VBT全扫: Score=546 PnL=+105.9% (84s)
+20:36:03   momentum_quick GA补充: Score=556 $+55,753
+20:36:06   momentum_wave GA补充: Score=529 $+38,753
+20:36:06   +4 = 743
+20:36:08 
+--- #12/30 ---
+20:38:10   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (122s)
+20:39:35   momentum_wave VBT全扫: Score=546 PnL=+105.9% (85s)
+20:39:41   momentum_quick GA补充: Score=505 $+38,229
+20:39:45   momentum_wave GA补充: Score=486 $+33,996
+20:39:45   +4 = 747
+20:39:47 
+--- #13/30 ---
+20:41:37   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (110s)
+20:42:59   momentum_wave VBT全扫: Score=546 PnL=+105.9% (82s)
+20:43:06   momentum_quick GA补充: Score=557 $+46,191
+20:43:08   momentum_wave GA补充: Score=576 $+35,889
+20:43:08   +4 = 751
+20:43:10 
+--- #14/30 ---
+20:45:03   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (112s)
+20:46:28   momentum_wave VBT全扫: Score=546 PnL=+105.9% (85s)
+20:46:34   momentum_quick GA补充: Score=574 $+58,994
+20:46:37   momentum_wave GA补充: Score=545 $+35,257
+20:46:37   +4 = 755
+20:46:39 
+--- #15/30 ---
+20:48:31   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (112s)
+20:49:56   momentum_wave VBT全扫: Score=546 PnL=+105.9% (85s)
+20:50:02   momentum_quick GA补充: Score=560 $+52,802
+20:50:05   momentum_wave GA补充: Score=506 $+35,451
+20:50:05   +4 = 759
+20:50:07 
+--- #16/30 ---
+20:51:59   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (112s)
+20:53:27   momentum_wave VBT全扫: Score=546 PnL=+105.9% (87s)
+20:53:33   momentum_quick GA补充: Score=595 $+58,688
+20:53:36   momentum_wave GA补充: Score=461 $+31,430
+20:53:36   +4 = 763
+20:53:38 
+--- #17/30 ---
+20:55:28   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (110s)
+20:56:53   momentum_wave VBT全扫: Score=546 PnL=+105.9% (84s)
+20:56:58   momentum_quick GA补充: Score=615 $+58,145
+20:57:01   momentum_wave GA补充: Score=539 $+36,072
+20:57:01   +4 = 767
+20:57:03 
+--- #18/30 ---
+20:59:00   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (117s)
+21:00:15   momentum_wave VBT全扫: Score=546 PnL=+105.9% (75s)
+21:00:22   momentum_quick GA补充: Score=569 $+56,886
+21:00:24   momentum_wave GA补充: Score=503 $+34,250
+21:00:24   +4 = 771
+21:00:26 
+--- #19/30 ---
+21:02:26   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (120s)
+21:03:56   momentum_wave VBT全扫: Score=546 PnL=+105.9% (90s)
+21:04:04   momentum_quick GA补充: Score=620 $+63,638
+21:04:08   momentum_wave GA补充: Score=505 $+33,678
+21:04:08   +4 = 775
+21:04:10 
+--- #20/30 ---
+21:06:32   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (141s)
+21:08:00   momentum_wave VBT全扫: Score=546 PnL=+105.9% (88s)
+21:08:05   momentum_quick GA补充: Score=597 $+45,806
+21:08:07   momentum_wave GA补充: Score=557 $+38,935
+21:08:07   +4 = 779
+21:08:09 
+--- #21/30 ---
+21:09:22   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (73s)
+21:10:15   momentum_wave VBT全扫: Score=546 PnL=+105.9% (53s)
+21:10:20   momentum_quick GA补充: Score=637 $+68,289
+21:10:21   momentum_wave GA补充: Score=569 $+39,856
+21:10:22   +4 = 783
+21:10:24 
+--- #22/30 ---
+21:11:38   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (75s)
+21:12:37   momentum_wave VBT全扫: Score=546 PnL=+105.9% (58s)
+21:12:41   momentum_quick GA补充: Score=612 $+61,645
+21:12:43   momentum_wave GA补充: Score=536 $+35,894
+21:12:43   +4 = 787
+21:12:45 
+--- #23/30 ---
+21:14:01   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (76s)
+21:14:56   momentum_wave VBT全扫: Score=546 PnL=+105.9% (55s)
+21:15:01   momentum_quick GA补充: Score=584 $+45,696
+21:15:03   momentum_wave GA补充: Score=524 $+35,793
+21:15:03   +4 = 791
+21:15:05 
+--- #24/30 ---
+21:16:27   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (82s)
+21:17:31   momentum_wave VBT全扫: Score=546 PnL=+105.9% (64s)
+21:17:36   momentum_quick GA补充: Score=600 $+60,150
+21:17:38   momentum_wave GA补充: Score=486 $+32,838
+21:17:39   +4 = 795
+21:17:41 
+--- #25/30 ---
+21:19:10   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (90s)
+21:20:37   momentum_wave VBT全扫: Score=546 PnL=+105.9% (86s)
+21:20:45   momentum_quick GA补充: Score=560 $+52,802
+21:20:50   momentum_wave GA补充: Score=527 $+38,049
+21:20:50   +4 = 799
+21:20:52 
+--- #26/30 ---
+00:00:01 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+00:00:01   初始: 799条
+00:00:01 
+--- #1/30 ---
+00:09:37   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (545s)
+00:17:01   momentum_wave VBT全扫: Score=546 PnL=+105.9% (443s)
+00:17:27   momentum_quick GA补充: Score=592 $+60,785
+00:17:41   momentum_wave GA补充: Score=451 $+34,589
+00:17:42   +4 = 803
+00:17:44 
+--- #2/30 ---
+00:28:19   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (635s)
+00:36:29   momentum_wave VBT全扫: Score=546 PnL=+105.9% (488s)
+00:36:55   momentum_quick GA补充: Score=542 $+53,772
+00:37:10   momentum_wave GA补充: Score=501 $+35,155
+00:37:12   +4 = 807
+00:37:14 
+--- #3/30 ---
+00:48:48   momentum_quick VBT全扫: Score=3569 PnL=+575.7% (694s)
+04:00:02 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+04:00:02   初始: 808条
+04:00:02 
+--- #1/30 ---
+04:05:51   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (329s)
+04:09:52   momentum_wave VBT全扫: Score=546 PnL=+105.9% (240s)
+04:10:05   momentum_quick GA补充: Score=520 $+53,313
+04:10:13   momentum_wave GA补充: Score=458 $+25,740
+04:10:14   +4 = 812
+04:10:16 
+--- #2/30 ---
+04:15:58   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (342s)
+04:20:27   momentum_wave VBT全扫: Score=546 PnL=+105.9% (268s)
+04:20:42   momentum_quick GA补充: Score=586 $+59,707
+04:20:51   momentum_wave GA补充: Score=467 $+32,703
+04:20:52   +4 = 816
+04:20:54 
+--- #3/30 ---
+04:27:03   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (369s)
+04:31:52   momentum_wave VBT全扫: Score=546 PnL=+105.9% (289s)
+04:32:07   momentum_quick GA补充: Score=520 $+42,156
+04:32:16   momentum_wave GA补充: Score=424 $+22,328
+04:32:17   +4 = 820
+04:32:19 
+--- #4/30 ---
+04:38:57   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (397s)
+04:43:50   momentum_wave VBT全扫: Score=546 PnL=+105.9% (292s)
+04:44:05   momentum_quick GA补充: Score=599 $+61,058
+04:44:14   momentum_wave GA补充: Score=451 $+21,995
+04:44:15   +4 = 824
+04:44:17 
+--- #5/30 ---
+04:51:15   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (417s)
+04:56:31   momentum_wave VBT全扫: Score=546 PnL=+105.9% (315s)
+04:56:49   momentum_quick GA补充: Score=579 $+62,431
+04:56:59   momentum_wave GA补充: Score=498 $+34,682
+04:57:01   +4 = 828
+04:57:03 
+--- #6/30 ---
+05:04:24   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (441s)
+05:10:13   momentum_wave VBT全扫: Score=546 PnL=+105.9% (348s)
+05:10:31   momentum_quick GA补充: Score=527 $+55,886
+05:10:42   momentum_wave GA补充: Score=469 $+35,556
+05:10:43   +4 = 832
+05:10:45 
+--- #7/30 ---
+05:18:58   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (493s)
+05:25:14   momentum_wave VBT全扫: Score=546 PnL=+105.9% (375s)
+05:25:35   momentum_quick GA补充: Score=579 $+62,623
+05:25:47   momentum_wave GA补充: Score=523 $+24,367
+05:25:48   +4 = 836
+05:25:51 
+--- #8/30 ---
+05:34:37   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (526s)
+05:41:22   momentum_wave VBT全扫: Score=546 PnL=+105.9% (404s)
+05:41:44   momentum_quick GA补充: Score=550 $+54,859
+05:41:57   momentum_wave GA补充: Score=464 $+36,112
+05:41:58   +4 = 840
+05:42:00 
+--- #9/30 ---
+05:51:21   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (561s)
+05:58:24   momentum_wave VBT全扫: Score=546 PnL=+105.9% (422s)
+05:58:47   momentum_quick GA补充: Score=524 $+42,499
+05:59:01   momentum_wave GA补充: Score=471 $+27,280
+05:59:03   +4 = 844
+05:59:05 
+--- #10/30 ---
+06:09:30   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (626s)
+06:17:31   momentum_wave VBT全扫: Score=546 PnL=+105.9% (479s)
+06:17:56   momentum_quick GA补充: Score=547 $+42,766
+06:18:11   momentum_wave GA补充: Score=475 $+27,406
+06:18:13   +4 = 848
+06:18:15 
+--- #11/30 ---
+06:29:26   momentum_quick VBT全扫: Score=3541 PnL=+575.7% (671s)
+06:37:46   momentum_wave VBT全扫: Score=546 PnL=+105.9% (498s)
+06:38:16   momentum_quick GA补充: Score=602 $+61,467
+06:38:35   momentum_wave GA补充: Score=475 $+33,942
+06:38:37   +4 = 852
+06:38:39 
+--- #12/30 ---
+08:36:03 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+08:36:05   初始: 852条
+08:39:00 
+--- #1/30 ---
+16:00:01 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+16:00:01   初始: 852条
+16:00:01 
+--- #1/30 ---
+16:05:05   momentum_quick VBT全扫: Score=3467 PnL=+568.4% (282s)
+16:08:47   momentum_wave VBT全扫: Score=546 PnL=+105.9% (221s)
+16:09:10   momentum_quick GA补充: Score=595 $+61,808
+16:09:17   momentum_wave GA补充: Score=576 $+34,783
+16:09:18   +4 = 856
+16:09:20 
+--- #2/30 ---
+16:14:19   momentum_quick VBT全扫: Score=3467 PnL=+568.4% (299s)
+16:18:18   momentum_wave VBT全扫: Score=546 PnL=+105.9% (238s)
+16:18:31   momentum_quick GA补充: Score=531 $+56,763
+16:18:39   momentum_wave GA补充: Score=580 $+35,824
+16:18:40   +4 = 860
+16:18:42 
+--- #3/30 ---
+16:24:08   momentum_quick VBT全扫: Score=3467 PnL=+568.4% (326s)
+16:28:29   momentum_wave VBT全扫: Score=546 PnL=+105.9% (261s)
+16:28:43   momentum_quick GA补充: Score=638 $+44,103
+16:28:51   momentum_wave GA补充: Score=566 $+30,558
+16:28:52   +4 = 864
+16:28:54 
+--- #4/30 ---
+16:34:38   momentum_quick VBT全扫: Score=3467 PnL=+568.4% (345s)
+16:39:13   momentum_wave VBT全扫: Score=546 PnL=+105.9% (274s)
+16:39:30   momentum_quick GA补充: Score=635 $+65,052
+16:39:38   momentum_wave GA补充: Score=582 $+33,863
+16:39:39   +4 = 868
+16:39:41 
+--- #5/30 ---
+16:45:57   momentum_quick VBT全扫: Score=3467 PnL=+568.4% (376s)
+16:50:44   momentum_wave VBT全扫: Score=546 PnL=+105.9% (286s)
+16:51:01   momentum_quick GA补充: Score=644 $+64,114
+16:51:12   momentum_wave GA补充: Score=582 $+33,863
+16:51:13   +4 = 872
+16:51:15 
+--- #6/30 ---
+16:58:09   momentum_quick VBT全扫: Score=3467 PnL=+568.4% (414s)
+17:03:22   momentum_wave VBT全扫: Score=546 PnL=+105.9% (312s)
+17:03:39   momentum_quick GA补充: Score=583 $+31,800
+17:03:50   momentum_wave GA补充: Score=570 $+33,818
+17:03:51   +4 = 876
+17:03:53 
+--- #7/30 ---
+17:11:37   momentum_quick VBT全扫: Score=3467 PnL=+568.4% (463s)
+17:17:25   momentum_wave VBT全扫: Score=546 PnL=+105.9% (347s)
+17:17:43   momentum_quick GA补充: Score=577 $+58,498
+17:17:54   momentum_wave GA补充: Score=512 $+27,711
+17:17:55   +4 = 880
+17:17:57 
+--- #8/30 ---
+17:25:45   momentum_quick VBT全扫: Score=3467 PnL=+568.4% (468s)
+17:31:49   momentum_wave VBT全扫: Score=546 PnL=+105.9% (362s)
+17:32:10   momentum_quick GA补充: Score=682 $+48,543
+17:32:21   momentum_wave GA补充: Score=547 $+28,147
+17:32:23   +4 = 884
+17:32:25 
+--- #9/30 ---
+17:41:13   momentum_quick VBT全扫: Score=3467 PnL=+568.4% (529s)
+17:48:56   momentum_wave VBT全扫: Score=546 PnL=+105.9% (461s)
+17:49:25   momentum_quick GA补充: Score=665 $+69,883
+17:49:41   momentum_wave GA补充: Score=485 $+34,890
+17:49:43   +4 = 888
+17:49:45 
+--- #10/30 ---
+18:00:44   momentum_quick VBT全扫: Score=3467 PnL=+568.4% (659s)
+20:04:45 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+20:04:45   初始: 889条
+20:04:45 
+--- #1/30 ---
+00:10:33 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+00:10:33   初始: 889条
+00:10:33 
+--- #1/30 ---
+05:20:43 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+05:20:47   初始: 889条
+05:34:11 
+--- #1/30 ---
+20:00:02 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+20:00:02   初始: 889条
+20:00:02 
+--- #1/30 ---
+20:08:25   momentum_quick VBT全扫: Score=422 PnL=+76.0% (474s)
+20:14:30   momentum_wave VBT全扫: Score=546 PnL=+105.9% (364s)
+20:15:00   momentum_quick GA补充: Score=494 $+47,610
+20:15:14   momentum_wave GA补充: Score=396 $+22,970
+20:15:15   +4 = 893
+20:15:17 
+--- #2/30 ---
+20:24:04   momentum_quick VBT全扫: Score=422 PnL=+76.0% (527s)
+20:30:58   momentum_wave VBT全扫: Score=546 PnL=+105.9% (413s)
+20:31:23   momentum_quick GA补充: Score=429 $+42,426
+20:31:39   momentum_wave GA补充: Score=363 $+15,846
+20:31:41   +4 = 897
+20:31:43 
+--- #3/30 ---
+20:41:55   momentum_quick VBT全扫: Score=422 PnL=+76.0% (612s)
+20:49:50   momentum_wave VBT全扫: Score=546 PnL=+105.9% (474s)
+20:50:18   momentum_quick GA补充: Score=455 $+32,621
+20:50:35   momentum_wave GA补充: Score=398 $+21,476
+20:50:37   +4 = 901
+20:50:39 
+--- #4/30 ---
+00:00:02 
+=== 持续进化v2开始 (30轮, VectorBT) ===
+00:00:02   初始: 901条
+00:00:02 
+--- #1/30 ---
+00:09:10   momentum_quick VBT全扫: Score=422 PnL=+76.0% (517s)
+00:15:23   momentum_wave VBT全扫: Score=547 PnL=+106.3% (372s)
+00:15:44   momentum_quick GA补充: Score=471 $+45,763
+00:15:57   momentum_wave GA补充: Score=394 $+21,585
+00:15:59   +4 = 905
+00:16:01 
+--- #2/30 ---
+00:25:00   momentum_quick VBT全扫: Score=422 PnL=+76.0% (539s)
+00:31:27   momentum_wave VBT全扫: Score=547 PnL=+106.3% (386s)
+00:31:49   momentum_quick GA补充: Score=431 $+39,102
+00:32:02   momentum_wave GA补充: Score=354 $+20,516
+00:32:03   +4 = 909
+00:32:05 
+--- #3/30 ---
+00:41:29   momentum_quick VBT全扫: Score=422 PnL=+76.0% (564s)
+00:48:37   momentum_wave VBT全扫: Score=547 PnL=+106.3% (426s)
+00:48:59   momentum_quick GA补充: Score=399 $+38,973
+00:49:14   momentum_wave GA补充: Score=381 $+17,148
+00:49:16   +4 = 913
+00:49:18 
+--- #4/30 ---
+00:59:39   momentum_quick VBT全扫: Score=422 PnL=+76.0% (621s)
+01:08:11   momentum_wave VBT全扫: Score=547 PnL=+106.3% (510s)
+01:08:39   momentum_quick GA补充: Score=505 $+46,399
+01:08:54   momentum_wave GA补充: Score=428 $+19,048
+01:08:56   +4 = 917
+01:08:58 
+--- #5/30 ---
+01:20:35   momentum_quick VBT全扫: Score=422 PnL=+76.0% (697s)
+01:30:41   momentum_wave VBT全扫: Score=547 PnL=+106.3% (604s)
+01:31:24   momentum_quick GA补充: Score=426 $+37,902
+01:31:53   momentum_wave GA补充: Score=384 $+20,049
+01:31:57   +4 = 921
+01:31:59 
+--- #6/30 ---

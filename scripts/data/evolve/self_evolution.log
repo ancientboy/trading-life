@@ -1,0 +1,1380 @@
+=== Sun May 24 06:00:01 PM CST 2026 自进化循环开始 ===
+[18:00:02] [INFO] 
+============================================================
+[18:00:02] [INFO] 🧬 自进化循环开始
+[18:00:02] [INFO] ============================================================
+[18:00:02] [INFO] 📊 Phase 1: 市场状态分析
+[18:00:04] [INFO]   市场状态: 震荡 (chop)
+[18:00:04] [INFO]   BTC: $76,994 24h:+2.0%
+[18:00:04] [INFO]   趋势: DOWN 广度:90%
+[18:00:04] [INFO] 📉 Phase 2: 历史表现分析
+[18:00:04] [INFO]   30天: 314笔 WR58% PnL$+11,676
+[18:00:04] [INFO]   long: 314笔 WR58% PnL$+11,676
+[18:00:04] [INFO]   🚫 建议黑名单: PTBUSDT
+[18:00:04] [INFO]   📊 连亏后继续亏损倾向（均亏$-68）→ 可能情绪化交易
+[18:00:04] [INFO]   📊 有63笔大亏（>$200），均亏$-441 → 止损可能太宽
+[18:00:04] [INFO]   📊 建议黑名单: PTBUSDT（全亏无赢）
+[18:00:04] [INFO] 🔬 Phase 3: 策略参数优化
+[18:00:04] [INFO] 
+  === 主流币 — 趋势跟随 (major) ===
+[18:00:04] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 5个
+  参数组合: 10080种
+  总测试: 10080 × 5 = 50400
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 176.2秒
+  最佳: Score=434 PnL=+77.4% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 6, 'QUICK_MIN_SURGE': 5.0, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 286 tests/sec
+[18:03:24] [INFO]     全扫最优: Score=434 PnL=+77.4% WR=100.0%
+[18:03:24] [INFO]     WF验证: 训练+2.5%→测试-0.4% WR0% ⚠️ 过拟合(衰减116%)
+[18:03:24] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 5个
+  参数组合: 6300种
+  总测试: 6300 × 5 = 31500
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 126.8秒
+  最佳: Score=546 PnL=+105.9% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 249 tests/sec
+[18:05:31] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%
+[18:05:32] [INFO]     WF验证: 训练-3.7%→测试-5.8% WR0% ⚠️ 过拟合(衰减999%)
+[18:05:32] [INFO] 
+  === 山寨币 — 动量突破 (altcoin) ===
+[18:05:32] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 12个
+  参数组合: 10080种
+  总测试: 10080 × 12 = 120960
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 405.5秒
+  最佳: Score=2218 PnL=+360.7% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 2, 'QUICK_MIN_SURGE': 1.5, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 298 tests/sec
+[18:12:26] [INFO]     全扫最优: Score=2218 PnL=+360.7% WR=100.0%
+[18:12:27] [INFO]     WF验证: 训练+12.2%→测试+31.6% WR100% ✅ 稳健
+[18:12:27] [INFO]     🚀 已部署! (优于当前参数)
+[18:12:27] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 12个
+  参数组合: 6300种
+  总测试: 6300 × 12 = 75600
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 312.1秒
+  最佳: Score=546 PnL=+105.9% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 242 tests/sec
+[18:17:44] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%
+[18:17:45] [INFO]     WF验证: 训练+1.2%→测试+2.6% WR12% ✅ 稳健
+[18:17:45] [INFO]     🚀 已部署! (优于当前参数)
+[18:17:45] [INFO] 
+  === 新币 — prelaunch (newcoin) ===
+[18:17:45] [INFO]   策略: momentum_newcoin
+[18:17:45] [INFO]     ⚠️ 无币种，跳过
+[18:17:45] [INFO] 🔍 Phase 4: 选币参数优化
+🔍 选币参数优化
+  币种: 30个
+  下载数据...
+  获取: 30个币种
+  参数组合: 200种
+
+  3天前向最优:
+    Score: 513
+    平均收益: -4.01%
+    命中率: 35.0%
+    S级收益: -16.95%
+    选币数: 40
+    参数: top_n=30, oversold=0, momentum_w=0
+
+  7天前向最优:
+    Score: 2116
+    平均收益: -9.76%
+    命中率: 26.7%
+    S级收益: -39.48%
+    选币数: 15
+    参数: top_n=10, oversold=10, momentum_w=10
+
+保存: /opt/trading-agent/scripts/data/evolve/screener_opt_1779617865.json
+[18:22:19] [INFO]   3d: PnL=-4.0% 命中率=35% top_n=30
+[18:22:19] [INFO]   7d: PnL=-9.8% 命中率=27% top_n=10
+[18:22:19] [INFO] 📚 Phase 5: 更新知识库
+[18:22:19] [INFO]   知识库已更新
+[18:22:19] [INFO] 
+✅ 自进化循环完成 (1337s)
+{
+  "timestamp": "2026-05-24T18:22:19",
+  "elapsed_seconds": 1336.7,
+  "regime": "chop",
+  "performance": {
+    "wr": 58.0,
+    "pnl": 11675.81
+  },
+  "strategy_results": {
+    "major": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 6,
+          "QUICK_MIN_SURGE": 5.0,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 433.6863910968847,
+        "sweep_pnl": 77.44399841015797,
+        "train_pnl": 2.5417405630057917,
+        "test_pnl": -0.41057215656394336,
+        "test_wr": 0.0,
+        "degradation": 116.1531889815856,
+        "robust": "False"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 545.5252987111593,
+        "sweep_pnl": 105.92724246818626,
+        "train_pnl": -3.740679500719299,
+        "test_pnl": -5.78158873881709,
+        "test_wr": 0.0,
+        "degradation": 999,
+        "robust": false
+      }
+    },
+    "altcoin": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 2,
+          "QUICK_MIN_SURGE": 1.5,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 2218.3173531216426,
+        "sweep_pnl": 360.7020086376655,
+        "train_pnl": 12.24623612397312,
+        "test_pnl": 31.604654955040534,
+        "test_wr": 100.0,
+        "degradation": -158.07647864286687,
+        "robust": "True"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 545.5252987111593,
+        "sweep_pnl": 105.92724246818626,
+        "train_pnl": 1.158051820979896,
+        "test_pnl": 2.5743742917241965,
+        "test_wr": 12.5,
+        "degradation": -122.30216688799527,
+        "robust": "True"
+      }
+    },
+    "newcoin": {}
+  },
+  "deployed": [
+    "momentum_quick",
+    "momentum_wave"
+  ],
+  "log": [
+    "[18:05:31] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%",
+    "[18:05:32] [INFO]     WF验证: 训练-3.7%→测试-5.8% WR0% ⚠️ 过拟合(衰减999%)",
+    "[18:05:32] [INFO] \n  === 山寨币 — 动量突破 (altcoin) ===",
+    "[18:05:32] [INFO]   策略: momentum_quick",
+    "[18:12:26] [INFO]     全扫最优: Score=2218 PnL=+360.7% WR=100.0%",
+    "[18:12:27] [INFO]     WF验证: 训练+12.2%→测试+31.6% WR100% ✅ 稳健",
+    "[18:12:27] [INFO]     🚀 已部署! (优于当前参数)",
+    "[18:12:27] [INFO]   策略: momentum_wave",
+    "[18:17:44] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%",
+    "[18:17:45] [INFO]     WF验证: 训练+1.2%→测试+2.6% WR12% ✅ 稳健",
+    "[18:17:45] [INFO]     🚀 已部署! (优于当前参数)",
+    "[18:17:45] [INFO] \n  === 新币 — prelaunch (newcoin) ===",
+    "[18:17:45] [INFO]   策略: momentum_newcoin",
+    "[18:17:45] [INFO]     ⚠️ 无币种，跳过",
+    "[18:17:45] [INFO] 🔍 Phase 4: 选币参数优化",
+    "[18:22:19] [INFO]   3d: PnL=-4.0% 命中率=35% top_n=30",
+    "[18:22:19] [INFO]   7d: PnL=-9.8% 命中率=27% top_n=10",
+    "[18:22:19] [INFO] 📚 Phase 5: 更新知识库",
+    "[18:22:19] [INFO]   知识库已更新",
+    "[18:22:19] [INFO] \n✅ 自进化循环完成 (1337s)"
+  ]
+}
+=== Mon May 25 06:00:01 PM CST 2026 自进化循环开始 ===
+[18:00:01] [INFO] 
+============================================================
+[18:00:01] [INFO] 🧬 自进化循环开始
+[18:00:01] [INFO] ============================================================
+[18:00:01] [INFO] 📊 Phase 1: 市场状态分析
+[18:00:02] [INFO]   市场状态: 震荡 (chop)
+[18:00:02] [INFO]   BTC: $77,565 24h:+1.6%
+[18:00:02] [INFO]   趋势: DOWN 广度:43%
+[18:00:02] [INFO] 📉 Phase 2: 历史表现分析
+[18:00:02] [INFO]   30天: 316笔 WR58% PnL$+11,520
+[18:00:02] [INFO]   long: 316笔 WR58% PnL$+11,520
+[18:00:02] [INFO]   🚫 建议黑名单: PTBUSDT
+[18:00:02] [INFO]   📊 连亏后继续亏损倾向（均亏$-68）→ 可能情绪化交易
+[18:00:02] [INFO]   📊 有63笔大亏（>$200），均亏$-441 → 止损可能太宽
+[18:00:02] [INFO]   📊 建议黑名单: PTBUSDT（全亏无赢）
+[18:00:02] [INFO] 🔬 Phase 3: 策略参数优化
+[18:00:02] [INFO] 
+  === 主流币 — 趋势跟随 (major) ===
+[18:00:02] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 5个
+  参数组合: 10080种
+  总测试: 10080 × 5 = 50400
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 47.4秒
+  最佳: Score=434 PnL=+77.4% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 6, 'QUICK_MIN_SURGE': 5.0, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 1063 tests/sec
+[18:00:55] [INFO]     全扫最优: Score=434 PnL=+77.4% WR=100.0%
+[18:00:56] [INFO]     WF验证: 训练+0.7%→测试-0.4% WR0% ⚠️ 过拟合(衰减162%)
+[18:00:56] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 5个
+  参数组合: 6300种
+  总测试: 6300 × 5 = 31500
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 35.5秒
+  最佳: Score=546 PnL=+105.9% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 888 tests/sec
+[18:01:32] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%
+[18:01:32] [INFO]     WF验证: 训练-2.9%→测试-7.1% WR0% ⚠️ 过拟合(衰减999%)
+[18:01:32] [INFO] 
+  === 山寨币 — 动量突破 (altcoin) ===
+[18:01:32] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 12个
+  参数组合: 10080种
+  总测试: 10080 × 12 = 120960
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 96.7秒
+  最佳: Score=3478 PnL=+565.6% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 2, 'QUICK_MIN_SURGE': 1.5, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 1251 tests/sec
+[18:03:13] [INFO]     全扫最优: Score=3478 PnL=+565.6% WR=100.0%
+[18:03:14] [INFO]     WF验证: 训练+6.2%→测试+10.5% WR88% ✅ 稳健
+[18:03:14] [INFO]     🚀 已部署! (优于当前参数)
+[18:03:14] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 12个
+  参数组合: 6300种
+  总测试: 6300 × 12 = 75600
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 63.0秒
+  最佳: Score=546 PnL=+105.9% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 1199 tests/sec
+[18:04:20] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%
+[18:04:21] [INFO]     WF验证: 训练+2.8%→测试+4.1% WR25% ✅ 稳健
+[18:04:21] [INFO]     🚀 已部署! (优于当前参数)
+[18:04:21] [INFO] 
+  === 新币 — prelaunch (newcoin) ===
+[18:04:21] [INFO]   策略: momentum_newcoin
+[18:04:21] [INFO]     ⚠️ 无币种，跳过
+[18:04:21] [INFO] 🔍 Phase 4: 选币权重进化
+[18:04:21] [INFO]   当前权重: Score=20.2 Avg=+7.8%
+🧬 选币权重进化
+  币种: 40个
+  基线: Score=31.9 Avg=+12.72% Hit=93%
+  Gen1: ✅ Score=32.4 Avg=+13.11% Hit=91%
+  Gen4: ✅ Score=34.8 Avg=+13.07% Hit=99%
+
+🏆 最优权重:
+  position_low_bonus: 20 ←
+  position_high_penalty: -5 ←
+  vol_ratio_bonus: 12
+  volatility_bonus: 8 ←
+  oversold_bonus: 15 ←
+  squeeze_bonus: 5 ←
+  macd_negative_bonus: 6
+  rsi_oversold_bonus: 3 ←
+  rsi_overbought_bonus: 5
+  ema_trend_bonus: 5
+  bb_lower_bonus: 5
+  volume_base: 8
+  chase_high_penalty: -8
+  low_vol_penalty: -5
+
+  Score=34.8 Avg=+13.07% Hit=99%
+[18:04:26] [INFO]   ❌ 选币优化失败: Object of type int64 is not JSON serializable
+[18:04:26] [INFO] 📚 Phase 5: 更新知识库
+[18:04:26] [INFO]   知识库已更新
+[18:04:26] [INFO] 
+✅ 自进化循环完成 (264s)
+{
+  "timestamp": "2026-05-25T18:04:26",
+  "elapsed_seconds": 264.3,
+  "regime": "chop",
+  "performance": {
+    "wr": 57.6,
+    "pnl": 11519.67
+  },
+  "strategy_results": {
+    "major": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 6,
+          "QUICK_MIN_SURGE": 5.0,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 433.6863910968847,
+        "sweep_pnl": 77.44399841015797,
+        "train_pnl": 0.6631829089120888,
+        "test_pnl": -0.41057215656394336,
+        "test_wr": 0.0,
+        "degradation": 161.90933919534538,
+        "robust": "False"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 545.5252987111593,
+        "sweep_pnl": 105.92724246818626,
+        "train_pnl": -2.8762189931218196,
+        "test_pnl": -7.122970057818739,
+        "test_wr": 0.0,
+        "degradation": 999,
+        "robust": false
+      }
+    },
+    "altcoin": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 2,
+          "QUICK_MIN_SURGE": 1.5,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 3478.357643167649,
+        "sweep_pnl": 565.5866086451462,
+        "train_pnl": 6.1556284012100875,
+        "test_pnl": 10.45711908107525,
+        "test_wr": 87.5,
+        "degradation": -69.8789855316732,
+        "robust": "True"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 545.5252987111593,
+        "sweep_pnl": 105.92724246818626,
+        "train_pnl": 2.770289062752329,
+        "test_pnl": 4.072689846133758,
+        "test_wr": 25.0,
+        "degradation": -47.01317277293337,
+        "robust": "True"
+      }
+    },
+    "newcoin": {}
+  },
+  "deployed": [
+    "momentum_quick",
+    "momentum_wave"
+  ],
+  "log": [
+    "[18:01:32] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%",
+    "[18:01:32] [INFO]     WF验证: 训练-2.9%→测试-7.1% WR0% ⚠️ 过拟合(衰减999%)",
+    "[18:01:32] [INFO] \n  === 山寨币 — 动量突破 (altcoin) ===",
+    "[18:01:32] [INFO]   策略: momentum_quick",
+    "[18:03:13] [INFO]     全扫最优: Score=3478 PnL=+565.6% WR=100.0%",
+    "[18:03:14] [INFO]     WF验证: 训练+6.2%→测试+10.5% WR88% ✅ 稳健",
+    "[18:03:14] [INFO]     🚀 已部署! (优于当前参数)",
+    "[18:03:14] [INFO]   策略: momentum_wave",
+    "[18:04:20] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%",
+    "[18:04:21] [INFO]     WF验证: 训练+2.8%→测试+4.1% WR25% ✅ 稳健",
+    "[18:04:21] [INFO]     🚀 已部署! (优于当前参数)",
+    "[18:04:21] [INFO] \n  === 新币 — prelaunch (newcoin) ===",
+    "[18:04:21] [INFO]   策略: momentum_newcoin",
+    "[18:04:21] [INFO]     ⚠️ 无币种，跳过",
+    "[18:04:21] [INFO] 🔍 Phase 4: 选币权重进化",
+    "[18:04:21] [INFO]   当前权重: Score=20.2 Avg=+7.8%",
+    "[18:04:26] [INFO]   ❌ 选币优化失败: Object of type int64 is not JSON serializable",
+    "[18:04:26] [INFO] 📚 Phase 5: 更新知识库",
+    "[18:04:26] [INFO]   知识库已更新",
+    "[18:04:26] [INFO] \n✅ 自进化循环完成 (264s)"
+  ]
+}
+=== Mon May 25 06:04:27 PM CST 2026 自进化循环完成 ===
+=== Tue May 26 12:00:01 AM CST 2026 自进化循环开始 ===
+[00:00:02] [INFO] 
+============================================================
+[00:00:02] [INFO] 🧬 自进化循环开始
+[00:00:02] [INFO] ============================================================
+[00:00:02] [INFO] 📊 Phase 1: 市场状态分析
+[00:00:04] [INFO]   市场状态: 震荡 (chop)
+[00:00:04] [INFO]   BTC: $77,587 24h:+1.1%
+[00:00:04] [INFO]   趋势: DOWN 广度:80%
+[00:00:04] [INFO] 📉 Phase 2: 历史表现分析
+[00:00:04] [INFO]   30天: 316笔 WR58% PnL$+11,520
+[00:00:04] [INFO]   long: 316笔 WR58% PnL$+11,520
+[00:00:04] [INFO]   🚫 建议黑名单: PTBUSDT
+[00:00:04] [INFO]   📊 连亏后继续亏损倾向（均亏$-68）→ 可能情绪化交易
+[00:00:04] [INFO]   📊 有63笔大亏（>$200），均亏$-441 → 止损可能太宽
+[00:00:04] [INFO]   📊 建议黑名单: PTBUSDT（全亏无赢）
+[00:00:04] [INFO] 🔬 Phase 3: 策略参数优化
+[00:00:04] [INFO] 
+  === 主流币 — 趋势跟随 (major) ===
+[00:00:04] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 5个
+  参数组合: 10080种
+  总测试: 10080 × 5 = 50400
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 236.1秒
+  最佳: Score=434 PnL=+77.4% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 6, 'QUICK_MIN_SURGE': 5.0, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 213 tests/sec
+[00:04:29] [INFO]     全扫最优: Score=434 PnL=+77.4% WR=100.0%
+[00:04:30] [INFO]     WF验证: 训练+0.7%→测试-0.4% WR0% ⚠️ 过拟合(衰减158%)
+[00:04:30] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 5个
+  参数组合: 6300种
+  总测试: 6300 × 5 = 31500
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 182.5秒
+  最佳: Score=546 PnL=+105.9% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 173 tests/sec
+[00:07:33] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%
+[00:07:33] [INFO]     WF验证: 训练-2.9%→测试-7.5% WR0% ⚠️ 过拟合(衰减999%)
+[00:07:33] [INFO] 
+  === 山寨币 — 动量突破 (altcoin) ===
+[00:07:33] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 12个
+  参数组合: 10080种
+  总测试: 10080 × 12 = 120960
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 592.3秒
+  最佳: Score=3569 PnL=+575.7% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 2, 'QUICK_MIN_SURGE': 1.5, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 204 tests/sec
+[00:17:35] [INFO]     全扫最优: Score=3569 PnL=+575.7% WR=100.0%
+[00:17:36] [INFO]     WF验证: 训练+7.2%→测试+11.6% WR88% ✅ 稳健
+[00:17:36] [INFO]     🚀 已部署! (优于当前参数)
+[00:17:36] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 12个
+  参数组合: 6300种
+  总测试: 6300 × 12 = 75600
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 486.2秒
+  最佳: Score=546 PnL=+105.9% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 155 tests/sec
+[00:25:51] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%
+[00:25:53] [INFO]     WF验证: 训练+3.0%→测试+2.9% WR25% ✅ 稳健
+[00:25:53] [INFO]     🚀 已部署! (优于当前参数)
+[00:25:53] [INFO] 
+  === 新币 — prelaunch (newcoin) ===
+[00:25:53] [INFO]   策略: momentum_newcoin
+[00:25:53] [INFO]     ⚠️ 无币种，跳过
+[00:25:53] [INFO] 🔍 Phase 4: 选币权重进化
+🧬 选币权重进化
+  币种: 40个
+  基线: Score=23.0 Avg=+10.45% Hit=79%
+  Gen1: ✅ Score=23.2 Avg=+10.52% Hit=79%
+  Gen2: ✅ Score=24.1 Avg=+10.28% Hit=84%
+  Gen4: ✅ Score=26.4 Avg=+10.78% Hit=88%
+
+🏆 最优权重:
+  position_low_bonus: 18
+  position_high_penalty: -5 ←
+  vol_ratio_bonus: 12
+  volatility_bonus: 8 ←
+  oversold_bonus: 10
+  squeeze_bonus: 5 ←
+  macd_negative_bonus: 6
+  rsi_oversold_bonus: 5
+  rsi_overbought_bonus: 5
+  ema_trend_bonus: 8 ←
+  bb_lower_bonus: 5
+  volume_base: 8
+  chase_high_penalty: -8
+  low_vol_penalty: -5
+
+  Score=26.4 Avg=+10.78% Hit=88%
+[00:26:00] [INFO]   ❌ 选币优化失败: Object of type int64 is not JSON serializable
+[00:26:00] [INFO] 📚 Phase 5: 更新知识库
+[00:26:00] [INFO]   知识库已更新
+[00:26:00] [INFO] 
+✅ 自进化循环完成 (1557s)
+{
+  "timestamp": "2026-05-26T00:26:00",
+  "elapsed_seconds": 1557.5,
+  "regime": "chop",
+  "performance": {
+    "wr": 57.6,
+    "pnl": 11519.67
+  },
+  "strategy_results": {
+    "major": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 6,
+          "QUICK_MIN_SURGE": 5.0,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 433.6863910968847,
+        "sweep_pnl": 77.44399841015797,
+        "train_pnl": 0.7077856350968142,
+        "test_pnl": -0.41057215656394336,
+        "test_wr": 0.0,
+        "degradation": 158.00798097686504,
+        "robust": "False"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 545.5252987111593,
+        "sweep_pnl": 105.92724246818626,
+        "train_pnl": -2.8762189931218196,
+        "test_pnl": -7.5429613109688685,
+        "test_wr": 0.0,
+        "degradation": 999,
+        "robust": false
+      }
+    },
+    "altcoin": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 2,
+          "QUICK_MIN_SURGE": 1.5,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 3569.3925974794674,
+        "sweep_pnl": 575.7084834644303,
+        "train_pnl": 7.2173651271575,
+        "test_pnl": 11.638638841378953,
+        "test_wr": 87.5,
+        "degradation": -61.25883388641493,
+        "robust": "True"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 545.5252987111593,
+        "sweep_pnl": 105.92724246818626,
+        "train_pnl": 3.0082327441148604,
+        "test_pnl": 2.908692927832022,
+        "test_wr": 25.0,
+        "degradation": 3.308913396996041,
+        "robust": "True"
+      }
+    },
+    "newcoin": {}
+  },
+  "deployed": [
+    "momentum_quick",
+    "momentum_wave"
+  ],
+  "log": [
+    "[00:04:30] [INFO]   策略: momentum_wave",
+    "[00:07:33] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%",
+    "[00:07:33] [INFO]     WF验证: 训练-2.9%→测试-7.5% WR0% ⚠️ 过拟合(衰减999%)",
+    "[00:07:33] [INFO] \n  === 山寨币 — 动量突破 (altcoin) ===",
+    "[00:07:33] [INFO]   策略: momentum_quick",
+    "[00:17:35] [INFO]     全扫最优: Score=3569 PnL=+575.7% WR=100.0%",
+    "[00:17:36] [INFO]     WF验证: 训练+7.2%→测试+11.6% WR88% ✅ 稳健",
+    "[00:17:36] [INFO]     🚀 已部署! (优于当前参数)",
+    "[00:17:36] [INFO]   策略: momentum_wave",
+    "[00:25:51] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%",
+    "[00:25:53] [INFO]     WF验证: 训练+3.0%→测试+2.9% WR25% ✅ 稳健",
+    "[00:25:53] [INFO]     🚀 已部署! (优于当前参数)",
+    "[00:25:53] [INFO] \n  === 新币 — prelaunch (newcoin) ===",
+    "[00:25:53] [INFO]   策略: momentum_newcoin",
+    "[00:25:53] [INFO]     ⚠️ 无币种，跳过",
+    "[00:25:53] [INFO] 🔍 Phase 4: 选币权重进化",
+    "[00:26:00] [INFO]   ❌ 选币优化失败: Object of type int64 is not JSON serializable",
+    "[00:26:00] [INFO] 📚 Phase 5: 更新知识库",
+    "[00:26:00] [INFO]   知识库已更新",
+    "[00:26:00] [INFO] \n✅ 自进化循环完成 (1557s)"
+  ]
+}
+=== Tue May 26 12:26:05 AM CST 2026 自进化循环完成 ===
+=== Tue May 26 06:00:01 AM CST 2026 自进化循环开始 ===
+[06:00:02] [INFO] 
+============================================================
+[06:00:02] [INFO] 🧬 自进化循环开始
+[06:00:02] [INFO] ============================================================
+[06:00:02] [INFO] 📊 Phase 1: 市场状态分析
+[06:00:04] [INFO]   市场状态: 震荡 (chop)
+[06:00:04] [INFO]   BTC: $77,332 24h:+0.4%
+[06:00:04] [INFO]   趋势: DOWN 广度:86%
+[06:00:04] [INFO] 📉 Phase 2: 历史表现分析
+[06:00:04] [INFO]   30天: 316笔 WR58% PnL$+11,520
+[06:00:04] [INFO]   long: 316笔 WR58% PnL$+11,520
+[06:00:04] [INFO]   🚫 建议黑名单: PTBUSDT
+[06:00:04] [INFO]   📊 连亏后继续亏损倾向（均亏$-68）→ 可能情绪化交易
+[06:00:04] [INFO]   📊 有63笔大亏（>$200），均亏$-441 → 止损可能太宽
+[06:00:04] [INFO]   📊 建议黑名单: PTBUSDT（全亏无赢）
+[06:00:04] [INFO] 🔬 Phase 3: 策略参数优化
+[06:00:04] [INFO] 
+  === 主流币 — 趋势跟随 (major) ===
+[06:00:04] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 5个
+  参数组合: 10080种
+  总测试: 10080 × 5 = 50400
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 259.5秒
+  最佳: Score=434 PnL=+77.4% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 6, 'QUICK_MIN_SURGE': 5.0, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 194 tests/sec
+[06:04:57] [INFO]     全扫最优: Score=434 PnL=+77.4% WR=100.0%
+[06:04:58] [INFO]     WF验证: 训练+0.7%→测试-0.4% WR0% ⚠️ 过拟合(衰减158%)
+[06:04:58] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 5个
+  参数组合: 6300种
+  总测试: 6300 × 5 = 31500
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 198.1秒
+  最佳: Score=546 PnL=+105.9% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 159 tests/sec
+[06:08:17] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%
+[06:08:17] [INFO]     WF验证: 训练-2.9%→测试-7.5% WR0% ⚠️ 过拟合(衰减999%)
+[06:08:17] [INFO] 
+  === 山寨币 — 动量突破 (altcoin) ===
+[06:08:17] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 12个
+  参数组合: 10080种
+  总测试: 10080 × 12 = 120960
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 642.0秒
+  最佳: Score=3541 PnL=+575.7% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 2, 'QUICK_MIN_SURGE': 1.5, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 188 tests/sec
+[06:19:10] [INFO]     全扫最优: Score=3541 PnL=+575.7% WR=100.0%
+[06:19:11] [INFO]     WF验证: 训练+7.2%→测试+11.8% WR88% ✅ 稳健
+[06:19:11] [INFO]     🚀 已部署! (优于当前参数)
+[06:19:11] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 12个
+  参数组合: 6300种
+  总测试: 6300 × 12 = 75600
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 475.2秒
+  最佳: Score=546 PnL=+105.9% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 159 tests/sec
+[06:27:15] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%
+[06:27:17] [INFO]     WF验证: 训练+3.0%→测试+2.8% WR25% ✅ 稳健
+[06:27:17] [INFO]     🚀 已部署! (优于当前参数)
+[06:27:17] [INFO] 
+  === 新币 — prelaunch (newcoin) ===
+[06:27:17] [INFO]   策略: momentum_newcoin
+[06:27:17] [INFO]     ⚠️ 无币种，跳过
+[06:27:17] [INFO] 🔍 Phase 4: 选币权重进化
+🧬 选币权重进化
+  币种: 40个
+  基线: Score=26.1 Avg=+11.30% Hit=82%
+
+🏆 最优权重:
+  position_low_bonus: 18
+  position_high_penalty: -12
+  vol_ratio_bonus: 12
+  volatility_bonus: 10
+  oversold_bonus: 10
+  squeeze_bonus: 8
+  macd_negative_bonus: 6
+  rsi_oversold_bonus: 5
+  rsi_overbought_bonus: 5
+  ema_trend_bonus: 5
+  bb_lower_bonus: 5
+  volume_base: 8
+  chase_high_penalty: -8
+  low_vol_penalty: -5
+
+  Score=26.1 Avg=+11.30% Hit=82%
+[06:27:25] [INFO]   ✅ 选币权重进化完成
+[06:27:25] [INFO] 📚 Phase 5: 更新知识库
+[06:27:25] [INFO]   知识库已更新
+[06:27:25] [INFO] 
+✅ 自进化循环完成 (1644s)
+{
+  "timestamp": "2026-05-26T06:27:25",
+  "elapsed_seconds": 1643.8,
+  "regime": "chop",
+  "performance": {
+    "wr": 57.6,
+    "pnl": 11519.67
+  },
+  "strategy_results": {
+    "major": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 6,
+          "QUICK_MIN_SURGE": 5.0,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 433.6863910968847,
+        "sweep_pnl": 77.44399841015797,
+        "train_pnl": 0.7077856350968142,
+        "test_pnl": -0.41057215656394336,
+        "test_wr": 0.0,
+        "degradation": 158.00798097686504,
+        "robust": "False"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 545.5252987111593,
+        "sweep_pnl": 105.92724246818626,
+        "train_pnl": -2.8762189931218196,
+        "test_pnl": -7.5429613109688685,
+        "test_wr": 0.0,
+        "degradation": 999,
+        "robust": false
+      }
+    },
+    "altcoin": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 2,
+          "QUICK_MIN_SURGE": 1.5,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 3540.578115216658,
+        "sweep_pnl": 575.7037585718142,
+        "train_pnl": 7.2173651271575,
+        "test_pnl": 11.75055008638948,
+        "test_wr": 87.5,
+        "degradation": -62.80941700142774,
+        "robust": "True"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 545.5252987111593,
+        "sweep_pnl": 105.92724246818626,
+        "train_pnl": 3.0082327441148604,
+        "test_pnl": 2.818071669608356,
+        "test_wr": 25.0,
+        "degradation": 6.321355117170535,
+        "robust": "True"
+      }
+    },
+    "newcoin": {}
+  },
+  "deployed": [
+    "momentum_quick",
+    "momentum_wave"
+  ],
+  "log": [
+    "[06:04:58] [INFO]   策略: momentum_wave",
+    "[06:08:17] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%",
+    "[06:08:17] [INFO]     WF验证: 训练-2.9%→测试-7.5% WR0% ⚠️ 过拟合(衰减999%)",
+    "[06:08:17] [INFO] \n  === 山寨币 — 动量突破 (altcoin) ===",
+    "[06:08:17] [INFO]   策略: momentum_quick",
+    "[06:19:10] [INFO]     全扫最优: Score=3541 PnL=+575.7% WR=100.0%",
+    "[06:19:11] [INFO]     WF验证: 训练+7.2%→测试+11.8% WR88% ✅ 稳健",
+    "[06:19:11] [INFO]     🚀 已部署! (优于当前参数)",
+    "[06:19:11] [INFO]   策略: momentum_wave",
+    "[06:27:15] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%",
+    "[06:27:17] [INFO]     WF验证: 训练+3.0%→测试+2.8% WR25% ✅ 稳健",
+    "[06:27:17] [INFO]     🚀 已部署! (优于当前参数)",
+    "[06:27:17] [INFO] \n  === 新币 — prelaunch (newcoin) ===",
+    "[06:27:17] [INFO]   策略: momentum_newcoin",
+    "[06:27:17] [INFO]     ⚠️ 无币种，跳过",
+    "[06:27:17] [INFO] 🔍 Phase 4: 选币权重进化",
+    "[06:27:25] [INFO]   ✅ 选币权重进化完成",
+    "[06:27:25] [INFO] 📚 Phase 5: 更新知识库",
+    "[06:27:25] [INFO]   知识库已更新",
+    "[06:27:25] [INFO] \n✅ 自进化循环完成 (1644s)"
+  ]
+}
+=== Tue May 26 06:27:33 AM CST 2026 自进化循环完成 ===
+=== Tue May 26 06:00:01 PM CST 2026 自进化循环开始 ===
+=== Tue May 26 08:04:44 PM CST 2026 自进化循环完成 ===
+=== Wed May 27 12:08:17 AM CST 2026 自进化循环开始 ===
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/dist-packages/aiohttp/client.py", line 788, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/aiohttp/client.py", line 742, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/aiohttp/connector.py", line 672, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/aiohttp/connector.py", line 1251, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/aiohttp/connector.py", line 1574, in _create_direct_connection
+    hosts = await self._resolve_host(host, port, traces=traces)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/aiohttp/connector.py", line 1190, in _resolve_host
+    return await asyncio.shield(resolved_host_task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/trading-agent/scripts/self_evolution_loop.py", line 335, in run_once
+    regime = self.phase_analyze_market()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/trading-agent/scripts/self_evolution_loop.py", line 93, in phase_analyze_market
+    regime = analyze_regime()
+             ^^^^^^^^^^^^^^^^
+  File "/opt/trading-agent/scripts/harness_analyzer.py", line 192, in analyze_regime
+    return asyncio.run(_analyze())
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/trading-agent/scripts/harness_analyzer.py", line 76, in _analyze
+    async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+  File "/usr/local/lib/python3.12/dist-packages/aiohttp/client.py", line 1521, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/aiohttp/client.py", line 632, in _request
+    with timer:
+  File "/usr/local/lib/python3.12/dist-packages/aiohttp/helpers.py", line 713, in __exit__
+    raise asyncio.TimeoutError from exc_val
+TimeoutError
+[00:14:48] [INFO] 
+============================================================
+[00:14:48] [INFO] 🧬 自进化循环开始
+[00:14:48] [INFO] ============================================================
+[00:14:48] [INFO] 📊 Phase 1: 市场状态分析
+[01:05:02] [INFO] ❌ 循环失败: 
+{
+  "error": ""
+}
+=== Wed May 27 03:51:53 AM CST 2026 自进化循环完成 ===
+=== Wed May 27 06:00:01 PM CST 2026 自进化循环开始 ===
+[18:00:02] [INFO] 
+============================================================
+[18:00:02] [INFO] 🧬 自进化循环开始
+[18:00:02] [INFO] ============================================================
+[18:00:02] [INFO] 📊 Phase 1: 市场状态分析
+[18:00:03] [INFO]   市场状态: 震荡 (chop)
+[18:00:03] [INFO]   BTC: $75,876 24h:-0.8%
+[18:00:03] [INFO]   趋势: DOWN 广度:23%
+[18:00:03] [INFO] 📉 Phase 2: 历史表现分析
+[18:00:03] [INFO]   30天: 316笔 WR58% PnL$+11,520
+[18:00:03] [INFO]   long: 316笔 WR58% PnL$+11,520
+[18:00:03] [INFO]   🚫 建议黑名单: PTBUSDT
+[18:00:03] [INFO]   📊 连亏后继续亏损倾向（均亏$-68）→ 可能情绪化交易
+[18:00:03] [INFO]   📊 有63笔大亏（>$200），均亏$-441 → 止损可能太宽
+[18:00:03] [INFO]   📊 建议黑名单: PTBUSDT（全亏无赢）
+[18:00:03] [INFO] 🔬 Phase 3: 策略参数优化
+[18:00:03] [INFO] 
+  === 主流币 — 趋势跟随 (major) ===
+[18:00:03] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 5个
+  参数组合: 10080种
+  总测试: 10080 × 5 = 50400
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 53.2秒
+  最佳: Score=422 PnL=+76.0% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 6, 'QUICK_MIN_SURGE': 5.0, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 948 tests/sec
+[18:01:10] [INFO]     全扫最优: Score=422 PnL=+76.0% WR=100.0%
+[18:01:11] [INFO]     WF验证: 训练+0.7%→测试-0.4% WR0% ⚠️ 过拟合(衰减161%)
+[18:01:11] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 5个
+  参数组合: 6300种
+  总测试: 6300 × 5 = 31500
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 35.6秒
+  最佳: Score=546 PnL=+105.9% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 884 tests/sec
+[18:01:47] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%
+[18:01:47] [INFO]     WF验证: 训练-2.7%→测试-6.2% WR0% ⚠️ 过拟合(衰减999%)
+[18:01:47] [INFO] 
+  === 山寨币 — 动量突破 (altcoin) ===
+[18:01:47] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 12个
+  参数组合: 10080种
+  总测试: 10080 × 12 = 120960
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 112.2秒
+  最佳: Score=422 PnL=+76.0% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 6, 'QUICK_MIN_SURGE': 5.0, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 1078 tests/sec
+[18:03:43] [INFO]     全扫最优: Score=422 PnL=+76.0% WR=100.0%
+[18:03:44] [INFO]     WF验证: 训练+5.4%→测试+11.0% WR57% ✅ 稳健
+[18:03:44] [INFO]     🚀 已部署! (优于当前参数)
+[18:03:44] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 12个
+  参数组合: 6300种
+  总测试: 6300 × 12 = 75600
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 84.6秒
+  最佳: Score=546 PnL=+105.9% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 894 tests/sec
+[18:05:12] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%
+[18:05:13] [INFO]     WF验证: 训练+1.6%→测试+3.0% WR12% ✅ 稳健
+[18:05:13] [INFO]     🚀 已部署! (优于当前参数)
+[18:05:13] [INFO] 
+  === 新币 — prelaunch (newcoin) ===
+[18:05:13] [INFO]   策略: momentum_newcoin
+[18:05:13] [INFO]     ⚠️ 无币种，跳过
+[18:05:13] [INFO] 🔍 Phase 4: 选币权重进化
+[18:05:13] [INFO]   当前权重: Score=26.1 Avg=+11.3%
+🧬 选币权重进化
+  币种: 40个
+  基线: Score=23.0 Avg=+7.92% Hit=72%
+  Gen1: ✅ Score=24.2 Avg=+8.26% Hit=73%
+
+🏆 最优权重:
+  position_low_bonus: 20 ←
+  position_high_penalty: -15 ←
+  vol_ratio_bonus: 12
+  volatility_bonus: 10
+  oversold_bonus: 15 ←
+  squeeze_bonus: 8
+  macd_negative_bonus: 6
+  rsi_oversold_bonus: 3 ←
+  rsi_overbought_bonus: 5
+  ema_trend_bonus: 5
+  bb_lower_bonus: 5
+  volume_base: 8
+  chase_high_penalty: -8
+  low_vol_penalty: -5
+
+  Score=24.2 Avg=+8.26% Hit=73%
+[18:05:19] [INFO]   ❌ 选币优化失败: Object of type int64 is not JSON serializable
+[18:05:19] [INFO] 📚 Phase 5: 更新知识库
+[18:05:19] [INFO]   知识库已更新
+[18:05:19] [INFO] 
+✅ 自进化循环完成 (318s)
+{
+  "timestamp": "2026-05-27T18:05:19",
+  "elapsed_seconds": 317.6,
+  "regime": "chop",
+  "performance": {
+    "wr": 57.6,
+    "pnl": 11519.67
+  },
+  "strategy_results": {
+    "major": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 6,
+          "QUICK_MIN_SURGE": 5.0,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 422.0581619889671,
+        "sweep_pnl": 76.04651567368776,
+        "train_pnl": 0.6756034949029273,
+        "test_pnl": -0.41057215656394336,
+        "test_wr": 0.0,
+        "degradation": 160.7711712064094,
+        "robust": "False"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 545.5252987111593,
+        "sweep_pnl": 105.92724246818626,
+        "train_pnl": -2.6634795760498546,
+        "test_pnl": -6.174928237357653,
+        "test_wr": 0.0,
+        "degradation": 999,
+        "robust": false
+      }
+    },
+    "altcoin": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 6,
+          "QUICK_MIN_SURGE": 5.0,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 422.0581619889671,
+        "sweep_pnl": 76.04651567368776,
+        "train_pnl": 5.359826076009992,
+        "test_pnl": 11.029768769313106,
+        "test_wr": 57.14285714285714,
+        "degradation": -105.78594553060539,
+        "robust": "True"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 545.5252987111593,
+        "sweep_pnl": 105.92724246818626,
+        "train_pnl": 1.5830167225188572,
+        "test_pnl": 3.0314855454299754,
+        "test_wr": 12.5,
+        "degradation": -91.50053832699571,
+        "robust": "True"
+      }
+    },
+    "newcoin": {}
+  },
+  "deployed": [
+    "momentum_quick",
+    "momentum_wave"
+  ],
+  "log": [
+    "[18:01:47] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%",
+    "[18:01:47] [INFO]     WF验证: 训练-2.7%→测试-6.2% WR0% ⚠️ 过拟合(衰减999%)",
+    "[18:01:47] [INFO] \n  === 山寨币 — 动量突破 (altcoin) ===",
+    "[18:01:47] [INFO]   策略: momentum_quick",
+    "[18:03:43] [INFO]     全扫最优: Score=422 PnL=+76.0% WR=100.0%",
+    "[18:03:44] [INFO]     WF验证: 训练+5.4%→测试+11.0% WR57% ✅ 稳健",
+    "[18:03:44] [INFO]     🚀 已部署! (优于当前参数)",
+    "[18:03:44] [INFO]   策略: momentum_wave",
+    "[18:05:12] [INFO]     全扫最优: Score=546 PnL=+105.9% WR=100.0%",
+    "[18:05:13] [INFO]     WF验证: 训练+1.6%→测试+3.0% WR12% ✅ 稳健",
+    "[18:05:13] [INFO]     🚀 已部署! (优于当前参数)",
+    "[18:05:13] [INFO] \n  === 新币 — prelaunch (newcoin) ===",
+    "[18:05:13] [INFO]   策略: momentum_newcoin",
+    "[18:05:13] [INFO]     ⚠️ 无币种，跳过",
+    "[18:05:13] [INFO] 🔍 Phase 4: 选币权重进化",
+    "[18:05:13] [INFO]   当前权重: Score=26.1 Avg=+11.3%",
+    "[18:05:19] [INFO]   ❌ 选币优化失败: Object of type int64 is not JSON serializable",
+    "[18:05:19] [INFO] 📚 Phase 5: 更新知识库",
+    "[18:05:19] [INFO]   知识库已更新",
+    "[18:05:19] [INFO] \n✅ 自进化循环完成 (318s)"
+  ]
+}
+=== Wed May 27 06:05:21 PM CST 2026 自进化循环完成 ===
+=== Thu May 28 12:00:01 AM CST 2026 自进化循环开始 ===
+[00:00:03] [INFO] 
+============================================================
+[00:00:03] [INFO] 🧬 自进化循环开始
+[00:00:03] [INFO] ============================================================
+[00:00:03] [INFO] 📊 Phase 1: 市场状态分析
+[00:00:06] [INFO]   市场状态: 弱熊 (bear_weak)
+[00:00:06] [INFO]   BTC: $75,300 24h:-1.0%
+[00:00:06] [INFO]   趋势: DOWN 广度:35%
+[00:00:06] [INFO] 📉 Phase 2: 历史表现分析
+[00:00:06] [INFO]   30天: 316笔 WR58% PnL$+11,520
+[00:00:06] [INFO]   long: 316笔 WR58% PnL$+11,520
+[00:00:06] [INFO]   🚫 建议黑名单: PTBUSDT
+[00:00:06] [INFO]   📊 连亏后继续亏损倾向（均亏$-68）→ 可能情绪化交易
+[00:00:06] [INFO]   📊 有63笔大亏（>$200），均亏$-441 → 止损可能太宽
+[00:00:06] [INFO]   📊 建议黑名单: PTBUSDT（全亏无赢）
+[00:00:06] [INFO] 🔬 Phase 3: 策略参数优化
+[00:00:06] [INFO] 
+  === 主流币 — 趋势跟随 (major) ===
+[00:00:06] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 5个
+  参数组合: 10080种
+  总测试: 10080 × 5 = 50400
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 225.8秒
+  最佳: Score=164 PnL=+33.4% WR=83.3%
+  参数: {'QUICK_SURGE_BARS': 5, 'QUICK_MIN_SURGE': 2.5, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.8}
+  速度: 223 tests/sec
+[00:04:20] [INFO]     全扫最优: Score=164 PnL=+33.4% WR=83.3%
+[00:04:21] [INFO]     WF验证: 训练+3.0%→测试+2.9% WR100% ✅ 稳健
+[00:04:21] [INFO]     🚀 已部署! (优于当前参数)
+[00:04:21] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 5个
+  参数组合: 6300种
+  总测试: 6300 × 5 = 31500
+  下载K线...
+  获取: 5个币种
+
+✅ 完成! 170.2秒
+  最佳: Score=122 PnL=+34.5% WR=66.7%
+  参数: {'WAVE_BREAKOUT_BARS': 8, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 25, 'WAVE_MAX_HOLD': 60}
+  速度: 185 tests/sec
+[00:07:12] [INFO]     全扫最优: Score=122 PnL=+34.5% WR=66.7%
+[00:07:13] [INFO]     WF验证: 训练+0.9%→测试+1.1% WR40% ✅ 稳健
+[00:07:13] [INFO]     🚀 已部署! (优于当前参数)
+[00:07:13] [INFO] 
+  === 山寨币 — 动量突破 (altcoin) ===
+[00:07:13] [INFO]   策略: momentum_quick
+🔬 momentum_quick 全参数扫描
+  币种: 12个
+  参数组合: 10080种
+  总测试: 10080 × 12 = 120960
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 520.6秒
+  最佳: Score=422 PnL=+76.0% WR=100.0%
+  参数: {'QUICK_SURGE_BARS': 6, 'QUICK_MIN_SURGE': 5.0, 'QUICK_TRAIL_PCT': 0.5, 'QUICK_MAX_HOLD': 24, 'QUICK_MIN_VOL_RATIO': 0.5}
+  速度: 232 tests/sec
+[00:16:02] [INFO]     全扫最优: Score=422 PnL=+76.0% WR=100.0%
+[00:16:04] [INFO]     WF验证: 训练+5.1%→测试+9.0% WR43% ✅ 稳健
+[00:16:04] [INFO]     🚀 已部署! (优于当前参数)
+[00:16:04] [INFO]   策略: momentum_wave
+🔬 momentum_wave 全参数扫描
+  币种: 12个
+  参数组合: 6300种
+  总测试: 6300 × 12 = 75600
+  下载K线...
+  获取: 12个币种
+
+✅ 完成! 397.2秒
+  最佳: Score=547 PnL=+106.3% WR=100.0%
+  参数: {'WAVE_BREAKOUT_BARS': 20, 'WAVE_MIN_VOL_RATIO': 0.8, 'WAVE_STOP_PCT': 8.0, 'WAVE_EMA_EXIT': 12, 'WAVE_MAX_HOLD': 60}
+  速度: 190 tests/sec
+[00:22:49] [INFO]     全扫最优: Score=547 PnL=+106.3% WR=100.0%
+[00:22:50] [INFO]     WF验证: 训练+3.1%→测试+7.3% WR38% ✅ 稳健
+[00:22:50] [INFO]     🚀 已部署! (优于当前参数)
+[00:22:50] [INFO] 
+  === 新币 — prelaunch (newcoin) ===
+[00:22:50] [INFO]   策略: momentum_newcoin
+[00:22:50] [INFO]     ⚠️ 无币种，跳过
+[00:22:50] [INFO] 🔍 Phase 4: 选币权重进化
+🧬 选币权重进化
+  币种: 39个
+  基线: Score=32.2 Avg=+10.26% Hit=78%
+  Gen1: ✅ Score=32.5 Avg=+10.30% Hit=79%
+
+🏆 最优权重:
+  position_low_bonus: 20 ←
+  position_high_penalty: -15 ←
+  vol_ratio_bonus: 12
+  volatility_bonus: 10
+  oversold_bonus: 15 ←
+  squeeze_bonus: 8
+  macd_negative_bonus: 6
+  rsi_oversold_bonus: 3 ←
+  rsi_overbought_bonus: 5
+  ema_trend_bonus: 5
+  bb_lower_bonus: 5
+  volume_base: 8
+  chase_high_penalty: -8
+  low_vol_penalty: -5
+
+  Score=32.5 Avg=+10.30% Hit=79%
+[00:23:06] [INFO]   ❌ 选币优化失败: Object of type int64 is not JSON serializable
+[00:23:06] [INFO] 📚 Phase 5: 更新知识库
+[00:23:06] [INFO]   知识库已更新
+[00:23:06] [INFO] 
+✅ 自进化循环完成 (1383s)
+{
+  "timestamp": "2026-05-28T00:23:06",
+  "elapsed_seconds": 1383.4,
+  "regime": "bear_weak",
+  "performance": {
+    "wr": 57.6,
+    "pnl": 11519.67
+  },
+  "strategy_results": {
+    "major": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 5,
+          "QUICK_MIN_SURGE": 2.5,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.8
+        },
+        "sweep_score": 164.38554048823198,
+        "sweep_pnl": 33.434347217945486,
+        "train_pnl": 2.960370309183511,
+        "test_pnl": 2.9065931944930834,
+        "test_wr": 100.0,
+        "degradation": 1.816567154575322,
+        "robust": "True"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 8,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 25,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 121.73580127660857,
+        "sweep_pnl": 34.45352866319111,
+        "train_pnl": 0.9449149511433879,
+        "test_pnl": 1.0589216456609183,
+        "test_wr": 40.0,
+        "degradation": -12.065286339217876,
+        "robust": "True"
+      }
+    },
+    "altcoin": {
+      "momentum_quick": {
+        "best_params": {
+          "QUICK_SURGE_BARS": 6,
+          "QUICK_MIN_SURGE": 5.0,
+          "QUICK_TRAIL_PCT": 0.5,
+          "QUICK_MAX_HOLD": 24,
+          "QUICK_MIN_VOL_RATIO": 0.5
+        },
+        "sweep_score": 422.0581619889671,
+        "sweep_pnl": 76.04651567368776,
+        "train_pnl": 5.147686886619302,
+        "test_pnl": 9.017189396876827,
+        "test_wr": 42.857142857142854,
+        "degradation": -75.16973342562385,
+        "robust": "True"
+      },
+      "momentum_wave": {
+        "best_params": {
+          "WAVE_BREAKOUT_BARS": 20,
+          "WAVE_MIN_VOL_RATIO": 0.8,
+          "WAVE_STOP_PCT": 8.0,
+          "WAVE_EMA_EXIT": 12,
+          "WAVE_MAX_HOLD": 60
+        },
+        "sweep_score": 547.401334367139,
+        "sweep_pnl": 106.29152123633767,
+        "train_pnl": 3.1259528860352246,
+        "test_pnl": 7.267894712082334,
+        "test_wr": 37.5,
+        "degradation": -132.50173553640806,
+        "robust": "True"
+      }
+    },
+    "newcoin": {}
+  },
+  "deployed": [
+    "momentum_quick",
+    "momentum_wave"
+  ],
+  "log": [
+    "[00:07:12] [INFO]     全扫最优: Score=122 PnL=+34.5% WR=66.7%",
+    "[00:07:13] [INFO]     WF验证: 训练+0.9%→测试+1.1% WR40% ✅ 稳健",
+    "[00:07:13] [INFO]     🚀 已部署! (优于当前参数)",
+    "[00:07:13] [INFO] \n  === 山寨币 — 动量突破 (altcoin) ===",
+    "[00:07:13] [INFO]   策略: momentum_quick",
+    "[00:16:02] [INFO]     全扫最优: Score=422 PnL=+76.0% WR=100.0%",
+    "[00:16:04] [INFO]     WF验证: 训练+5.1%→测试+9.0% WR43% ✅ 稳健",
+    "[00:16:04] [INFO]     🚀 已部署! (优于当前参数)",
+    "[00:16:04] [INFO]   策略: momentum_wave",
+    "[00:22:49] [INFO]     全扫最优: Score=547 PnL=+106.3% WR=100.0%",
+    "[00:22:50] [INFO]     WF验证: 训练+3.1%→测试+7.3% WR38% ✅ 稳健",
+    "[00:22:50] [INFO]     🚀 已部署! (优于当前参数)",
+    "[00:22:50] [INFO] \n  === 新币 — prelaunch (newcoin) ===",
+    "[00:22:50] [INFO]   策略: momentum_newcoin",
+    "[00:22:50] [INFO]     ⚠️ 无币种，跳过",
+    "[00:22:50] [INFO] 🔍 Phase 4: 选币权重进化",
+    "[00:23:06] [INFO]   ❌ 选币优化失败: Object of type int64 is not JSON serializable",
+    "[00:23:06] [INFO] 📚 Phase 5: 更新知识库",
+    "[00:23:06] [INFO]   知识库已更新",
+    "[00:23:06] [INFO] \n✅ 自进化循环完成 (1383s)"
+  ]
+}
+=== Thu May 28 12:23:11 AM CST 2026 自进化循环完成 ===

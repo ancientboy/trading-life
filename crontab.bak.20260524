@@ -1,0 +1,8 @@
+0 */4 * * * cd /opt/trading-agent/scripts && python3 signal_tracker.py >> /opt/trading-agent/logs/tracker.log 2>&1
+*/5 * * * * /opt/trading-agent/scripts/push_signals.sh >> /opt/trading-agent/logs/push.log 2>&1
+0 8,20 * * * python3 /opt/trading-agent/scripts/daily_report.py >> /opt/trading-agent/logs/report.log 2>&1
+0 10 * * 1 python3 /opt/trading-agent/scripts/weekly_reflection.py >> /opt/trading-agent/logs/reflection.log 2>&1
+0 3 * * * /opt/trading-agent/scripts/run_evolve.sh
+0 */4 * * * /opt/trading-agent/scripts/run_evolve_fast.sh
+0 */6 * * * /opt/trading-agent/scripts/run_self_evolution.sh
+0 * * * * cd /opt/trading-agent/scripts && python3 -c "import asyncio; from evolvable_screener import run_screener_v3; asyncio.run(run_screener_v3())" >> /opt/trading-agent/logs/screener.log 2>&1

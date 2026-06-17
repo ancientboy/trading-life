@@ -1,0 +1,166 @@
+"""
+AI核心模块 - GLM API异步调用封装
+使用智谱 glm-4-flash 模型，支持结构化JSON输出
+"""
+import aiohttp
+import json
+import os
+import logging
+import time
+from typing import Optional, Dict, Any
+
+logger = logging.getLogger("AICore")
+
+GLM_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+GLM_MODEL = "glm-4-flash"
+GLM_API_KEY = os.environ.get("ZHIPU_API_KEY", "")
+
+# 调用统计
+_stats = {"calls": 0, "tokens_in": 0, "tokens_out": 0, "errors": 0, "total_time": 0.0}
+
+
+async def call_glm(
+    messages: list,
+    temperature: float = 0.3,
+    max_tokens: int = 2000,
+    response_format: Optional[Dict] = None,
+    timeout: int = 30
+) -> Optional[str]:
+    """
+    异步调用GLM API
+    
+    Args:
+        messages: [{"role": "system"|"user"|"assistant", "content": "..."}]
+        temperature: 0.0(确定性) ~ 1.0(创造性)
+        max_tokens: 最大输出token数
+        response_format: {"type": "json_object"} 强制JSON输出
+        timeout: 超时秒数
+    
+    Returns:
+        模型回复文本，失败返回None
+    """
+    global _stats
+    
+    if not GLM_API_KEY:
+        logger.error("❌ ZHIPU_API_KEY 未设置")
+        return None
+    
+    headers = {
+        "Authorization": f"Bearer {GLM_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": GLM_MODEL,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    
+    if response_format:
+        payload["response_format"] = response_format
+    
+    start = time.time()
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                GLM_API_URL,
+                headers=headers,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=timeout)
+            ) as resp:
+                elapsed = time.time() - start
+                
+                if resp.status == 200:
+                    data = await resp.json()
+                    content = data["choices"][0]["message"]["content"]
+                    usage = data.get("usage", {})
+                    
+                    _stats["calls"] += 1
+                    _stats["tokens_in"] += usage.get("prompt_tokens", 0)
+                    _stats["tokens_out"] += usage.get("completion_tokens", 0)
+                    _stats["total_time"] += elapsed
+                    
+                    logger.debug(f"🤖 GLM调用成功 {elapsed:.1f}s "
+                                f"tokens={usage.get('prompt_tokens',0)}+{usage.get('completion_tokens',0)}")
+                    return content
+                else:
+                    text = await resp.text()
+                    _stats["errors"] += 1
+                    logger.error(f"❌ GLM API错误 {resp.status}: {text[:200]}")
+                    return None
+                    
+    except asyncio.TimeoutError:
+        _stats["errors"] += 1
+        logger.error(f"❌ GLM API超时 ({timeout}s)")
+        return None
+    except Exception as e:
+        _stats["errors"] += 1
+        logger.error(f"❌ GLM API异常: {e}")
+        return None
+
+
+async def call_glm_json(
+    messages: list,
+    temperature: float = 0.2,
+    max_tokens: int = 2000,
+    timeout: int = 30
+) -> Optional[Dict]:
+    """
+    调用GLM并解析JSON输出
+    自动在prompt中要求JSON格式，并尝试解析返回结果
+    """
+    content = await call_glm(
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        timeout=timeout
+    )
+    
+    if not content:
+        return None
+    
+    # 尝试提取JSON
+    return extract_json(content)
+
+
+def extract_json(text: str) -> Optional[Dict]:
+    """从文本中提取JSON（处理markdown代码块包裹的情况）"""
+    # 尝试直接解析
+    try:
+        return json.loads(text)
+    except:
+        pass
+    
+    # 尝试提取 ```json ... ```
+    import re
+    m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
+    if m:
+        try:
+            return json.loads(m.group(1).strip())
+        except:
+            pass
+    
+    # 尝试找 { ... }
+    m = re.search(r'\{[\s\S]*\}', text)
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except:
+            pass
+    
+    logger.warning(f"⚠️ 无法解析JSON: {text[:100]}")
+    return None
+
+
+def get_stats() -> Dict[str, Any]:
+    """获取调用统计"""
+    return {
+        **_stats,
+        "avg_time": _stats["total_time"] / max(1, _stats["calls"]),
+        "model": GLM_MODEL
+    }
+
+
+import asyncio

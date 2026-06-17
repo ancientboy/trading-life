@@ -1,0 +1,82 @@
+{
+  "agent_type": "altcoin",
+  "capital": 3543.388,
+  "consecutive_losses": 0,
+  "is_circuit_break": false,
+  "total_trades": 0,
+  "total_wins": 0,
+  "total_losses": 0,
+  "total_pnl": 0.0,
+  "positions": {
+    "HYPEUSDT": {
+      "symbol": "HYPEUSDT",
+      "direction": "LONG",
+      "entry_price": 40.884,
+      "quantity": 34.66772331474415,
+      "leverage": 5,
+      "stop_loss": 38.8398,
+      "take_profit": [
+        42.928200000000004,
+        44.97240000000001,
+        49.0608
+      ],
+      "opened_at": "2026-05-16T15:39:57.068670+00:00",
+      "agent_type": "altcoin",
+      "entry_type": "prelaunch_ambush",
+      "entry_reasoning": "提前埋伏: 吸筹(45分) | 变盘前夜(30分)"
+    },
+    "XRPUSDT": {
+      "symbol": "XRPUSDT",
+      "direction": "LONG",
+      "entry_price": 1.413,
+      "quantity": 1003.0822363765038,
+      "leverage": 5,
+      "stop_loss": 1.34235,
+      "take_profit": [
+        1.4836500000000001,
+        1.5543000000000002,
+        1.6956
+      ],
+      "opened_at": "2026-05-16T15:39:57.350260+00:00",
+      "agent_type": "altcoin",
+      "entry_type": "prelaunch_ambush",
+      "entry_reasoning": "提前埋伏: 吸筹(35分) | 变盘前夜(45分) | 洗盘结束(35分)"
+    },
+    "DOGEUSDT": {
+      "symbol": "DOGEUSDT",
+      "direction": "LONG",
+      "entry_price": 0.10989,
+      "quantity": 12897.945217945218,
+      "leverage": 5,
+      "stop_loss": 0.1043955,
+      "take_profit": [
+        0.1153845,
+        0.12087900000000001,
+        0.13186799999999999
+      ],
+      "opened_at": "2026-05-16T15:39:57.901644+00:00",
+      "agent_type": "altcoin",
+      "entry_type": "prelaunch_ambush",
+      "entry_reasoning": "提前埋伏: 吸筹(45分) | 变盘前夜(45分)"
+    },
+    "BNBUSDT": {
+      "symbol": "BNBUSDT",
+      "direction": "LONG",
+      "entry_price": 656.26,
+      "quantity": 2.15974644195898,
+      "leverage": 5,
+      "stop_loss": 623.447,
+      "take_profit": [
+        689.073,
+        721.8860000000001,
+        787.512
+      ],
+      "opened_at": "2026-05-16T15:39:58.729536+00:00",
+      "agent_type": "altcoin",
+      "entry_type": "prelaunch_ambush",
+      "entry_reasoning": "提前埋伏: 吸筹(30分) | 变盘前夜(45分)"
+    }
+  },
+  "trade_history": [],
+  "updated_at": "2026-05-16T15:39:58.729603+00:00"
+}

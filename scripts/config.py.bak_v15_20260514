@@ -1,0 +1,72 @@
+"""
+小风交易系统 - 全局配置管理
+"""
+import os
+import yaml
+from pathlib import Path
+from dotenv import load_dotenv
+
+# 目录定义
+BASE_DIR = Path(__file__).parent.parent
+CONFIG_DIR = BASE_DIR / "config"
+DATA_DIR = BASE_DIR / "data"
+LOG_DIR = BASE_DIR / "logs"
+
+# 确保目录存在
+for d in [DATA_DIR, LOG_DIR]:
+    d.mkdir(parents=True, exist_ok=True)
+
+# 加载环境变量（优先从 trading-agent 自己的 .env）
+load_dotenv(BASE_DIR / ".env")
+# 回退到 daoltd 的配置（只读，不修改）
+if not os.getenv("BINANCE_API_KEY"):
+    load_dotenv("/opt/daoltd/backend/.env")
+
+
+def load_yaml(name: str) -> dict:
+    """加载 YAML 配置文件"""
+    path = CONFIG_DIR / name
+    if path.exists():
+        with open(path) as f:
+            return yaml.safe_load(f) or {}
+    return {}
+
+
+# 交易系统配置
+TRADING_CONFIG = load_yaml("trading-config.yaml")
+DATA_SOURCES = load_yaml("data-sources.yaml")
+
+# 交易参数
+SYSTEM_MODE = TRADING_CONFIG.get("system", {}).get("mode", "paper_trading")
+MAX_POSITION_PCT = TRADING_CONFIG.get("trading", {}).get("max_position_pct", 0.10)
+MAX_DIRECTION_PCT = TRADING_CONFIG.get("trading", {}).get("max_direction_pct", 0.30)
+MAX_LEVERAGE = TRADING_CONFIG.get("trading", {}).get("max_leverage", 3)
+MAX_DAILY_LOSS = TRADING_CONFIG.get("trading", {}).get("max_daily_loss_pct", 0.05)
+MAX_WEEKLY_DRAWDOWN = TRADING_CONFIG.get("trading", {}).get("max_weekly_drawdown_pct", 0.10)
+MIN_CONFIDENCE = TRADING_CONFIG.get("signal", {}).get("min_confidence", 60)
+
+# 核心监控币种
+CORE_SYMBOLS = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT"]
+
+# Binance API
+BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "")
+BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET", "")
+
+# Redis（复用 daoltd 的，但用不同的 key prefix）
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")  # 用 DB1 隔离
+
+# 数据文件路径
+def signal_file(date_str: str = None) -> Path:
+    from datetime import datetime
+    date_str = date_str or datetime.now().strftime("%Y-%m-%d")
+    return DATA_DIR / f"signals-{date_str}.jsonl"
+
+def trade_file(date_str: str = None) -> Path:
+    from datetime import datetime
+    date_str = date_str or datetime.now().strftime("%Y-%m-%d")
+    return DATA_DIR / f"trades-{date_str}.jsonl"
+
+def intel_file(date_str: str = None) -> Path:
+    from datetime import datetime
+    date_str = date_str or datetime.now().strftime("%Y-%m-%d")
+    return DATA_DIR / f"intel-{date_str}.jsonl"

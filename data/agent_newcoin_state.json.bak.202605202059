@@ -1,0 +1,78 @@
+{
+  "agent_type": "newcoin",
+  "capital": 9393.309333248593,
+  "consecutive_losses": 2,
+  "is_circuit_break": false,
+  "total_trades": 2,
+  "total_wins": 0,
+  "total_losses": 2,
+  "total_pnl": -606.6906667514077,
+  "positions": {
+    "CSCOUSDT": {
+      "symbol": "CSCOUSDT",
+      "direction": "LONG",
+      "entry_price": 117.44,
+      "quantity": 51.089918256130794,
+      "leverage": 10,
+      "stop_loss": 110.39359999999999,
+      "take_profit": [
+        126.8352,
+        135.05599999999998,
+        146.8
+      ],
+      "opened_at": "2026-05-17T06:28:21.593628+00:00",
+      "agent_type": "newcoin",
+      "entry_type": "newcoin_stable",
+      "entry_reasoning": "打新(1天): 首日上线 | 上涨+1.0%"
+    },
+    "BTCUSD1": {
+      "symbol": "BTCUSD1",
+      "direction": "LONG",
+      "entry_price": 76745.2,
+      "quantity": 0.06119802497907748,
+      "leverage": 20,
+      "stop_loss": 72140.488,
+      "take_profit": [
+        82884.816,
+        88256.98,
+        95931.5
+      ],
+      "opened_at": "2026-05-19T09:48:22.852886+00:00",
+      "agent_type": "newcoin",
+      "entry_type": "newcoin_stable",
+      "entry_reasoning": "打新(1天): 首日上线 | 微跌-0.3%(抄底机会)"
+    }
+  },
+  "trade_history": [
+    {
+      "symbol": "PHAROSUSDT",
+      "direction": "LONG",
+      "entry_price": 0.7302,
+      "exit_price": 0.6932,
+      "quantity": 8216.926869350864,
+      "leverage": 10,
+      "pnl_pct": -50.67,
+      "pnl_amount": -304.03,
+      "entry_type": "newcoin_stable",
+      "reason": "止损",
+      "opened_at": "2026-05-17T06:28:21.518299+00:00",
+      "closed_at": "2026-05-18T07:15:54.252151+00:00"
+    },
+    {
+      "symbol": "SOXLUSDT",
+      "direction": "LONG",
+      "entry_price": 152.04,
+      "exit_price": 144.13,
+      "quantity": 38.2635110727467,
+      "leverage": 20,
+      "pnl_pct": -104.05,
+      "pnl_amount": -302.66,
+      "entry_type": "newcoin_bottom",
+      "reason": "止损",
+      "opened_at": "2026-05-18T20:00:34.664124+00:00",
+      "closed_at": "2026-05-19T09:42:47.038339+00:00"
+    }
+  ],
+  "updated_at": "2026-05-19T09:48:22.852936+00:00",
+  "initial_capital": 10000.0
+}

@@ -1,0 +1,302 @@
+"""
+AI交易员 - 两阶段决策系统 (v14 规则方向+AI时机)
+
+阶段1: 方向判断 → 纯规则引擎(BB均值回归+RSI+EMA趋势过滤)，不再依赖AI
+阶段2: 入场时机 → AI判断当前是否好的入场点，方向已锁定不可更改
+SMC降级为止损/止盈/入场定位工具，不再参与方向判断
+"""
+import json
+import time
+import logging
+from typing import List
+from dataclasses import dataclass, field
+
+from ai_core import call_glm_json
+from knowledge_base import get_knowledge_summary, get_coin_profile, get_recent_lessons
+from direction_rules import judge_direction
+
+logger = logging.getLogger("AITrader")
+
+
+# ============================================
+# 阶段2: 入场时机提示词（v14: 方向已由规则引擎确定，AI只判断时机）
+# ============================================
+def _build_timing_prompt(direction: str) -> str:
+    """v13: 简化prompt，方向已确定，AI只回答"现在入场还是等一等" """
+    
+    if direction == "UP":
+        dir_label = "做多(LONG)"
+        timing_tips = """
+### ✅ 适合入场的时机（优先判断）
+- 简报中有SMC入场区且价格在区间内 → 强烈建议入场
+- 近期有回调企稳迹象（价格止跌反弹）
+- 成交量温和（不要求放量，缩量企稳也是入场信号）
+- 规则引擎已给出做多信号，方向有数据支撑
+
+### ⚠️ 仅在以下条件【同时满足】时才SKIP
+- 价格距SMC入场区超过3% 且 无任何回调迹象
+- 成交量极度萎缩 且 StochRSI K>75（超买确认）"""
+        direction_rule = "方向必须是LONG或SKIP！绝对不能输出SHORT！"
+        
+    elif direction == "DOWN":
+        dir_label = "做空(SHORT)"
+        timing_tips = """
+### ✅ 适合入场的时机（优先判断）
+- 简报中有SMC入场区且价格在区间内 → 强烈建议入场
+- 近期有反弹受阻迹象（价格止涨回落）
+- 成交量温和（不要求放量，缩量反弹受阻也是入场信号）
+- 规则引擎已给出做空信号，方向有数据支撑
+
+### ⚠️ 仅在以下条件【同时满足】时才SKIP
+- 价格距SMC入场区超过3% 且 无任何反弹受阻迹象
+- 成交量极度萎缩 且 StochRSI K<25（超卖确认）"""
+        direction_rule = "方向必须是SHORT或SKIP！绝对不能输出LONG！"
+        
+    else:  # SIDEWAYS (v13不会走到这里，但保留安全)
+        dir_label = "观望"
+        timing_tips = "信号不明确，建议SKIP。"
+        direction_rule = "建议SKIP。"
+
+    return f"""你是一位加密货币短线交易时机判断员。
+
+## ⚡ 方向已由规则引擎确定: {direction} ({dir_label})
+你的唯一任务是判断【当前时刻】是否适合入场。
+
+{timing_tips}
+
+## 简报中的参考信息
+- 【SMC关键价位】→ 提供入场区/止盈/止损/RR（纯价位参考）
+- 【HMA信号】→ 可能有交叉信号（辅助参考）
+- 其他数据 → 资金费率、成交量、大单等
+
+## 输出格式（严格JSON）
+{{
+    "action": "{direction}" 或 "SKIP",
+    "confidence": 0-100的整数,
+    "position_size_pct": 1-10的整数（占总资金百分比）,
+    "reasoning": "时机判断理由（中文，80字以内）",
+    "key_factors": ["最关键的1-2个因素"],
+    "stop_loss_pct": 2.0-5.0（止损百分比）,
+    "expected_move": "预期走势描述",
+    "risk_notes": "风险点"
+}}
+
+**规则：**
+- confidence<60时，action必须为SKIP
+- {direction_rule}
+- 规则引擎已确定方向且有数据支撑，如果你没有明确的反向证据（如StochRSI极端超买超卖），应跟随规则方向入场
+- 只有在同时满足多个不利条件时才输出SKIP，单因素不足以否定入场"""
+
+
+def _build_user_prompt(
+    briefing: str,
+    recent_trades: List[dict] = None,
+    symbol: str = ""
+) -> str:
+    """构建用户提示词（两个阶段共用）"""
+    
+    parts = []
+    parts.append(f"## 当前市场数据\n\n{briefing}")
+    
+    # 知识库
+    knowledge = get_knowledge_summary()
+    if len(knowledge) > 50:
+        parts.append(f"\n## 历史经验知识库\n\n{knowledge}")
+    
+    # 币种画像
+    if symbol:
+        profile = get_coin_profile(symbol)
+        if profile:
+            parts.append(f"\n## {symbol} 币种特征\n\n{json.dumps(profile, ensure_ascii=False, indent=2)}")
+    
+    # 近期交易记录
+    if recent_trades:
+        trade_lines = []
+        for t in recent_trades[-5:]:
+            sym = t.get("symbol", "?")
+            direction = t.get("direction", "?")
+            pnl = t.get("pnl_pct", 0)
+            reason = t.get("reasoning", "")[:60]
+            trade_lines.append(f"  {sym} {direction} PnL={pnl:+.1f}% | {reason}")
+        
+        if trade_lines:
+            parts.append("\n## 近期交易记录（供参考）\n" + "\n".join(trade_lines))
+    
+    # 近期教训
+    lessons = get_recent_lessons(3)
+    if lessons:
+        lesson_lines = [f"  • {l['content']}" for l in lessons]
+        parts.append("\n## 近期教训（避免重复犯错）\n" + "\n".join(lesson_lines))
+    
+    return "\n\n".join(parts)
+
+
+@dataclass
+class AIDecision:
+    """AI交易决策"""
+    symbol: str
+    action: str = "SKIP"  # LONG, SHORT, SKIP
+    confidence: int = 0
+    position_pct: int = 0
+    reasoning: str = ""
+    key_factors: list = field(default_factory=list)
+    stop_loss_pct: float = 3.0
+    expected_move: str = ""
+    risk_notes: str = ""
+    timestamp: str = ""
+    raw_response: dict = field(default_factory=dict)
+    trend: str = "SIDEWAYS"  # 阶段1的趋势判断
+    
+    def is_tradeable(self) -> bool:
+        return self.action in ["LONG", "SHORT"] and self.confidence >= 60
+    
+    def to_dict(self) -> dict:
+        return {
+            "symbol": self.symbol,
+            "action": self.action,
+            "confidence": self.confidence,
+            "position_pct": self.position_pct,
+            "reasoning": self.reasoning,
+            "key_factors": self.key_factors,
+            "stop_loss_pct": self.stop_loss_pct,
+            "expected_move": self.expected_move,
+            "risk_notes": self.risk_notes,
+            "timestamp": self.timestamp,
+            "trend": self.trend,
+        }
+
+
+async def ai_analyze(
+    symbol: str,
+    briefing: str,
+    recent_trades: List[dict] = None,
+    klines_15m: list = None,
+    klines_1h: list = None,
+    klines_4h: list = None,
+) -> AIDecision:
+    """
+    AI交易员分析单个币种（v13 规则方向+AI时机）
+    
+    阶段1: 纯规则引擎判断方向（BB+RSI+EMA）
+    阶段2: AI在规则方向下判断入场时机
+    """
+    decision = AIDecision(symbol=symbol, timestamp=time.strftime("%Y-%m-%d %H:%M:%S"))
+    
+    # === 阶段1: 纯规则方向判断（替代AI趋势判断）===
+    rule_result = judge_direction(
+        klines_15m=klines_15m or [],
+        klines_1h=klines_1h or [],
+        klines_4h=klines_4h or [],
+    )
+    
+    rule_dir = rule_result["direction"]  # LONG / SHORT / SKIP
+    rule_score = rule_result["score"]
+    rule_confidence = rule_result["confidence"]
+    rule_reasoning = rule_result["reasoning"]
+    rule_strategy = rule_result["strategy"]
+    
+    logger.info(f"📊 规则方向 {symbol}: {rule_dir} "
+                f"得分={rule_score} 置信度={rule_confidence}% "
+                f"策略={rule_strategy}")
+    for r in rule_reasoning:
+        logger.info(f"   → {r}")
+    
+    # 规则判断SKIP → 直接跳过，不调AI
+    if rule_dir == "SKIP":
+        decision.action = "SKIP"
+        decision.trend = "SIDEWAYS"
+        decision.reasoning = f"[规则引擎] {'; '.join(rule_reasoning)}"
+        decision.raw_response = rule_result
+        logger.info(f"📊 规则跳过 {symbol}: 信号不足(得分={rule_score})")
+        return decision
+    
+    # 映射规则方向到趋势标签
+    trend = "UP" if rule_dir == "LONG" else "DOWN"
+    decision.trend = trend
+    
+    # === 阶段2: AI判断入场时机（方向已锁定）===
+    timing_prompt = _build_timing_prompt(trend)
+    user_prompt = _build_user_prompt(briefing, recent_trades, symbol)
+    
+    # 注入规则方向到prompt，让AI知道方向已确定
+    rule_info = (
+        f"\n\n## ⚡ 规则引擎方向判断（已确定，不可更改）\n"
+        f"- 方向: {rule_dir}\n"
+        f"- 得分: {rule_score} (正=多,负=空)\n"
+        f"- 置信度: {rule_confidence}%\n"
+        f"- 策略: {rule_strategy}\n"
+        f"- 依据:\n"
+    )
+    for r in rule_reasoning:
+        rule_info += f"  • {r}\n"
+    rule_info += (
+        f"\n⚠️ 方向已由规则引擎确定={rule_dir}，你只能选择{rule_dir}或SKIP！\n"
+        f"你的任务是判断【当前时刻】是否适合入场，还是等待更好的时机。\n"
+    )
+    
+    messages = [
+        {"role": "system", "content": timing_prompt},
+        {"role": "user", "content": user_prompt + rule_info}
+    ]
+    
+    result = await call_glm_json(messages, temperature=0.3, max_tokens=1500, timeout=25)
+    
+    if not result:
+        logger.warning(f"⚠️ AI分析 {symbol} API调用失败，默认SKIP")
+        decision.reasoning = "AI API调用失败"
+        return decision
+    
+    # 解析结果
+    decision.raw_response = result
+    decision.action = str(result.get("action") or "SKIP").upper()
+    decision.confidence = int(result.get("confidence") or 0)
+    decision.position_pct = int(result.get("position_size_pct") or 0)
+    decision.reasoning = str(result.get("reasoning") or "")
+    decision.key_factors = result.get("key_factors") or []
+    decision.stop_loss_pct = float(result.get("stop_loss_pct") or 3.0)
+    decision.expected_move = str(result.get("expected_move") or "")
+    decision.risk_notes = str(result.get("risk_notes") or "")
+    
+    # 安全检查
+    if decision.action not in ["LONG", "SHORT", "SKIP"]:
+        decision.action = "SKIP"
+    
+    if decision.confidence < 60:
+        decision.action = "SKIP"
+    
+    # ⚠️ 核心安全阀：方向必须与规则一致
+    if rule_dir == "LONG" and decision.action == "SHORT":
+        logger.warning(f"⚠️ {symbol} 规则LONG但AI判断SHORT，强制SKIP")
+        decision.action = "SKIP"
+        decision.reasoning = f"[方向矛盾] 规则={rule_dir} 但AI={decision.action}，已跳过"
+    elif rule_dir == "SHORT" and decision.action == "LONG":
+        logger.warning(f"⚠️ {symbol} 规则SHORT但AI判断LONG，强制SKIP")
+        decision.action = "SKIP"
+        decision.reasoning = f"[方向矛盾] 规则={rule_dir} 但AI={decision.action}，已跳过"
+    
+    # v15: 置信度覆写 — AI输出confidence>=70但action=SKIP是矛盾的
+    # 数据支撑: 2026-05-12 有159次AI返回置信度≥70%但选SKIP，导致连续4小时0交易
+    # 规则引擎已确认方向，AI高置信度意味着时机认可，应跟随入场
+    if decision.action == "SKIP" and decision.confidence >= 70 and rule_dir in ["LONG", "SHORT"]:
+        # 仅当AI推理中不含明确风险警告时才覆写
+        risk_keywords = ["极端超买", "极端超卖", "崩盘", "黑天鹅", "流动性枯竭"]
+        has_risk = any(kw in decision.reasoning for kw in risk_keywords)
+        if not has_risk:
+            logger.info(f"🔄 {symbol} 置信度覆写: SKIP→{rule_dir} "
+                        f"(AI置信度={decision.confidence}%≥70, 推理={decision.reasoning[:50]})")
+            decision.action = rule_dir
+    
+    decision.position_pct = max(1, min(10, decision.position_pct))
+    decision.stop_loss_pct = max(2.0, min(5.0, decision.stop_loss_pct))
+    
+    # 日志
+    if decision.is_tradeable():
+        logger.info(f"🤖 AI决策 {symbol}: {decision.action} "
+                    f"置信度={decision.confidence}% 仓位={decision.position_pct}% "
+                    f"规则得分={rule_score} | {decision.reasoning[:60]}")
+    else:
+        logger.info(f"🤖 AI决策 {symbol}: SKIP (置信度={decision.confidence}% "
+                    f"规则方向={rule_dir}) | {decision.reasoning[:60]}")
+    
+    return decision
+

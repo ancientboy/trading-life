@@ -1,0 +1,63 @@
+{
+  "agent_type": "newcoin",
+  "capital": 1744.2239854085847,
+  "consecutive_losses": 1,
+  "is_circuit_break": false,
+  "total_trades": 1,
+  "total_wins": 0,
+  "total_losses": 1,
+  "total_pnl": -27.470014591415328,
+  "positions": {
+    "LITEUSDT": {
+      "symbol": "LITEUSDT",
+      "direction": "LONG",
+      "entry_price": 963.78,
+      "quantity": 0.5514829110377887,
+      "leverage": 5,
+      "stop_loss": 905.9531999999999,
+      "take_profit": [
+        1040.8824,
+        1108.347,
+        1204.725
+      ],
+      "opened_at": "2026-05-16T16:07:33.214989+00:00",
+      "agent_type": "newcoin",
+      "entry_type": "newcoin_stable",
+      "entry_reasoning": "打新(1天): 首日上线 | 微跌-1.8%(抄底机会)"
+    },
+    "PHAROSUSDT": {
+      "symbol": "PHAROSUSDT",
+      "direction": "LONG",
+      "entry_price": 0.7585,
+      "quantity": 689.8710555340481,
+      "leverage": 5,
+      "stop_loss": 0.720575,
+      "take_profit": [
+        0.81918,
+        0.8722749999999999,
+        0.9481249999999999
+      ],
+      "opened_at": "2026-05-16T19:54:48.257208+00:00",
+      "agent_type": "newcoin",
+      "entry_type": "newcoin_surge",
+      "entry_reasoning": "打新(2天): 上线2天 | 成交$37M | 上涨+8.3%"
+    }
+  },
+  "trade_history": [
+    {
+      "symbol": "PHAROSUSDT",
+      "direction": "LONG",
+      "entry_price": 0.7991,
+      "exit_price": 0.7578,
+      "quantity": 665.1335252158678,
+      "leverage": 5,
+      "pnl_pct": -25.84,
+      "pnl_amount": -27.47,
+      "entry_type": "newcoin_surge",
+      "reason": "止损",
+      "opened_at": "2026-05-16T16:07:33.139800+00:00",
+      "closed_at": "2026-05-16T19:54:30.222184+00:00"
+    }
+  ],
+  "updated_at": "2026-05-16T19:54:48.257352+00:00"
+}

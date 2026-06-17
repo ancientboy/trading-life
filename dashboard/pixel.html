@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Agent - Pixel World</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #faf6ef; overflow: hidden; font-family: 'Courier New', monospace; }
+#game-container { width: 100vw; height: 100vh; }
+#ui-overlay {
+  position: fixed; top: 0; left: 0; right: 0; padding: 8px 16px;
+  display: flex; gap: 12px; align-items: center; z-index: 100;
+  background: rgba(250,246,239,0.92); border-bottom: 2px solid #e8dfd0;
+  font-size: 12px; color: #6b5e4e;
+}
+#ui-overlay .stat { display: flex; align-items: center; gap: 4px; }
+#ui-overlay .stat .label { color: #9a8b7a; font-size: 10px; text-transform: uppercase; }
+#ui-overlay .stat .value { color: #4a3f35; font-weight: bold; font-size: 13px; }
+#ui-overlay .stat .value.up { color: #16a34a; }
+#ui-overlay .stat .value.down { color: #dc2626; }
+#ui-overlay .divider { width: 1px; height: 16px; background: #d4c8b8; }
+#back-btn {
+  position: fixed; bottom: 16px; right: 16px; z-index: 100;
+  background: rgba(232,223,208,0.95); border: 1px solid #d4c8b8;
+  color: #6b5e4e; padding: 8px 16px; border-radius: 6px;
+  cursor: pointer; font-size: 12px; text-decoration: none;
+  transition: all 0.2s;
+}
+#back-btn:hover { background: #d4c8b8; color: #4a3f35; }
+#agent-detail {
+  position: fixed; bottom: 16px; left: 16px; z-index: 100;
+  background: rgba(250,246,239,0.97); border: 2px solid #d4c8b8;
+  border-radius: 8px; padding: 12px 16px; min-width: 260px;
+  display: none; font-size: 12px; color: #6b5e4e;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+#agent-detail.active { display: block; }
+#agent-detail .title { color: #4a3f35; font-weight: bold; font-size: 14px; margin-bottom: 8px; }
+#agent-detail .row { display: flex; justify-content: space-between; margin: 4px 0; }
+#agent-detail .positions { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e8dfd0; }
+</style>
+</head>
+<body>
+<div id="ui-overlay">
+  <div class="stat"><span class="label">BTC</span><span class="value" id="btc-price">--</span></div>
+  <div class="divider"></div>
+  <div class="stat"><span class="label">ETH</span><span class="value" id="eth-price">--</span></div>
+  <div class="divider"></div>
+  <div class="stat"><span class="label">XAU</span><span class="value" id="xau-price">--</span></div>
+  <div class="divider"></div>
+  <div class="stat"><span class="label">总盈亏</span><span class="value" id="total-pnl">--</span></div>
+  <div class="divider"></div>
+  <div class="stat"><span class="label">胜率</span><span class="value" id="win-rate">--</span></div>
+  <div class="divider"></div>
+  <div class="stat"><span class="label">状态</span><span class="value" id="runner-status">--</span></div>
+  <div style="flex:1"></div>
+  <div class="stat"><span class="label">点击角色查看详情</span></div>
+</div>
+
+<div id="agent-detail">
+  <div class="title" id="detail-name">--</div>
+  <div class="row"><span>策略</span><span id="detail-strategy">--</span></div>
+  <div class="row"><span>资金</span><span id="detail-capital">--</span></div>
+  <div class="row"><span>盈亏</span><span id="detail-pnl">--</span></div>
+  <div class="row"><span>胜率</span><span id="detail-wr">--</span></div>
+  <div class="row"><span>持仓</span><span id="detail-pos">--</span></div>
+  <div class="positions" id="detail-positions"></div>
+</div>
+
+<a href="/trading/" id="back-btn">&larr; 返回 Dashboard</a>
+<div id="game-container"></div>
+
+<script>
+// ============================================================
+// PIXEL ART GENERATOR - Procedural sprite generation
+// ============================================================
+const PixelArt = {
+  // Create a pixel texture from a color grid
+  createTexture(scene, key, width, height, pixels, scale) {
+    scale = scale || WORLD.PIXEL_SCALE || 4;
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    
+    if (!pixels || pixels.length !== width * height) {
+      console.error('Invalid pixels array for', key, 'expected', width * height, 'got', pixels ? pixels.length : 'null');
+      ctx.fillStyle = '#ff0000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      scene.textures.addCanvas(key, canvas);
+      return key;
+    }
+    
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const color = pixels[y * width + x];
+        if (color && color !== 'transparent') {
+          ctx.fillStyle = color;
+          ctx.fillRect(x * scale, y * scale, scale, scale);
+          if (scale >= 3) {
+            ctx.fillStyle = 'rgba(255,255,255,0.12)';
+            ctx.fillRect(x * scale, y * scale, scale, 1);
+            ctx.fillRect(x * scale, y * scale, 1, scale);
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.fillRect(x * scale, y * scale + scale - 1, scale, 1);
+            ctx.fillRect(x * scale + scale - 1, y * scale, 1, scale);
+          }
+        }
+      }
+    }
+    
+    scene.textures.addCanvas(key, canvas);
+    return key;
+  },
+
+  fillPixel(ctx, x, y, size, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x * size, y * size, size, size);
+  },
+
+  // Generate a 16x16 pixel character with head, body, limbs, eyes
+  generateCharacter(mainColor) {
+    const skin = '#f5d0a9';
+    const skinDark = '#e0b890';
+    const eyeWhite = '#ffffff';
+    const eyeBlack = '#1a1a1a';
+    const shoe = '#4a3f35';
+    const pants = '#3a3530';
+    const t = 'transparent';
+    
+    // 16x16 grid - each row
+    return [
+      // Row 0-1: empty
+      t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,
+      t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,
+      // Row 2-3: head top
+      t,t,t,t,t,skin,skin,skin,skin,skin,skin,t,t,t,t,t,
+      t,t,t,t,skin,skin,skin,skin,skin,skin,skin,skin,t,t,t,t,
+      // Row 4-5: head mid (eyes)
+      t,t,t,skin,skin,eyeWhite,skin,skin,skin,skin,eyeWhite,skin,skin,t,t,t,
+      t,t,t,skin,skin,eyeBlack,skin,skin,skin,skin,eyeBlack,skin,skin,t,t,t,
+      // Row 6: mouth
+      t,t,t,skin,skin,skin,skin,skinDark,skinDark,skin,skin,skin,skin,t,t,t,
+      // Row 7: neck
+      t,t,t,t,skin,skin,skin,skin,skin,skin,skin,skin,t,t,t,t,
+      // Row 8-9: body (shirt)
+      t,t,t,t,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,t,t,t,t,
+      t,t,t,t,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,t,t,t,t,
+      // Row 10: body bottom / arms start
+      t,t,skin,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,skin,t,t,t,
+      // Row 11: arms
+      t,t,skin,skin,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,skin,skin,t,t,
+      // Row 12: hands / pants top
+      t,t,t,t,pants,pants,mainColor,mainColor,mainColor,mainColor,pants,pants,t,t,t,t,
+      // Row 13: pants
+      t,t,t,t,pants,pants,pants,pants,pants,pants,pants,pants,t,t,t,t,
+      // Row 14: legs
+      t,t,t,t,pants,pants,t,t,t,t,pants,pants,t,t,t,t,
+      // Row 15: shoes
+      t,t,t,t,shoe,shoe,t,t,t,t,shoe,shoe,t,t,t,t,
+    ];
+  },
+
+  // Walking frame 1 (left leg forward)
+  generateCharacterWalk1(mainColor) {
+    const skin = '#f5d0a9';
+    const skinDark = '#e0b890';
+    const eyeWhite = '#ffffff';
+    const eyeBlack = '#1a1a1a';
+    const shoe = '#4a3f35';
+    const pants = '#3a3530';
+    const t = 'transparent';
+    
+    return [
+      t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,
+      t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,
+      t,t,t,t,t,skin,skin,skin,skin,skin,skin,t,t,t,t,t,
+      t,t,t,t,skin,skin,skin,skin,skin,skin,skin,skin,t,t,t,t,
+      t,t,t,skin,skin,eyeWhite,skin,skin,skin,skin,eyeWhite,skin,skin,t,t,t,
+      t,t,t,skin,skin,eyeBlack,skin,skin,skin,skin,eyeBlack,skin,skin,t,t,t,
+      t,t,t,skin,skin,skin,skin,skinDark,skinDark,skin,skin,skin,skin,t,t,t,
+      t,t,t,t,skin,skin,skin,skin,skin,skin,skin,skin,t,t,t,t,
+      t,t,t,t,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,t,t,t,t,
+      t,t,t,t,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,t,t,t,t,
+      t,t,skin,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,skin,t,t,t,
+      t,t,skin,skin,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,skin,skin,t,t,
+      t,t,t,t,pants,pants,mainColor,mainColor,mainColor,mainColor,pants,pants,t,t,t,t,
+      t,t,t,t,pants,pants,pants,pants,pants,pants,pants,pants,t,t,t,t,
+      t,t,t,pants,pants,t,t,t,t,t,t,pants,pants,t,t,t,
+      t,t,shoe,shoe,t,t,t,t,t,t,t,t,shoe,shoe,t,t,
+    ];
+  },
+
+  // Walking frame 2 (right leg forward)
+  generateCharacterWalk2(mainColor) {
+    const skin = '#f5d0a9';
+    const skinDark = '#e0b890';
+    const eyeWhite = '#ffffff';
+    const eyeBlack = '#1a1a1a';
+    const shoe = '#4a3f35';
+    const pants = '#3a3530';
+    const t = 'transparent';
+    
+    return [
+      t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,
+      t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,t,
+      t,t,t,t,t,skin,skin,skin,skin,skin,skin,t,t,t,t,t,
+      t,t,t,t,skin,skin,skin,skin,skin,skin,skin,skin,t,t,t,t,
+      t,t,t,skin,skin,eyeWhite,skin,skin,skin,skin,eyeWhite,skin,skin,t,t,t,
+      t,t,t,skin,skin,eyeBlack,skin,skin,skin,skin,eyeBlack,skin,skin,t,t,t,
+      t,t,t,skin,skin,skin,skin,skinDark,skinDark,skin,skin,skin,skin,t,t,t,
+      t,t,t,t,skin,skin,skin,skin,skin,skin,skin,skin,t,t,t,t,
+      t,t,t,t,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,t,t,t,t,
+      t,t,t,t,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,t,t,t,t,
+      t,t,skin,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,skin,t,t,t,
+      t,t,skin,skin,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,skin,skin,t,t,
+      t,t,t,t,pants,pants,mainColor,mainColor,mainColor,mainColor,pants,pants,t,t,t,t,
+      t,t,t,t,pants,pants,pants,pants,pants,pants,pants,pants,t,t,t,t,
+      t,t,t,t,t,pants,pants,t,t,t,t,t,pants,pants,t,t,
+      t,t,t,t,t,t,shoe,shoe,t,t,shoe,shoe,t,t,t,t,
+    ];
+  },
+
+  // Trading/panic frame (arms up)
+  generateCharacterExcited(mainColor) {
+    const skin = '#f5d0a9';
+    const skinDark = '#e0b890';
+    const eyeWhite = '#ffffff';
+    const eyeBlack = '#1a1a1a';
+    const shoe = '#4a3f35';
+    const pants = '#3a3530';
+    const t = 'transparent';
+    
+    return [
+      t,t,skin,skin,t,t,t,t,t,t,t,t,skin,skin,t,t,
+      t,t,skin,skin,t,t,t,t,t,t,t,t,skin,skin,t,t,
+      t,t,t,t,t,skin,skin,skin,skin,skin,skin,t,t,t,t,t,
+      t,t,t,t,skin,skin,skin,skin,skin,skin,skin,skin,t,t,t,t,
+      t,t,t,skin,skin,eyeWhite,skin,skin,skin,skin,eyeWhite,skin,skin,t,t,t,
+      t,t,t,skin,skin,eyeBlack,skin,skin,skin,skin,eyeBlack,skin,skin,t,t,t,
+      t,t,t,skin,skin,skin,skin,skinDark,skinDark,skin,skin,skin,skin,t,t,t,
+      t,t,t,t,skin,skin,skin,skin,skin,skin,skin,skin,t,t,t,t,
+      t,t,t,t,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,t,t,t,t,
+      t,t,t,t,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,t,t,t,t,
+      t,t,skin,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,skin,t,t,t,
+      t,t,skin,skin,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,mainColor,skin,skin,t,t,
+      t,t,t,t,pants,pants,mainColor,mainColor,mainColor,mainColor,pants,pants,t,t,t,t,
+      t,t,t,t,pants,pants,pants,pants,pants,pants,pants,pants,t,t,t,t,
+      t,t,t,t,pants,pants,t,t,t,t,pants,pants,t,t,t,t,
+      t,t,t,t,shoe,shoe,t,t,t,t,shoe,shoe,t,t,t,t,
+    ];
+  },
+
+  characters: {
+    xau: { name: 'XAU Agent', color: '#FFD700' },
+    major: { name: 'Major Agent', color: '#3B82F6' },
+    altcoin: { name: 'Altcoin Agent', color: '#F59E0B' },
+    newcoin: { name: 'Newcoin Agent', color: '#A855F7' },
+    momentum: { name: 'Momentum Agent', color: '#EF4444' }
+  }
+};
+
+
+// ============================================================
+// OFFICE PATH NETWORK — 角色只能沿路径行走
+// ============================================================
+const WORLD = { W: 2400, H: 1350, CHAR_SCALE: 1.28, PIXEL_SCALE: 4, WALK_SPEED: 52, FURN_SCALE: 1.65, SCREEN_SCALE: 2.4 };
+
+const OfficePath = {
+  nodes: {
+    // 主走廊 (y≈780)
+    a_w: { x: 220, y: 780 }, a_xau: { x: 420, y: 780 }, a_maj: { x: 700, y: 780 },
+    a_alt: { x: 980, y: 780 }, a_new: { x: 1260, y: 780 }, a_mom: { x: 1540, y: 780 },
+    a_e: { x: 2180, y: 780 },
+    // 工位前
+    desk_xau: { x: 420, y: 560 }, desk_maj: { x: 700, y: 560 }, desk_alt: { x: 980, y: 560 },
+    desk_new: { x: 1260, y: 560 }, desk_mom: { x: 1540, y: 560 },
+    // 大屏区走廊 (y≈420)
+    u_w: { x: 220, y: 420 }, u_xau: { x: 420, y: 420 }, u_maj: { x: 700, y: 420 },
+    u_alt: { x: 980, y: 420 }, u_new: { x: 1260, y: 420 }, u_mom: { x: 1540, y: 420 },
+    u_e: { x: 2180, y: 420 },
+    // 大屏前
+    scr_xau: { x: 420, y: 170 }, scr_maj: { x: 700, y: 170 }, scr_alt: { x: 980, y: 170 },
+    scr_new: { x: 1260, y: 170 }, scr_mom: { x: 1540, y: 170 }, scr_ctr: { x: 1200, y: 130 },
+    // 休息区走廊 (y≈980)
+    d_w: { x: 220, y: 980 }, d_xau: { x: 420, y: 980 }, d_maj: { x: 700, y: 980 },
+    d_alt: { x: 980, y: 980 }, d_new: { x: 1260, y: 980 }, d_mom: { x: 1540, y: 980 },
+    d_e: { x: 2180, y: 980 },
+    // 休息包间
+    booth_xau: { x: 420, y: 1160 }, booth_maj: { x: 700, y: 1160 },
+    booth_alt: { x: 980, y: 1160 }, booth_new: { x: 1260, y: 1160 },
+    booth_mom: { x: 1540, y: 1160 },
+  },
+  deskByAgent: { xau: 'desk_xau', major: 'desk_maj', altcoin: 'desk_alt', newcoin: 'desk_new', momentum: 'desk_mom' },
+  boothByAgent: { xau: 'booth_xau', major: 'booth_maj', altcoin: 'booth_alt', newcoin: 'booth_new', momentum: 'booth_mom' },
+  wanderTargets: [
+    'desk_xau', 'desk_maj', 'desk_alt', 'desk_new', 'desk_mom',
+    'scr_xau', 'scr_maj', 'scr_alt', 'scr_ctr', 'scr_mom',
+    'booth_xau', 'booth_maj', 'booth_alt', 'booth_new', 'booth_mom',
+  ],
+  _edges: null,
+  _buildEdges() {
+    if (this._edges) return this._edges;
+    const pairs = [
+      ['a_w','a_xau'],['a_xau','a_maj'],['a_maj','a_alt'],['a_alt','a_new'],['a_new','a_mom'],['a_mom','a_e'],
+      ['u_w','u_xau'],['u_xau','u_maj'],['u_maj','u_alt'],['u_alt','u_new'],['u_new','u_mom'],['u_mom','u_e'],
+      ['d_w','d_xau'],['d_xau','d_maj'],['d_maj','d_alt'],['d_alt','d_new'],['d_new','d_mom'],['d_mom','d_e'],
+      ['booth_xau','d_xau'],['booth_maj','d_maj'],['booth_alt','d_alt'],['booth_new','d_new'],['booth_mom','d_mom'],
+      ['desk_xau','a_xau'],['desk_maj','a_maj'],['desk_alt','a_alt'],['desk_new','a_new'],['desk_mom','a_mom'],
+      ['a_xau','u_xau'],['a_maj','u_maj'],['a_alt','u_alt'],['a_new','u_new'],['a_mom','u_mom'],
+      ['a_xau','d_xau'],['a_maj','d_maj'],['a_alt','d_alt'],['a_new','d_new'],['a_mom','d_mom'],
+      ['u_xau','scr_xau'],['u_maj','scr_maj'],['u_alt','scr_alt'],['u_new','scr_new'],['u_mom','scr_mom'],
+      ['u_maj','scr_ctr'],['u_alt','scr_ctr'],['u_new','scr_ctr'],
+    ];
+    const adj = {};
+    Object.keys(this.nodes).forEach(k => { adj[k] = []; });
+    pairs.forEach(([a,b]) => {
+      if (adj[a] && adj[b]) { adj[a].push(b); adj[b].push(a); }
+    });
+    this._edges = adj;
+    return adj;
+  },
+  nearestNode(x, y) {
+    let best = null, bestD = Infinity;
+    Object.entries(this.nodes).forEach(([id, n]) => {
+      const d = (n.x - x) ** 2 + (n.y - y) ** 2;
+      if (d < bestD) { bestD = d; best = id; }
+    });
+    return best;
+  },
+  findPath(fromId, toId) {
+    if (fromId === toId) return [this.nodes[toId]];
+    const adj = this._buildEdges();
+    const q = [[fromId]];
+    const seen = new Set([fromId]);
+    while (q.length) {
+      const path = q.shift();
+      const cur = path[path.length - 1];
+      for (const nb of adj[cur] || []) {
+        if (seen.has(nb)) continue;
+        seen.add(nb);
+        const np = path.concat([nb]);
+        if (nb === toId) {
+          return np.map(id => ({ x: this.nodes[id].x, y: this.nodes[id].y }));
+        }
+        q.push(np);
+      }
+    }
+    return [this.nodes[toId]];
+  },
+  pathBetween(x1, y1, x2, y2) {
+    const from = this.nearestNode(x1, y1);
+    const to = this.nearestNode(x2, y2);
+    return this.findPath(from, to);
+  },
+  pathToNode(x, y, nodeId) {
+    const from = this.nearestNode(x, y);
+    return this.findPath(from, nodeId);
+  },
+  corridorSegments() {
+    return [
+      { x: 200, y: 768, w: 2020, h: 28 },
+      { x: 200, y: 408, w: 2020, h: 28 },
+      { x: 200, y: 968, w: 2020, h: 28 },
+      { x: 408, y: 408, w: 28, h: 380 }, { x: 688, y: 408, w: 28, h: 380 },
+      { x: 968, y: 408, w: 28, h: 380 }, { x: 1248, y: 408, w: 28, h: 380 },
+      { x: 1528, y: 408, w: 28, h: 380 },
+      { x: 408, y: 768, w: 28, h: 220 }, { x: 688, y: 768, w: 28, h: 220 },
+      { x: 968, y: 768, w: 28, h: 220 }, { x: 1248, y: 768, w: 28, h: 220 },
+      { x: 1528, y: 768, w: 28, h: 220 },
+      { x: 408, y: 150, w: 28, h: 280 }, { x: 688, y: 150, w: 28, h: 280 },
+      { x: 968, y: 150, w: 28, h: 280 }, { x: 1248, y: 150, w: 28, h: 280 },
+      { x: 1528, y: 150, w: 28, h: 280 },
+      { x: 1188, y: 110, w: 28, h: 330 },
+    ];
+  },
+};
+
+// ============================================================
+// MAIN GAME SCENE
+// ============================================================
+class TradingWorld extends Phaser.Scene {
+  constructor() { super({ key: 'TradingWorld' }); }
+
+  preload() {
+    // Generate character textures (idle, walk1, walk2, excited)
+    const self = this;
+    Object.entries(PixelArt.characters).forEach(function(entry) {
+      var key = entry[0];
+      var char = entry[1];
+      var idlePixels = PixelArt.generateCharacter(char.color);
+      console.log(key, 'idle pixels:', idlePixels.length);
+      PixelArt.createTexture(self, 'char_' + key + '_idle', 16, 16, idlePixels, WORLD.PIXEL_SCALE);
+      PixelArt.createTexture(self, 'char_' + key + '_walk1', 16, 16, PixelArt.generateCharacterWalk1(char.color), WORLD.PIXEL_SCALE);
+      PixelArt.createTexture(self, 'char_' + key + '_walk2', 16, 16, PixelArt.generateCharacterWalk2(char.color), WORLD.PIXEL_SCALE);
+      PixelArt.createTexture(self, 'char_' + key + '_excited', 16, 16, PixelArt.generateCharacterExcited(char.color), WORLD.PIXEL_SCALE);
+    });
+    
+    // Generate floor tiles
+    this.generateFloorTextures();
+    
+    // Generate furniture textures
+    this.generateFurnitureTextures();
+    
+    // Generate particle texture
+    this.generateParticleTexture();
+  }
+
+  generateFloorTextures() {
+    var tileColors = {
+      floor: ['#f5f0e8', '#f0ebe0', '#ede8dc', '#ebe5d8'],
+      floor_light: ['#faf6ef', '#f7f2e8', '#f5f0e3', '#f3ede0'],
+      floor_dark: ['#e8dfd0', '#e5dcd0', '#e2d9c8', '#ded4c4'],
+    };
+    
+    var self = this;
+    Object.entries(tileColors).forEach(function(entry) {
+      var key = entry[0];
+      var colors = entry[1];
+      var canvas = document.createElement('canvas');
+      canvas.width = 48; canvas.height = 48;
+      var ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      
+      for (var y = 0; y < 48; y += 2) {
+        for (var x = 0; x < 48; x += 2) {
+          ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+          ctx.fillRect(x, y, 2, 2);
+        }
+      }
+      
+      ctx.strokeStyle = 'rgba(200,190,170,0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (var i = 0; i <= 48; i += 8) {
+        ctx.moveTo(i, 0); ctx.lineTo(i, 48);
+        ctx.moveTo(0, i); ctx.lineTo(48, i);
+      }
+      ctx.stroke();
+      
+      self.textures.addCanvas('tile_' + key, canvas);
+    });
+  }
+
+  generateFurnitureTextures() {
+    
+    // Desk — 48x28 pixel grid
+    var deskCanvas = document.createElement('canvas');
+    deskCanvas.width = 96; deskCanvas.height = 56;
+    var dctx = deskCanvas.getContext('2d');
+    dctx.imageSmoothingEnabled = false;
+    dctx.fillStyle = '#6b5340';
+    dctx.fillRect(0, 12, 96, 44);
+    dctx.fillStyle = '#9a7858';
+    dctx.fillRect(0, 0, 96, 16);
+    dctx.fillStyle = '#5a4635';
+    dctx.fillRect(4, 18, 88, 34);
+    dctx.fillStyle = '#7a6048';
+    dctx.fillRect(6, 20, 84, 4);
+    dctx.fillStyle = '#4a3828';
+    dctx.fillRect(8, 48, 10, 8);
+    dctx.fillRect(78, 48, 10, 8);
+    this.textures.addCanvas('furniture_desk', deskCanvas);
+    
+    // Chair
+    var chairCanvas = document.createElement('canvas');
+    chairCanvas.width = 36; chairCanvas.height = 48;
+    var cctx = chairCanvas.getContext('2d');
+    cctx.imageSmoothingEnabled = false;
+    cctx.fillStyle = '#4a3a2a';
+    cctx.fillRect(4, 28, 28, 18);
+    cctx.fillStyle = '#5a4a3a';
+    cctx.fillRect(6, 0, 24, 30);
+    cctx.fillStyle = '#6b5a48';
+    cctx.fillRect(8, 4, 20, 20);
+    cctx.fillStyle = '#3a2a1a';
+    cctx.fillRect(10, 32, 6, 14);
+    cctx.fillRect(20, 32, 6, 14);
+    this.textures.addCanvas('furniture_chair', chairCanvas);
+    
+    // Monitor
+    var monCanvas = document.createElement('canvas');
+    monCanvas.width = 56; monCanvas.height = 48;
+    var mctx = monCanvas.getContext('2d');
+    mctx.imageSmoothingEnabled = false;
+    mctx.fillStyle = '#2a2a2a';
+    mctx.fillRect(4, 0, 48, 34);
+    mctx.fillStyle = '#1a2535';
+    mctx.fillRect(8, 4, 40, 26);
+    mctx.fillStyle = '#2a4060';
+    mctx.fillRect(10, 6, 36, 22);
+    mctx.fillStyle = '#3a6080';
+    for (var i = 0; i < 5; i++) {
+      mctx.fillRect(12 + i * 7, 10 + (i % 3) * 4, 5, 8);
+    }
+    mctx.fillStyle = '#3a3a3a';
+    mctx.fillRect(22, 34, 12, 10);
+    mctx.fillStyle = '#2a2a2a';
+    mctx.fillRect(16, 44, 24, 4);
+    this.textures.addCanvas('furniture_monitor', monCanvas);
+    
+    // Sofa
+    var sofaCanvas = document.createElement('canvas');
+    sofaCanvas.width = 120; sofaCanvas.height = 54;
+    var sctx = sofaCanvas.getContext('2d');
+    sctx.imageSmoothingEnabled = false;
+    sctx.fillStyle = '#4a6a4a';
+    sctx.fillRect(0, 12, 120, 42);
+    sctx.fillStyle = '#5a7a5a';
+    sctx.fillRect(0, 0, 120, 18);
+    sctx.fillStyle = '#6b8e6b';
+    sctx.fillRect(6, 16, 108, 32);
+    sctx.fillStyle = '#7a9a7a';
+    sctx.fillRect(10, 20, 44, 24);
+    sctx.fillRect(66, 20, 44, 24);
+    sctx.fillStyle = '#4a6a4a';
+    sctx.fillRect(0, 8, 8, 46);
+    sctx.fillRect(112, 8, 8, 46);
+    this.textures.addCanvas('furniture_sofa', sofaCanvas);
+    
+    // Side table (包间小桌)
+    var tableCanvas = document.createElement('canvas');
+    tableCanvas.width = 32; tableCanvas.height = 32;
+    var tctx = tableCanvas.getContext('2d');
+    tctx.imageSmoothingEnabled = false;
+    tctx.fillStyle = '#8b7355';
+    tctx.fillRect(2, 8, 28, 12);
+    tctx.fillStyle = '#6b5340';
+    tctx.fillRect(6, 20, 4, 10);
+    tctx.fillRect(22, 20, 4, 10);
+    tctx.fillStyle = '#c8a060';
+    tctx.fillRect(12, 4, 8, 6);
+    this.textures.addCanvas('furniture_sidetable', tableCanvas);
+    
+    // Coffee machine
+    var coffeeCanvas = document.createElement('canvas');
+    coffeeCanvas.width = 32; coffeeCanvas.height = 44;
+    var cofctx = coffeeCanvas.getContext('2d');
+    cofctx.imageSmoothingEnabled = false;
+    cofctx.fillStyle = '#3a3a3a';
+    cofctx.fillRect(6, 0, 20, 36);
+    cofctx.fillStyle = '#2a2a2a';
+    cofctx.fillRect(8, 4, 16, 20);
+    cofctx.fillStyle = '#5a5a5a';
+    cofctx.fillRect(10, 32, 12, 6);
+    cofctx.fillStyle = '#8b6914';
+    cofctx.fillRect(12, 24, 8, 4);
+    this.textures.addCanvas('furniture_coffee', coffeeCanvas);
+    
+    // Plant
+    var plantCanvas = document.createElement('canvas');
+    plantCanvas.width = 28; plantCanvas.height = 40;
+    var pctx = plantCanvas.getContext('2d');
+    pctx.imageSmoothingEnabled = false;
+    pctx.fillStyle = '#8b6914';
+    pctx.fillRect(8, 22, 12, 16);
+    pctx.fillStyle = '#6b5010';
+    pctx.fillRect(10, 24, 8, 12);
+    pctx.fillStyle = '#3a6a3a';
+    pctx.fillRect(4, 0, 20, 10);
+    pctx.fillStyle = '#4a7a4a';
+    pctx.fillRect(0, 6, 28, 12);
+    pctx.fillStyle = '#5a8a5a';
+    pctx.fillRect(6, 12, 16, 14);
+    this.textures.addCanvas('furniture_plant', plantCanvas);
+    
+    // Big screen — 180x54 pixel grid
+    var screenCanvas = document.createElement('canvas');
+    screenCanvas.width = 360; screenCanvas.height = 108;
+    var scctx = screenCanvas.getContext('2d');
+    scctx.imageSmoothingEnabled = false;
+    scctx.fillStyle = '#2a2a2a';
+    scctx.fillRect(0, 0, 360, 108);
+    scctx.fillStyle = '#1a1a1a';
+    scctx.fillRect(6, 6, 348, 96);
+    scctx.fillStyle = '#0a1520';
+    scctx.fillRect(12, 12, 336, 84);
+    scctx.fillStyle = '#1a3050';
+    for (var sy = 0; sy < 6; sy++) {
+      for (var sx = 0; sx < 14; sx++) {
+        if ((sx + sy) % 3 !== 0) {
+          scctx.fillStyle = (sx + sy) % 2 === 0 ? '#2a5080' : '#1a4060';
+          scctx.fillRect(16 + sx * 22, 16 + sy * 12, 18, 8);
+        }
+      }
+    }
+    scctx.fillStyle = '#16a34a';
+    scctx.fillRect(280, 20, 60, 4);
+    scctx.fillStyle = '#dc2626';
+    scctx.fillRect(280, 30, 40, 4);
+    scctx.fillStyle = '#3a3a3a';
+    scctx.fillRect(160, 100, 40, 8);
+    this.textures.addCanvas('furniture_bigscreen', screenCanvas);
+  }
+
+  generateParticleTexture() {
+    var canvas = document.createElement('canvas');
+    canvas.width = 8; canvas.height = 8;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(2, 2, 4, 4);
+    this.textures.addCanvas('particle_up', canvas);
+    
+    var canvas2 = document.createElement('canvas');
+    canvas2.width = 8; canvas2.height = 8;
+    var ctx2 = canvas2.getContext('2d');
+    ctx2.fillStyle = '#dc2626';
+    ctx2.fillRect(2, 2, 4, 4);
+    this.textures.addCanvas('particle_down', canvas2);
+  }
+
+  create() {
+    this.WORLD_W = WORLD.W;
+    this.WORLD_H = WORLD.H;
+    this.W = this.WORLD_W;
+    this.H = this.WORLD_H;
+
+    console.log('TradingWorld create', this.WORLD_W, this.WORLD_H);
+
+    this.cameras.main.setBounds(0, 0, this.WORLD_W, this.WORLD_H);
+    this.fitCamera();
+
+    this.createFloor();
+    
+    // Create room zones
+    this.createBigScreenArea();
+    this.createTradingDesks();
+    this.createRestArea();
+    
+    // Create characters
+    this.createCharacters();
+    
+    // Create particles system
+    this.createParticles();
+    
+    // Setup camera
+    this.cameras.main.setBackgroundColor('#faf6ef');
+    console.log('Camera bg set to #faf6ef');
+    
+    // Start data polling
+    this.startDataPolling();
+    
+    // Setup input
+    this.setupInput();
+  }
+
+
+  fitCamera() {
+    var vw = this.scale.width;
+    var vh = this.scale.height;
+    var zoom = Math.min(vw / this.WORLD_W, vh / this.WORLD_H) * 0.97;
+    this.cameras.main.setZoom(zoom);
+    this.cameras.main.centerOn(this.WORLD_W / 2, this.WORLD_H / 2);
+  }
+
+
+  createFloor() {
+    var tileSize = 48;
+    var cols = Math.ceil(this.WORLD_W / tileSize);
+    var rows = Math.ceil(this.WORLD_H / tileSize);
+    
+    this.floorTiles = this.add.group();
+    
+    // Define zones
+    var screenZoneRows = 3; // top
+    var deskZoneStart = 4;
+    var deskZoneEnd = 10;
+    var restZoneStart = 12;
+    
+    for (var y = 0; y < rows; y++) {
+      for (var x = 0; x < cols; x++) {
+        var key = 'tile_floor';
+        if (y < screenZoneRows) key = 'tile_floor_light';
+        else if (y >= deskZoneStart && y <= deskZoneEnd) key = 'tile_floor';
+        else if (y >= restZoneStart) key = 'tile_floor_dark';
+        
+        var tile = this.add.image(x * tileSize + tileSize/2, y * tileSize + tileSize/2, key);
+        tile.setDisplaySize(tileSize, tileSize);
+        tile.setDepth(0);
+        this.floorTiles.add(tile);
+      }
+    }
+  }
+
+  createBigScreenArea() {
+    var screenX = this.WORLD_W / 2;
+    var screenY = 110;
+    var sc = WORLD.SCREEN_SCALE;
+    
+    this.bigScreen = this.add.image(screenX, screenY, 'furniture_bigscreen');
+    this.bigScreen.setScale(sc);
+    this.bigScreen.setDepth(2);
+    
+    this.add.rectangle(screenX, screenY + 8, 360 * sc + 24, 108 * sc + 20, 0x2a2a2a).setDepth(1);
+    
+    this.tickerTexts = [];
+    var symbols = ['BTC', 'ETH', 'XAU', 'SOL', 'DOGE'];
+    var spread = 72 * sc;
+    
+    for (var i = 0; i < symbols.length; i++) {
+      var text = this.add.text(screenX - spread * 2 + i * spread, screenY - 6, symbols[i] + ': --', {
+        fontSize: Math.round(11 * sc) + 'px', fontFamily: 'Courier New', color: '#a8bcd8'
+      }).setOrigin(0.5).setDepth(3);
+      this.tickerTexts.push({ text: text, symbol: symbols[i], baseX: screenX - spread * 2 + i * spread });
+    }
+    
+    this.add.text(screenX, screenY - 58 * sc, '📊 行情大屏', {
+      fontSize: '13px', fontFamily: 'Courier New', color: '#6b5e4e', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(2);
+    
+    this.tickerScroll = 0;
+  }
+
+  createTradingDesks() {
+    this.desks = {};
+    var deskY = 520;
+    var fs = WORLD.FURN_SCALE;
+    var agents = [
+      { id: 'xau', x: 420, label: 'XAU', color: '#FFD700' },
+      { id: 'major', x: 700, label: 'MAJOR', color: '#3B82F6' },
+      { id: 'altcoin', x: 980, label: 'ALTCOIN', color: '#F59E0B' },
+      { id: 'newcoin', x: 1260, label: 'NEWCOIN', color: '#A855F7' },
+      { id: 'momentum', x: 1540, label: 'MOMENTUM', color: '#EF4444' },
+    ];
+    
+    var self = this;
+    agents.forEach(function(agent) {
+      var desk = self.add.image(agent.x, deskY, 'furniture_desk');
+      desk.setScale(fs);
+      desk.setDepth(1);
+      
+      var chair = self.add.image(agent.x, deskY + 52, 'furniture_chair');
+      chair.setScale(fs);
+      chair.setDepth(1);
+      
+      var monitor = self.add.image(agent.x, deskY - 28, 'furniture_monitor');
+      monitor.setScale(fs);
+      monitor.setDepth(2);
+      
+      var label = self.add.text(agent.x, deskY - 72, agent.label, {
+        fontSize: '12px', fontFamily: 'Courier New', color: agent.color,
+        fontStyle: 'bold', backgroundColor: '#faf6ef', padding: { x: 5, y: 3 }
+      }).setOrigin(0.5).setDepth(3);
+      
+      var light = self.add.circle(agent.x + 58, deskY - 72, 5, 0x999999);
+      light.setDepth(3);
+      
+      self.desks[agent.id] = { 
+        desk: desk, chair: chair, monitor: monitor, label: label, light: light,
+        baseX: agent.x, baseY: deskY
+      };
+    });
+  }
+
+  drawRestBooth(cx, cy, label, accentColor) {
+    var w = 172, h = 148, wall = 10;
+    var wallColor = 0xc8baa8;
+    var wallDark = 0xa89880;
+    var innerColor = 0xede5d8;
+    var fs = WORLD.FURN_SCALE;
+    
+    this.add.rectangle(cx, cy + 8, w - 6, h - 6, innerColor).setDepth(0.9);
+    
+    this.add.rectangle(cx - w / 2 + wall / 2, cy, wall, h, wallColor).setDepth(1.2);
+    this.add.rectangle(cx + w / 2 - wall / 2, cy, wall, h, wallColor).setDepth(1.2);
+    this.add.rectangle(cx, cy - h / 2 + wall / 2, w, wall, wallColor).setDepth(1.2);
+    
+    var doorW = 52;
+    this.add.rectangle(cx - w / 2 + (w - doorW) / 4, cy + h / 2 - 2, (w - doorW) / 2 - 4, 6, wallDark).setDepth(1.3);
+    this.add.rectangle(cx + w / 2 - (w - doorW) / 4, cy + h / 2 - 2, (w - doorW) / 2 - 4, 6, wallDark).setDepth(1.3);
+    
+    var sofa = this.add.image(cx, cy + 28, 'furniture_sofa');
+    sofa.setScale(fs * 0.72);
+    sofa.setDepth(1.1);
+    
+    var table = this.add.image(cx - 48, cy + 10, 'furniture_sidetable');
+    table.setScale(fs * 0.85);
+    table.setDepth(1.15);
+    
+    var plant = this.add.image(cx + 52, cy - 20, 'furniture_plant');
+    plant.setScale(fs * 0.75);
+    plant.setDepth(1.15);
+    
+    this.add.text(cx, cy - h / 2 + 18, label, {
+      fontSize: '10px', fontFamily: 'Courier New', color: accentColor,
+      fontStyle: 'bold', backgroundColor: '#faf6ef', padding: { x: 4, y: 2 }
+    }).setOrigin(0.5).setDepth(1.4);
+  }
+
+  createRestArea() {
+    var restY = 1160;
+    var booths = [
+      { id: 'xau', x: 420, label: 'XAU 包间', color: '#FFD700' },
+      { id: 'major', x: 700, label: 'MAJOR 包间', color: '#3B82F6' },
+      { id: 'altcoin', x: 980, label: 'ALTCOIN 包间', color: '#F59E0B' },
+      { id: 'newcoin', x: 1260, label: 'NEWCOIN 包间', color: '#A855F7' },
+      { id: 'momentum', x: 1540, label: 'MOMENTUM 包间', color: '#EF4444' },
+    ];
+    
+    var self = this;
+    booths.forEach(function(b) {
+      self.drawRestBooth(b.x, restY, b.label, b.color);
+    });
+    
+    var coffee = this.add.image(200, restY - 30, 'furniture_coffee');
+    coffee.setScale(WORLD.FURN_SCALE);
+    coffee.setDepth(1);
+    
+    this.add.text(this.WORLD_W / 2, 1040, '☕ 休息包间区', {
+      fontSize: '13px', fontFamily: 'Courier New', color: '#8a7a6a', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(2);
+  }
+
+  createCharacters() {
+    this.characters = {};
+    var agents = [
+      { id: 'xau', x: 420, y: 560 },
+      { id: 'major', x: 700, y: 560 },
+      { id: 'altcoin', x: 980, y: 560 },
+      { id: 'newcoin', x: 1260, y: 560 },
+      { id: 'momentum', x: 1540, y: 560 },
+    ];
+    
+    var self = this;
+    agents.forEach(function(agent) {
+      var sprite = self.add.sprite(agent.x, agent.y, 'char_' + agent.id + '_idle');
+      sprite.setScale(WORLD.CHAR_SCALE);
+      sprite.setDepth(3);
+      sprite.setInteractive({ cursor: 'pointer' });
+      
+      // Name tag
+      var nameTag = self.add.text(agent.x, agent.y - 42, PixelArt.characters[agent.id].name, {
+        fontSize: '11px', fontFamily: 'Courier New', color: PixelArt.characters[agent.id].color,
+        backgroundColor: '#faf6ef', padding: { x: 4, y: 2 }
+      }).setOrigin(0.5).setDepth(4);
+      
+      // Status indicator
+      var statusText = self.add.text(agent.x, agent.y + 28, 'IDLE', {
+        fontSize: '9px', fontFamily: 'Courier New', color: '#999'
+      }).setOrigin(0.5).setDepth(4);
+      
+      // PNL indicator
+      var pnlText = self.add.text(agent.x, agent.y + 40, 'PNL: --', {
+        fontSize: '9px', fontFamily: 'Courier New', color: '#888'
+      }).setOrigin(0.5).setDepth(4);
+      
+      self.characters[agent.id] = {
+        sprite: sprite, nameTag: nameTag, statusText: statusText, pnlText: pnlText,
+        agentId: agent.id, baseX: agent.x, baseY: agent.y,
+        pathQueue: [], pathIndex: 0, isWalking: false,
+        state: 'idle', animTimer: 0, walkFrame: 0,
+        moveTimer: 0, nextMoveTime: 4000 + Math.random() * 6000,
+        data: null
+      };
+      
+      // Click handler
+      sprite.on('pointerdown', function() {
+        self.showAgentDetail(agent.id);
+      });
+      nameTag.setInteractive({ cursor: 'pointer' });
+      nameTag.on('pointerdown', function() {
+        self.showAgentDetail(agent.id);
+      });
+    });
+  }
+
+  createParticles() {
+    this.particles = this.add.particles(0, 0, 'particle_up', {
+      speed: { min: 20, max: 60 },
+      angle: { min: 250, max: 290 },
+      scale: { start: 1, end: 0 },
+      lifespan: 1000,
+      frequency: -1,
+      quantity: 1,
+      emitting: false
+    });
+    this.particles.setDepth(5);
+  }
+
+  setupInput() {
+    var self = this;
+    this.input.on('pointerdown', function(pointer) {
+      var clickedChar = false;
+      Object.values(self.characters).forEach(function(c) {
+        if (Phaser.Math.Distance.Between(pointer.x, pointer.y, c.sprite.x, c.sprite.y) < 50) {
+          clickedChar = true;
+        }
+      });
+      if (!clickedChar) {
+        document.getElementById('agent-detail').classList.remove('active');
+      }
+    });
+  }
+
+  showAgentDetail(agentId) {
+    var char = this.characters[agentId];
+    if (!char || !char.data) return;
+    
+    var d = char.data;
+    document.getElementById('detail-name').textContent = d.name || PixelArt.characters[agentId].name;
+    document.getElementById('detail-strategy').textContent = d.strategy || '--';
+    document.getElementById('detail-capital').textContent = d.capital ? '$' + d.capital.toLocaleString() : '--';
+    var pnlEl = document.getElementById('detail-pnl');
+    pnlEl.textContent = d.pnl ? '$' + d.pnl.toLocaleString() + ' (' + (d.pnl_pct ? d.pnl_pct.toFixed(1) : '0') + '%)' : '--';
+    pnlEl.className = d.pnl > 0 ? 'up' : d.pnl < 0 ? 'down' : '';
+    document.getElementById('detail-wr').textContent = d.win_rate ? d.win_rate.toFixed(1) + '% (' + d.wins + '/' + d.trades + ')' : '--';
+    document.getElementById('detail-pos').textContent = (d.positions ? d.positions.length : 0) + ' 个';
+    
+    var posDiv = document.getElementById('detail-positions');
+    if (d.positions && d.positions.length > 0) {
+      posDiv.innerHTML = d.positions.map(function(p) {
+        var dirColor = p.direction && p.direction.includes('LONG') ? '#16a34a' : '#dc2626';
+        return '<div class="row"><span>' + p.symbol + '</span><span style="color:' + dirColor + '">' + p.direction + '</span></div>';
+      }).join('');
+    } else {
+      posDiv.innerHTML = '<div style="color:#999">无持仓</div>';
+    }
+    
+    document.getElementById('agent-detail').classList.add('active');
+  }
+
+  startDataPolling() {
+    this.fetchData();
+    var self = this;
+    this.time.addEvent({ delay: 5000, callback: function() { self.fetchData(); }, loop: true });
+    this.time.addEvent({ delay: 30000, callback: function() { self.fetchTicker(); }, loop: true });
+  }
+
+  fetchData() {
+    var self = this;
+    var API = location.origin + '/trading';
+    fetch(API + '/api/overview')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        self.updateUI(data);
+        self.updateCharacters(data.agents);
+        if (data.risk) {
+          self.updateRiskIndicator(data.risk);
+        }
+      })
+      .catch(function(e) {
+        console.error('Data fetch error:', e);
+      });
+  }
+
+  fetchTicker() {
+    var API = location.origin + '/trading';
+    fetch(API + '/api/ticker')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        document.getElementById('btc-price').textContent = data.BTCUSDT ? '$' + data.BTCUSDT.toLocaleString() : '--';
+        document.getElementById('eth-price').textContent = data.ETHUSDT ? '$' + data.ETHUSDT.toLocaleString() : '--';
+        document.getElementById('xau-price').textContent = data.XAUUSDT ? '$' + data.XAUUSDT.toFixed(2) : '--';
+      })
+      .catch(function(e) {});
+  }
+
+  updateUI(data) {
+    var pnl = data.total_pnl || 0;
+    var pnlEl = document.getElementById('total-pnl');
+    pnlEl.textContent = pnl ? '$' + pnl.toLocaleString() : '--';
+    pnlEl.className = pnl > 0 ? 'value up' : pnl < 0 ? 'value down' : 'value';
+    
+    document.getElementById('win-rate').textContent = data.total_wr ? data.total_wr.toFixed(1) + '%' : '--';
+    document.getElementById('runner-status').textContent = data.runner && data.runner.running ? 'RUNNING' : 'STOPPED';
+    document.getElementById('runner-status').className = data.runner && data.runner.running ? 'value up' : 'value down';
+  }
+
+  updateCharacters(agents) {
+    if (!agents) return;
+    
+    var self = this;
+    agents.forEach(function(agent) {
+      var char = self.characters[agent.id];
+      if (!char) return;
+      
+      char.data = agent;
+      
+      var status = agent.is_circuit_break ? 'CIRCUIT BREAK' : 
+                   agent.running ? 'ACTIVE' : 'OFFLINE';
+      char.statusText.setText(status);
+      char.statusText.setColor(agent.is_circuit_break ? '#dc2626' : 
+                               agent.running ? '#16a34a' : '#999');
+      
+      var pnl = agent.pnl || 0;
+      char.pnlText.setText('PNL: ' + (pnl > 0 ? '+' : '') + '$' + pnl.toLocaleString());
+      char.pnlText.setColor(pnl > 0 ? '#16a34a' : pnl < 0 ? '#dc2626' : '#888');
+      
+      var desk = self.desks[agent.id];
+      if (desk) {
+        var lightColor = agent.is_circuit_break ? 0xdc2626 :
+                          agent.running ? 0x16a34a : 0x999999;
+        desk.light.setFillStyle(lightColor);
+        if (agent.running) {
+          desk.light.setAlpha(0.5 + Math.sin(self.time.now / 200) * 0.5);
+        }
+      }
+      
+      if (agent.is_circuit_break) {
+        char.state = 'panic';
+      } else if (agent.positions && agent.positions.length > 0) {
+        char.state = 'trading';
+      } else if (agent.running) {
+        char.state = 'scanning';
+      } else {
+        char.state = 'idle';
+      }
+      
+      if (Math.abs(pnl) > 100 && Math.random() > 0.7) {
+        self.emitPnlParticles(char.sprite.x, char.sprite.y, pnl > 0);
+      }
+    });
+  }
+
+  updateRiskIndicator(risk) {
+    if (risk.circuit_break) {
+      this.cameras.main.flash(500, 220, 60, 60, false);
+    }
+  }
+
+  emitPnlParticles(x, y, isUp) {
+    var key = isUp ? 'particle_up' : 'particle_down';
+    var emitter = this.add.particles(x, y, key, {
+      speed: { min: 30, max: 80 },
+      angle: { min: 200, max: 340 },
+      scale: { start: 1.5, end: 0 },
+      lifespan: 1500,
+      quantity: 5,
+      emitting: false
+    });
+    emitter.explode(5);
+    emitter.setDepth(5);
+  }
+
+  update(time, delta) {
+    var self = this;
+    
+    // Animate characters
+    Object.entries(this.characters).forEach(function(entry) {
+      self.animateCharacter(entry[1], time, delta);
+    });
+    
+    // Animate ticker scroll
+    this.tickerScroll += 0.3;
+    this.tickerTexts.forEach(function(t) {
+      t.text.x = t.baseX - (self.tickerScroll % 200);
+      if (t.text.x < -100) t.text.x += 200;
+    });
+  }
+
+  assignPathTo(char, nodeId) {
+    var pts = OfficePath.pathToNode(char.sprite.x, char.sprite.y, nodeId);
+    if (!pts || pts.length < 2) return;
+    char.pathQueue = pts.slice(1);
+    char.pathIndex = 0;
+    char.isWalking = true;
+  }
+
+  pickWanderTarget(char) {
+    var deskNode = OfficePath.deskByAgent[char.agentId];
+    var boothNode = OfficePath.boothByAgent[char.agentId];
+    var pool = OfficePath.wanderTargets.filter(function(n) {
+      return n !== deskNode || Math.random() > 0.5;
+    });
+    if (Math.random() > 0.55 && boothNode) pool.push(boothNode, boothNode);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  animateCharacter(char, time, delta) {
+    char.animTimer += delta;
+    char.moveTimer += delta;
+
+    if (char.moveTimer > char.nextMoveTime && char.state !== 'panic' && char.state !== 'trading' && !char.isWalking) {
+      char.moveTimer = 0;
+      char.nextMoveTime = 5000 + Math.random() * 8000;
+      this.assignPathTo(char, this.pickWanderTarget(char));
+    }
+
+    if (char.state === 'panic' && !char.isWalking) {
+      this.assignPathTo(char, OfficePath.deskByAgent[char.agentId]);
+    }
+
+    var agentId = char.agentId;
+    var moving = false;
+    var dx = 0;
+
+    if (char.isWalking && char.pathQueue.length > 0) {
+      var wp = char.pathQueue[char.pathIndex];
+      if (wp) {
+        dx = wp.x - char.sprite.x;
+        var dy = wp.y - char.sprite.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var step = (WORLD.WALK_SPEED * delta) / 1000;
+        if (dist <= step || dist < 2) {
+          char.sprite.x = wp.x;
+          char.sprite.y = wp.y;
+          char.pathIndex++;
+          if (char.pathIndex >= char.pathQueue.length) {
+            char.isWalking = false;
+            char.pathQueue = [];
+            char.pathIndex = 0;
+          }
+        } else {
+          char.sprite.x += (dx / dist) * step;
+          char.sprite.y += (dy / dist) * step;
+          moving = true;
+        }
+      } else {
+        char.isWalking = false;
+      }
+    }
+
+    if (moving) {
+      char.walkFrame += delta;
+      var frameKey = Math.floor(char.walkFrame / 180) % 2 === 0 ? '_walk1' : '_walk2';
+      char.sprite.setTexture('char_' + agentId + frameKey);
+      if (dx < -0.5) char.sprite.setFlipX(true);
+      else if (dx > 0.5) char.sprite.setFlipX(false);
+    } else if (char.state === 'trading' || char.state === 'panic') {
+      char.sprite.setTexture('char_' + agentId + '_excited');
+    } else {
+      char.sprite.setTexture('char_' + agentId + '_idle');
+      if (char.state === 'idle' || char.state === 'scanning') {
+        char.sprite.y += Math.sin(char.animTimer / 500) * 1;
+      }
+    }
+
+    char.nameTag.x = char.sprite.x;
+    char.nameTag.y = char.sprite.y - 42;
+    char.statusText.x = char.sprite.x;
+    char.statusText.y = char.sprite.y + 28;
+    char.pnlText.x = char.sprite.x;
+    char.pnlText.y = char.sprite.y + 40;
+
+    if (char.state === 'panic') {
+      char.sprite.setTint(0xff6666);
+      char.sprite.setAlpha(Math.floor(char.animTimer / 200) % 2 === 0 ? 0.65 : 1);
+    } else {
+      char.sprite.clearTint();
+      char.sprite.setAlpha(1);
+    }
+    if (char.state === 'trading' && !moving) {
+      char.sprite.y += Math.sin(char.animTimer / 150) * 1;
+    }
+  }
+}
+
+// ============================================================
+// GAME CONFIG
+// ============================================================
+var config = {
+  type: Phaser.AUTO,
+  parent: 'game-container',
+  width: window.innerWidth,
+  height: window.innerHeight,
+  backgroundColor: '#faf6ef',
+  pixelArt: true,
+  roundPixels: true,
+  scene: TradingWorld,
+  scale: {
+    mode: Phaser.Scale.RESIZE,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: window.innerWidth,
+    height: window.innerHeight
+  },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 0 } }
+  },
+  callbacks: {
+    preBoot: function(game) {
+      console.log('Phaser preBoot');
+    },
+    postBoot: function(game) {
+      console.log('Phaser postBoot');
+    }
+  }
+};
+
+var game = new Phaser.Game(config);
+
+window.addEventListener('resize', function() {
+  game.scale.resize(window.innerWidth, window.innerHeight);
+  var scene = game.scene.getScene('TradingWorld');
+  if (scene && scene.fitCamera) scene.fitCamera();
+});
+</script>
+</body>
+</html>

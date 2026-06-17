@@ -1,0 +1,17 @@
+{
+  "strategy": "momentum_quick",
+  "train_score": 451.40209161485524,
+  "train_pnl": 80.60751635979557,
+  "train_wr": 100.0,
+  "test_pnl": 18.11392266331734,
+  "test_wr": 72.81746031746032,
+  "degradation_pct": 77.5282461470901,
+  "overfit": "True",
+  "params": {
+    "QUICK_SURGE_BARS": 6,
+    "QUICK_MIN_SURGE": 4.0,
+    "QUICK_TRAIL_PCT": 0.5,
+    "QUICK_MAX_HOLD": 24,
+    "QUICK_MIN_VOL_RATIO": 0.5
+  }
+}

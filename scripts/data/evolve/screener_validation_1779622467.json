@@ -1,0 +1,42 @@
+{
+  "total_picks": 60,
+  "avg_return": -0.577,
+  "median_return": 1.494,
+  "hit_rate": 60.0,
+  "avg_score": 50.8,
+  "by_tier": {
+    "S(60+)": {
+      "count": 6,
+      "avg_return": 4.248,
+      "hit_rate": 66.7
+    },
+    "A(45-60)": {
+      "count": 44,
+      "avg_return": -1.807,
+      "hit_rate": 61.4
+    },
+    "B(30-45)": {
+      "count": 10,
+      "avg_return": 1.94,
+      "hit_rate": 50.0
+    }
+  },
+  "by_direction": {
+    "LONG": {
+      "count": 45,
+      "avg_return": -0.141,
+      "hit_rate": 62.2
+    },
+    "SHORT": {
+      "count": 15,
+      "avg_return": -1.885,
+      "hit_rate": 53.3
+    }
+  },
+  "score_correlation": -0.004,
+  "v1_chase_high": {
+    "avg_return": -7.186,
+    "hit_rate": 22.6,
+    "count": 31
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "agent_type": "major",
+  "capital": 10000.0,
+  "initial_capital": 10000.0,
+  "consecutive_losses": 0,
+  "is_circuit_break": false,
+  "total_trades": 0,
+  "total_wins": 0,
+  "total_losses": 0,
+  "total_pnl": 0,
+  "positions": {
+    "BTCUSDT": {
+      "symbol": "BTCUSDT",
+      "direction": "SHORT",
+      "entry_price": 76420.1,
+      "quantity": 0.06542781283981562,
+      "leverage": 15,
+      "stop_loss": 78712.70300000001,
+      "take_profit": [
+        74127.497,
+        72599.095,
+        68778.09000000001
+      ],
+      "opened_at": "2026-05-24T15:16:39.291416+00:00",
+      "agent_type": "major",
+      "entry_type": "trend_rejection_short",
+      "entry_reasoning": "做空: EMA20<EMA50 dist=-0.2% StochRSI=overbought RSI=47.52343756626028 得分=80"
+    },
+    "ETHUSDT": {
+      "symbol": "ETHUSDT",
+      "direction": "SHORT",
+      "entry_price": 2095.38,
+      "quantity": 1.6997167138810199,
+      "leverage": 15,
+      "stop_loss": 2183.63,
+      "take_profit": [
+        2032.5186,
+        1990.611,
+        1885.842
+      ],
+      "opened_at": "2026-05-24T15:16:39.680052+00:00",
+      "agent_type": "major",
+      "entry_type": "trend_rejection_short",
+      "entry_reasoning": "做空: EMA20<EMA50 dist=-0.3% StochRSI=overbought RSI=46.634258396809926 得分=80"
+    }
+  },
+  "trade_history": [
+    {
+      "symbol": "ETHUSDT",
+      "direction": "SHORT",
+      "entry_price": 2135.86,
+      "exit_price": 2067.45,
+      "quantity": 3.511466107329132,
+      "leverage": 15,
+      "pnl_pct": 48.04,
+      "pnl_amount": 240.22,
+      "entry_type": "trend_rejection_short",
+      "reason": "止盈@2067.45",
+      "opened_at": "2026-05-20T20:07:13.699336+00:00",
+      "closed_at": "2026-05-22T19:31:30.751772+00:00",
+      "agent_type": "major"
+    }
+  ],
+  "updated_at": "2026-05-24T15:16:39.680114+00:00"
+}

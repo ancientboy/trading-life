@@ -1,0 +1,186 @@
+{
+  "strategy": "momentum_quick",
+  "symbols_tested": 12,
+  "param_combinations": 10080,
+  "total_tests": 120960,
+  "elapsed_seconds": 269.6,
+  "speed": "449 tests/sec",
+  "coverage": "100%",
+  "best_overall": {
+    "strategy": "momentum_quick",
+    "params": {
+      "QUICK_SURGE_BARS": 2,
+      "QUICK_MIN_SURGE": 1.5,
+      "QUICK_TRAIL_PCT": 0.5,
+      "QUICK_MAX_HOLD": 24,
+      "QUICK_MIN_VOL_RATIO": 0.5
+    },
+    "pnl_pct": 360.7020086376655,
+    "win_rate": 100.0,
+    "total_trades": 23,
+    "avg_win_pct": 15.682696027724585,
+    "avg_loss_pct": 0,
+    "profit_factor": 10.0,
+    "max_drawdown_pct": 0,
+    "sharpe_ratio": 0,
+    "score": 2218.3173531216426
+  },
+  "per_symbol": {
+    "BTCUSDT": {
+      "best_score": 9.338965382741474,
+      "best_pnl": 2.3946065083952495,
+      "best_params": {
+        "QUICK_SURGE_BARS": 2,
+        "QUICK_MIN_SURGE": 3.0,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 0.5
+      },
+      "total_trades": 4,
+      "win_rate": 75.0
+    },
+    "ETHUSDT": {
+      "best_score": 51.96497352416695,
+      "best_pnl": 11.135351469464345,
+      "best_params": {
+        "QUICK_SURGE_BARS": 4,
+        "QUICK_MIN_SURGE": 1.5,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 1.5
+      },
+      "total_trades": 12,
+      "win_rate": 83.33333333333334
+    },
+    "SOLUSDT": {
+      "best_score": 31.269696883838943,
+      "best_pnl": 8.853710829400987,
+      "best_params": {
+        "QUICK_SURGE_BARS": 4,
+        "QUICK_MIN_SURGE": 1.5,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 1.2
+      },
+      "total_trades": 11,
+      "win_rate": 63.63636363636363
+    },
+    "HYPEUSDT": {
+      "best_score": 94.23129290231881,
+      "best_pnl": 19.996030324099483,
+      "best_params": {
+        "QUICK_SURGE_BARS": 5,
+        "QUICK_MIN_SURGE": 2.5,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 0.8
+      },
+      "total_trades": 16,
+      "win_rate": 81.25
+    },
+    "ZECUSDT": {
+      "best_score": 433.6863910968847,
+      "best_pnl": 77.44399841015797,
+      "best_params": {
+        "QUICK_SURGE_BARS": 6,
+        "QUICK_MIN_SURGE": 5.0,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 0.5
+      },
+      "total_trades": 12,
+      "win_rate": 100.0
+    },
+    "NEARUSDT": {
+      "best_score": 146.17956831687604,
+      "best_pnl": 26.233621432739476,
+      "best_params": {
+        "QUICK_SURGE_BARS": 3,
+        "QUICK_MIN_SURGE": 2.0,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 0.5
+      },
+      "total_trades": 18,
+      "win_rate": 94.44444444444444
+    },
+    "CLUSDT": {
+      "best_score": 42.17998538707418,
+      "best_pnl": 8.034282930871273,
+      "best_params": {
+        "QUICK_SURGE_BARS": 3,
+        "QUICK_MIN_SURGE": 2.0,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 0.5
+      },
+      "total_trades": 5,
+      "win_rate": 100.0
+    },
+    "BSBUSDT": {
+      "best_score": 2218.3173531216426,
+      "best_pnl": 360.7020086376655,
+      "best_params": {
+        "QUICK_SURGE_BARS": 2,
+        "QUICK_MIN_SURGE": 1.5,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 0.5
+      },
+      "total_trades": 23,
+      "win_rate": 100.0
+    },
+    "XRPUSDT": {
+      "best_score": 37.75325159558191,
+      "best_pnl": 12.409412661000374,
+      "best_params": {
+        "QUICK_SURGE_BARS": 2,
+        "QUICK_MIN_SURGE": 1.5,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 0.8
+      },
+      "total_trades": 13,
+      "win_rate": 53.84615384615385
+    },
+    "BEATUSDT": {
+      "best_score": 299.5280223377738,
+      "best_pnl": 52.09182997178675,
+      "best_params": {
+        "QUICK_SURGE_BARS": 5,
+        "QUICK_MIN_SURGE": 3.5,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 0.5
+      },
+      "total_trades": 15,
+      "win_rate": 100.0
+    },
+    "DOGEUSDT": {
+      "best_score": 67.86920293343253,
+      "best_pnl": 15.366611984928118,
+      "best_params": {
+        "QUICK_SURGE_BARS": 6,
+        "QUICK_MIN_SURGE": 3.5,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 24,
+        "QUICK_MIN_VOL_RATIO": 1.5
+      },
+      "total_trades": 6,
+      "win_rate": 83.33333333333334
+    },
+    "BZUSDT": {
+      "best_score": 39.37028169120443,
+      "best_pnl": 9.373876593143912,
+      "best_params": {
+        "QUICK_SURGE_BARS": 4,
+        "QUICK_MIN_SURGE": 2.0,
+        "QUICK_TRAIL_PCT": 0.5,
+        "QUICK_MAX_HOLD": 60,
+        "QUICK_MIN_VOL_RATIO": 0.5
+      },
+      "total_trades": 5,
+      "win_rate": 80.0
+    }
+  }
+}

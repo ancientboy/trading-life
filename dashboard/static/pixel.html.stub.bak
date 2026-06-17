@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Agent Pixel World</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1612;overflow:hidden;font-family:'Courier New',monospace}
+#gc{width:100vw;height:100vh}
+#bar{position:fixed;top:0;left:0;right:0;padding:6px 14px;display:flex;gap:10px;align-items:center;z-index:100;background:rgba(26,22,18,.9);border-bottom:2px solid #4a3a28;font-size:11px;color:#c8b888}
+#bar .s{display:flex;align-items:center;gap:3px}
+#bar .s .l{color:#8a7a5a;font-size:9px;text-transform:uppercase}
+#bar .s .v{color:#f0e6d0;font-weight:bold;font-size:12px}
+#bar .s .v.up{color:#4ade80}
+#bar .s .v.dn{color:#f87171}
+#bar .d{width:1px;height:14px;background:#4a3a28}
+#dt{position:fixed;bottom:12px;left:12px;z-index:100;background:rgba(26,22,18,.95);border:2px solid #4a3a28;border-radius:8px;padding:10px 14px;min-width:220px;display:none;font-size:11px;color:#c8b888}
+#dt.on{display:block}
+#dt .t{color:#f0e6d0;font-weight:bold;font-size:13px;margin-bottom:6px}
+#dt .r{display:flex;justify-content:space-between;margin:3px 0}
+#dt .ps{margin-top:6px;padding-top:6px;border-top:1px solid #4a3a28}
+#bk{position:fixed;bottom:12px;right:12px;z-index:100;background:rgba(26,22,18,.9);border:1px solid #4a3a28;color:#c8b888;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:11px;text-decoration:none}
+#bk:hover{background:#4a3a28;color:#f0e6d0}
+#lg{position:fixed;top:40px;right:14px;z-index:100;background:rgba(26,22,18,.85);border:1px solid #4a3a28;border-radius:6px;padding:8px;font-size:10px;color:#8a7a5a}
+#lg .li{display:flex;align-items:center;gap:5px;margin:3px 0}
+#lg .li .sw{width:10px;height:10px;border-radius:2px}
+</style>
+</head>
+<body>
+<div id="bar">
+<div class="s"><span class="l">BTC</span><span class="v" id="bp">--</span></div><div class="d"></div>
+<div class="s"><span class="l">ETH</span><span class="v" id="ep">--</span></div><div class="d"></div>
+<div class="s"><span class="l">XAU</span><span class="v" id="xp">--</span></div><div class="d"></div>
+<div class="s"><span class="l">PnL</span><span class="v" id="tp">--</span></div><div class="d"></div>
+<div class="s"><span class="l">WR</span><span class="v" id="wr">--</span></div><div class="d"></div>
+<div class="s"><span class="l">RUN</span><span class="v" id="rs">--</span></div>
+<div style="flex:1"></div>
+<div class="s"><span class="l">Click characters</span></div>
+</div>
+<div id="lg">
+<div class="li"><div class="sw" style="background:#FFD700"></div>XAU</div>
+<div class="li"><div class="sw" style="background:#3B82F6"></div>Major</div>
+<div class="li"><div class="sw" style="background:#F59E0B"></div>Altcoin</div>
+<div class="li"><div class="sw" style="background:#A855F7"></div>Newcoin</div>
+<div class="li"><div class="sw" style="background:#EF4444"></div>Momentum</div>
+</div>
+<div id="dt"><div class="t" id="dn">--</div>
+<div class="r"><span>Strategy</span><span id="ds">--</span></div>
+<div class="r"><span>Capital</span><span id="dc">--</span></div>
+<div class="r"><span>PnL</span><span id="dp">--</span></div>
+<div class="r"><span>WinRate</span><span id="dw">--</span></div>
+<div class="r"><span>Positions</span><span id="dz">--</span></div>
+<div class="ps" id="dpi"></div></div>
+<a href="/" id="bk">Back</a>
+<div id="gc"></div>
+<script>

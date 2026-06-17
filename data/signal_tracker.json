@@ -1,0 +1,6804 @@
+{
+  "version": 1,
+  "signals": [
+    {
+      "id": "20260516-143437-DOGEUSDT",
+      "timestamp": "2026-05-16T14:34:37.601233+00:00",
+      "symbol": "DOGEUSDT",
+      "action": "LONG",
+      "score": 86,
+      "confidence": 95,
+      "entry_price": 0.10907,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.10945,
+          "change_pct": 0.35,
+          "hit": false,
+          "checked_at": "2026-05-16T19:01:18.628314+00:00"
+        },
+        "8h": {
+          "price": 0.10955,
+          "change_pct": 0.44,
+          "hit": false,
+          "checked_at": "2026-05-16T22:36:25.505962+00:00"
+        },
+        "24h": {
+          "price": 0.11038,
+          "change_pct": 1.2,
+          "hit": true,
+          "checked_at": "2026-05-17T16:00:02.508048+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260516-143933-CRCLUSDT",
+      "timestamp": "2026-05-16T14:39:33.705076+00:00",
+      "symbol": "CRCLUSDT",
+      "action": "LONG",
+      "score": 85,
+      "confidence": 95,
+      "entry_price": 110.87,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 111.17,
+          "change_pct": 0.27,
+          "hit": false,
+          "checked_at": "2026-05-16T19:01:18.628314+00:00"
+        },
+        "8h": {
+          "price": 110.43,
+          "change_pct": -0.4,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 110.41,
+          "change_pct": -0.41,
+          "hit": false,
+          "checked_at": "2026-05-17T16:00:02.508048+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-143933-GWEIUSDT",
+      "timestamp": "2026-05-16T14:39:33.707966+00:00",
+      "symbol": "GWEIUSDT",
+      "action": "LONG",
+      "score": 86,
+      "confidence": 95,
+      "entry_price": 0.15671,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.14968,
+          "change_pct": -4.49,
+          "hit": false,
+          "checked_at": "2026-05-16T19:01:18.628314+00:00"
+        },
+        "8h": {
+          "price": 0.14973,
+          "change_pct": -4.45,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 0.15115,
+          "change_pct": -3.55,
+          "hit": false,
+          "checked_at": "2026-05-17T16:00:02.508048+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-150254-XAUUSDT",
+      "timestamp": "2026-05-16T15:02:54.955059+00:00",
+      "symbol": "XAUUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 4537.38,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 4539.54,
+          "change_pct": 0.05,
+          "hit": false,
+          "checked_at": "2026-05-16T19:36:14.295257+00:00"
+        },
+        "8h": {
+          "price": 4532.69,
+          "change_pct": -0.1,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 4541.5,
+          "change_pct": 0.09,
+          "hit": false,
+          "checked_at": "2026-05-17T16:00:02.508048+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-152002-TRXUSDT",
+      "timestamp": "2026-05-16T15:20:02.548706+00:00",
+      "symbol": "TRXUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 0.35217,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.3541,
+          "change_pct": 0.55,
+          "hit": true,
+          "checked_at": "2026-05-16T19:36:14.295257+00:00"
+        },
+        "8h": {
+          "price": 0.35327,
+          "change_pct": 0.31,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 0.35729,
+          "change_pct": 1.45,
+          "hit": true,
+          "checked_at": "2026-05-17T16:00:02.508048+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260516-153504-CHZUSDT",
+      "timestamp": "2026-05-16T15:35:04.119791+00:00",
+      "symbol": "CHZUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 0.04681,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.04848,
+          "change_pct": 3.57,
+          "hit": true,
+          "checked_at": "2026-05-16T19:36:14.295257+00:00"
+        },
+        "8h": {
+          "price": 0.04786,
+          "change_pct": 2.24,
+          "hit": true,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 0.04791,
+          "change_pct": 2.35,
+          "hit": true,
+          "checked_at": "2026-05-17T16:00:02.508048+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260516-153504-XRPUSDT",
+      "timestamp": "2026-05-16T15:35:04.125213+00:00",
+      "symbol": "XRPUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 1.4136,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 1.4152,
+          "change_pct": 0.11,
+          "hit": false,
+          "checked_at": "2026-05-16T19:36:14.295257+00:00"
+        },
+        "8h": {
+          "price": 1.4047,
+          "change_pct": -0.63,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 1.4123,
+          "change_pct": -0.09,
+          "hit": false,
+          "checked_at": "2026-05-17T16:00:02.508048+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-160409-DOGEUSDT",
+      "timestamp": "2026-05-16T16:04:09.388777+00:00",
+      "symbol": "DOGEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.10985,
+      "reasoning": "当前处于二浪浅回调，且4小时多重底已突破颈线，底部确认且波浪共振，适合做多入场。",
+      "key_factors": [
+        "二浪浅回调",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.10971,
+          "change_pct": -0.13,
+          "hit": false,
+          "checked_at": "2026-05-16T20:11:46.488429+00:00"
+        },
+        "8h": {
+          "price": 0.10832,
+          "change_pct": -1.39,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 0.11075,
+          "change_pct": 0.82,
+          "hit": true,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260516-160410-XRPUSDT",
+      "timestamp": "2026-05-16T16:04:10.035262+00:00",
+      "symbol": "XRPUSDT",
+      "action": "LONG",
+      "score": 75,
+      "confidence": 75,
+      "entry_price": 1.4369530000000001,
+      "reasoning": "4小时多重底形成中，颈线突破预期，StochRSI超卖金叉，回调企稳。",
+      "key_factors": [
+        "4h多重底形成",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 1.4169,
+          "change_pct": -1.4,
+          "hit": false,
+          "checked_at": "2026-05-16T20:11:46.488429+00:00"
+        },
+        "8h": {
+          "price": 1.4055,
+          "change_pct": -2.19,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 1.4215,
+          "change_pct": -1.08,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-160410-HYPEUSDT",
+      "timestamp": "2026-05-16T16:04:10.560186+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 40.951,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 41.848,
+          "change_pct": 2.19,
+          "hit": true,
+          "checked_at": "2026-05-16T20:11:46.488429+00:00"
+        },
+        "8h": {
+          "price": 41.452,
+          "change_pct": 1.22,
+          "hit": true,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 46.714,
+          "change_pct": 14.07,
+          "hit": true,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260516-160418-INJUSDT",
+      "timestamp": "2026-05-16T16:04:18.997366+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 4.67,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 4.71,
+          "change_pct": 0.86,
+          "hit": true,
+          "checked_at": "2026-05-16T20:11:46.488429+00:00"
+        },
+        "8h": {
+          "price": 4.656,
+          "change_pct": -0.3,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 4.749,
+          "change_pct": 1.69,
+          "hit": true,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260516-161316-XAGUSDT",
+      "timestamp": "2026-05-16T16:13:16.756681+00:00",
+      "symbol": "XAGUSDT",
+      "action": "LONG",
+      "score": 85,
+      "confidence": 95,
+      "entry_price": 75.9,
+      "reasoning": "监控池15m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 75.82,
+          "change_pct": -0.11,
+          "hit": false,
+          "checked_at": "2026-05-16T20:48:16.189758+00:00"
+        },
+        "8h": {
+          "price": 75.66,
+          "change_pct": -0.32,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 75.75,
+          "change_pct": -0.2,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-162007-MUUSDT",
+      "timestamp": "2026-05-16T16:20:07.473310+00:00",
+      "symbol": "MUUSDT",
+      "action": "LONG",
+      "score": 85,
+      "confidence": 95,
+      "entry_price": 716.4,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 715.79,
+          "change_pct": -0.09,
+          "hit": false,
+          "checked_at": "2026-05-16T20:48:16.189758+00:00"
+        },
+        "8h": {
+          "price": 710.37,
+          "change_pct": -0.84,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 734.31,
+          "change_pct": 2.5,
+          "hit": true,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260516-162133-XRPUSDT",
+      "timestamp": "2026-05-16T16:21:33.316718+00:00",
+      "symbol": "XRPUSDT",
+      "action": "LONG",
+      "score": 75,
+      "confidence": 75,
+      "entry_price": 1.4369530000000001,
+      "reasoning": "4小时多重底形成中，且StochRSI 4小时超卖金叉，显示买入信号。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI 4小时超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 1.4153,
+          "change_pct": -1.51,
+          "hit": false,
+          "checked_at": "2026-05-16T20:48:16.189758+00:00"
+        },
+        "8h": {
+          "price": 1.4055,
+          "change_pct": -2.19,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 1.4215,
+          "change_pct": -1.08,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-162717-XAGUSDT",
+      "timestamp": "2026-05-16T16:27:17.341041+00:00",
+      "symbol": "XAGUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 77.6311,
+      "reasoning": "价格在SMC入场区且StochRSI 4h超卖金叉，显示洗盘结束。",
+      "key_factors": [
+        "价格在SMC入场区",
+        "StochRSI 4h超卖金叉"
+      ],
+      "wave_signal": "",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 75.82,
+          "change_pct": -2.33,
+          "hit": false,
+          "checked_at": "2026-05-16T20:48:16.189758+00:00"
+        },
+        "8h": {
+          "price": 75.66,
+          "change_pct": -2.54,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 75.75,
+          "change_pct": -2.42,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-163853-IRYSUSDT",
+      "timestamp": "2026-05-16T16:38:53.896731+00:00",
+      "symbol": "IRYSUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 0.05157,
+      "reasoning": "当前处于二浪回调到位，且价格在SMC入场区间内，同时4小时趋势向上，小周期开始共振，StochRSI金叉向上，符合做多条件。",
+      "key_factors": [
+        "二浪回调到位",
+        "SMC入场区间",
+        "4小时趋势向上",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.05019,
+          "change_pct": -2.68,
+          "hit": false,
+          "checked_at": "2026-05-16T20:48:16.189758+00:00"
+        },
+        "8h": {
+          "price": 0.04838,
+          "change_pct": -6.19,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 0.0429,
+          "change_pct": -16.81,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-170239-XAGUSDT",
+      "timestamp": "2026-05-16T17:02:39.155797+00:00",
+      "symbol": "XAGUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 77.6311,
+      "reasoning": "价格处于SMC入场区间内，且洗盘结束信号强烈。",
+      "key_factors": [
+        "SMC入场区",
+        "洗盘结束信号"
+      ],
+      "wave_signal": "",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 75.67,
+          "change_pct": -2.53,
+          "hit": false,
+          "checked_at": "2026-05-16T21:25:02.750560+00:00"
+        },
+        "8h": {
+          "price": 75.66,
+          "change_pct": -2.54,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 75.75,
+          "change_pct": -2.42,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-173405-HYPEUSDT",
+      "timestamp": "2026-05-16T17:34:05.801869+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 97,
+      "confidence": 95,
+      "entry_price": 41.189,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 41.905,
+          "change_pct": 1.74,
+          "hit": true,
+          "checked_at": "2026-05-16T22:00:44.628467+00:00"
+        },
+        "8h": {
+          "price": 41.452,
+          "change_pct": 0.64,
+          "hit": true,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 46.699,
+          "change_pct": 13.38,
+          "hit": true,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260516-173840-LTCUSDT",
+      "timestamp": "2026-05-16T17:38:40.043478+00:00",
+      "symbol": "LTCUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.21,
+      "reasoning": "当前价格处于SMC入场区，且波浪分析显示处于二浪回调区，同时4h趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "波浪分析二浪回调",
+        "4h趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 56.13,
+          "change_pct": -0.14,
+          "hit": false,
+          "checked_at": "2026-05-16T22:00:44.628467+00:00"
+        },
+        "8h": {
+          "price": 55.8,
+          "change_pct": -0.73,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "24h": {
+          "price": 56.04,
+          "change_pct": -0.3,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-183725-XRPUSDT",
+      "timestamp": "2026-05-16T18:37:25.971332+00:00",
+      "symbol": "XRPUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 1.4369530000000001,
+      "reasoning": "4小时多重底形成中，等待颈线突破，StochRSI 4小时超卖金叉，吸筹信号强烈。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI 4小时超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 1.4055,
+          "change_pct": -2.19,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 1.4116,
+          "change_pct": -1.76,
+          "hit": false,
+          "checked_at": "2026-05-17T03:58:55.565351+00:00"
+        },
+        "24h": {
+          "price": 1.4215,
+          "change_pct": -1.08,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-185128-XAUUSDT",
+      "timestamp": "2026-05-16T18:51:28.747467+00:00",
+      "symbol": "XAUUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 4539.82,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 4532.69,
+          "change_pct": -0.16,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 4535.5,
+          "change_pct": -0.1,
+          "hit": false,
+          "checked_at": "2026-05-17T03:58:55.565351+00:00"
+        },
+        "24h": {
+          "price": 4534.05,
+          "change_pct": -0.13,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-190117-XRPUSDT",
+      "timestamp": "2026-05-16T19:01:17.193830+00:00",
+      "symbol": "XRPUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 1.4369530000000001,
+      "reasoning": "4小时多重底形成中，StochRSI 4小时超卖金叉，吸筹信号强烈。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI 4小时超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 1.4057,
+          "change_pct": -2.17,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 1.4116,
+          "change_pct": -1.76,
+          "hit": false,
+          "checked_at": "2026-05-17T03:58:55.565351+00:00"
+        },
+        "24h": {
+          "price": 1.4215,
+          "change_pct": -1.08,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-193030-IRYSUSDT",
+      "timestamp": "2026-05-16T19:30:30.201970+00:00",
+      "symbol": "IRYSUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 0.0520459,
+      "reasoning": "当前处于二浪回调区，且波浪分析显示三浪启动，价格在SMC入场区，大周期趋势向上，小周期开始共振，StochRSI金叉向上，成交量温和。",
+      "key_factors": [
+        "二浪回调到位",
+        "三浪启动"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.0484,
+          "change_pct": -7.01,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 0.04695,
+          "change_pct": -9.79,
+          "hit": false,
+          "checked_at": "2026-05-17T03:58:55.565351+00:00"
+        },
+        "24h": {
+          "price": 0.0429,
+          "change_pct": -17.57,
+          "hit": false,
+          "checked_at": "2026-05-17T20:00:01.463946+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-200534-AIGENSYNUSDT",
+      "timestamp": "2026-05-16T20:05:34.584869+00:00",
+      "symbol": "AIGENSYNUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.03578,
+      "reasoning": "价格处于SMC入场区，且近期有回调企稳迹象，大周期趋势向上，小周期开始共振，StochRSI从超卖区金叉向上。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期趋势向上",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.03594,
+          "change_pct": 0.45,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 0.03863,
+          "change_pct": 7.97,
+          "hit": true,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 0.03408,
+          "change_pct": -4.75,
+          "hit": false,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-200644-ARCUSDT",
+      "timestamp": "2026-05-16T20:06:44.098698+00:00",
+      "symbol": "ARCUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 0.06307,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.06128,
+          "change_pct": -2.84,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 0.06945,
+          "change_pct": 10.12,
+          "hit": true,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 0.06767,
+          "change_pct": 7.29,
+          "hit": true,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260516-201142-PHAROSUSDT",
+      "timestamp": "2026-05-16T20:11:42.419887+00:00",
+      "symbol": "PHAROSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.7596,
+      "reasoning": "当前价格处于SMC入场区，且StochRSI显示超卖金叉，趋势向上。",
+      "key_factors": [
+        "SMC入场区",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.7316,
+          "change_pct": -3.69,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 0.7259,
+          "change_pct": -4.44,
+          "hit": false,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 0.7224,
+          "change_pct": -4.9,
+          "hit": false,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-201145-TRXUSDT",
+      "timestamp": "2026-05-16T20:11:45.308408+00:00",
+      "symbol": "TRXUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.35481,
+      "reasoning": "当前处于三浪启动中，且价格在SMC入场区，趋势向上，StochRSI金叉向上。",
+      "key_factors": [
+        "三浪启动",
+        "SMC入场区"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.35329,
+          "change_pct": -0.43,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 0.35433,
+          "change_pct": -0.14,
+          "hit": false,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 0.35508,
+          "change_pct": 0.08,
+          "hit": false,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-201759-FFUSDT",
+      "timestamp": "2026-05-16T20:17:59.361294+00:00",
+      "symbol": "FFUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.08887,
+      "reasoning": "4小时多重底形成中，等待颈线突破，StochRSI超卖区金叉向上，温和放量。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI超卖区金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.08761,
+          "change_pct": -1.42,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 0.08575,
+          "change_pct": -3.51,
+          "hit": false,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 0.08637,
+          "change_pct": -2.81,
+          "hit": false,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-205249-CLUSDT",
+      "timestamp": "2026-05-16T20:52:49.294592+00:00",
+      "symbol": "CLUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 101.27,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 101.41,
+          "change_pct": 0.14,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 101.3,
+          "change_pct": 0.03,
+          "hit": false,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 102.41,
+          "change_pct": 1.13,
+          "hit": true,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260516-211256-IRYSUSDT",
+      "timestamp": "2026-05-16T21:12:56.625781+00:00",
+      "symbol": "IRYSUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 0.0520459,
+      "reasoning": "当前处于二浪回调到位，且价格在SMC入场区间内，同时4小时头肩底突破后，StochRSI显示超卖金叉，趋势向上。",
+      "key_factors": [
+        "二浪回调到位",
+        "SMC入场区间",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.04838,
+          "change_pct": -7.04,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 0.04778,
+          "change_pct": -8.2,
+          "hit": false,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 0.04181,
+          "change_pct": -19.67,
+          "hit": false,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-213701-IRYSUSDT",
+      "timestamp": "2026-05-16T21:37:01.225749+00:00",
+      "symbol": "IRYSUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.0520459,
+      "reasoning": "当前处于二浪回调到位，且波浪分析显示三浪启动，结合SMC入场区和底部形态，适合做多入场。",
+      "key_factors": [
+        "二浪回调到位",
+        "三浪启动"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.04838,
+          "change_pct": -7.04,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 0.04778,
+          "change_pct": -8.2,
+          "hit": false,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 0.04181,
+          "change_pct": -19.67,
+          "hit": false,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-213922-DOGEUSDT",
+      "timestamp": "2026-05-16T21:39:22.255039+00:00",
+      "symbol": "DOGEUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 0.1098,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.1083,
+          "change_pct": -1.37,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 0.11013,
+          "change_pct": 0.3,
+          "hit": false,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 0.10894,
+          "change_pct": -0.78,
+          "hit": false,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-214853-RIVERUSDT",
+      "timestamp": "2026-05-16T21:48:53.568996+00:00",
+      "symbol": "RIVERUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 7.667,
+      "reasoning": "价格在SMC入场区间内，且1小时头肩底形成中，显示潜在上涨趋势。",
+      "key_factors": [
+        "价格在SMC入场区间内",
+        "1小时头肩底形成"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 7.436,
+          "change_pct": -3.01,
+          "hit": false,
+          "checked_at": "2026-05-17T01:50:47.860666+00:00"
+        },
+        "8h": {
+          "price": 7.451,
+          "change_pct": -2.82,
+          "hit": false,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 7.259,
+          "change_pct": -5.32,
+          "hit": false,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260516-222428-CGPTUSDT",
+      "timestamp": "2026-05-16T22:24:28.557973+00:00",
+      "symbol": "CGPTUSDT",
+      "action": "LONG",
+      "score": 75,
+      "confidence": 95,
+      "entry_price": 0.03318,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.03776,
+          "change_pct": 13.8,
+          "hit": true,
+          "checked_at": "2026-05-17T03:58:55.565351+00:00"
+        },
+        "8h": {
+          "price": 0.03878,
+          "change_pct": 16.88,
+          "hit": true,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "24h": {
+          "price": 0.03467,
+          "change_pct": 4.49,
+          "hit": true,
+          "checked_at": "2026-05-18T00:00:01.790553+00:00"
+        }
+      },
+      "final_result": "win"
+    },
+    {
+      "id": "20260517-032557-XAGUSDT",
+      "timestamp": "2026-05-17T03:25:57.013277+00:00",
+      "symbol": "XAGUSDT",
+      "action": "LONG",
+      "score": 85,
+      "confidence": 95,
+      "entry_price": 75.78,
+      "reasoning": "监控池15m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 75.71,
+          "change_pct": -0.09,
+          "hit": false,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "8h": {
+          "price": 75.76,
+          "change_pct": -0.03,
+          "hit": false,
+          "checked_at": "2026-05-17T12:00:02.198541+00:00"
+        },
+        "24h": {
+          "price": 75.28,
+          "change_pct": -0.66,
+          "hit": false,
+          "checked_at": "2026-05-18T04:00:02.230151+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260517-034925-XAUUSDT",
+      "timestamp": "2026-05-17T03:49:25.582885+00:00",
+      "symbol": "XAUUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 4535.5,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 4534.17,
+          "change_pct": -0.03,
+          "hit": false,
+          "checked_at": "2026-05-17T08:00:02.254584+00:00"
+        },
+        "8h": {
+          "price": 4540.7,
+          "change_pct": 0.11,
+          "hit": false,
+          "checked_at": "2026-05-17T12:00:02.198541+00:00"
+        },
+        "24h": {
+          "price": 4544.08,
+          "change_pct": 0.19,
+          "hit": false,
+          "checked_at": "2026-05-18T04:00:02.230151+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260517-040513-PHAROSUSDT",
+      "timestamp": "2026-05-17T04:05:13.389658+00:00",
+      "symbol": "PHAROSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.75705,
+      "reasoning": "StochRSI 1h 超卖金叉，价格在SMC入场区间内，且近期有回调企稳迹象。",
+      "key_factors": [
+        "StochRSI 1h 超卖金叉",
+        "SMC入场区间"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "checked",
+      "checks": {
+        "4h": {
+          "price": 0.7306,
+          "change_pct": -3.49,
+          "hit": false,
+          "checked_at": "2026-05-17T12:00:02.198541+00:00"
+        },
+        "8h": {
+          "price": 0.7161,
+          "change_pct": -5.41,
+          "hit": false,
+          "checked_at": "2026-05-17T16:00:02.508048+00:00"
+        },
+        "24h": {
+          "price": 0.6888,
+          "change_pct": -9.02,
+          "hit": false,
+          "checked_at": "2026-05-18T08:00:02.051931+00:00"
+        }
+      },
+      "final_result": "loss"
+    },
+    {
+      "id": "20260523-120937-BTCUSDT",
+      "timestamp": "2026-05-23T12:09:37.518035+00:00",
+      "symbol": "BTCUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 74729.7,
+      "reasoning": "当前处于二浪回调到位，且波浪分析显示三浪启动，强买入信号。",
+      "key_factors": [
+        "二浪回调到位",
+        "三浪启动"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 75472.5,
+          "change_pct": 0.99,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 76014.5,
+          "change_pct": 1.72,
+          "hit": true,
+          "checked_at": "2026-05-23T20:27:06.526637+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-120938-HYPEUSDT",
+      "timestamp": "2026-05-23T12:09:38.128089+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 55.026,
+      "reasoning": "价格处于二浪回调区，且4小时多重底已突破颈线，底部确认且波浪共振，洗盘结束信号明显。",
+      "key_factors": [
+        "二浪回调区",
+        "底部确认"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 57.615,
+          "change_pct": 4.71,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 58.493,
+          "change_pct": 6.3,
+          "hit": true,
+          "checked_at": "2026-05-23T20:27:06.526637+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-120938-ETHUSDT",
+      "timestamp": "2026-05-23T12:09:38.730382+00:00",
+      "symbol": "ETHUSDT",
+      "action": "LONG",
+      "score": 70,
+      "confidence": 70,
+      "entry_price": 2030.11,
+      "reasoning": "4小时多重底已突破颈线，二浪回调过深，底部确认+波浪共振，吸筹信号明显。",
+      "key_factors": [
+        "4小时多重底突破",
+        "底部确认+波浪共振",
+        "吸筹信号"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 2063.84,
+          "change_pct": 1.66,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 2078.72,
+          "change_pct": 2.39,
+          "hit": true,
+          "checked_at": "2026-05-23T20:27:06.526637+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-120939-DOGEUSDT",
+      "timestamp": "2026-05-23T12:09:39.773824+00:00",
+      "symbol": "DOGEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0991,
+      "reasoning": "当前处于二浪回调区，且4小时多重底已突破颈线，价格接近Fib 61.8%，有买入信号。",
+      "key_factors": [
+        "二浪回调区",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.1013,
+          "change_pct": 2.22,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.10226,
+          "change_pct": 3.19,
+          "hit": true,
+          "checked_at": "2026-05-23T20:27:06.526637+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-120940-SOLUSDT",
+      "timestamp": "2026-05-23T12:09:40.390931+00:00",
+      "symbol": "SOLUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 82.24,
+      "reasoning": "当前处于二浪回调过深，但4h多重底已突破颈线，底部确认且波浪共振，吸筹信号明显。",
+      "key_factors": [
+        "底部确认",
+        "波浪共振",
+        "吸筹信号"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 84.23,
+          "change_pct": 2.42,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 84.86,
+          "change_pct": 3.19,
+          "hit": true,
+          "checked_at": "2026-05-23T20:27:06.526637+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-120940-LITUSDT",
+      "timestamp": "2026-05-23T12:09:40.973983+00:00",
+      "symbol": "LITUSDT",
+      "action": "LONG",
+      "score": 85,
+      "confidence": 85,
+      "entry_price": 1.1817,
+      "reasoning": "价格处于二浪回调区(Fib 50%)，且4h趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "4h趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 1.1922,
+          "change_pct": 0.89,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 1.2317,
+          "change_pct": 4.23,
+          "hit": true,
+          "checked_at": "2026-05-23T20:27:06.526637+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-120941-ASTERUSDT",
+      "timestamp": "2026-05-23T12:09:41.610970+00:00",
+      "symbol": "ASTERUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.6709,
+      "reasoning": "价格在SMC入场区，4h多重底形成中，等颈线突破。",
+      "key_factors": [
+        "价格在SMC入场区",
+        "4h多重底形成中"
+      ],
+      "wave_signal": "",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.6768,
+          "change_pct": 0.88,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.6803,
+          "change_pct": 1.4,
+          "hit": true,
+          "checked_at": "2026-05-23T20:27:06.526637+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-123425-ZECUSDT",
+      "timestamp": "2026-05-23T12:34:25.823781+00:00",
+      "symbol": "ZECUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 582.66,
+      "reasoning": "二浪回调到位，4h头肩底突破，三浪启动信号明显。",
+      "key_factors": [
+        "4h头肩底突破",
+        "二浪回调到位"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 602.62,
+          "change_pct": 3.43,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 657.58,
+          "change_pct": 12.86,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-123427-WLDUSDT",
+      "timestamp": "2026-05-23T12:34:27.195773+00:00",
+      "symbol": "WLDUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.268,
+      "reasoning": "价格处于SMC入场区，且4h多重底形成中，等待颈线突破。",
+      "key_factors": [
+        "SMC入场区",
+        "4h多重底形成"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2946,
+          "change_pct": 9.93,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.307,
+          "change_pct": 14.55,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-123427-ALTUSDT",
+      "timestamp": "2026-05-23T12:34:27.775747+00:00",
+      "symbol": "ALTUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.007896,
+      "reasoning": "当前处于二浪回调区，且4小时多重底已突破颈线，底部确认且有共振信号。",
+      "key_factors": [
+        "二浪回调区",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.008168,
+          "change_pct": 3.44,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.008463,
+          "change_pct": 7.18,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-123428-SUIUSDT",
+      "timestamp": "2026-05-23T12:34:28.354452+00:00",
+      "symbol": "SUIUSDT",
+      "action": "LONG",
+      "score": 70,
+      "confidence": 70,
+      "entry_price": 1.0019,
+      "reasoning": "价格在二浪回调区，且4小时多重底已突破颈线，显示底部确认和波浪共振。",
+      "key_factors": [
+        "二浪回调区",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 1.043,
+          "change_pct": 4.1,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 1.0979,
+          "change_pct": 9.58,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-124048-1000PEPEUSDT",
+      "timestamp": "2026-05-23T12:40:48.931768+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.003537741,
+      "reasoning": "4小时多重底已突破颈线，二浪回调过深但形态可能成功，StochRSI超卖区金叉向上，成交量温和放量。",
+      "key_factors": [
+        "4小时多重底突破",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0035718,
+          "change_pct": 0.96,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.0037409,
+          "change_pct": 5.74,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-124049-BCHUSDT",
+      "timestamp": "2026-05-23T12:40:49.371494+00:00",
+      "symbol": "BCHUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 367.6688,
+      "reasoning": "价格处于SMC入场区，且StochRSI显示超卖金叉，趋势向上。",
+      "key_factors": [
+        "SMC入场区",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 351.49,
+          "change_pct": -4.4,
+          "hit": false,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 358.76,
+          "change_pct": -2.42,
+          "hit": false,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-124723-GENIUSUSDT",
+      "timestamp": "2026-05-23T12:47:23.530408+00:00",
+      "symbol": "GENIUSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.5973999999999999,
+      "reasoning": "价格处于二浪回调区，且4小时双底已突破颈线，买入信号强烈。",
+      "key_factors": [
+        "二浪回调区",
+        "4小时双底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.6669,
+          "change_pct": 11.63,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.6569,
+          "change_pct": 9.96,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-124724-PROVEUSDT",
+      "timestamp": "2026-05-23T12:47:24.459910+00:00",
+      "symbol": "PROVEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.267594,
+      "reasoning": "4小时多重底形成中，StochRSI 4小时超卖金叉，吸筹洗盘结束，价格接近入场区。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI 4小时超卖金叉"
+      ],
+      "wave_signal": "",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2778,
+          "change_pct": 3.81,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.2813,
+          "change_pct": 5.12,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-124725-ONDOUSDT",
+      "timestamp": "2026-05-23T12:47:25.858256+00:00",
+      "symbol": "ONDOUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.38419000000000003,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时多重底已突破颈线，底部确认且有波浪共振信号。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.4125,
+          "change_pct": 7.37,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.4234,
+          "change_pct": 10.21,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-124726-EDENUSDT",
+      "timestamp": "2026-05-23T12:47:26.379770+00:00",
+      "symbol": "EDENUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.08857999999999999,
+      "reasoning": "当前处于二浪回调到位，且波浪分析显示三浪启动，洗盘结束信号强烈。",
+      "key_factors": [
+        "二浪回调到位",
+        "三浪启动",
+        "洗盘结束"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.09353,
+          "change_pct": 5.59,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.10628,
+          "change_pct": 19.98,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-125335-PROVEUSDT",
+      "timestamp": "2026-05-23T12:53:35.066862+00:00",
+      "symbol": "PROVEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.267594,
+      "reasoning": "价格处于回调企稳，4小时多重底形成中，颈线突破预期强支撑。",
+      "key_factors": [
+        "4小时多重底形成",
+        "颈线突破预期"
+      ],
+      "wave_signal": "",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2778,
+          "change_pct": 3.81,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.2812,
+          "change_pct": 5.08,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-125953-HYPEUSDT",
+      "timestamp": "2026-05-23T12:59:53.223837+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.32658,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 57.615,
+          "change_pct": 2.29,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 59.616,
+          "change_pct": 5.84,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-125954-RKLBUSDT",
+      "timestamp": "2026-05-23T12:59:54.179274+00:00",
+      "symbol": "RKLBUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 137.1239,
+      "reasoning": "价格处于SMC入场区且近期有回调企稳迹象，大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 137.21,
+          "change_pct": 0.06,
+          "hit": false,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 138.18,
+          "change_pct": 0.77,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-125955-INJUSDT",
+      "timestamp": "2026-05-23T12:59:55.229107+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 4.871900000000001,
+      "reasoning": "价格处于二浪回调区，且4小时趋势向上，StochRSI超卖区金叉，成交量正常。",
+      "key_factors": [
+        "二浪回调区",
+        "4小时趋势向上",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.319,
+          "change_pct": 9.18,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 5.492,
+          "change_pct": 12.73,
+          "hit": true,
+          "checked_at": "2026-05-23T21:01:24.972063+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-130212-TONUSDT",
+      "timestamp": "2026-05-23T13:02:12.125328+00:00",
+      "symbol": "TONUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 1.7645,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 1.7793,
+          "change_pct": 0.84,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 1.8278,
+          "change_pct": 3.59,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-130212-LINKUSDT",
+      "timestamp": "2026-05-23T13:02:12.133233+00:00",
+      "symbol": "LINKUSDT",
+      "action": "LONG",
+      "score": 78,
+      "confidence": 95,
+      "entry_price": 9.22,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 9.315,
+          "change_pct": 1.03,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 9.656,
+          "change_pct": 4.73,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-130212-PROVEUSDT",
+      "timestamp": "2026-05-23T13:02:12.141220+00:00",
+      "symbol": "PROVEUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 0.2716,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2778,
+          "change_pct": 2.28,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.2797,
+          "change_pct": 2.98,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-130415-DOGEUSDT",
+      "timestamp": "2026-05-23T13:04:15.686597+00:00",
+      "symbol": "DOGEUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 0.09945,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.1013,
+          "change_pct": 1.86,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.10389,
+          "change_pct": 4.46,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-130415-1000PEPEUSDT",
+      "timestamp": "2026-05-23T13:04:15.695462+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 0.0034911,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0035725,
+          "change_pct": 2.33,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.0036875,
+          "change_pct": 5.63,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-130551-LINKUSDT",
+      "timestamp": "2026-05-23T13:05:51.918507+00:00",
+      "symbol": "LINKUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 9.30502,
+      "reasoning": "当前处于二浪回调区，且4小时多重底已突破颈线，底部确认且有共振信号。",
+      "key_factors": [
+        "二浪回调区",
+        "底部确认"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 9.317,
+          "change_pct": 0.13,
+          "hit": false,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 9.657,
+          "change_pct": 3.78,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-131133-INJUSDT",
+      "timestamp": "2026-05-23T13:11:33.423625+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 4.871900000000001,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时多重底已突破颈线，底部确认+波浪共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.322,
+          "change_pct": 9.24,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 5.44,
+          "change_pct": 11.66,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-132008-PROVEUSDT",
+      "timestamp": "2026-05-23T13:20:08.020970+00:00",
+      "symbol": "PROVEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.267594,
+      "reasoning": "价格在SMC入场区，且4h多重底形成中，等待颈线突破。",
+      "key_factors": [
+        "SMC入场区",
+        "4h多重底形成"
+      ],
+      "wave_signal": "",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2778,
+          "change_pct": 3.81,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.2798,
+          "change_pct": 4.56,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-132008-TAOUSDT",
+      "timestamp": "2026-05-23T13:20:08.538499+00:00",
+      "symbol": "TAOUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 260.2707,
+      "reasoning": "价格在SMC入场区间内，且4小时多重底形成中，等待颈线突破。",
+      "key_factors": [
+        "SMC入场区间",
+        "4小时多重底形成"
+      ],
+      "wave_signal": "",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 269.35,
+          "change_pct": 3.49,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 287.4,
+          "change_pct": 10.42,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-132507-HYPEUSDT",
+      "timestamp": "2026-05-23T13:25:07.820547+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.32658,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 57.625,
+          "change_pct": 2.31,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 58.716,
+          "change_pct": 4.24,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-132508-INJUSDT",
+      "timestamp": "2026-05-23T13:25:08.779777+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 4.871900000000001,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.322,
+          "change_pct": 9.24,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 5.44,
+          "change_pct": 11.66,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-132949-TAOUSDT",
+      "timestamp": "2026-05-23T13:29:49.300178+00:00",
+      "symbol": "TAOUSDT",
+      "action": "LONG",
+      "score": 100,
+      "confidence": 95,
+      "entry_price": 262.56,
+      "reasoning": "监控池5m放量突破",
+      "key_factors": [],
+      "wave_signal": "",
+      "entry_type": "watch_pool_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 269.45,
+          "change_pct": 2.62,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 287.4,
+          "change_pct": 9.46,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-133125-HYPEUSDT",
+      "timestamp": "2026-05-23T13:31:25.351620+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.32658,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时多重底已突破颈线，底部确认+波浪共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 57.614,
+          "change_pct": 2.29,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 58.716,
+          "change_pct": 4.24,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-134843-GENIUSUSDT",
+      "timestamp": "2026-05-23T13:48:43.806997+00:00",
+      "symbol": "GENIUSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.582465,
+      "reasoning": "价格处于4小时双底突破后的一浪冲高中，且HMA信号刚出B信号，显示底部确认和波浪共振。",
+      "key_factors": [
+        "4小时双底突破",
+        "HMA信号刚出B信号"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.6675,
+          "change_pct": 14.6,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 0.6576,
+          "change_pct": 12.9,
+          "hit": true,
+          "checked_at": "2026-05-23T22:11:27.474671+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-134844-TRUMPUSDT",
+      "timestamp": "2026-05-23T13:48:44.648164+00:00",
+      "symbol": "TRUMPUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 1.9982,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时头肩底已突破颈线，显示底部确认和波浪共振。",
+      "key_factors": [
+        "二浪回调61.8% Fibonacci",
+        "4小时头肩底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 2.062,
+          "change_pct": 3.19,
+          "hit": true,
+          "checked_at": "2026-05-23T17:55:57.146703+00:00"
+        },
+        "8h": {
+          "price": 2.106,
+          "change_pct": 5.39,
+          "hit": true,
+          "checked_at": "2026-05-23T22:11:27.474671+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-140614-VIRTUALUSDT",
+      "timestamp": "2026-05-23T14:06:14.918547+00:00",
+      "symbol": "VIRTUALUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.698443,
+      "reasoning": "价格处于SMC入场区，且4h多重底形成中，等待颈线突破。",
+      "key_factors": [
+        "SMC入场区",
+        "4h多重底形成"
+      ],
+      "wave_signal": "",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.7475,
+          "change_pct": 7.02,
+          "hit": true,
+          "checked_at": "2026-05-23T18:31:35.538560+00:00"
+        },
+        "8h": {
+          "price": 0.7635,
+          "change_pct": 9.31,
+          "hit": true,
+          "checked_at": "2026-05-23T22:11:27.474671+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-142340-FARTCOINUSDT",
+      "timestamp": "2026-05-23T14:23:40.367229+00:00",
+      "symbol": "FARTCOINUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.170671,
+      "reasoning": "4小时多重底已突破颈线，二浪回调过深但形态可能成功，底部确认且波浪共振。",
+      "key_factors": [
+        "4小时多重底突破",
+        "底部确认"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.1848,
+          "change_pct": 8.28,
+          "hit": true,
+          "checked_at": "2026-05-23T18:31:35.538560+00:00"
+        },
+        "8h": {
+          "price": 0.1832,
+          "change_pct": 7.34,
+          "hit": true,
+          "checked_at": "2026-05-23T22:48:38.728607+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-144741-GENIUSUSDT",
+      "timestamp": "2026-05-23T14:47:41.897008+00:00",
+      "symbol": "GENIUSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.582465,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时双底已突破颈线，底部确认且波浪共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.6692,
+          "change_pct": 14.89,
+          "hit": true,
+          "checked_at": "2026-05-23T19:17:06.688883+00:00"
+        },
+        "8h": {
+          "price": 0.6541,
+          "change_pct": 12.3,
+          "hit": true,
+          "checked_at": "2026-05-23T22:48:38.728607+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-144742-HYPEUSDT",
+      "timestamp": "2026-05-23T14:47:42.399808+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.32658,
+      "reasoning": "价格在SMC入场区且近期有回调企稳迹象，大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 58.455,
+          "change_pct": 3.78,
+          "hit": true,
+          "checked_at": "2026-05-23T19:17:06.688883+00:00"
+        },
+        "8h": {
+          "price": 57.849,
+          "change_pct": 2.7,
+          "hit": true,
+          "checked_at": "2026-05-23T22:48:38.728607+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-145939-HYPEUSDT",
+      "timestamp": "2026-05-23T14:59:39.733354+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.32658,
+      "reasoning": "价格处于温和放量状态，SMC入场区在回调中，StochRSI显示超卖区金叉，大周期趋势向上。",
+      "key_factors": [
+        "温和放量",
+        "SMC入场区回调",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 58.455,
+          "change_pct": 3.78,
+          "hit": true,
+          "checked_at": "2026-05-23T19:17:06.688883+00:00"
+        },
+        "8h": {
+          "price": 58.177,
+          "change_pct": 3.29,
+          "hit": true,
+          "checked_at": "2026-05-23T23:26:44.739276+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-150536-RKLBUSDT",
+      "timestamp": "2026-05-23T15:05:36.346115+00:00",
+      "symbol": "RKLBUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 137.1239,
+      "reasoning": "价格处于SMC入场区且近期有回调企稳迹象，大周期趋势向上，小周期开始共振，StochRSI金叉向上。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期趋势向上",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 136.87,
+          "change_pct": -0.19,
+          "hit": false,
+          "checked_at": "2026-05-23T19:17:06.688883+00:00"
+        },
+        "8h": {
+          "price": 140.65,
+          "change_pct": 2.57,
+          "hit": true,
+          "checked_at": "2026-05-23T23:26:44.739276+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-151123-RKLBUSDT",
+      "timestamp": "2026-05-23T15:11:23.828835+00:00",
+      "symbol": "RKLBUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 137.1239,
+      "reasoning": "价格处于SMC入场区，且近期有回调企稳迹象，大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 136.87,
+          "change_pct": -0.19,
+          "hit": false,
+          "checked_at": "2026-05-23T19:17:06.688883+00:00"
+        },
+        "8h": {
+          "price": 140.65,
+          "change_pct": 2.57,
+          "hit": true,
+          "checked_at": "2026-05-23T23:26:44.739276+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-151726-PROVEUSDT",
+      "timestamp": "2026-05-23T15:17:26.507343+00:00",
+      "symbol": "PROVEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.267594,
+      "reasoning": "价格在SMC入场区间内，4小时多重底形成中，等待颈线突破，StochRSI超卖金叉向上。",
+      "key_factors": [
+        "SMC入场区",
+        "4小时多重底",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2778,
+          "change_pct": 3.81,
+          "hit": true,
+          "checked_at": "2026-05-23T19:52:12.095598+00:00"
+        },
+        "8h": {
+          "price": 0.28,
+          "change_pct": 4.64,
+          "hit": true,
+          "checked_at": "2026-05-23T23:26:44.739276+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-155727-TRUMPUSDT",
+      "timestamp": "2026-05-23T15:57:27.544552+00:00",
+      "symbol": "TRUMPUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 1.9982,
+      "reasoning": "当前处于二浪回调到位，且波浪分析显示三浪启动，价格在SMC入场区间内。",
+      "key_factors": [
+        "二浪回调到位",
+        "三浪启动"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 2.072,
+          "change_pct": 3.69,
+          "hit": true,
+          "checked_at": "2026-05-23T20:00:02.739614+00:00"
+        },
+        "8h": {
+          "price": 2.099,
+          "change_pct": 5.04,
+          "hit": true,
+          "checked_at": "2026-05-24T00:00:02.342071+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-171841-GENIUSUSDT",
+      "timestamp": "2026-05-23T17:18:41.768652+00:00",
+      "symbol": "GENIUSUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.582465,
+      "reasoning": "价格处于SMC入场区，且波浪分析显示处于二浪回调区，4h双底已突破颈线，StochRSI显示超卖区金叉向上。",
+      "key_factors": [
+        "SMC入场区",
+        "波浪二浪回调",
+        "4h双底突破颈线",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.6665,
+          "change_pct": 14.43,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        },
+        "8h": {
+          "price": 0.6716,
+          "change_pct": 15.3,
+          "hit": true,
+          "checked_at": "2026-05-24T01:21:22.945178+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-172203-MTLUSDT",
+      "timestamp": "2026-05-23T17:22:03.293562+00:00",
+      "symbol": "MTLUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.29612499999999997,
+      "reasoning": "价格处于SMC入场区，且4h多重底形成中，等待颈线突破。",
+      "key_factors": [
+        "SMC入场区",
+        "4h多重底形成"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.3164,
+          "change_pct": 6.85,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        },
+        "8h": {
+          "price": 0.3111,
+          "change_pct": 5.06,
+          "hit": true,
+          "checked_at": "2026-05-24T01:56:18.645910+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-173234-HYPEUSDT",
+      "timestamp": "2026-05-23T17:32:34.945245+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.11028,
+      "reasoning": "价格处于SMC入场区间内，且波浪分析显示处于二浪浅回调，多重底已突破颈线，趋势向上。",
+      "key_factors": [
+        "SMC入场区",
+        "波浪分析二浪回调",
+        "多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 58.716,
+          "change_pct": 4.64,
+          "hit": true,
+          "checked_at": "2026-05-23T21:35:43.632055+00:00"
+        },
+        "8h": {
+          "price": 60.033,
+          "change_pct": 6.99,
+          "hit": true,
+          "checked_at": "2026-05-24T01:56:18.645910+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-175710-HYPEUSDT",
+      "timestamp": "2026-05-23T17:57:10.898894+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 56.11028,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 58.199,
+          "change_pct": 3.72,
+          "hit": true,
+          "checked_at": "2026-05-23T22:11:27.474671+00:00"
+        },
+        "8h": {
+          "price": 59.942,
+          "change_pct": 6.83,
+          "hit": true,
+          "checked_at": "2026-05-24T02:31:18.557640+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-180156-TAOUSDT",
+      "timestamp": "2026-05-23T18:01:56.651575+00:00",
+      "symbol": "TAOUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 260.2707,
+      "reasoning": "4小时多重底形成，颈线突破预期，StochRSI超卖金叉，回调至SMC入场区。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 283.2,
+          "change_pct": 8.81,
+          "hit": true,
+          "checked_at": "2026-05-23T22:11:27.474671+00:00"
+        },
+        "8h": {
+          "price": 278.81,
+          "change_pct": 7.12,
+          "hit": true,
+          "checked_at": "2026-05-24T02:31:18.557640+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-181402-1000PEPEUSDT",
+      "timestamp": "2026-05-23T18:14:02.211638+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.003565345,
+      "reasoning": "价格形成头肩底，StochRSI 15m 超卖金叉，吸筹信号强。",
+      "key_factors": [
+        "头肩底形成",
+        "StochRSI 15m 超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0036367,
+          "change_pct": 2.0,
+          "hit": true,
+          "checked_at": "2026-05-23T22:48:38.728607+00:00"
+        },
+        "8h": {
+          "price": 0.0036271,
+          "change_pct": 1.73,
+          "hit": true,
+          "checked_at": "2026-05-24T02:31:18.557640+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-181403-ADAUSDT",
+      "timestamp": "2026-05-23T18:14:03.221806+00:00",
+      "symbol": "ADAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.242771,
+      "reasoning": "价格在SMC入场区且StochRSI显示超卖金叉，4h趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2466,
+          "change_pct": 1.58,
+          "hit": true,
+          "checked_at": "2026-05-23T22:48:38.728607+00:00"
+        },
+        "8h": {
+          "price": 0.2451,
+          "change_pct": 0.96,
+          "hit": true,
+          "checked_at": "2026-05-24T02:31:18.557640+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-182556-TRUMPUSDT",
+      "timestamp": "2026-05-23T18:25:56.397634+00:00",
+      "symbol": "TRUMPUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 1.9982,
+      "reasoning": "4小时头肩底已突破颈线，二浪浅回调，价格接近Fib 50/61.8%入场区。",
+      "key_factors": [
+        "4h头肩底突破",
+        "二浪回调"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 2.104,
+          "change_pct": 5.29,
+          "hit": true,
+          "checked_at": "2026-05-23T22:48:38.728607+00:00"
+        },
+        "8h": {
+          "price": 2.098,
+          "change_pct": 4.99,
+          "hit": true,
+          "checked_at": "2026-05-24T02:31:18.557640+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-185958-INJUSDT",
+      "timestamp": "2026-05-23T18:59:58.843188+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 4.871900000000001,
+      "reasoning": "当前处于二浪回调区，且价格在SMC入场区间内，同时4小时趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.279,
+          "change_pct": 8.36,
+          "hit": true,
+          "checked_at": "2026-05-23T23:26:44.739276+00:00"
+        },
+        "8h": {
+          "price": 5.259,
+          "change_pct": 7.95,
+          "hit": true,
+          "checked_at": "2026-05-24T03:07:35.205203+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-193423-HYPEUSDT",
+      "timestamp": "2026-05-23T19:34:23.746636+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.11028,
+      "reasoning": "当前处于二浪浅回调，价格在SMC入场区间内，且4小时多重底已突破颈线，底部确认且波浪共振。",
+      "key_factors": [
+        "二浪回调",
+        "SMC入场区",
+        "4小时多重底突破"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 58.724,
+          "change_pct": 4.66,
+          "hit": true,
+          "checked_at": "2026-05-24T00:00:02.342071+00:00"
+        },
+        "8h": {
+          "price": 60.203,
+          "change_pct": 7.29,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-194017-PENGUUSDT",
+      "timestamp": "2026-05-23T19:40:17.344824+00:00",
+      "symbol": "PENGUUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0086005,
+      "reasoning": "价格温和放量，StochRSI 15m 超卖金叉，市场情绪恐惧，但价格处于入场区间内。",
+      "key_factors": [
+        "StochRSI 15m 超卖金叉",
+        "温和放量"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.008983,
+          "change_pct": 4.45,
+          "hit": true,
+          "checked_at": "2026-05-24T00:00:02.342071+00:00"
+        },
+        "8h": {
+          "price": 0.009029,
+          "change_pct": 4.98,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-194618-GENIUSUSDT",
+      "timestamp": "2026-05-23T19:46:18.700264+00:00",
+      "symbol": "GENIUSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.582465,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4h双底已突破颈线，底部确认且波浪共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.6604,
+          "change_pct": 13.38,
+          "hit": true,
+          "checked_at": "2026-05-24T00:00:02.342071+00:00"
+        },
+        "8h": {
+          "price": 0.6591,
+          "change_pct": 13.16,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-195814-ENAUSDT",
+      "timestamp": "2026-05-23T19:58:14.811342+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0964698,
+      "reasoning": "价格止跌反弹，StochRSI 15m 超卖金叉，吸筹信号明显。",
+      "key_factors": [
+        "StochRSI 15m 超卖金叉",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10209,
+          "change_pct": 5.83,
+          "hit": true,
+          "checked_at": "2026-05-24T00:00:02.342071+00:00"
+        },
+        "8h": {
+          "price": 0.10071,
+          "change_pct": 4.4,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-203320-HYPEUSDT",
+      "timestamp": "2026-05-23T20:33:20.515184+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.11028,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 59.431,
+          "change_pct": 5.92,
+          "hit": true,
+          "checked_at": "2026-05-24T00:44:49.108750+00:00"
+        },
+        "8h": {
+          "price": 59.828,
+          "change_pct": 6.63,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-203321-FILUSDT",
+      "timestamp": "2026-05-23T20:33:21.909895+00:00",
+      "symbol": "FILUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.93627,
+      "reasoning": "价格处于SMC入场区，且波浪分析显示1h头肩底三浪启动，StochRSI超卖金叉向上，成交量温和放量。",
+      "key_factors": [
+        "SMC入场区",
+        "波浪形态",
+        "StochRSI金叉",
+        "温和放量"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.978,
+          "change_pct": 4.46,
+          "hit": true,
+          "checked_at": "2026-05-24T00:44:49.108750+00:00"
+        },
+        "8h": {
+          "price": 0.971,
+          "change_pct": 3.71,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-203902-FILUSDT",
+      "timestamp": "2026-05-23T20:39:02.556951+00:00",
+      "symbol": "FILUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.93627,
+      "reasoning": "价格在SMC入场区且近期有回调企稳迹象，大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.978,
+          "change_pct": 4.46,
+          "hit": true,
+          "checked_at": "2026-05-24T00:44:49.108750+00:00"
+        },
+        "8h": {
+          "price": 0.971,
+          "change_pct": 3.71,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-212418-FIDAUSDT",
+      "timestamp": "2026-05-23T21:24:18.374334+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.0330424,
+      "reasoning": "当前处于二浪回调到位，且洗盘结束，强买入信号显现。",
+      "key_factors": [
+        "二浪回调到位",
+        "洗盘结束"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.03348,
+          "change_pct": 1.32,
+          "hit": true,
+          "checked_at": "2026-05-24T01:56:18.645910+00:00"
+        },
+        "8h": {
+          "price": 0.03267,
+          "change_pct": -1.13,
+          "hit": false,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-213541-HYPEUSDT",
+      "timestamp": "2026-05-23T21:35:41.417632+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.11028,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时多重底已突破颈线，底部确认+波浪共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 60.033,
+          "change_pct": 6.99,
+          "hit": true,
+          "checked_at": "2026-05-24T01:56:18.645910+00:00"
+        },
+        "8h": {
+          "price": 61.431,
+          "change_pct": 9.48,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-213542-INJUSDT",
+      "timestamp": "2026-05-23T21:35:42.413880+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 4.871900000000001,
+      "reasoning": "价格处于二浪回调区，且4小时多重底已突破颈线，底部确认且波浪共振。",
+      "key_factors": [
+        "二浪回调区",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.271,
+          "change_pct": 8.19,
+          "hit": true,
+          "checked_at": "2026-05-24T01:56:18.645910+00:00"
+        },
+        "8h": {
+          "price": 5.231,
+          "change_pct": 7.37,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-220517-SPCXUSDT",
+      "timestamp": "2026-05-23T22:05:17.406418+00:00",
+      "symbol": "SPCXUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 201.9418,
+      "reasoning": "当前价格处于SMC入场区，且StochRSI显示超卖金叉，趋势向上。",
+      "key_factors": [
+        "SMC入场区",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 204.88,
+          "change_pct": 1.45,
+          "hit": true,
+          "checked_at": "2026-05-24T02:31:18.557640+00:00"
+        },
+        "8h": {
+          "price": 209.12,
+          "change_pct": 3.55,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-221749-ADAUSDT",
+      "timestamp": "2026-05-23T22:17:49.102061+00:00",
+      "symbol": "ADAUSDT",
+      "action": "LONG",
+      "score": 85,
+      "confidence": 85,
+      "entry_price": 0.242771,
+      "reasoning": "价格在SMC入场区间内，1h多重底形成中，StochRSI 15m超卖金叉，启动前信号强烈。",
+      "key_factors": [
+        "SMC入场区间",
+        "1h多重底",
+        "StochRSI 15m超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.245,
+          "change_pct": 0.92,
+          "hit": true,
+          "checked_at": "2026-05-24T02:31:18.557640+00:00"
+        },
+        "8h": {
+          "price": 0.2453,
+          "change_pct": 1.04,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-221749-SPCXUSDT",
+      "timestamp": "2026-05-23T22:17:49.660434+00:00",
+      "symbol": "SPCXUSDT",
+      "action": "LONG",
+      "score": 85,
+      "confidence": 85,
+      "entry_price": 201.9418,
+      "reasoning": "1h双底三浪启动，底部确认，波浪共振，SMC入场区等待回调。",
+      "key_factors": [
+        "1h双底三浪启动",
+        "底部确认"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 204.88,
+          "change_pct": 1.45,
+          "hit": true,
+          "checked_at": "2026-05-24T02:31:18.557640+00:00"
+        },
+        "8h": {
+          "price": 209.06,
+          "change_pct": 3.52,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-222351-PENGUUSDT",
+      "timestamp": "2026-05-23T22:23:51.365415+00:00",
+      "symbol": "PENGUUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0086005,
+      "reasoning": "价格在SMC入场区间内，且4小时多重底形成中，等待颈线突破。",
+      "key_factors": [
+        "SMC入场区",
+        "4小时多重底"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.009054,
+          "change_pct": 5.27,
+          "hit": true,
+          "checked_at": "2026-05-24T02:31:18.557640+00:00"
+        },
+        "8h": {
+          "price": 0.009092,
+          "change_pct": 5.71,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-222351-SPCXUSDT",
+      "timestamp": "2026-05-23T22:23:51.841315+00:00",
+      "symbol": "SPCXUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 201.9418,
+      "reasoning": "价格处于SMC入场区，且近期有回调企稳迹象，大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 204.88,
+          "change_pct": 1.45,
+          "hit": true,
+          "checked_at": "2026-05-24T02:31:18.557640+00:00"
+        },
+        "8h": {
+          "price": 209.12,
+          "change_pct": 3.55,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-224218-INJUSDT",
+      "timestamp": "2026-05-23T22:42:18.517000+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 4.871900000000001,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时趋势向上，小周期开始共振，StochRSI金叉向上。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间",
+        "4小时趋势向上",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.255,
+          "change_pct": 7.86,
+          "hit": true,
+          "checked_at": "2026-05-24T03:07:35.205203+00:00"
+        },
+        "8h": {
+          "price": 5.232,
+          "change_pct": 7.39,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-224836-ENAUSDT",
+      "timestamp": "2026-05-23T22:48:36.626637+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0964698,
+      "reasoning": "价格止跌反弹，StochRSI 15m 超卖金叉，吸筹信号强烈。",
+      "key_factors": [
+        "StochRSI 15m 超卖金叉",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10129,
+          "change_pct": 5.0,
+          "hit": true,
+          "checked_at": "2026-05-24T03:07:35.205203+00:00"
+        },
+        "8h": {
+          "price": 0.10102,
+          "change_pct": 4.72,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-224837-FILUSDT",
+      "timestamp": "2026-05-23T22:48:37.586472+00:00",
+      "symbol": "FILUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.93627,
+      "reasoning": "价格在SMC入场区，StochRSI 15m超卖金叉，近期有回调企稳迹象。",
+      "key_factors": [
+        "SMC入场区",
+        "StochRSI 15m超卖金叉",
+        "回调企稳"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.977,
+          "change_pct": 4.35,
+          "hit": true,
+          "checked_at": "2026-05-24T03:07:35.205203+00:00"
+        },
+        "8h": {
+          "price": 0.971,
+          "change_pct": 3.71,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-225452-HYPEUSDT",
+      "timestamp": "2026-05-23T22:54:52.907917+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.11028,
+      "reasoning": "价格处于SMC入场区间内，且波浪分析显示处于二浪回调区，4小时趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "波浪分析二浪回调",
+        "4小时趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 60.194,
+          "change_pct": 7.28,
+          "hit": true,
+          "checked_at": "2026-05-24T03:07:35.205203+00:00"
+        },
+        "8h": {
+          "price": 61.417,
+          "change_pct": 9.46,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-225453-FIDAUSDT",
+      "timestamp": "2026-05-23T22:54:53.518987+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 0.0330424,
+      "reasoning": "当前处于二浪回调到位，且价格在SMC入场区，同时4h趋势向上，StochRSI从超卖区金叉向上，成交量温和。",
+      "key_factors": [
+        "二浪回调到位",
+        "4h趋势向上",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0324,
+          "change_pct": -1.94,
+          "hit": false,
+          "checked_at": "2026-05-24T03:07:35.205203+00:00"
+        },
+        "8h": {
+          "price": 0.03267,
+          "change_pct": -1.13,
+          "hit": false,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-225454-ENAUSDT",
+      "timestamp": "2026-05-23T22:54:54.900952+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0964698,
+      "reasoning": "价格在SMC入场区，且近期有回调企稳迹象，大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10129,
+          "change_pct": 5.0,
+          "hit": true,
+          "checked_at": "2026-05-24T03:07:35.205203+00:00"
+        },
+        "8h": {
+          "price": 0.10102,
+          "change_pct": 4.72,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-225455-GENIUSUSDT",
+      "timestamp": "2026-05-23T22:54:55.334106+00:00",
+      "symbol": "GENIUSUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.582465,
+      "reasoning": "价格处于SMC入场区，4h双底已突破颈线，二浪浅回调后等待Fib 50/61.8%入场。",
+      "key_factors": [
+        "SMC入场区",
+        "4h双底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.6598,
+          "change_pct": 13.28,
+          "hit": true,
+          "checked_at": "2026-05-24T03:07:35.205203+00:00"
+        },
+        "8h": {
+          "price": 0.7072,
+          "change_pct": 21.42,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-230110-HYPEUSDT",
+      "timestamp": "2026-05-23T23:01:10.225733+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 56.11028,
+      "reasoning": "价格处于SMC入场区间内，且波浪分析显示处于二浪回调区，多重底已突破颈线，趋势向上。",
+      "key_factors": [
+        "SMC入场区间",
+        "波浪分析二浪回调",
+        "多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 60.193,
+          "change_pct": 7.28,
+          "hit": true,
+          "checked_at": "2026-05-24T03:07:35.205203+00:00"
+        },
+        "8h": {
+          "price": 61.431,
+          "change_pct": 9.48,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-230751-1000PEPEUSDT",
+      "timestamp": "2026-05-23T23:07:51.879665+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.003565345,
+      "reasoning": "价格在SMC入场区且近期有回调企稳迹象，大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0036204,
+          "change_pct": 1.54,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.0036158,
+          "change_pct": 1.42,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-230752-INJUSDT",
+      "timestamp": "2026-05-23T23:07:52.741020+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 4.871900000000001,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时多重底已突破颈线，底部确认且有波浪共振信号。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间",
+        "多重底突破"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.195,
+          "change_pct": 6.63,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 5.231,
+          "change_pct": 7.37,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-232035-1000PEPEUSDT",
+      "timestamp": "2026-05-23T23:20:35.646578+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.003565345,
+      "reasoning": "价格处于回调企稳迹象，StochRSI金叉向上，大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "回调企稳",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0036204,
+          "change_pct": 1.54,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.0036159,
+          "change_pct": 1.42,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-233320-INJUSDT",
+      "timestamp": "2026-05-23T23:33:20.734114+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 4.871900000000001,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.195,
+          "change_pct": 6.63,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 5.189,
+          "change_pct": 6.51,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-233321-ADAUSDT",
+      "timestamp": "2026-05-23T23:33:21.551743+00:00",
+      "symbol": "ADAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.242771,
+      "reasoning": "价格形成1h双底，且StochRSI超卖金叉，显示短期反弹信号。",
+      "key_factors": [
+        "1h双底形成",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2455,
+          "change_pct": 1.12,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.2452,
+          "change_pct": 1.0,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-233322-PENGUUSDT",
+      "timestamp": "2026-05-23T23:33:22.029766+00:00",
+      "symbol": "PENGUUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.0086005,
+      "reasoning": "价格处于SMC入场区，且4小时多重底形成中，等待颈线突破。",
+      "key_factors": [
+        "SMC入场区",
+        "4小时多重底"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.009029,
+          "change_pct": 4.98,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.009147,
+          "change_pct": 6.35,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-233952-HYPEUSDT",
+      "timestamp": "2026-05-23T23:39:52.483574+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 56.11028,
+      "reasoning": "价格处于SMC入场区间内，且波浪分析显示处于二浪回调区，4小时趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "波浪二浪回调",
+        "4小时趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 60.198,
+          "change_pct": 7.29,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 61.973,
+          "change_pct": 10.45,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-233954-FILUSDT",
+      "timestamp": "2026-05-23T23:39:54.703990+00:00",
+      "symbol": "FILUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.93627,
+      "reasoning": "价格在SMC入场区，且近期有回调企稳迹象，大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.973,
+          "change_pct": 3.92,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.974,
+          "change_pct": 4.03,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-234621-FIDAUSDT",
+      "timestamp": "2026-05-23T23:46:21.871631+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0330424,
+      "reasoning": "当前处于二浪回调到位，且洗盘结束，底部形态确认，适合做多入场。",
+      "key_factors": [
+        "二浪回调到位",
+        "底部形态确认"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.03272,
+          "change_pct": -0.98,
+          "hit": false,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.03397,
+          "change_pct": 2.81,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-234622-ENAUSDT",
+      "timestamp": "2026-05-23T23:46:22.787764+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 70,
+      "confidence": 70,
+      "entry_price": 0.0964698,
+      "reasoning": "4小时多重底形成中，吸筹信号强，StochRSI超卖区金叉，价格温和放量。",
+      "key_factors": [
+        "4小时多重底形成",
+        "吸筹信号强",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10071,
+          "change_pct": 4.4,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.10113,
+          "change_pct": 4.83,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-234623-GENIUSUSDT",
+      "timestamp": "2026-05-23T23:46:23.766256+00:00",
+      "symbol": "GENIUSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.582465,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时双底已突破颈线，显示底部确认和波浪共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.6593,
+          "change_pct": 13.19,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.7191,
+          "change_pct": 23.46,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-235257-HYPEUSDT",
+      "timestamp": "2026-05-23T23:52:57.512535+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 56.11028,
+      "reasoning": "价格处于SMC入场区间内，且波浪分析显示处于二浪浅回调，4小时多重底已突破颈线，底部确认且波浪共振。",
+      "key_factors": [
+        "SMC入场区间",
+        "波浪分析二浪回调",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 60.198,
+          "change_pct": 7.29,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 61.998,
+          "change_pct": 10.49,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-235258-ADAUSDT",
+      "timestamp": "2026-05-23T23:52:58.798576+00:00",
+      "symbol": "ADAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.242771,
+      "reasoning": "1h双底形成中，启动前信号强烈，价格接近入场区。",
+      "key_factors": [
+        "1h双底形成",
+        "启动前信号强烈"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2455,
+          "change_pct": 1.12,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.2452,
+          "change_pct": 1.0,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-235259-ENAUSDT",
+      "timestamp": "2026-05-23T23:52:59.177033+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 75,
+      "confidence": 75,
+      "entry_price": 0.0964698,
+      "reasoning": "4小时多重底形成中，吸筹信号出现，价格止跌反弹。",
+      "key_factors": [
+        "4小时多重底形成",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10071,
+          "change_pct": 4.4,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.10109,
+          "change_pct": 4.79,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-235259-TONUSDT",
+      "timestamp": "2026-05-23T23:52:59.641896+00:00",
+      "symbol": "TONUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 1.7936420000000002,
+      "reasoning": "当前处于二浪回调到位，且波浪分析显示三浪启动，符合做多条件。",
+      "key_factors": [
+        "二浪回调到位",
+        "三浪启动"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 1.8047,
+          "change_pct": 0.62,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 1.775,
+          "change_pct": -1.04,
+          "hit": false,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-235259-LINKUSDT",
+      "timestamp": "2026-05-23T23:52:59.998067+00:00",
+      "symbol": "LINKUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 9.30502,
+      "reasoning": "价格处于SMC入场区间，且1h多重底形成中，显示潜在上涨趋势。",
+      "key_factors": [
+        "SMC入场区",
+        "1h多重底"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 9.542,
+          "change_pct": 2.55,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 9.556,
+          "change_pct": 2.7,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-235920-1000PEPEUSDT",
+      "timestamp": "2026-05-23T23:59:20.810514+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 70,
+      "confidence": 70,
+      "entry_price": 0.003565345,
+      "reasoning": "价格止跌反弹，StochRSI超卖区金叉向上，大周期趋势向上。",
+      "key_factors": [
+        "价格止跌反弹",
+        "StochRSI金叉向上"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0036235,
+          "change_pct": 1.63,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 0.0036167,
+          "change_pct": 1.44,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260523-235922-INJUSDT",
+      "timestamp": "2026-05-23T23:59:22.614636+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 4.871900000000001,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时多重底已突破颈线，底部确认且有波浪共振信号。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.195,
+          "change_pct": 6.63,
+          "hit": true,
+          "checked_at": "2026-05-24T04:00:01.920756+00:00"
+        },
+        "8h": {
+          "price": 5.189,
+          "change_pct": 6.51,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-000615-1000PEPEUSDT",
+      "timestamp": "2026-05-24T00:06:15.917510+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.003565345,
+      "reasoning": "4小时多重底形成中，等待颈线突破，StochRSI超卖区金叉，近期回调企稳。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI超卖区金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0036264,
+          "change_pct": 1.71,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 0.0036224,
+          "change_pct": 1.6,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-000617-INJUSDT",
+      "timestamp": "2026-05-24T00:06:17.069381+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 4.871900000000001,
+      "reasoning": "价格处于SMC入场区，且波浪分析显示处于二浪回调区，底部确认且波浪共振。",
+      "key_factors": [
+        "SMC入场区",
+        "二浪回调区"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.154,
+          "change_pct": 5.79,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 5.18,
+          "change_pct": 6.32,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-000617-ADAUSDT",
+      "timestamp": "2026-05-24T00:06:17.973392+00:00",
+      "symbol": "ADAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.242771,
+      "reasoning": "4小时多重底形成中，等待颈线突破，StochRSI超卖区金叉，吸筹和变盘前夜信号。",
+      "key_factors": [
+        "4h多重底形成",
+        "StochRSI超卖区金叉",
+        "吸筹和变盘前夜信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2456,
+          "change_pct": 1.17,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 0.2457,
+          "change_pct": 1.21,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-001302-FIDAUSDT",
+      "timestamp": "2026-05-24T00:13:02.021891+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 0.0330424,
+      "reasoning": "当前处于二浪回调到位，且波浪分析显示三浪启动，洗盘结束信号强烈。",
+      "key_factors": [
+        "二浪回调到位",
+        "三浪启动",
+        "洗盘结束"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.03286,
+          "change_pct": -0.55,
+          "hit": false,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 0.03433,
+          "change_pct": 3.9,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-001303-SPCXUSDT",
+      "timestamp": "2026-05-24T00:13:03.749395+00:00",
+      "symbol": "SPCXUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 201.9418,
+      "reasoning": "价格处于SMC入场区，且StochRSI显示超卖后金叉，小周期趋势向上。",
+      "key_factors": [
+        "SMC入场区",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 209.32,
+          "change_pct": 3.65,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 209.57,
+          "change_pct": 3.78,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-001304-ENAUSDT",
+      "timestamp": "2026-05-24T00:13:04.798619+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0964698,
+      "reasoning": "4小时多重底形成中，吸筹信号明显，价格温和放量，StochRSI超卖区金叉向上。",
+      "key_factors": [
+        "4小时多重底形成",
+        "吸筹信号",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10082,
+          "change_pct": 4.51,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 0.10093,
+          "change_pct": 4.62,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-001910-HYPEUSDT",
+      "timestamp": "2026-05-24T00:19:10.803087+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 56.11028,
+      "reasoning": "当前处于二浪浅回调，价格在SMC入场区间内，且4小时多重底已突破颈线，显示底部确认和波浪共振。",
+      "key_factors": [
+        "二浪浅回调",
+        "SMC入场区间内",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 59.828,
+          "change_pct": 6.63,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 62.704,
+          "change_pct": 11.75,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-002515-GENIUSUSDT",
+      "timestamp": "2026-05-24T00:25:15.532914+00:00",
+      "symbol": "GENIUSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.582465,
+      "reasoning": "当前处于二浪浅回调，价格在SMC入场区，且4小时双底已突破颈线，底部确认+波浪共振。",
+      "key_factors": [
+        "二浪浅回调",
+        "价格在SMC入场区",
+        "4小时双底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.6591,
+          "change_pct": 13.16,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 0.7794,
+          "change_pct": 33.81,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-003148-ENAUSDT",
+      "timestamp": "2026-05-24T00:31:48.820436+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0964698,
+      "reasoning": "4小时多重底形成中，等待颈线突破，StochRSI超卖区金叉向上，近期回调企稳。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI超卖区金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10079,
+          "change_pct": 4.48,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 0.10092,
+          "change_pct": 4.61,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-003149-LINKUSDT",
+      "timestamp": "2026-05-24T00:31:49.694794+00:00",
+      "symbol": "LINKUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 9.30502,
+      "reasoning": "当前处于4小时多重底形成中，且价格接近SMC入场区，有吸筹和变盘前夜的信号，适合做多入场。",
+      "key_factors": [
+        "4小时多重底形成",
+        "SMC入场区"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 9.545,
+          "change_pct": 2.58,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 9.568,
+          "change_pct": 2.83,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-003150-FILUSDT",
+      "timestamp": "2026-05-24T00:31:50.213909+00:00",
+      "symbol": "FILUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.93627,
+      "reasoning": "4小时多重底形成，等待颈线突破，StochRSI超卖区金叉，启动前信号强烈。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI超卖区金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.971,
+          "change_pct": 3.71,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 0.977,
+          "change_pct": 4.35,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-003826-1000PEPEUSDT",
+      "timestamp": "2026-05-24T00:38:26.054066+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.003565345,
+      "reasoning": "4小时多重底形成中，等待颈线突破，StochRSI超卖区金叉向上，近期回调企稳。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI超卖区金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0036274,
+          "change_pct": 1.74,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 0.0036224,
+          "change_pct": 1.6,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-003827-INJUSDT",
+      "timestamp": "2026-05-24T00:38:27.514314+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 4.871900000000001,
+      "reasoning": "价格处于SMC入场区，且波浪分析显示处于二浪回调区，多重底已突破颈线，底部确认+波浪共振。",
+      "key_factors": [
+        "SMC入场区",
+        "二浪回调区",
+        "多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.154,
+          "change_pct": 5.79,
+          "hit": true,
+          "checked_at": "2026-05-24T04:42:29.746829+00:00"
+        },
+        "8h": {
+          "price": 5.181,
+          "change_pct": 6.34,
+          "hit": true,
+          "checked_at": "2026-05-24T08:41:16.717235+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-004447-INJUSDT",
+      "timestamp": "2026-05-24T00:44:47.098318+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 4.871900000000001,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间",
+        "4小时趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.231,
+          "change_pct": 7.37,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 5.222,
+          "change_pct": 7.19,
+          "hit": true,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-004447-ADAUSDT",
+      "timestamp": "2026-05-24T00:44:47.576326+00:00",
+      "symbol": "ADAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.242771,
+      "reasoning": "4小时多重底形成中，等待颈线突破，StochRSI超卖区金叉向上，近期回调企稳。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI超卖区金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2453,
+          "change_pct": 1.04,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.2454,
+          "change_pct": 1.08,
+          "hit": true,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-004447-ENAUSDT",
+      "timestamp": "2026-05-24T00:44:47.943632+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0964698,
+      "reasoning": "4小时多重底形成中，吸筹信号强烈，价格回调至入场区。",
+      "key_factors": [
+        "4小时多重底形成",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10102,
+          "change_pct": 4.72,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.10084,
+          "change_pct": 4.53,
+          "hit": true,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-005106-FIDAUSDT",
+      "timestamp": "2026-05-24T00:51:06.016892+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 0.0330424,
+      "reasoning": "当前处于二浪回调到位，且出现强买入信号，底部形态确认，适合做多入场。",
+      "key_factors": [
+        "二浪回调到位",
+        "强买入信号"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.03267,
+          "change_pct": -1.13,
+          "hit": false,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.03593,
+          "change_pct": 8.74,
+          "hit": true,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-005107-ENAUSDT",
+      "timestamp": "2026-05-24T00:51:07.424648+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0964698,
+      "reasoning": "4小时多重底形成中，吸筹信号强烈，StochRSI超卖区金叉，价格回调至入场区。",
+      "key_factors": [
+        "4小时多重底形成",
+        "吸筹信号",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10102,
+          "change_pct": 4.72,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.10084,
+          "change_pct": 4.53,
+          "hit": true,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-005739-FILUSDT",
+      "timestamp": "2026-05-24T00:57:39.772520+00:00",
+      "symbol": "FILUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.93627,
+      "reasoning": "价格处于回调区，4小时多重底形成，且StochRSI显示超卖金叉，市场情绪恐惧，但启动前信号强烈。",
+      "key_factors": [
+        "回调区",
+        "多重底",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.971,
+          "change_pct": 3.71,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.974,
+          "change_pct": 4.03,
+          "hit": true,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-014446-BSBUSDT",
+      "timestamp": "2026-05-24T01:44:46.934968+00:00",
+      "symbol": "BSBUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 1.08562,
+      "reasoning": "价格处于二浪回调区，且4小时双底已突破颈线，底部确认，波浪共振。",
+      "key_factors": [
+        "二浪回调区",
+        "4小时双底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 1.26508,
+          "change_pct": 16.53,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 1.26236,
+          "change_pct": 16.28,
+          "hit": true,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-014447-AVAXUSDT",
+      "timestamp": "2026-05-24T01:44:47.389359+00:00",
+      "symbol": "AVAXUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 9.097990000000001,
+      "reasoning": "价格处于SMC入场区间内，且1小时多重底形成，显示潜在上涨趋势。",
+      "key_factors": [
+        "SMC入场区间",
+        "1小时多重底"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 9.324,
+          "change_pct": 2.48,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 9.358,
+          "change_pct": 2.86,
+          "hit": true,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-020215-ENAUSDT",
+      "timestamp": "2026-05-24T02:02:15.001649+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0964698,
+      "reasoning": "当前处于吸筹阶段，价格在SMC入场区间内，4小时多重底形成中，等待颈线突破。",
+      "key_factors": [
+        "吸筹阶段",
+        "SMC入场区",
+        "4小时多重底"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10102,
+          "change_pct": 4.72,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.10089,
+          "change_pct": 4.58,
+          "hit": true,
+          "checked_at": "2026-05-24T10:31:11.382449+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-022517-LTCUSDT",
+      "timestamp": "2026-05-24T02:25:17.385473+00:00",
+      "symbol": "LTCUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 52.942,
+      "reasoning": "价格处于SMC入场区，且4小时多重底形成中，等待颈线突破。",
+      "key_factors": [
+        "SMC入场区",
+        "4小时多重底"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 53.38,
+          "change_pct": 0.83,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 53.46,
+          "change_pct": 0.98,
+          "hit": true,
+          "checked_at": "2026-05-24T10:31:11.382449+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-023117-GMTUSDT",
+      "timestamp": "2026-05-24T02:31:17.269494+00:00",
+      "symbol": "GMTUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0117729,
+      "reasoning": "价格处于SMC入场区，且4小时顶底结构显示上涨趋势，1小时回调到位，吸筹信号明显。",
+      "key_factors": [
+        "SMC入场区",
+        "上涨趋势",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.01189,
+          "change_pct": 0.99,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.0119,
+          "change_pct": 1.08,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-023712-INJUSDT",
+      "timestamp": "2026-05-24T02:37:12.500080+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 4.871900000000001,
+      "reasoning": "当前处于二浪回调区，且价格在SMC入场区间内，同时大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "价格在SMC入场区间内"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.232,
+          "change_pct": 7.39,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 5.194,
+          "change_pct": 6.61,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-024300-GENIUSUSDT",
+      "timestamp": "2026-05-24T02:43:00.819472+00:00",
+      "symbol": "GENIUSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.582465,
+      "reasoning": "当前处于二浪浅回调，价格在SMC入场区间内，且4小时双底已突破颈线，底部确认+波浪共振。",
+      "key_factors": [
+        "二浪浅回调",
+        "价格在SMC入场区间内",
+        "4小时双底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.7074,
+          "change_pct": 21.45,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.7553,
+          "change_pct": 29.67,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-024901-INJUSDT",
+      "timestamp": "2026-05-24T02:49:01.717866+00:00",
+      "symbol": "INJUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 4.871900000000001,
+      "reasoning": "当前处于二浪回调区，价格在SMC入场区间内，且4小时多重底已突破颈线，底部确认且有波浪共振信号。",
+      "key_factors": [
+        "二浪回调区",
+        "SMC入场区间",
+        "多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 5.231,
+          "change_pct": 7.37,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 5.194,
+          "change_pct": 6.61,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-024903-ADAUSDT",
+      "timestamp": "2026-05-24T02:49:03.186827+00:00",
+      "symbol": "ADAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.242771,
+      "reasoning": "当前处于4小时多重底形成中，且StochRSI显示超卖金叉，适合做多入场。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.2452,
+          "change_pct": 1.0,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.2458,
+          "change_pct": 1.25,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-025525-FILUSDT",
+      "timestamp": "2026-05-24T02:55:25.392404+00:00",
+      "symbol": "FILUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.93627,
+      "reasoning": "4小时多重底形成中，颈线突破预期，StochRSI超卖金叉，吸筹信号强烈。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.972,
+          "change_pct": 3.82,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.969,
+          "change_pct": 3.5,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-025526-FIDAUSDT",
+      "timestamp": "2026-05-24T02:55:26.652655+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 0.0330424,
+      "reasoning": "处于二浪回调到位且价格在SMC入场区，StochRSI金叉向上，大周期趋势向上。",
+      "key_factors": [
+        "二浪回调到位",
+        "SMC入场区",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.03267,
+          "change_pct": -1.13,
+          "hit": false,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 0.03618,
+          "change_pct": 9.5,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-030128-DRAMUSDT",
+      "timestamp": "2026-05-24T03:01:28.892238+00:00",
+      "symbol": "DRAMUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 51.9429,
+      "reasoning": "价格在SMC入场区，且1h多重底形成，显示回调企稳迹象。",
+      "key_factors": [
+        "SMC入场区",
+        "1h多重底"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 55.02,
+          "change_pct": 5.92,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 55.86,
+          "change_pct": 7.54,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-030129-LINKUSDT",
+      "timestamp": "2026-05-24T03:01:29.387302+00:00",
+      "symbol": "LINKUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 9.30502,
+      "reasoning": "当前价格处于SMC入场区间内，且4小时多重底形成中，等待颈线突破。",
+      "key_factors": [
+        "SMC入场区",
+        "4小时多重底"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 9.549,
+          "change_pct": 2.62,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 9.603,
+          "change_pct": 3.2,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-030732-DRAMUSDT",
+      "timestamp": "2026-05-24T03:07:32.944155+00:00",
+      "symbol": "DRAMUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 51.9429,
+      "reasoning": "1h多重底形成中，StochRSI超卖金叉，价格接近入场区。",
+      "key_factors": [
+        "1h多重底形成",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 55.02,
+          "change_pct": 5.92,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 55.86,
+          "change_pct": 7.54,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-031337-AVAXUSDT",
+      "timestamp": "2026-05-24T03:13:37.906882+00:00",
+      "symbol": "AVAXUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 9.097990000000001,
+      "reasoning": "价格处于SMC入场区，且1h多重底形成中，显示潜在上涨趋势。",
+      "key_factors": [
+        "SMC入场区",
+        "1h多重底"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 9.324,
+          "change_pct": 2.48,
+          "hit": true,
+          "checked_at": "2026-05-24T07:22:49.634757+00:00"
+        },
+        "8h": {
+          "price": 9.343,
+          "change_pct": 2.69,
+          "hit": true,
+          "checked_at": "2026-05-24T11:44:01.331044+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-034549-1000PEPEUSDT",
+      "timestamp": "2026-05-24T03:45:49.784381+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.003565345,
+      "reasoning": "价格处于SMC入场区间，且4h顶底结构显示底部抬高，吸筹信号强烈。",
+      "key_factors": [
+        "SMC入场区",
+        "底部抬高"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0036167,
+          "change_pct": 1.44,
+          "hit": true,
+          "checked_at": "2026-05-24T08:00:03.352467+00:00"
+        },
+        "8h": {
+          "price": 0.0036282,
+          "change_pct": 1.76,
+          "hit": true,
+          "checked_at": "2026-05-24T12:00:05.486130+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-044225-BSBUSDT",
+      "timestamp": "2026-05-24T04:42:25.154731+00:00",
+      "symbol": "BSBUSDT",
+      "action": "LONG",
+      "score": 85,
+      "confidence": 85,
+      "entry_price": 1.2373,
+      "reasoning": "价格处于二浪回调区，且4小时双底已突破颈线，底部确认，波浪共振，洗盘结束信号明显。",
+      "key_factors": [
+        "二浪回调区",
+        "4小时双底突破颈线",
+        "底部确认"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 1.29386,
+          "change_pct": 4.57,
+          "hit": true,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-044227-HYPEUSDT",
+      "timestamp": "2026-05-24T04:42:27.221291+00:00",
+      "symbol": "HYPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 59.81,
+      "reasoning": "当前价格处于SMC入场区间内，且波浪分析显示处于二浪回调区，4小时多重底已突破颈线，底部确认且波浪共振。",
+      "key_factors": [
+        "SMC入场区",
+        "波浪分析二浪回调",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 63.377,
+          "change_pct": 5.96,
+          "hit": true,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-050636-ENAUSDT",
+      "timestamp": "2026-05-24T05:06:36.814647+00:00",
+      "symbol": "ENAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0964698,
+      "reasoning": "价格处于SMC入场区，且4h多重底未突破颈线，1h回调到位，吸筹信号明显。",
+      "key_factors": [
+        "SMC入场区",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.10083,
+          "change_pct": 4.52,
+          "hit": true,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-050638-ALTUSDT",
+      "timestamp": "2026-05-24T05:06:38.236256+00:00",
+      "symbol": "ALTUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.00796705,
+      "reasoning": "当前处于二浪回调区，且4小时多重底已突破颈线，底部确认且有共振信号。",
+      "key_factors": [
+        "二浪回调区",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.007959,
+          "change_pct": -0.1,
+          "hit": false,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-050639-GMTUSDT",
+      "timestamp": "2026-05-24T05:06:39.472243+00:00",
+      "symbol": "GMTUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0117729,
+      "reasoning": "价格在SMC入场区，且4小时顶底结构显示上涨趋势，StochRSI显示超卖区金叉向上。",
+      "key_factors": [
+        "SMC入场区",
+        "上涨趋势",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.01181,
+          "change_pct": 0.32,
+          "hit": false,
+          "checked_at": "2026-05-24T09:17:47.554157+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-052242-1000PEPEUSDT",
+      "timestamp": "2026-05-24T05:22:42.270522+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.003565345,
+      "reasoning": "价格在SMC入场区，且4h多重底未突破颈线，1h回调到位，吸筹信号明显。",
+      "key_factors": [
+        "SMC入场区",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0036298,
+          "change_pct": 1.81,
+          "hit": true,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-052244-FIDAUSDT",
+      "timestamp": "2026-05-24T05:22:44.626526+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.0330424,
+      "reasoning": "当前处于二浪回调到位，且价格在SMC入场区间内，同时StochRSI显示超卖金叉，符合做多条件。",
+      "key_factors": [
+        "二浪回调到位",
+        "SMC入场区间",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.03604,
+          "change_pct": 9.07,
+          "hit": true,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-053428-TONUSDT",
+      "timestamp": "2026-05-24T05:34:28.547497+00:00",
+      "symbol": "TONUSDT",
+      "action": "LONG",
+      "score": 95,
+      "confidence": 95,
+      "entry_price": 1.7872,
+      "reasoning": "当前处于二浪回调到位，且波浪分析显示三浪启动，同时StochRSI显示超卖金叉，成交量温和放量。",
+      "key_factors": [
+        "二浪回调到位",
+        "三浪启动",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 1.7811,
+          "change_pct": -0.34,
+          "hit": false,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-053429-CHZUSDT",
+      "timestamp": "2026-05-24T05:34:29.932369+00:00",
+      "symbol": "CHZUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0385117,
+      "reasoning": "4小时多重底形成中，等待颈线突破，StochRSI超卖金叉，温和放量。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0376,
+          "change_pct": -2.37,
+          "hit": false,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-054100-LINKUSDT",
+      "timestamp": "2026-05-24T05:41:00.659209+00:00",
+      "symbol": "LINKUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 9.30502,
+      "reasoning": "当前处于4小时多重底形成中，且价格在SMC入场区间内，StochRSI超卖金叉，成交量放大，符合做多条件。",
+      "key_factors": [
+        "4小时多重底形成",
+        "SMC入场区间",
+        "StochRSI超卖金叉",
+        "成交量放大"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 9.611,
+          "change_pct": 3.29,
+          "hit": true,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-054728-1000PEPEUSDT",
+      "timestamp": "2026-05-24T05:47:28.520225+00:00",
+      "symbol": "1000PEPEUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0037609,
+      "reasoning": "当前价格处于SMC入场区，且4小时顶底结构显示上涨趋势，1小时回调到位，符合做多条件。",
+      "key_factors": [
+        "SMC入场区",
+        "4h上涨趋势",
+        "1h回调到位"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0036298,
+          "change_pct": -3.49,
+          "hit": false,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-054730-SUIUSDT",
+      "timestamp": "2026-05-24T05:47:30.085100+00:00",
+      "symbol": "SUIUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 1.010739,
+      "reasoning": "当前处于二浪回调到位，且价格在SMC入场区，同时4h趋势向上，小周期开始共振，StochRSI金叉向上，成交量正常。",
+      "key_factors": [
+        "二浪回调到位",
+        "SMC入场区",
+        "4h趋势向上",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 1.065,
+          "change_pct": 5.37,
+          "hit": true,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-055419-GMTUSDT",
+      "timestamp": "2026-05-24T05:54:19.243094+00:00",
+      "symbol": "GMTUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0117729,
+      "reasoning": "价格在SMC入场区间内，且4小时顶底结构显示底部抬高，吸筹信号强烈。",
+      "key_factors": [
+        "价格在SMC入场区间内",
+        "底部抬高吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.01188,
+          "change_pct": 0.91,
+          "hit": true,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-055422-TAOUSDT",
+      "timestamp": "2026-05-24T05:54:22.284215+00:00",
+      "symbol": "TAOUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 260.2707,
+      "reasoning": "价格处于多重底形成中，且StochRSI显示超卖金叉，趋势向上。",
+      "key_factors": [
+        "多重底形成",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 281.54,
+          "change_pct": 8.17,
+          "hit": true,
+          "checked_at": "2026-05-24T09:54:47.101223+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-065403-GMTUSDT",
+      "timestamp": "2026-05-24T06:54:03.087344+00:00",
+      "symbol": "GMTUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0117729,
+      "reasoning": "价格在SMC入场区且处于4h多重底未突破颈线，1h回调到位，吸筹信号明显。",
+      "key_factors": [
+        "SMC入场区",
+        "4h多重底未突破颈线",
+        "1h回调到位",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.01189,
+          "change_pct": 0.99,
+          "hit": true,
+          "checked_at": "2026-05-24T11:09:14.200465+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-073901-FIDAUSDT",
+      "timestamp": "2026-05-24T07:39:01.584150+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.0330939,
+      "reasoning": "当前处于二浪回调到位，且底部形态确认，三浪启动信号强烈。",
+      "key_factors": [
+        "二浪回调到位",
+        "底部形态确认",
+        "三浪启动信号"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.03549,
+          "change_pct": 7.24,
+          "hit": true,
+          "checked_at": "2026-05-24T11:44:01.331044+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-075633-GMTUSDT",
+      "timestamp": "2026-05-24T07:56:33.311037+00:00",
+      "symbol": "GMTUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0117729,
+      "reasoning": "价格处于SMC入场区，且4h顶底结构显示上涨趋势，1h回调到位，吸筹信号明显。",
+      "key_factors": [
+        "SMC入场区",
+        "上涨趋势",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {
+        "4h": {
+          "price": 0.0118,
+          "change_pct": 0.23,
+          "hit": false,
+          "checked_at": "2026-05-24T12:00:05.486130+00:00"
+        }
+      },
+      "final_result": null
+    },
+    {
+      "id": "20260524-083458-SPCXUSDT",
+      "timestamp": "2026-05-24T08:34:58.574474+00:00",
+      "symbol": "SPCXUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 204.558,
+      "reasoning": "价格处于SMC入场区，且StochRSI显示超卖金叉，趋势向上。",
+      "key_factors": [
+        "SMC入场区",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-090549-COSUSDT",
+      "timestamp": "2026-05-24T09:05:49.575129+00:00",
+      "symbol": "COSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.00129677,
+      "reasoning": "4小时多重底形成中，等待颈线突破，StochRSI 1小时超卖金叉，启动前信号强烈。",
+      "key_factors": [
+        "4小时多重底形成",
+        "StochRSI 1小时超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-091745-GMTUSDT",
+      "timestamp": "2026-05-24T09:17:45.858616+00:00",
+      "symbol": "GMTUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0117729,
+      "reasoning": "价格在SMC入场区，且4小时多重底未突破颈线，1小时回调到位，吸筹信号明显。",
+      "key_factors": [
+        "价格在SMC入场区",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-092407-COSUSDT",
+      "timestamp": "2026-05-24T09:24:07.562257+00:00",
+      "symbol": "COSUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.00129677,
+      "reasoning": "价格在SMC入场区，且4h趋势向上，小周期开始共振，StochRSI金叉向上。",
+      "key_factors": [
+        "SMC入场区",
+        "4h趋势向上",
+        "StochRSI金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-092409-FIDAUSDT",
+      "timestamp": "2026-05-24T09:24:09.447228+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 85,
+      "confidence": 85,
+      "entry_price": 0.0330939,
+      "reasoning": "当前处于二浪回调区，且4小时多重底已突破颈线，底部确认，波浪共振，洗盘结束信号明显。",
+      "key_factors": [
+        "二浪回调41.5%",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-100101-GMTUSDT",
+      "timestamp": "2026-05-24T10:01:01.196738+00:00",
+      "symbol": "GMTUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0117729,
+      "reasoning": "价格处于SMC入场区，且4h顶底结构显示上涨趋势，1h回调到位，吸筹信号明显。",
+      "key_factors": [
+        "SMC入场区",
+        "4h上涨趋势",
+        "1h回调到位",
+        "吸筹信号"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-101929-FLNCUSDT",
+      "timestamp": "2026-05-24T10:19:29.504306+00:00",
+      "symbol": "FLNCUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 22.8042,
+      "reasoning": "当前处于二浪回调到位，价格在SMC入场区，且1h双底形成，底部确认，StochRSI超卖金叉，趋势向上。",
+      "key_factors": [
+        "二浪回调到位",
+        "SMC入场区",
+        "1h双底",
+        "StochRSI金叉",
+        "趋势向上"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-104621-FIDAUSDT",
+      "timestamp": "2026-05-24T10:46:21.177543+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0330939,
+      "reasoning": "价格处于SMC入场区，且波浪分析显示处于二浪回调区，底部确认且波浪共振。",
+      "key_factors": [
+        "SMC入场区",
+        "波浪二浪回调"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-105216-SPCXUSDT",
+      "timestamp": "2026-05-24T10:52:16.087399+00:00",
+      "symbol": "SPCXUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 204.558,
+      "reasoning": "当前价格处于SMC入场区，且StochRSI显示超卖金叉，趋势向上，适合做多。",
+      "key_factors": [
+        "SMC入场区",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "oversold_bounce",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-112052-JPMUSDT",
+      "timestamp": "2026-05-24T11:20:52.166348+00:00",
+      "symbol": "JPMUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 318.7335,
+      "reasoning": "当前处于三浪启动阶段，且StochRSI显示超卖金叉，趋势向上。",
+      "key_factors": [
+        "三浪启动",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-112638-FIDAUSDT",
+      "timestamp": "2026-05-24T11:26:38.060471+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 85,
+      "confidence": 85,
+      "entry_price": 0.0330939,
+      "reasoning": "价格处于二浪回调区，且4小时多重底已突破颈线，底部确认，波浪共振。",
+      "key_factors": [
+        "二浪回调区",
+        "4小时多重底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-121102-EDENUSDT",
+      "timestamp": "2026-05-24T12:11:02.870184+00:00",
+      "symbol": "EDENUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.0903001,
+      "reasoning": "当前处于二浪回调到位，且StochRSI超卖金叉，趋势向上，适合做多入场。",
+      "key_factors": [
+        "二浪回调到位",
+        "StochRSI超卖金叉"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-121655-BSBUSDT",
+      "timestamp": "2026-05-24T12:16:55.992403+00:00",
+      "symbol": "BSBUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 1.08562,
+      "reasoning": "价格处于SMC入场区，且波浪分析显示处于二浪回调区，4h双底已突破颈线，洗盘结束信号。",
+      "key_factors": [
+        "SMC入场区",
+        "波浪二浪回调",
+        "4h双底突破颈线"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "structure_breakout",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-122257-FIDAUSDT",
+      "timestamp": "2026-05-24T12:22:57.255412+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 80,
+      "confidence": 80,
+      "entry_price": 0.0330939,
+      "reasoning": "价格在SMC入场区且近期有回调企稳迹象，大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "SMC入场区",
+        "回调企稳",
+        "大周期向上，小周期共振"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "other",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-124959-RKLBUSDT",
+      "timestamp": "2026-05-24T12:49:59.664356+00:00",
+      "symbol": "RKLBUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 140.5332,
+      "reasoning": "1h头肩底三浪启动，底部确认，波浪共振，洗盘结束，适合做多入场。",
+      "key_factors": [
+        "1h头肩底三浪启动",
+        "底部确认"
+      ],
+      "wave_signal": "1h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    },
+    {
+      "id": "20260524-130157-FIDAUSDT",
+      "timestamp": "2026-05-24T13:01:57.640235+00:00",
+      "symbol": "FIDAUSDT",
+      "action": "LONG",
+      "score": 90,
+      "confidence": 90,
+      "entry_price": 0.0330939,
+      "reasoning": "当前处于二浪回调区，价格止跌反弹，且大周期趋势向上，小周期开始共振。",
+      "key_factors": [
+        "二浪回调区",
+        "价格止跌反弹",
+        "大周期趋势向上"
+      ],
+      "wave_signal": "4h",
+      "entry_type": "wave_pullback",
+      "consolidation_score": 0,
+      "breakout_stage": 0,
+      "status": "pending",
+      "checks": {},
+      "final_result": null
+    }
+  ],
+  "stats": {
+    "total_signals": 201,
+    "checked_4h": 189,
+    "hit_4h": 138,
+    "checked_8h": 172,
+    "hit_8h": 133,
+    "checked_24h": 42,
+    "hit_24h": 12,
+    "avg_change_4h": 3.16,
+    "avg_change_8h": 4.49,
+    "avg_change_24h": -1.75,
+    "win_rate_4h": 73.0,
+    "win_rate_8h": 77.3,
+    "win_rate_24h": 28.6,
+    "by_entry_type": {
+      "volume_breakout": {
+        "count": 0,
+        "checked_24h": 0,
+        "hit_24h": 0,
+        "avg_change_24h": 0,
+        "win_rate_24h": 0
+      },
+      "pullback_confirmed": {
+        "count": 0,
+        "checked_24h": 0,
+        "hit_24h": 0,
+        "avg_change_24h": 0,
+        "win_rate_24h": 0
+      },
+      "wave_entry": {
+        "count": 0,
+        "checked_24h": 0,
+        "hit_24h": 0,
+        "avg_change_24h": 0,
+        "win_rate_24h": 0
+      },
+      "other": {
+        "name": "其他",
+        "count": 25,
+        "checked_24h": 2,
+        "hit_24h": 0,
+        "avg_change_24h": -3.87,
+        "win_rate_24h": 0.0
+      },
+      "structure_breakout": {
+        "name": "结构突破",
+        "count": 75,
+        "checked_24h": 8,
+        "hit_24h": 2,
+        "avg_change_24h": -3.98,
+        "win_rate_24h": 25.0
+      },
+      "wave_pullback": {
+        "name": "波浪回调",
+        "count": 40,
+        "checked_24h": 6,
+        "hit_24h": 1,
+        "avg_change_24h": -6.7,
+        "win_rate_24h": 16.7
+      },
+      "watch_pool_breakout": {
+        "name": "监控池突破",
+        "count": 26,
+        "checked_24h": 20,
+        "hit_24h": 9,
+        "avg_change_24h": 1.48,
+        "win_rate_24h": 45.0
+      },
+      "oversold_bounce": {
+        "name": "超卖反弹",
+        "count": 34,
+        "checked_24h": 6,
+        "hit_24h": 0,
+        "avg_change_24h": -3.88,
+        "win_rate_24h": 0.0
+      }
+    }
+  }
+}

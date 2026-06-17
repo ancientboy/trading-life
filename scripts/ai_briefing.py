@@ -1,0 +1,529 @@
+"""
+市场简报生成器
+把原始数据编译成AI能理解的「市场快报」
+
+输入: collect_all_analysis() 的原始数据 + Redis舆情数据
+输出: 结构化的文字简报
+"""
+import redis
+import json
+import time
+import logging
+from typing import Optional
+
+logger = logging.getLogger("AIBriefing")
+
+try:
+    redis_client = redis.Redis(decode_responses=True, socket_timeout=2)
+    USE_REDIS = True
+except:
+    USE_REDIS = False
+
+
+def _fmt_pct(val: float) -> str:
+    """格式化百分比"""
+    if val >= 0:
+        return f"+{val:.2f}%"
+    return f"{val:.2f}%"
+
+
+def _fmt_price(price: float) -> str:
+    """智能格式化价格"""
+    if price == 0:
+        return "N/A"
+    if price >= 1000:
+        return f"${price:,.0f}"
+    if price >= 1:
+        return f"${price:.2f}"
+    if price >= 0.01:
+        return f"${price:.4f}"
+    return f"${price:.6f}"
+
+
+def _get_price_change(klines: list) -> tuple:
+    """从K线计算涨跌幅"""
+    if not klines or len(klines) < 2:
+        return 0.0, 0.0, 0.0, 0.0
+    try:
+        current = float(klines[-1].get("close", 0))
+        # 不同周期涨跌幅
+        def _change(closes):
+            if len(closes) < 2 or closes[0] == 0:
+                return 0.0
+            return (closes[-1] - closes[0]) / closes[0] * 100
+        
+        all_closes = [float(k.get("close", 0)) for k in klines]
+        ch_1h = _change(all_closes[-12:]) if len(all_closes) >= 12 else _change(all_closes)
+        ch_4h = _change(all_closes[-48:]) if len(all_closes) >= 48 else _change(all_closes)
+        ch_full = _change(all_closes)
+        
+        return ch_1h, ch_4h, ch_full, current
+    except:
+        return 0.0, 0.0, 0.0, 0.0
+
+
+def _analyze_funding(rate: float) -> str:
+    """资金费率解读"""
+    if rate > 0.001:  # >0.1%
+        return "极高(多头极度拥挤，有反转风险)"
+    elif rate > 0.0005:
+        return "偏高(多头较拥挤)"
+    elif rate > 0.0001:
+        return "正常偏多"
+    elif rate > -0.0001:
+        return "中性"
+    elif rate > -0.0005:
+        return "正常偏空"
+    elif rate > -0.001:
+        return "偏低(空头较拥挤)"
+    else:
+        return "极低(空头极度拥挤，有反转风险)"
+
+
+def _analyze_stochrsi(k_value: float) -> str:
+    """StochRSI解读"""
+    if k_value < 10:
+        return f"{k_value:.0f}(极度超卖⚠️)"
+    elif k_value < 20:
+        return f"{k_value:.0f}(超卖区)"
+    elif k_value < 30:
+        return f"{k_value:.0f}(偏低)"
+    elif k_value < 70:
+        return f"{k_value:.0f}(中性)"
+    elif k_value < 80:
+        return f"{k_value:.0f}(偏高)"
+    elif k_value < 90:
+        return f"{k_value:.0f}(超买区)"
+    else:
+        return f"{k_value:.0f}(极度超买⚠️)"
+
+
+def _get_redis_funding(symbol: str) -> dict:
+    """从Redis获取资金费率"""
+    if not USE_REDIS:
+        return {}
+    try:
+        data = redis_client.xrange("stream:binance:funding", count=200)
+        for _, fields in reversed(data):
+            if fields.get("symbol") == symbol:
+                return {
+                    "rate": float(fields.get("lastFundingRate", 0)),
+                    "mark_price": float(fields.get("markPrice", 0))
+                }
+    except:
+        pass
+    return {}
+
+
+def _get_redis_hot_coins() -> list:
+    """从Redis获取热门币"""
+    if not USE_REDIS:
+        return []
+    try:
+        data = redis_client.xrange("stream:hot", count=30)
+        coins = []
+        seen = set()
+        for _, f in data:
+            sym = f.get("symbol", "")
+            if sym and sym not in seen:
+                seen.add(sym)
+                coins.append({
+                    "symbol": sym,
+                    "change_24h": float(f.get("change_24h", 0)),
+                    "volume_24h": float(f.get("volume_24h", 0)),
+                    "funding_rate": float(f.get("funding_rate", 0))
+                })
+        return coins
+    except:
+        return []
+
+
+def _get_redis_fg() -> dict:
+    """从Redis获取恐惧贪婪指数"""
+    if not USE_REDIS:
+        return {}
+    try:
+        data = redis_client.xrevrange("stream:news", count=50)
+        for _, fields in reversed(data):
+            if fields.get("type") == "fear_greed":
+                return {
+                    "value": int(fields.get("value", 50)),
+                    "label": fields.get("label", "Neutral")
+                }
+    except:
+        pass
+    return {"value": 50, "label": "Neutral"}
+
+
+def _get_redis_news(limit: int = 5) -> list:
+    """从Redis获取最新新闻"""
+    if not USE_REDIS:
+        return []
+    try:
+        data = redis_client.xrevrange("stream:news", count=20)
+        news = []
+        for _, fields in reversed(data):
+            if fields.get("type") == "news" or "title" in fields:
+                news.append(fields.get("title", fields.get("content", "")))
+                if len(news) >= limit:
+                    break
+        return news
+    except:
+        return []
+
+
+def _calc_volume_ratio(klines: list) -> str:
+    """计算量比"""
+    if len(klines) < 10:
+        return "数据不足"
+    try:
+        recent_vol = sum(float(k.get("volume", 0)) for k in klines[-3:])
+        prev_vol = sum(float(k.get("volume", 0)) for k in klines[-10:-3])
+        avg = prev_vol / 7 if prev_vol > 0 else 1
+        ratio = recent_vol / 3 / avg if avg > 0 else 1
+        if ratio > 3:
+            return f"巨量放大 ×{ratio:.1f}"
+        elif ratio > 2:
+            return f"明显放量 ×{ratio:.1f}"
+        elif ratio > 1.3:
+            return f"温和放量 ×{ratio:.1f}"
+        elif ratio > 0.7:
+            return f"正常量 ×{ratio:.1f}"
+        elif ratio > 0.4:
+            return f"缩量 ×{ratio:.1f}"
+        else:
+            return f"极度缩量 ×{ratio:.1f}"
+    except:
+        return "计算异常"
+
+
+def _analyze_orderbook(depth: dict, price: float) -> str:
+    """订单簿简报"""
+    bids = depth.get("bids", [])
+    asks = depth.get("asks", [])
+    if not bids or not asks:
+        return "数据不足"
+    
+    # 前10档
+    bid_vol = sum(float(b[1]) for b in bids[:10])
+    ask_vol = sum(float(a[1]) for a in asks[:10])
+    
+    # 大单墙
+    big_bid = max(float(b[1]) for b in bids[:20]) if bids else 0
+    big_ask = max(float(a[1]) for a in asks[:20]) if asks else 0
+    
+    bid_price = float(bids[0][0]) if bids else 0
+    ask_price = float(asks[0][0]) if asks else 0
+    
+    ratio = bid_vol / ask_vol if ask_vol > 0 else 1
+    
+    if ratio > 2:
+        balance = f"买盘厚 {ratio:.1f}x(偏多)"
+    elif ratio > 1.3:
+        balance = f"买盘略多 {ratio:.1f}x"
+    elif ratio > 0.7:
+        balance = f"买卖均衡 {ratio:.1f}x"
+    elif ratio > 0.5:
+        balance = f"卖盘略多 {ratio:.1f}x"
+    else:
+        balance = f"卖盘厚 {ratio:.1f}x(偏空)"
+    
+    # 大单墙位置
+    walls = []
+    if big_bid > bid_vol * 0.3 and bid_price > 0:
+        walls.append(f"买墙{_fmt_price(bid_price)}")
+    if big_ask > ask_vol * 0.3 and ask_price > 0:
+        walls.append(f"卖墙{_fmt_price(ask_price)}")
+    
+    wall_str = f" | {','.join(walls)}" if walls else ""
+    return f"{balance}{wall_str}"
+
+
+def generate_briefing(symbol: str, data: dict) -> str:
+    """
+    生成市场简报
+    
+    Args:
+        symbol: 币种符号
+        data: collect_all_analysis() 的返回数据
+    
+    Returns:
+        结构化的文字简报
+    """
+    klines = data.get("klines", {})
+    depth = data.get("depth", {})
+    funding = data.get("funding", {})
+    oi = data.get("open_interest", {})
+    
+    price = float(funding.get("markPrice", 0))
+    if price == 0:
+        price = float(klines.get("1m", [{}])[-1].get("close", 0)) if klines.get("1m") else 0
+    
+    # === 价格信息 ===
+    klines_15m = klines.get("15m", [])
+    klines_1h = klines.get("1h", [])
+    klines_4h = klines.get("4h", [])
+    klines_1d = klines.get("1d", [])
+    
+    _, _, ch_24h_est, _ = _get_price_change(klines_1d)
+    ch_1h, _, _, _ = _get_price_change(klines_1h)
+    ch_15m, _, _, _ = _get_price_change(klines_15m)
+    
+    # === 资金费率（增强版：费率趋势+BTC背离） ===
+    fr = float(funding.get("lastFundingRate", 0))
+    redis_fund = _get_redis_funding(symbol)
+    if fr == 0 and redis_fund:
+        fr = redis_fund.get("rate", 0)
+    
+    # 费率趋势分析
+    try:
+        from funding_trend import generate_funding_briefing
+        fr_trend_brief = generate_funding_briefing(symbol)
+    except:
+        fr_trend_brief = _analyze_funding(fr)
+    
+    # === RSI ===
+    rsi_15m = _calc_rsi_simple(klines_15m)
+    rsi_1h = _calc_rsi_simple(klines_1h)
+    rsi_4h = _calc_rsi_simple(klines_4h)
+    
+    # === 量比 ===
+    vol_5m = _calc_volume_ratio(klines.get("5m", []))
+    vol_15m = _calc_volume_ratio(klines_15m)
+    vol_1h = _calc_volume_ratio(klines_1h)
+    
+    # === 订单簿 ===
+    ob_str = _analyze_orderbook(depth, price)
+    
+    # === OI ===
+    oi_val = float(oi.get("openInterest", 0))
+    
+    # === 鲸鱼/大单 ===
+    trades = data.get("trades", [])
+    whale_info = _analyze_trades(trades)
+    
+    # === 市场整体 ===
+    fg = _get_redis_fg()
+    news = _get_redis_news(3)
+    hot_coins = _get_redis_hot_coins()[:5]
+    
+    # === 组装简报 ===
+    now = time.strftime("%Y-%m-%d %H:%M UTC")
+    
+    # === 大周期趋势摘要（关键：帮助AI判断趋势方向）===
+    trend_summary_parts = []
+    
+    # 4h趋势方向
+    dir_4h = "震荡"
+    if klines_4h and len(klines_4h) >= 5:
+        closes_4h = [float(k.get("close", 0)) for k in klines_4h[-5:]]
+        if len(closes_4h) >= 2 and closes_4h[0] > 0:
+            ch4h = (closes_4h[-1] - closes_4h[0]) / closes_4h[0] * 100
+            dir_4h = "上涨" if ch4h > 1.5 else ("下跌" if ch4h < -1.5 else "震荡")
+            trend_summary_parts.append(f"4h={dir_4h}({_fmt_pct(ch4h)})")
+    
+    # 1h趋势方向
+    dir_1h = "震荡"
+    if klines_1h and len(klines_1h) >= 10:
+        closes_1h = [float(k.get("close", 0)) for k in klines_1h[-10:]]
+        if len(closes_1h) >= 2 and closes_1h[0] > 0:
+            ch1h_10 = (closes_1h[-1] - closes_1h[0]) / closes_1h[0] * 100
+            dir_1h = "上涨" if ch1h_10 > 1.0 else ("下跌" if ch1h_10 < -1.0 else "震荡")
+            trend_summary_parts.append(f"1h={dir_1h}({_fmt_pct(ch1h_10)})")
+    
+    # 1h高低点 + 价格位置
+    if klines_1h and len(klines_1h) >= 20:
+        highs_1h = [float(k.get("high", 0)) for k in klines_1h[-20:]]
+        lows_1h = [float(k.get("low", 0)) for k in klines_1h[-20:]]
+        hh = max(highs_1h)
+        ll = min(lows_1h)
+        near_high = "是" if price > hh * 0.98 else "否"
+        near_low = "是" if price < ll * 1.02 else "否"
+        trend_summary_parts.append(f"1h20根高点{hh:.4f}(附近={near_high}) 低点{ll:.4f}(附近={near_low})")
+    
+    # 综合方向结论
+    if dir_4h in ["上涨", "下跌"] and dir_1h == dir_4h:
+        overall = f"→大周期一致{dir_4h}，方向明确"
+    elif dir_4h == "上涨" and dir_1h == "下跌":
+        overall = "→4h涨+1h回调，可能是回调买入机会"
+    elif dir_4h == "下跌" and dir_1h == "上涨":
+        overall = "→4h跌+1h反弹，可能是反弹做空机会"
+    elif dir_4h != "震荡":
+        overall = f"→4h{dir_4h}但1h震荡，等1h确认"
+    else:
+        overall = "→大周期震荡，等突破"
+    trend_summary_parts.append(overall)
+    
+    trend_summary = " | ".join(trend_summary_parts) if trend_summary_parts else "数据不足"
+    
+    lines = [
+        f"═══ {symbol} 市场简报 ═══",
+        f"🕐 {now}",
+        "",
+        f"【价格】{_fmt_price(price)} | 近1h {_fmt_pct(ch_1h)} | 近15m {_fmt_pct(ch_15m)} | 日内 {_fmt_pct(ch_24h_est)}",
+        "",
+        f"【资金费率】{fr*100:+.4f}% → {fr_trend_brief}",
+        "",
+        f"【持仓量OI】{oi_val:,.1f}",
+        "",
+        "【成交量】",
+        f"  5m: {vol_5m} | 15m: {vol_15m} | 1h: {vol_1h}",
+        "",
+        f"【订单簿】{ob_str}",
+        "",
+        f"【大单/鲸鱼】{whale_info}",
+        "",
+        f"【市场情绪】恐惧贪婪指数: {fg.get('value', 50)} ({fg.get('label', 'N/A')})",
+    ]
+    
+    if news:
+        lines.append("【近期新闻】")
+        for n in news:
+            lines.append(f"  • {n}")
+    
+    if hot_coins:
+        lines.append("")
+        lines.append("【市场热门】")
+        for c in hot_coins[:5]:
+            lines.append(f"  • {c['symbol']} 24h={c['change_24h']:+.1f}% 费率={c['funding_rate']*100:+.4f}%")
+    
+    # BTC走势（如果是山寨币）— 增强版：费率对比+相关性
+    base = symbol.replace("USDT", "")
+    if base not in ["BTC", "ETH", "BNB"]:
+        btc_info = _get_btc_status()
+        if btc_info:
+            lines.append("")
+            lines.append(f"【BTC参考】{btc_info}")
+        
+        # 费率方向对比
+        try:
+            from funding_trend import get_funding_direction_signal
+            coin_fd = get_funding_direction_signal(symbol)
+            btc_fd = get_funding_direction_signal("BTCUSDT")
+            
+            coin_dir = coin_fd.get("direction", "NEUTRAL")
+            btc_dir = btc_fd.get("direction", "NEUTRAL")
+            relation = coin_fd.get("btc_relation", "中性")
+            
+            if coin_dir != "NEUTRAL" or btc_dir != "NEUTRAL":
+                lines.append(f"【费率方向对比】{base}={coin_dir} vs BTC={btc_dir} → {relation}")
+        except:
+            pass
+    
+    return "\n".join(lines)
+
+
+def _calc_rsi_simple(klines: list) -> float:
+    """简单RSI计算（只返回K值）"""
+    if len(klines) < 30:
+        return 50.0
+    try:
+        closes = [float(k.get("close", 0)) for k in klines]
+        if len(closes) < 30:
+            return 50.0
+        
+        # RSI 14
+        changes = [closes[i] - closes[i-1] for i in range(1, len(closes))]
+        gains = [max(0, c) for c in changes[-14:]]
+        losses = [max(0, -c) for c in changes[-14:]]
+        avg_gain = sum(gains) / 14
+        avg_loss = sum(losses) / 14
+        
+        if avg_loss == 0:
+            rsi = 100
+        else:
+            rs = avg_gain / avg_loss
+            rsi = 100 - (100 / (1 + rs))
+        
+        # RSI值
+        rsi_val = rsi
+        return rsi_val  # 返回RSI近似值作为强弱参考
+    except:
+        return 50.0
+
+
+def _analyze_trades(trades: list) -> str:
+    """分析最近成交的大单"""
+    if not trades:
+        return "数据不足"
+    
+    big_buys = 0
+    big_sells = 0
+    total_buy = 0
+    total_sell = 0
+    
+    for t in trades:
+        qty = float(t.get("qty", 0))
+        is_buy = t.get("isBuyerMaker", True)  # 注意: True表示卖方主动
+        
+        if is_buyer_maker := t.get("isBuyerMaker", True):
+            total_sell += qty
+            if qty > 0:  # 大单标准取决于币种
+                big_sells += 1
+        else:
+            total_buy += qty
+            if qty > 0:
+                big_buys += 1
+    
+    if total_buy + total_sell == 0:
+        return "数据不足"
+    
+    buy_pct = total_buy / (total_buy + total_sell) * 100
+    
+    if buy_pct > 60:
+        direction = "主动买入偏多"
+    elif buy_pct < 40:
+        direction = "主动卖出偏多"
+    else:
+        direction = "买卖均衡"
+    
+    return f"{direction} (买入{buy_pct:.0f}%)"
+
+
+def _get_btc_status() -> str:
+    """获取BTC走势概况 + 费率信息"""
+    if not USE_REDIS:
+        return ""
+    try:
+        # BTC价格
+        data = redis_client.xrevrange("stream:binance:ticker", count=100)
+        btc_price = 0
+        btc_change_1h = 0
+        btc_change_4h = 0
+        for _, fields in reversed(data):
+            if fields.get("symbol") == "BTCUSDT":
+                btc_price = float(fields.get("price", 0))
+                try: btc_change_1h = float(fields.get("change_1h", 0))
+                except: pass
+                try: btc_change_4h = float(fields.get("change_4h", 0))
+                except: pass
+                break
+        
+        if btc_price == 0:
+            return ""
+        
+        # BTC费率
+        from funding_trend import get_funding_rate
+        btc_rate = get_funding_rate("BTCUSDT")
+        btc_rate_pct = btc_rate * 100
+        
+        parts = [f"BTC现价 {_fmt_price(btc_price)} | 1h {_fmt_pct(btc_change_1h)} | 4h {_fmt_pct(btc_change_4h)}"]
+        
+        if abs(btc_rate) > 0.0001:
+            if btc_rate > 0.0005:
+                parts.append(f"BTC费率{btc_rate_pct:+.4f}%（多头拥挤，偏热）")
+            elif btc_rate < -0.0005:
+                parts.append(f"BTC费率{btc_rate_pct:+.4f}%（空头拥挤，偏热）")
+            else:
+                parts.append(f"BTC费率{btc_rate_pct:+.4f}%")
+        
+        return " | ".join(parts)
+    except:
+        return ""
+
+
+async def generate_briefing_async(symbol: str, session) -> str:
+    """异步版本：采集数据并生成简报"""
+    from analyst_data import collect_all_analysis
+    data = await collect_all_analysis(session, symbol)
+    return generate_briefing(symbol, data)

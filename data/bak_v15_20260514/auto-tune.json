@@ -1,0 +1,8 @@
+{
+  "score_threshold": 15,
+  "tune_reason": "胜率41%正常，保持阈值15",
+  "sl_widen": false,
+  "updated_at": "2026-05-13T00:31:58.996332+00:00",
+  "total_trades": 240,
+  "win_rate": 40.8
+}

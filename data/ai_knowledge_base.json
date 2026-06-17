@@ -1,0 +1,307 @@
+{
+  "meta": {
+    "created": "2026-04-25 12:08",
+    "updated": "2026-04-29 20:30",
+    "version": 2
+  },
+  "rules": [
+    {
+      "id": "R0001",
+      "type": "caution",
+      "content": "24h涨幅超过30%的币种不追高，即使资金费率极端也谨慎做空（可能庄家控盘）",
+      "confidence": 0.7,
+      "source": "manual",
+      "created": "2026-04-24",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0002",
+      "type": "positive",
+      "content": "BTC下跌时山寨币普遍跟跌，山寨做多需BTC企稳确认",
+      "confidence": 0.75,
+      "source": "manual",
+      "created": "2026-04-24",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0003",
+      "type": "positive",
+      "content": "OI快速增加+价格横盘=变盘前兆，关注突破方向",
+      "confidence": 0.65,
+      "source": "manual",
+      "created": "2026-04-24",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0004",
+      "type": "caution",
+      "content": "资金费率极端(>0.1%或<-0.1%)时趋势可能延续也可能反转，需结合OI和价格行为判断",
+      "confidence": 0.6,
+      "source": "manual",
+      "created": "2026-04-24",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0005",
+      "type": "positive",
+      "content": "做山寨币短线时持仓时间通常很短(5-47分钟)，止盈要及时不贪心",
+      "confidence": 0.75,
+      "source": "trade_review",
+      "created": "2026-04-25 12:08",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0006",
+      "type": "positive",
+      "content": "亏损后快速修正入场位是关键策略，同一币种可以立即重新入场但要等更低位",
+      "confidence": 0.7,
+      "source": "trade_review",
+      "created": "2026-04-25 12:08",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0007",
+      "type": "positive",
+      "content": "做空和做多同等重要，BTC下跌时应主动寻找山寨币做空机会而非空仓观望",
+      "confidence": 0.8,
+      "source": "trade_review",
+      "created": "2026-04-25 12:08",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0008",
+      "type": "caution",
+      "content": "新上所/热门币(如APE)可能有短期暴力拉升，捕捉到可获超额收益但止损必须严格",
+      "confidence": 0.7,
+      "source": "trade_review",
+      "created": "2026-04-25 12:08",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0009",
+      "type": "negative",
+      "content": "BTC/大盘币不适合高杠杆短线做多，波动小收益有限",
+      "confidence": 0.65,
+      "source": "trade_review",
+      "created": "2026-04-25 12:08",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0010",
+      "type": "caution",
+      "content": "超短线交易(持仓<30分钟)占比高(10/15笔)，说明当前策略偏向超短线，止盈位可以适当放宽以获取更多利润",
+      "confidence": 0.6,
+      "source": "trade_review",
+      "created": "2026-04-25 12:08",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0011",
+      "type": "positive",
+      "content": "做空是重要盈利手段：BTC下跌→选弱势山寨做空是最稳的做空模式，山寨跌幅通常是BTC的2-3倍",
+      "confidence": 0.8,
+      "source": "trade_review",
+      "created": "2026-04-25",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0012",
+      "type": "positive",
+      "content": "暴涨回落做空模式：24h涨幅>30%后出现缩量+滞涨→做空博回调，止损3%足够",
+      "confidence": 0.75,
+      "source": "trade_review",
+      "created": "2026-04-25",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0013",
+      "type": "positive",
+      "content": "资金费率挤压做空：费率>0.1%+价格开始回落=多头踩踏，是高胜率做空机会",
+      "confidence": 0.75,
+      "source": "trade_review",
+      "created": "2026-04-25",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0014",
+      "type": "positive",
+      "content": "做空不需要比做多更保守，相同仓位相同止损即可。恐惧市场做空是顺势操作。",
+      "confidence": 0.7,
+      "source": "trade_review",
+      "created": "2026-04-25",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0015",
+      "type": "positive",
+      "content": "24h跌幅>10%的币种反弹到阻力位可继续做空（趋势延续），不要急于抄底",
+      "confidence": 0.7,
+      "source": "trade_review",
+      "created": "2026-04-25",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0031",
+      "type": "caution",
+      "content": "高波动山寨币(ATR>5%)的止损应更严格(2-3%)而非更宽，因为高杠杆放大后5%止损=保证金亏100%",
+      "confidence": 0.85,
+      "source": "bug_analysis",
+      "created": "2026-04-29",
+      "verified_count": 0,
+      "failed_count": 0
+    },
+    {
+      "id": "R0032",
+      "type": "negative",
+      "content": "同币种同方向连续开仓>3次容易在震荡中反复止损，应增加冷却期避免追单",
+      "confidence": 0.75,
+      "source": "trade_analysis",
+      "created": "2026-04-29",
+      "verified_count": 0,
+      "failed_count": 0
+    }
+  ],
+  "lessons": [
+    {
+      "id": "L0001",
+      "trade_id": "T01_BB",
+      "content": "BB超短线+0.52%仅6分钟。超小币种脉冲快持续性差，适合快进快出。",
+      "market_context": "山寨币脉冲",
+      "created": "2026-04-25 12:08"
+    },
+    {
+      "id": "L0002",
+      "trade_id": "T02_CHIP_LOSS",
+      "content": "CHIP唯一亏损-2.34%。追高入场在急跌中做多被止损。教训：急跌不做多，等企稳确认。后续同币种3笔全盈证明是入场时机问题。",
+      "market_context": "追高被套",
+      "created": "2026-04-25 12:08"
+    },
+    {
+      "id": "L0003",
+      "trade_id": "T03-06_CHIP",
+      "content": "CHIP连续4笔做多全盈(+0.91%~+6.06%)。亏损后快速调整入场价(0.093→0.090)，低位入场成功。教训：亏损不可怕，关键是快速修正入场位。",
+      "market_context": "CHIP连续行情",
+      "created": "2026-04-25 12:08"
+    },
+    {
+      "id": "L0004",
+      "trade_id": "T08_BAS_SHORT",
+      "content": "BAS做空+0.99%持仓8小时。唯一做空交易证明做空可盈利。做空需更多耐心等待下跌。",
+      "market_context": "做空盈利案例",
+      "created": "2026-04-25 12:08"
+    },
+    {
+      "id": "L0005",
+      "trade_id": "T09-10_SKR",
+      "content": "SKR连续做多+9.18%/+11.31%持仓极短。SKR有快速拉升特性，适合短线追涨。但数量暴增(19万→31万)追涨加仓有风险。",
+      "market_context": "SKR暴涨追多",
+      "created": "2026-04-25 12:08"
+    },
+    {
+      "id": "L0006",
+      "trade_id": "T11-12_APE",
+      "content": "APE暴利+175%/+313%持仓15/8分钟。新上所/热门币短期暴力拉升可获超额收益。但波动极大止损必须严格。",
+      "market_context": "APE暴力拉升暴利",
+      "created": "2026-04-25 12:08"
+    },
+    {
+      "id": "L0007",
+      "trade_id": "T13_MOVR",
+      "content": "MOVR+34.35%持仓4.8小时。中等市值币趋势中可持有较长时间获取稳定收益。",
+      "market_context": "MOVR趋势做多",
+      "created": "2026-04-25 12:08"
+    },
+    {
+      "id": "L0008",
+      "trade_id": "T14-15_API3",
+      "content": "API3两笔+51.68%/+33.81%持仓2-3小时。有持续上涨趋势可反复做多但入场价递增风险递增。",
+      "market_context": "API3连续做多",
+      "created": "2026-04-25 12:08"
+    },
+    {
+      "id": "L0009",
+      "trade_id": "BTC_HOLDING",
+      "content": "BTC做多@77792持仓34h浮亏-0.28%。大盘币波动小于山寨币，10x杠杆做多BTC风险收益比不如山寨币。",
+      "market_context": "BTC浮亏",
+      "created": "2026-04-25 12:08"
+    },
+    {
+      "id": "L0010",
+      "trade_id": "SHORT_STRATEGY",
+      "content": "15笔交易仅1笔做空(BAS+0.99%)，做空占比过低。下跌行情不应空仓观望，应主动做空。做空模式：BTC领跌→弱势山寨做空、暴涨回落、资金费率挤压。",
+      "market_context": "做空策略增强",
+      "created": "2026-04-25"
+    },
+    {
+      "id": "L0021",
+      "trade_id": "BUG-FIX-001",
+      "content": "止损精度Bug已修复：round(x,2)对小币种(价格<1)毁灭性影响。NOMUSDT(0.003)的3%止损被round到0.00(100%距离)，ZKJUSDT(0.016)的3%止损被round到0.02(27.5%距离)。已改为智能精度：>100→2位, >1→4位, >0.01→6位, else→8位。",
+      "market_context": "止损Bug修复 2026-04-29"
+    },
+    {
+      "id": "L0022",
+      "trade_id": "BUG-FIX-002",
+      "content": "止损距离硬限制5%(币价)：高杠杆(15-20x)下止损3%币价=保证金45-60%风险。超过5%的止损全部强制收紧。止损为0的仓位自动设3%。三层防护：auto_runner生成时+risk_agent审批时+paper_trade开仓时。",
+      "market_context": "止损安全校验 2026-04-29"
+    }
+  ],
+  "coin_profiles": {
+    "APEUSDT": {
+      "character": "暴力拉升型短期涨幅20%+波动极大",
+      "patterns": [
+        "暴力拉升后快速回调适合短线追涨不宜长持"
+      ],
+      "notes": []
+    },
+    "API3USDT": {
+      "character": "趋势型有持续上涨特性",
+      "patterns": [
+        "连续上涨可反复做多注意追高风险"
+      ],
+      "notes": []
+    },
+    "IRUSDT": {
+      "character": "高波动小币，价格可快速反向3-4%",
+      "patterns": [
+        "波动大适合短线但止损必须严",
+        "曾因止损Bug亏72%"
+      ],
+      "notes": [
+        "止损必须3%以内"
+      ]
+    },
+    "ZKJUSDT": {
+      "character": "高波动小币，价格可快速反向3%",
+      "patterns": [
+        "波动大需严格止损"
+      ],
+      "notes": [
+        "曾因止损Bug亏58.9%"
+      ]
+    },
+    "ORCAUSDT": {
+      "character": "中等波动，可反向3%+",
+      "patterns": [
+        "做空时注意反弹力度"
+      ],
+      "notes": [
+        "LONG亏48.1%因止损过宽"
+      ]
+    }
+  }
+}

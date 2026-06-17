@@ -1,0 +1,140 @@
+[
+  {
+    "name": "baseline",
+    "trades": 1839,
+    "win_rate": 28.1,
+    "total_pnl": -48628.93
+  },
+  {
+    "name": "score60",
+    "trades": 1504,
+    "win_rate": 28.6,
+    "total_pnl": -34245.9
+  },
+  {
+    "name": "score70",
+    "trades": 1101,
+    "win_rate": 27.7,
+    "total_pnl": -37337.68
+  },
+  {
+    "name": "score80",
+    "trades": 861,
+    "win_rate": 28.7,
+    "total_pnl": -26540.42
+  },
+  {
+    "name": "no_chop",
+    "trades": 1479,
+    "win_rate": 28.4,
+    "total_pnl": -37787.75
+  },
+  {
+    "name": "bull_bear",
+    "trades": 1062,
+    "win_rate": 33.4,
+    "total_pnl": -17760.31
+  },
+  {
+    "name": "sl3",
+    "trades": 1839,
+    "win_rate": 21.3,
+    "total_pnl": -40707.1
+  },
+  {
+    "name": "sl8",
+    "trades": 1839,
+    "win_rate": 31.9,
+    "total_pnl": -70467.35
+  },
+  {
+    "name": "sl10",
+    "trades": 1839,
+    "win_rate": 33.2,
+    "total_pnl": -50186.55
+  },
+  {
+    "name": "no_break",
+    "trades": 1632,
+    "win_rate": 28.0,
+    "total_pnl": -44375.14
+  },
+  {
+    "name": "int10",
+    "trades": 1090,
+    "win_rate": 29.2,
+    "total_pnl": -22237.25
+  },
+  {
+    "name": "int15",
+    "trades": 789,
+    "win_rate": 29.3,
+    "total_pnl": -19390.04
+  },
+  {
+    "name": "lev5",
+    "trades": 1839,
+    "win_rate": 28.1,
+    "total_pnl": -24314.46
+  },
+  {
+    "name": "lev15",
+    "trades": 1839,
+    "win_rate": 28.1,
+    "total_pnl": -72943.39
+  },
+  {
+    "name": "lev20",
+    "trades": 1839,
+    "win_rate": 28.1,
+    "total_pnl": -97257.86
+  },
+  {
+    "name": "vol5",
+    "trades": 1782,
+    "win_rate": 28.8,
+    "total_pnl": -42180.49
+  },
+  {
+    "name": "combo1",
+    "trades": 643,
+    "win_rate": 30.2,
+    "total_pnl": -10404.95
+  },
+  {
+    "name": "combo2",
+    "trades": 496,
+    "win_rate": 34.5,
+    "total_pnl": -7717.05
+  },
+  {
+    "name": "combo3",
+    "trades": 434,
+    "win_rate": 36.6,
+    "total_pnl": -9811.26
+  },
+  {
+    "name": "combo4",
+    "trades": 496,
+    "win_rate": 34.5,
+    "total_pnl": -7717.05
+  },
+  {
+    "name": "combo5",
+    "trades": 643,
+    "win_rate": 30.2,
+    "total_pnl": -15607.43
+  },
+  {
+    "name": "combo6",
+    "trades": 643,
+    "win_rate": 33.9,
+    "total_pnl": -18936.8
+  },
+  {
+    "name": "combo7",
+    "trades": 219,
+    "win_rate": 40.2,
+    "total_pnl": 3277.14
+  }
+]

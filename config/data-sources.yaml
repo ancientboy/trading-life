@@ -1,0 +1,47 @@
+# 数据源详细配置
+# 注意：敏感 API key 不要放在这里，使用环境变量
+
+binance:
+  # 从 daoltd 的 .env 中读取，不重复配置
+  env_key_prefix: "BINANCE_"
+  symbols:
+    - BTCUSDT
+    - ETHUSDT  
+    - BNBUSDT
+    - SOLUSDT
+    - XRPUSDT
+    - DOGEUSDT
+  intervals:
+    - 1m
+    - 5m
+    - 15m
+    - 1h
+    - 4h
+    - 1d
+  ws_channels:
+    - ticker
+    - depth20
+    - markPrice
+    - forceOrder
+
+news_feeds:
+  - name: CoinDesk
+    url: https://www.coindesk.com/arc/outboundfeeds/rss/
+    type: rss
+  - name: CoinTelegraph
+    url: https://cointelegraph.com/rss
+    type: rss
+  - name: Decrypt
+    url: https://decrypt.co/feed
+    type: rss
+  - name: The Block
+    url: https://www.theblock.co/rss.xml
+    type: rss
+
+sentiment:
+  fear_greed:
+    url: https://api.alternative.me/fng/
+    interval: 3600              # 每小时检查
+  funding_rate:
+    source: binance
+    interval: 300               # 每5分钟

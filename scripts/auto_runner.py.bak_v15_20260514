@@ -1,0 +1,1165 @@
+"""
+小风交易系统 - 自动运行调度器
+
+全自动运行：
+  1. 定时扫描分析（每15分钟）
+  2. 信号通过风控 → 自动模拟开仓（多空都做）
+  3. 持仓监控（每60秒）→ 止损止盈自动平仓
+  4. 每日复盘报告自动输出
+  5. 结果记录用于后续优化
+
+运行：
+  python auto_runner.py                  # 前台运行
+  python auto_runner.py --once           # 单次扫描（cron用）
+  nohup python auto_runner.py &          # 后台常驻
+"""
+import asyncio
+import json
+import logging
+import sys
+import os
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+import time
+from typing import List, Optional
+
+sys.path.insert(0, str(Path(__file__).parent))
+from config import DATA_DIR, REDIS_URL, CORE_SYMBOLS
+from analyst_agent import TradeSignal
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(name)s] %(levelname)s: %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(str(DATA_DIR / "auto_runner.log"))
+    ]
+)
+logger = logging.getLogger("AutoRunner")
+
+
+class AutoRunner:
+    """自动交易调度器"""
+
+    def __init__(self):
+        self.paper_engine = None
+        self.bot = None
+        self._scan_count = 0
+        self._total_signals = 0
+        self._total_opens = 0
+        self._total_closes = 0
+        self._started_at = datetime.now(timezone.utc)
+        self._last_daily_report = ""
+        # AI组件
+        self._ai_mode = True  # AI交易模式
+        self._briefings_cache = {}  # 市场简报缓存（入场时保存，平仓时对比）
+        self._ai_review_queue = []  # 待复盘的交易
+        self._cooldown = {}  # 币种冷却: {symbol: stop_cycle_num}
+        self._ob_skip_until = {}  # OB跳过冷却: {symbol: resume_cycle_num}（数据：GTCUSDT 15+轮因OB距35.7%反复跳过浪费API）
+
+
+    def _init_modules(self):
+        """延迟初始化"""
+        from paper_trade import PaperTradeEngine
+        from telegram_bot import TradingBot
+        self.paper_engine = PaperTradeEngine()
+        self.bot = TradingBot()
+
+    # ---- 核心循环：AI交易员 + 规则引擎双轨 ----
+    async def run_analysis_cycle(self) -> dict:
+        """v14 AI分析循环：选币 → AI交易员决策 → 风控审核（方向由direction_rules决定）"""
+        result = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "analyzed": 0,
+            "signals": [],
+            "opened": [],
+            "rejected": [],
+            "ai_decisions": [],
+        }
+
+        self._scan_count += 1
+        logger.info(f"{'='*50}")
+        logger.info(f"🔄 第 {self._scan_count} 轮扫描开始 {'🤖AI模式' if self._ai_mode else '📐规则模式'}")
+
+        try:
+            import aiohttp
+            from analyst_agent import AnalystAgent
+            agent = AnalystAgent()
+
+            async with aiohttp.ClientSession() as session:
+                # ===== 第一阶段：舆情选币 =====
+                candidates = await agent.screen_coins(session)
+                
+                if not candidates:
+                    logger.info("🔍 无候选币种，本轮跳过")
+                    return result
+                
+                # ===== AI模式：生成简报 → AI交易员决策 =====
+                if self._ai_mode:
+                    ai_result = await self._ai_trading_cycle(session, candidates, agent)
+                    result["ai_decisions"] = [d.to_dict() for d in ai_result.get("decisions", [])]
+                    result["analyzed"] = ai_result.get("analyzed", 0)
+                    
+                    # v14: AI决策 → 风控 → 开仓（方向由direction_rules在ai_analyze中决定）
+                    for decision in ai_result.get("decisions", []):
+                        if not decision.is_tradeable():
+                            continue
+                        
+                        # 直接构造信号 → 风控审核 → 开仓
+                        sig_dict = self._ai_decision_to_signal(decision)
+                        if not sig_dict:
+                            continue
+                        
+                        d = decision.action
+                        sym = decision.symbol
+                        
+                        self._total_signals += 1
+                        result["signals"].append({
+                            "symbol": sym,
+                            "direction": d,
+                            "score": decision.confidence,
+                            "confidence": decision.confidence,
+                            "source": "ai_trader",
+                        })
+                        logger.info(f"🎯 AI信号: {sym} {d} conf={decision.confidence}% | {decision.reasoning[:60]}")
+                        
+                        # 风控审核
+                        review = self.paper_engine.risk.review_signal(sig_dict)
+                        if review.get("approved"):
+                            report = await self.paper_engine.execute_open(review, sig_dict)
+                            if report and "模拟开仓成功" in report:
+                                self._total_opens += 1
+                                result["opened"].append({
+                                    "symbol": sym,
+                                    "direction": d,
+                                    "entry": review.get("entry_price", 0),
+                                    "size": review.get("position_size", 0),
+                                    "leverage": review.get("leverage", 1),
+                                })
+                                # 缓存入场简报（复盘用）
+                                self._briefings_cache[sym] = ai_result.get("briefings", {}).get(sym, "")
+                                logger.info(f"✅ AI开仓: {sym} {d} @${review.get('entry_price',0):,.2f}")
+                            else:
+                                logger.info(f"⏭️ {sym} {d} 开仓未执行: {report}")
+                        else:
+                            reason = review.get("reason", "")
+                            result["rejected"].append({"symbol": sym, "reason": reason})
+                            logger.info(f"❌ 风控拒绝 {sym}: {reason}")
+                
+                else:
+                    # ===== 规则模式（备用）=====
+                    import asyncio
+                    sem = asyncio.Semaphore(5)
+                    
+                    async def _analyze_one(sem, session, c):
+                        async with sem:
+                            return await agent.analyze_entry(
+                                session, c["symbol"],
+                                suggested_dir=c.get("suggested_dir"),
+                                screen_reasons=c.get("screen_reasons")
+                            )
+                    
+                    tasks = [_analyze_one(sem, session, c) for c in candidates]
+                    signals = await asyncio.gather(*tasks, return_exceptions=True)
+                    
+                    result["analyzed"] = len(candidates)
+                    
+                    for sig in signals:
+                        if not isinstance(sig, TradeSignal):
+                            continue
+                        
+                        sig_dict = sig.to_dict()
+                        d = sig_dict.get("direction", "NEUTRAL")
+                        sym = sig_dict.get("symbol", "?")
+                        score = sig_dict.get("analysis_detail", {}).get("total_score", 0)
+
+                        logger.info(f"  {sym}: {d} ({sig_dict.get('confidence',0)}%) "
+                                    f"${sig_dict.get('analysis_detail',{}).get('price',0):,.2f} "
+                                    f"score={score}")
+
+                        if d != "NEUTRAL":
+                            self._total_signals += 1
+                            result["signals"].append({
+                                "symbol": sym, "direction": d,
+                                "score": score,
+                                "confidence": sig_dict.get("confidence", 0),
+                            })
+                            logger.info(f"🎯 信号: {sym} {d} score={score:+.1f} conf={sig_dict.get('confidence',0)}%")
+
+                        review = self.paper_engine.risk.review_signal(sig_dict)
+                        if review.get("approved"):
+                            report = await self.paper_engine.execute_open(review, sig_dict)
+                            # ★ 检查开仓是否真正成功
+                            if report and "模拟开仓成功" in report:
+                                self._total_opens += 1
+                                result["opened"].append({
+                                    "symbol": sym, "direction": d,
+                                    "entry": review.get("entry_price", 0),
+                                })
+                                logger.info(f"✅ 自动开仓: {sym} {d} @${review.get('entry_price',0):,.2f}")
+                            else:
+                                logger.info(f"⏭️ {sym} {d} 开仓未执行: {report}")
+                        else:
+                            reason = review.get("reason", "")
+                            if d != "NEUTRAL":
+                                result["rejected"].append({"symbol": sym, "reason": reason})
+
+            # 检查现有持仓止损止盈
+            closes = await self.paper_engine.check_positions()
+            if closes:
+                self._total_closes += len(closes)
+                for c in closes:
+                    logger.info(f"📊 自动平仓: {c[:100]}")
+                # 平仓的交易加入AI复盘队列
+                self._queue_for_review(closes)
+
+            # 保存状态
+            self.paper_engine.risk._save_state()
+
+        except Exception as e:
+            result["error"] = str(e)
+            logger.error(f"扫描出错: {e}", exc_info=True)
+
+        # 写入扫描日志
+        self._log_cycle(result)
+
+        # 10%亏损复盘检查
+        risk = self.paper_engine.risk
+        if risk.need_review:
+            review_msg = (
+                f"🚨 **自动复盘触发**\n"
+                f"资金: ${risk.capital:,.2f}\n"
+                f"复盘基准: ${risk.last_review_capital:,.2f}\n"
+                f"亏损: {abs(risk.capital / risk.last_review_capital - 1) * 100:.1f}%\n"
+                f"连续亏损: {risk.consecutive_losses}笔\n"
+                f"总交易: 开{self._total_opens} 平{self._total_closes}"
+            )
+            logger.warning(review_msg)
+            result["review_needed"] = True
+            result["review_msg"] = review_msg
+            self._auto_review(risk)
+
+        # 每轮结束更新冷却计数
+        risk.tick_cooldown()
+
+        logger.info(
+            f"🔄 第 {self._scan_count} 轮完成 | "
+            f"分析{result['analyzed']}个 | "
+            f"信号{len(result['signals'])}个 | "
+            f"开仓{len(result['opened'])}个 | "
+            f"总开仓{self._total_opens} 总平仓{self._total_closes} | "
+            f"资金${risk.capital:,.2f}"
+        )
+
+        return result
+
+    # ---- AI交易员核心流程（混合模式） ----
+    async def _ai_trading_cycle(self, session, candidates: list, agent) -> dict:
+        """混合模式：老规则引擎算技术评分 → 拼入简报 → AI做最终决策"""
+        from ai_briefing import generate_briefing
+        from ai_trader import ai_analyze, AIDecision
+        from analyst_data import collect_all_analysis
+        from analyst_tech import (
+            analyze_volume_price, analyze_orderbook,
+            analyze_whale_behavior, analyze_trend,
+            calc_stochrsi, check_stochrsi_entry,
+            check_multi_timeframe_stochrsi, detect_volume_divergence
+        )
+        from sentiment_data import collect_sentiment
+        
+        result = {"decisions": [], "briefings": {}, "analyzed": 0}
+        
+        # 混合模式两阶段筛选：
+        # 1. 规则引擎快速预筛（零成本）：只保留有方向建议或高分的候选
+        # 2. AI 深度分析（有API成本）：只对预筛通过的做决策
+        
+        # ★ 提前过滤已持仓币种
+        held_symbols = set(self.paper_engine.risk.positions.keys())
+        
+        scored = []
+        for c in candidates:
+            sym = c.get("symbol", "")
+            # 已持仓的币不再送去AI分析
+            if sym in held_symbols:
+                continue
+            # ★ v26: OB跳过冷却（数据：GTCUSDT 15+轮因OB距35.7%反复分析→每轮浪费1次AI API调用）
+            if sym in self._ob_skip_until and self._scan_count < self._ob_skip_until[sym]:
+                continue
+            score = c.get("screen_score", 0)
+            has_dir = c.get("suggested_dir") is not None
+            # 预筛条件：有方向建议 OR 高分(>=15)
+            if has_dir or score >= 15:
+                scored.append(c)
+        
+        # 按分数排序，取前15个
+        top_candidates = sorted(scored, key=lambda c: c.get("screen_score", 0), reverse=True)[:15]
+        
+        # 如果预筛后太少，补充高分候选（★ v17: 补充时也要排除已持仓和OB冷却的币）
+        if len(top_candidates) < 5:
+            remaining = sorted(candidates, key=lambda c: c.get("screen_score", 0), reverse=True)
+            for c in remaining:
+                if c not in top_candidates:
+                    sym_c = c.get("symbol", "")
+                    # 补充候选也要排除已持仓
+                    if sym_c in held_symbols:
+                        continue
+                    # ★ v28修复: 补充候选也要排除OB冷却币（数据：VVVUSDT OB距57%被冷却但补充路径绕过冷却，4h内23次无效分析浪费API）
+                    if sym_c in self._ob_skip_until and self._scan_count < self._ob_skip_until[sym_c]:
+                        continue
+                    top_candidates.append(c)
+                if len(top_candidates) >= 10:
+                    break
+        
+        result["analyzed"] = len(top_candidates)
+        logger.info(f"🔍 候选筛选: 总{len(candidates)}个 → 预筛{len(scored)}个 → AI分析{len(top_candidates)}个")
+        
+        for c in top_candidates:
+            symbol = c["symbol"]
+            suggested_dir = c.get("suggested_dir")
+            try:
+                # 1. 采集数据
+                data = await asyncio.wait_for(collect_all_analysis(session, symbol), timeout=15)
+                
+                # 2. (已移除老规则引擎技术评分 — 以SMC+HMA为核心)
+                tech_dir = None
+                
+                # 3. 生成市场简报
+                briefing = generate_briefing(symbol, data)
+                
+                sentiment = {}
+                
+                # 3.6 SMC 分析（v13: 仅提供价位参考，不提供方向）
+                smc_signal = None
+                try:
+                    from smc_signal import generate_smc_signal, save_smc_signal
+                    smc_klines = {}
+                    for iv in ["15m", "1h", "4h"]:
+                        if iv in data.get("klines", {}) and len(data["klines"][iv]) >= 15:
+                            smc_klines[iv] = data["klines"][iv]
+                    if smc_klines:
+                        smc_signal = generate_smc_signal(symbol, smc_klines)
+                        if smc_signal and smc_signal["direction"] != "NEUTRAL":
+                            # v13: SMC只提供价位参考（入场区/止盈/止损/RR），不注入方向/置信度/原因
+                            briefing += "\n\n【SMC关键价位】"
+                            if smc_signal.get("entry_zone"):
+                                briefing += (
+                                    f"\n  入场区=${smc_signal['entry_zone'][0]:,.2f}~${smc_signal['entry_zone'][1]:,.2f} "
+                                    f"{'✅价格在区间内' if smc_signal['entry_immediate'] else '⏳等待回调'}"
+                                )
+                            if smc_signal.get("targets"):
+                                tps = smc_signal["targets"][:3]
+                                tp_str = " | ".join(f"TP{i+1}=${t['price']:,.2f}({t.get('pct',0):+.1f}%)" for i, t in enumerate(tps))
+                                briefing += f"\n  止盈={tp_str}"
+                            briefing += (
+                                f"\n  止损=${smc_signal['stop_loss']:,.2f} "
+                                f"RR={smc_signal['risk_reward']}"
+                            )
+                            # 保存到Redis
+                            try:
+                                import redis as _r
+                                rc = _r.from_url(REDIS_URL)
+                                save_smc_signal(smc_signal, rc)
+                            except:
+                                pass
+                            logger.info(f"🧠 SMC {symbol}: {smc_signal['direction']} conf={smc_signal['confidence']}% | {smc_signal.get('ai_brief', '')[:80]}")
+                except Exception as e:
+                    logger.debug(f"SMC分析失败 {symbol}: {e}")
+                
+                # 3.7 HMA趋势分析（v13: 仅提供交叉信号，不提供方向）
+                hma_result = None
+                try:
+                    from hma_trend import analyze_hma_trend
+                    # 优先用1h K线（平衡灵敏度与噪音），备选15m
+                    hma_klines = data.get("klines", {}).get("1h", [])
+                    if len(hma_klines) < 50:
+                        hma_klines = data.get("klines", {}).get("15m", [])
+                    if len(hma_klines) >= 50:
+                        hma_result = analyze_hma_trend(
+                            hma_klines, length=34, gain=5000,
+                            smc_signal=smc_signal
+                        )
+                        # v13: 只注入交叉信号，不注入趋势方向/SMC对齐
+                        if hma_result["cross_now"]:
+                            briefing += f"\n\n【HMA信号】当前K线刚出{hma_result['cross_type']}信号"
+                            logger.info(f"📊 HMA {symbol}: 交叉信号={hma_result['cross_type']}")
+                        else:
+                            logger.debug(f"📊 HMA {symbol}: 无交叉信号")
+                except Exception as e:
+                    logger.debug(f"HMA分析失败 {symbol}: {e}")
+                
+                # 3.8 EMA144/EMA576（v13: 仅提供回调价位和止损参考，不注入方向）
+                ema_result = None
+                try:
+                    from analyst_tech import check_ema_alignment
+                    klines_4h = data.get("klines", {}).get("4h", [])
+                    if len(klines_4h) >= 100:
+                        mark_price = float(data.get("funding", {}).get("markPrice", 0))
+                        if mark_price == 0:
+                            mark_price = klines_4h[-1].get("close", 0)
+                        ema_result = check_ema_alignment(klines_4h, mark_price)
+                        
+                        # v13: 只注入价位参考（回调位、止损位），不注入多空排列方向
+                        if ema_result.get("pullback_opportunity"):
+                            briefing += (
+                                f"\n\n【EMA回调参考】"
+                                f"\n  🎯 回调入场位=${ema_result['pullback_level']:,.2f}"
+                            )
+                        if ema_result.get("swing_sl", 0) > 0:
+                            if not ema_result.get("pullback_opportunity"):
+                                briefing += "\n\n【EMA参考】"
+                            briefing += (
+                                f"\n  📍 Swing止损=${ema_result['swing_sl']:,.2f} "
+                                f"(距{ema_result['swing_sl_pct']:.2f}%)"
+                            )
+                        logger.info(f"📊 EMA {symbol}: {ema_result['summary'][:100]}")
+                except Exception as e:
+                    logger.debug(f"EMA分析失败 {symbol}: {e}")
+                
+                # 4. (已移除旧技术评分注入 — SMC+HMA+EMA已在上方注入)
+                result["briefings"][symbol] = briefing
+                
+                # 5. AI交易员决策（带着技术评分一起分析）
+                # ★ v13: 传入klines供规则方向引擎使用（BB+RSI+EMA）
+                _kl_15m = data.get("klines", {}).get("15m", [])
+                _kl_1h = data.get("klines", {}).get("1h", [])
+                _kl_4h = data.get("klines", {}).get("4h", [])
+                decision = await ai_analyze(
+                    symbol=symbol,
+                    briefing=briefing,
+                    recent_trades=self._get_recent_trades(),
+                    klines_15m=_kl_15m,
+                    klines_1h=_kl_1h,
+                    klines_4h=_kl_4h,
+                )
+                # 附加上下文信息供后续信号转换使用
+                decision._suggested_dir = suggested_dir
+                decision._tech_dir = tech_dir
+                decision._sentiment = sentiment  # 传递舆情给信号
+                decision._smc_signal = smc_signal  # ★ 传递SMC信号供方向过滤
+                decision._smc_klines = smc_klines  # ★ 传递SMC K线供AI覆写方向时重算OB
+                decision._hma_result = hma_result  # ★ 传递HMA趋势供回调入场辅助
+                decision._ema_result = ema_result  # ★ 传递EMA144/EMA576排列供趋势确认
+                result["decisions"].append(decision)
+                
+                # 避免API频率限制（1s间隔防429）
+                await asyncio.sleep(1.0)
+                
+            except Exception as e:
+                logger.error(f"❌ AI分析 {symbol} 失败: {type(e).__name__}: {e}")
+                # 返回SKIP决策，不中断整个循环
+                from ai_trader import AIDecision
+                decision = AIDecision(symbol=symbol, timestamp=time.strftime("%Y-%m-%d %H:%M:%S"))
+                decision.reasoning = f"分析异常: {type(e).__name__}"
+                result["decisions"].append(decision)
+        
+        return result
+    
+    def _ai_decision_to_signal(self, decision, suggested_dir=None, tech_dir=None) -> dict:
+        """将AI决策转换为风控系统可识别的信号格式"""
+        sym = decision.symbol
+        
+        # 获取舆情数据
+        sentiment = getattr(decision, '_sentiment', {})
+        if not sentiment:
+            try:
+                from sentiment_data import collect_sentiment
+                sentiment = collect_sentiment(decision.symbol)
+            except:
+                sentiment = {}
+        
+        # 获取SMC和HMA信号（供risk_agent杠杆决策）
+        smc_signal = getattr(decision, '_smc_signal', None)
+        hma_result = getattr(decision, '_hma_result', None)
+        
+        # 获取当前价格 — 优先Redis，兜底Binance API
+        price = 0
+        try:
+            import redis as _redis
+            r = _redis.Redis(decode_responses=True, socket_timeout=2)
+            data = r.xrevrange("stream:binance:ticker", count=200)
+            for _, fields in reversed(data):
+                if fields.get("symbol") == decision.symbol:
+                    price = float(fields.get("price", 0))
+                    break
+        except:
+            pass
+        # 兜底：先试Binance期货API，再试现货API（很多小币只上期货）
+        if price <= 0:
+            import urllib.request as _urllib
+            import json as _json
+            import logging as _logging
+            _log = _logging.getLogger("AutoRunner")
+            for api_url in [
+                f"https://fapi.binance.com/fapi/v1/ticker/price?symbol={decision.symbol}",
+                f"https://api.binance.com/api/v3/ticker/price?symbol={decision.symbol}",
+            ]:
+                try:
+                    req = _urllib.Request(api_url)
+                    with _urllib.urlopen(req, timeout=5) as resp:
+                        result = _json.loads(resp.read())
+                        price = float(result.get("price", 0))
+                    if price > 0:
+                        break
+                except Exception:
+                    pass
+            if price <= 0:
+                _log.warning(f"⚠️ 获取{decision.symbol}价格失败(现货+期货)")
+        
+        # ================================================================
+        # ★ 止损逻辑（优先级）：
+        # 1. SMC OB止损：OB被击穿 = 结构失效 = 止损（最佳）
+        # 2. EMA排列 + Swing止损：无OB但有EMA多/空头排列时，
+        #    用swing高低点做区间止损（跌破区间 = 方向反转）
+        # 3. 都没有 → 不开仓
+        # ================================================================
+        ob_stop_loss = None
+        sl_source = "none"  # 止损来源标记
+        
+        # --- 优先用OB止损 ---
+        # ★ v25: 当AI覆写方向时，用AI方向重算OB入场区（数据：GUAUSDT 41次因方向不匹配被跳过，
+        #   SMC=LONG但AI覆写SHORT→OB不匹配→无止损→跳过，浪费分析轮次）
+        ai_overrode_direction = (
+            smc_signal and 
+            smc_signal.get("direction") != "NEUTRAL" and 
+            smc_signal.get("direction") != decision.action
+        )
+        
+        if smc_signal and smc_signal.get("direction") == decision.action:
+            entry_zone = smc_signal.get("entry_zone")
+            if entry_zone and len(entry_zone) == 2:
+                ob_low, ob_high = entry_zone[0], entry_zone[1]
+                if decision.action == "LONG":
+                    ob_stop_loss = ob_low * 0.9985  # OB下沿-0.15%（紧止损模式）
+                else:
+                    ob_stop_loss = ob_high * 1.0015  # OB上沿+0.15%（紧止损模式）
+                if ob_stop_loss > 0:
+                    sl_source = "ob"
+        elif ai_overrode_direction:
+            # AI覆写了SMC方向 → 用AI方向重算OB入场区
+            smc_klines = getattr(decision, '_smc_klines', None)
+            if smc_klines and len(smc_klines) >= 1:
+                try:
+                    from smc_signal import find_entry_zone
+                    new_entry = find_entry_zone(smc_klines, decision.action)
+                    if new_entry and new_entry.get("entry_zone"):
+                        ez = new_entry["entry_zone"]
+                        if len(ez) == 2:
+                            if decision.action == "LONG":
+                                ob_stop_loss = ez[0] * 0.9985
+                            else:
+                                ob_stop_loss = ez[1] * 1.0015
+                            if ob_stop_loss > 0:
+                                sl_source = "ob"
+                                logger.info(
+                                    f"🔄 {sym} AI覆写方向(SMC={smc_signal.get('direction')}→{decision.action})，"
+                                    f"重算OB止损: SL=${ob_stop_loss:,.4f} (距{abs(ob_stop_loss-price)/price*100:.1f}%)"
+                                )
+                except Exception as e:
+                    logger.debug(f"AI覆写方向重算OB失败 {sym}: {e}")
+        
+        # --- 无OB时尝试EMA+Swing止损 ---
+        if not ob_stop_loss:
+            ema_result = getattr(decision, '_ema_result', None)
+            if ema_result and ema_result.get("alignment") != "neutral":
+                ema_aligned = (
+                    (decision.action == "LONG" and ema_result["alignment"] == "bullish") or
+                    (decision.action == "SHORT" and ema_result["alignment"] == "bearish")
+                )
+                if ema_aligned and ema_result.get("swing_sl", 0) > 0:
+                    swing_sl = ema_result["swing_sl"]
+                    swing_sl_pct = ema_result.get("swing_sl_pct", 0)
+                    # Swing止损合理范围检查（1%~15%）
+                    if 1.0 <= swing_sl_pct <= 15.0:
+                        ob_stop_loss = swing_sl
+                        sl_source = "swing"
+                        logger.info(
+                            f"📍 {sym} 无OB，使用Swing区间止损: "
+                            f"SL=${swing_sl:,.4f} ({swing_sl_pct:.2f}%) "
+                            f"({'多头' if decision.action == 'LONG' else '空头'}排列确认)"
+                        )
+        
+        # --- 无OB也无Swing时尝试ATR动态止损（v20: 主流币保护）---
+        # 数据：BTCUSDT 3次因"无OB止损"跳过，但4h结构+EMA+StochRSI全部通过
+        # 对于已通过入场确认的信号（能走到这里说明已过4h结构+StochRSI+EMA确认），用ATR止损比完全错过更好
+        # ★ v24: ATR fallback白名单（数据：GUAUSDT 29次无OB→-$139.94，SOLVUSDT 14次→-$128.72，
+        #   非主流币无SMC结构时ATR止损风险极高，合计-$268.66；主流币1次均盈利）
+        ATR_FALLBACK_COINS = {
+            "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT",
+            "XRPUSDT", "ADAUSDT", "DOGEUSDT", "AVAXUSDT",
+        }
+        if not ob_stop_loss:
+            if sym not in ATR_FALLBACK_COINS:
+                logger.info(f"⏭️ {sym} 无OB/Swing且非主流币，跳过ATR止损（数据：非主流币无OB止损avg -$134）")
+            else:
+                try:
+                    atr_pct_fallback = self._get_atr_pct(sym) / 100.0
+                    # ATR止损距离 = 2.5x ATR（给足波动空间），范围1.5%~3%
+                    # v22: 上限从4%降到3%（数据：QUSDT/BROCCOLIF3BUSDT ATR止损4%→止损-28%/-27%，
+                    # ATR止损绕过3%安全上限导致亏损扩大，4笔>3%全亏，avg loss -$134）
+                    atr_sl_dist = max(atr_pct_fallback * 2.5, 0.015)
+                    atr_sl_dist = min(atr_sl_dist, 0.03)
+                    
+                    if price > 0:
+                        if decision.action == "LONG":
+                            ob_stop_loss = price * (1 - atr_sl_dist)
+                        else:
+                            ob_stop_loss = price * (1 + atr_sl_dist)
+                        sl_source = "atr"
+                        logger.info(
+                            f"📐 {sym} 无OB/Swing，使用ATR止损: "
+                            f"SL=${ob_stop_loss:,.4f} ({atr_sl_dist*100:.2f}% = {atr_pct_fallback*100:.1f}%ATR×2.5)"
+                        )
+                except Exception as e:
+                    logger.debug(f"ATR止损计算失败 {sym}: {e}")
+        
+        # ★ 仍然无法生成止损 → 不开仓
+        if not ob_stop_loss:
+            # ★ v27: 无OB止损也加冷却（数据：GUAUSDT 9轮连续被跳过浪费分析，每轮1次AI API调用）
+            self._ob_skip_until[sym] = self._scan_count + 15
+            logger.info(f"⏭️ {sym} 无OB止损也无EMA Swing止损，跳过开仓(冷却15轮)")
+            return None
+        
+        ob_sl_dist = abs(ob_stop_loss - price) / price if price > 0 else 1
+        
+        # ★ 精准入场(v11): 只在价格贴近OB时开仓
+        # OB止损距离 = 价格到OB边界的距离 = 入场精度
+        # 太远 = 价格不在OB区域 = 不入场（等回调）
+        # ★ v21: ATR fallback止损跳过入场距离检查（数据：DYMUSDT ATR止损4%被3%上限拦截→6次无效跳过浪费轮次）
+        if sl_source == "atr":
+            # ATR止损已考虑波动率，无需再检查"价格是否在OB区域"（因为根本没有OB）
+            logger.info(f"📐 {sym} ATR止损{ob_sl_dist*100:.1f}%，跳过OB入场距离检查")
+            sl_was_widened = False
+        else:
+            # ★ v19: ATR动态最低止损（数据：BTCUSDT 3次止损全在0.8%地板被假止损-$172.71，ATR=0.25%时0.8%仅3.2x ATR太紧）
+            try:
+                atr_pct_val = self._get_atr_pct(sym) / 100.0  # _get_atr_pct返回百分比
+                MIN_OB_SL_DIST = max(atr_pct_val * 2.0, 0.010)  # 至少2x ATR，下限1.0%（v19: 从1x/0.8%上调，BTC ATR=0.25%时0.8%仅3.2x ATR）
+                MIN_OB_SL_DIST = min(MIN_OB_SL_DIST, 0.035)     # v24: 上限4%→3.5%，数据：5/13日8次-28%止损（4%SL×7x杠杆=-$1051），3.5%×7x=24.5%更安全
+            except Exception:
+                MIN_OB_SL_DIST = 0.010  # 回退到固定1.0%（v19同步上调）
+            MAX_OB_SL_DIST = min(max(atr_pct_val * 3.0, 0.030), 0.035)  # v24: 上限4%→3.5%，与MIN同步下调
+            sl_was_widened = False
+            if ob_sl_dist < MIN_OB_SL_DIST and ob_sl_dist > 0:
+                if decision.action == "LONG":
+                    ob_stop_loss = price * (1 - MIN_OB_SL_DIST)
+                else:
+                    ob_stop_loss = price * (1 + MIN_OB_SL_DIST)
+                logger.info(f"📐 {sym} OB止损过窄({ob_sl_dist*100:.2f}%)→设为{MIN_OB_SL_DIST*100:.1f}% (ATR动态)")
+                ob_sl_dist = MIN_OB_SL_DIST
+                sl_was_widened = True
+            # ★ 价格不在OB区域（止损距离>3%）→ 不入场，等回调
+            # v13修复：合并原死代码(1082-1098行)的距离分级冷却逻辑
+            # 数据支撑：ONTUSDT(7-8%)4h内6次跳过，DRIFTUSDT(8%)4h内7次跳过，浪费分析轮次
+            elif ob_sl_dist > MAX_OB_SL_DIST:
+                # ★ v26: OB跳过冷却10轮（~50分钟），避免同一币反复分析浪费API（数据：GTCUSDT 15轮×1 API/轮=15次浪费）
+                self._ob_skip_until[sym] = self._scan_count + 10
+                logger.info(f"⏭️ {sym} 价格不在OB区域(OB距{ob_sl_dist*100:.1f}%>{MAX_OB_SL_DIST*100:.1f}%)，跳过等回调(冷却10轮)")
+                return None
+        
+        stop_loss = ob_stop_loss
+        sl_pct = ob_sl_dist
+        
+        # ★ SMC OB止盈目标（反方向OB/FVG作为阻力位）
+        smc_targets = smc_signal.get("targets", []) if smc_signal and isinstance(smc_signal, dict) else []
+        
+        # 止盈: 直接用SMC反方向OB目标，不同周期一定会产生OB
+        take_profit = smc_targets[0].get("price", price) if smc_targets else price
+        
+        # ★ TP方向验证：确保TP在正确方向（LONG→TP>price, SHORT→TP<price）
+        # 价格可能已穿越目标OB，导致TP在错误方向，此时用SL距离×2作为默认TP
+        tp_direction_ok = (
+            (decision.action == "LONG" and take_profit > price) or
+            (decision.action == "SHORT" and take_profit < price)
+        )
+        if not tp_direction_ok:
+            sl_distance = abs(price - stop_loss) if stop_loss else price * 0.02
+            if decision.action == "LONG":
+                take_profit = price + sl_distance * 2.0  # 默认RR=2
+            else:
+                take_profit = price - sl_distance * 2.0
+            logger.info(f"📐 {decision.symbol} TP方向错误(原TP=${smc_targets[0].get('price', 0):.4f}对{decision.action}无效)→用默认TP=${take_profit:.4f}")
+        
+        tp_pct = abs(take_profit - price) / price if price > 0 else 0
+        
+        # ★ RR保护: 当SMC TP目标太近导致RR<1.0时，使用SL距离×2.5作为默认TP
+        # 数据支撑: 最近4小时83个信号中，~35个因RR<1.0被拒绝(占42%)
+        # 原因: smc_targets[0](第一个反向OB)经常距离比SL还近
+        # 修复: 当RR<1.0时，给TP一个合理的外推距离，让盈亏比达到2.0+
+        if price > 0 and stop_loss > 0 and take_profit > 0:
+            sl_dist_check = abs(price - stop_loss)
+            tp_dist_check = abs(take_profit - price)
+            if sl_dist_check > 0:
+                rr_check = tp_dist_check / sl_dist_check
+                if rr_check < 1.0:
+                    sl_distance = abs(price - stop_loss)
+                    if decision.action == "LONG":
+                        take_profit = price + sl_distance * 2.5
+                    else:
+                        take_profit = price - sl_distance * 2.5
+                    tp_pct = abs(take_profit - price) / price if price > 0 else 0
+                    logger.info(f"📐 {decision.symbol} RR过低({rr_check:.2f})→用默认TP=${take_profit:.4f} (SL×2.5)")
+        
+        logger.info(f"🎯 {decision.symbol} 止损+止盈({sl_source}): "
+                    f"SL=${ob_stop_loss:.4f} TP=${take_profit:.4f} "
+                    f"SL距={ob_sl_dist*100:.2f}% TP距={tp_pct*100:.2f}%")
+
+        # 计算盈亏比
+        risk_reward = 0
+        if price > 0 and stop_loss > 0 and take_profit > 0:
+            sl_dist = abs(price - stop_loss)
+            tp_dist = abs(take_profit - price)
+            if sl_dist > 0:
+                risk_reward = round(tp_dist / sl_dist, 2)
+        
+        # 做空仓位与做多相同（不再歧视做空）
+        position_pct = decision.position_pct
+        
+        trend_override = None
+        
+        return {
+            "symbol": decision.symbol,
+            "direction": decision.action,
+            "confidence": decision.confidence,
+            "position_pct": position_pct,
+            "stop_loss": stop_loss,
+            "entry_price": price,
+            "entry_zone": [price, price],
+            "take_profit": take_profit,
+            # ★ targets过滤方向：只保留与交易方向一致的TP价格（v13修复）
+            # 数据支撑：SOLUSDT SHORT的take_profits=[89.06,89.09,89.12]全在入场价上方（错误方向）
+            "targets": ([t.get("price", 0) for t in smc_targets if t.get("price", 0) > 0 and
+                ((decision.action == "LONG" and t.get("price", 0) > price) or
+                 (decision.action == "SHORT" and t.get("price", 0) < price))]
+                or ([round(take_profit, 4)] if take_profit != price else [])),
+            # 只传方向正确的OB目标给监控用
+            "ob_tp_levels": [t for t in smc_targets if t.get("price", 0) > 0 and
+                ((decision.action == "LONG" and t["price"] > price) or
+                 (decision.action == "SHORT" and t["price"] < price))],
+            "risk_reward": risk_reward,
+            "reasoning": f"[AI] {decision.reasoning}",
+            "analysis_detail": {
+                "price": price,
+                "total_score": decision.confidence,
+                "ai_factors": decision.key_factors,
+                "ai_risk_notes": decision.risk_notes,
+                "trend_override": trend_override,  # 趋势冲突保护
+                "smc_signal": smc_signal,  # SMC信号供risk_agent杠杆决策
+                "hma_result": hma_result,  # HMA信号供risk_agent杠杆决策
+                "sl_source": sl_source,  # 止损来源: "ob" 或 "swing"
+                "sl_was_widened": sl_was_widened,  # ★ OB止损被加宽→限制杠杆(数据支撑: SWARMSUSDT 0.22%加宽→19x→亏$506)
+                "sentiment": {
+                    "composite_score": sentiment.get("composite_score", 0),
+                    "sentiment_label": sentiment.get("sentiment_label", "中性"),
+                    "fear_greed": sentiment.get("details", {}).get("fear_greed", {}),
+                    "whale_direction": sentiment.get("details", {}).get("whale", {}).get("direction", "中性"),
+                    "oi_trend": sentiment.get("details", {}).get("open_interest", {}).get("trend", "平稳"),
+                },
+            }
+        }
+
+    def _get_atr_pct(self, sym: str) -> float:
+        """获取ATR占价格的百分比（用于动态阈值）"""
+        import requests
+        try:
+            # 取1h K线算ATR(14)
+            r = requests.get(f"https://api.binance.com/api/v3/klines",
+                           params={"symbol": sym, "interval": "1h", "limit": 15},
+                           timeout=5)
+            klines = r.json()
+            if not isinstance(klines, list) or len(klines) < 15:
+                return 3.0  # 默认3%
+            closes = [float(k[4]) for k in klines]
+            highs = [float(k[2]) for k in klines]
+            lows = [float(k[3]) for k in klines]
+            # ATR = avg of (high-low) over 14 periods
+            trs = [highs[i] - lows[i] for i in range(1, len(highs))]
+            atr = sum(trs) / len(trs) if trs else 0
+            price = closes[-1] if closes else 1
+            return (atr / price * 100) if price > 0 else 3.0
+        except Exception:
+            return 3.0  # 默认3%
+    
+    def _get_recent_trades(self, limit: int = 5) -> list:
+        """获取近期交易记录"""
+        trades = []
+        try:
+            trade_file = DATA_DIR / "paper-trades.jsonl"
+            if trade_file.exists():
+                with open(trade_file) as f:
+                    lines = f.readlines()[-limit * 2:]  # 多读一些
+                for line in reversed(lines):
+                    try:
+                        t = json.loads(line)
+                        if t.get("action") == "CLOSE":
+                            trades.append({
+                                "symbol": t.get("symbol", "?"),
+                                "direction": t.get("direction", "?"),
+                                "pnl_pct": t.get("pnl_pct", 0),
+                                "reasoning": t.get("reason", ""),
+                            })
+                            if len(trades) >= limit:
+                                break
+                    except:
+                        pass
+        except:
+            pass
+        return trades
+    
+    def _queue_for_review(self, closes: list):
+        """将平仓交易加入AI复盘队列"""
+        for c in closes:
+            try:
+                # 解析平仓信息
+                if isinstance(c, str):
+                    # 尝试从日志字符串提取
+                    for sym in self._briefings_cache:
+                        if sym in c:
+                            self._ai_review_queue.append({
+                                "close_log": c,
+                                "symbol": sym,
+                                "entry_briefing": self._briefings_cache.get(sym, ""),
+                            })
+                            break
+            except:
+                pass
+    
+    async def _process_ai_reviews(self):
+        """处理AI复盘队列（在主循环中定期调用）"""
+        if not self._ai_review_queue:
+            return
+        
+        from ai_reviewer import review_trade
+        
+        for item in self._ai_review_queue[:3]:  # 每次最多复盘3笔
+            try:
+                # 从paper_trades获取完整交易信息
+                trade = self._find_trade_record(item.get("symbol", ""))
+                if trade:
+                    await review_trade(
+                        trade=trade,
+                        entry_briefing=item.get("entry_briefing", ""),
+                    )
+            except Exception as e:
+                logger.error(f"❌ AI复盘失败: {e}")
+        
+        self._ai_review_queue = self._ai_review_queue[3:]
+    
+    def _find_trade_record(self, symbol: str) -> dict:
+        """从交易记录中找到最近的交易"""
+        try:
+            trade_file = DATA_DIR / "paper-trades.jsonl"
+            if trade_file.exists():
+                with open(trade_file) as f:
+                    lines = f.readlines()
+                for line in reversed(lines):
+                    try:
+                        t = json.loads(line)
+                        if t.get("symbol") == symbol and t.get("action") == "CLOSE":
+                            return t
+                    except:
+                        pass
+        except:
+            pass
+        return {}
+
+    # ---- 自动复盘 ----
+    def _auto_review(self, risk):
+        """每亏损10%自动复盘: 记录日志，分析原因，重置基准"""
+        logger.info("=" * 50)
+        logger.info("📋 自动复盘开始")
+        logger.info(f"  当前资金: ${risk.capital:,.2f}")
+        logger.info(f"  复盘基准: ${risk.last_review_capital:,.2f}")
+        logger.info(f"  连续亏损: {risk.consecutive_losses}笔")
+        logger.info(f"  总开仓: {self._total_opens} | 总平仓: {self._total_closes}")
+
+        # 记录复盘日志
+        review_log = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "capital": risk.capital,
+            "review_baseline": risk.last_review_capital,
+            "loss_pct": round((risk.capital / risk.last_review_capital - 1) * 100, 2),
+            "consecutive_losses": risk.consecutive_losses,
+            "total_opens": self._total_opens,
+            "total_closes": self._total_closes,
+            "positions": list(risk.positions.keys()),
+        }
+        log_path = DATA_DIR / "review-log.jsonl"
+        with open(log_path, "a") as f:
+            f.write(json.dumps(review_log, ensure_ascii=False) + "\n")
+
+        # 重置复盘基准，继续交易
+        risk.mark_review_done()
+        logger.info("✅ 复盘完成，基准已重置，继续交易")
+        logger.info("=" * 50)
+
+    # ---- 持仓监控循环 ----
+    async def monitor_positions(self):
+        """高频持仓监控（止损止盈检查）"""
+        if not self.paper_engine.risk.positions:
+            return
+
+        closes = await self.paper_engine.check_positions()
+        if closes:
+            self._total_closes += len(closes)
+            for c in closes:
+                logger.info(f"🚨 止损止盈触发: {c[:150]}")
+
+    # ---- 日志记录 ----
+    def _log_cycle(self, result: dict):
+        """记录每轮扫描日志"""
+        log_file = DATA_DIR / "auto-cycle-log.jsonl"
+        with open(log_file, "a") as f:
+            f.write(json.dumps(result, ensure_ascii=False) + "\n")
+
+    # ---- 每日报告 ----
+    def generate_daily_report(self) -> str:
+        """生成每日自动运行报告"""
+        from review import ReviewSystem
+        rv = ReviewSystem()
+
+        uptime = datetime.now(timezone.utc) - self._started_at
+        hours = uptime.total_seconds() / 3600
+
+        # 读取今日扫描日志
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        cycle_file = DATA_DIR / "auto-cycle-log.jsonl"
+        today_cycles = 0
+        today_signals = 0
+        today_opens = 0
+
+        if cycle_file.exists():
+            with open(cycle_file) as f:
+                for line in f:
+                    try:
+                        c = json.loads(line)
+                        if c.get("timestamp", "").startswith(today):
+                            today_cycles += 1
+                            today_signals += len(c.get("signals", []))
+                            today_opens += len(c.get("opened", []))
+                    except:
+                        pass
+
+        report = (
+            f"📰 *小风自动运行日报*\n"
+            f"📅 {today}\n\n"
+            f"⏱️ 运行时长: {hours:.1f}小时\n"
+            f"🔄 扫描轮次: {today_cycles}\n"
+            f"📊 分析信号: {today_signals}个\n"
+            f"📈 今日开仓: {today_opens}笔\n"
+            f"📈 累计开仓: {self._total_opens}笔\n"
+            f"📉 累计平仓: {self._total_closes}笔\n\n"
+        )
+
+        # 日报详情
+        report += rv.daily_report()
+
+        # 绩效
+        perf = rv.performance()
+        if "暂无" not in perf:
+            report += f"\n{'='*20}\n{perf}"
+
+        return report
+
+    # ---- 优化建议 + 自动调参 ----
+    def optimization_hints(self) -> str:
+        """基于历史数据给出优化建议 + 自动调整参数"""
+        from review import ReviewSystem
+        rv = ReviewSystem()
+        trades = rv._load_trades()
+        closes = [t for t in trades if t.get("action") == "CLOSE"]
+
+        if len(closes) < 3:
+            return "📊 交易数据不足（<3笔），继续运行积累数据后再出优化建议"
+
+        lines = ["🔧 *优化分析*\n"]
+
+        # 1. 方向偏好
+        longs = [t for t in closes if t.get("direction") == "LONG"]
+        shorts = [t for t in closes if t.get("direction") == "SHORT"]
+        long_pnl = sum(t.get("pnl_pct", 0) for t in longs) / len(longs) if longs else 0
+        short_pnl = sum(t.get("pnl_pct", 0) for t in shorts) / len(shorts) if shorts else 0
+
+        if long_pnl > short_pnl + 1:
+            lines.append("• 做多表现更好，可适当提高做多阈值")
+        elif short_pnl > long_pnl + 1:
+            lines.append("• 做空表现更好，当前偏空市场可适当增加做空信号")
+
+        # 2. 止损分析
+        sl_closes = [t for t in closes if "止损" in t.get("reason", "")]
+        if sl_closes:
+            sl_rate = len(sl_closes) / len(closes) * 100
+            if sl_rate > 60:
+                lines.append(f"• 止损率 {sl_rate:.0f}% 过高 → 入场点需优化")
+            elif sl_rate < 20:
+                lines.append(f"• 止损率 {sl_rate:.0f}% 低 → 止损设置合理")
+
+        # 3. 盈亏比
+        wins = [t for t in closes if t.get("pnl_pct", 0) >= 0]
+        losses = [t for t in closes if t.get("pnl_pct", 0) < 0]
+        if wins and losses:
+            avg_win = sum(t.get("pnl_pct", 0) for t in wins) / len(wins)
+            avg_loss = abs(sum(t.get("pnl_pct", 0) for t in losses) / len(losses))
+            pf = avg_win / avg_loss if avg_loss > 0 else 99
+            if pf < 1.5:
+                lines.append(f"• 盈亏比 {pf:.1f} 偏低 → 放宽止盈/收紧止损")
+            else:
+                lines.append(f"• 盈亏比 {pf:.1f} 健康")
+
+        # 4. 自动调参（写入参数调整建议文件）
+        self._auto_tune(closes)
+
+        if len(lines) == 1:
+            lines.append("• 当前数据正常，继续保持")
+
+        return "\n".join(lines)
+
+    def _auto_tune(self, closes: list):
+        """根据交易结果自动调整参数"""
+        import importlib
+        tune_file = DATA_DIR / "auto-tune.json"
+        params = {}
+
+        if tune_file.exists():
+            try:
+                params = json.loads(tune_file.read_text())
+            except:
+                params = {}
+
+        total = len(closes)
+        wins = len([t for t in closes if t.get("pnl_pct", 0) >= 0])
+        wr = wins / total * 100 if total > 0 else 50
+
+        # 胜率自适应：胜率低时提高入场门槛
+        if total >= 10:
+            if wr < 35:
+                params["score_threshold"] = 20
+                params["tune_reason"] = f"胜率{wr:.0f}%<35%，提高阈值到20"
+            elif wr > 60:
+                params["score_threshold"] = 12
+                params["tune_reason"] = f"胜率{wr:.0f}%>60%，降低阈值到12"
+            else:
+                params["score_threshold"] = 15
+                params["tune_reason"] = f"胜率{wr:.0f}%正常，保持阈值15"
+
+        # 止损宽度自适应
+        sl_closes = [t for t in closes if "止损" in t.get("reason", "")]
+        if total >= 10 and len(sl_closes) / total > 0.5:
+            params["sl_widen"] = True
+            params["sl_widen_reason"] = "止损率>50%，建议放宽止损"
+        else:
+            params["sl_widen"] = False
+
+        params["updated_at"] = datetime.now(timezone.utc).isoformat()
+        params["total_trades"] = total
+        params["win_rate"] = round(wr, 1)
+
+        tune_file.write_text(json.dumps(params, ensure_ascii=False, indent=2))
+        logger.info(f"🔧 自动调参: {params.get('tune_reason', '初始化')}, 胜率={wr:.0f}%")
+
+
+# ============================================
+# 主循环
+# ============================================
+async def main_loop(once: bool = False):
+    """主循环"""
+    runner = AutoRunner()
+    runner._init_modules()
+
+    logger.info("🌬️ 小风自动交易系统启动 | 🤖AI模式")
+    logger.info(f"💰 初始资金: ${runner.paper_engine.risk.capital:,.0f}")
+    logger.info(f"📊 核心币: {CORE_SYMBOLS}")
+    logger.info(f"⏰ 扫描间隔: 5分钟 | 持仓监控: 60秒 | AI决策: 每轮")
+
+    cycle = 0
+    last_daily = ""
+
+    while True:
+        cycle += 1
+        try:
+            # 1. AI信号扫描+开仓（每5分钟）
+            if cycle == 1 or cycle % 5 == 0:
+                result = await runner.run_analysis_cycle()
+
+                # 每次扫描后输出简报
+                if result.get("signals"):
+                    logger.info(f"🎯 本轮信号: {len(result['signals'])}个")
+                    for s in result["signals"]:
+                        d_emoji = "🟢" if s["direction"] == "LONG" else "🔴"
+                        source = s.get("source", "rule")
+                        src_tag = "🤖" if source == "ai_trader" else "📐"
+                        logger.info(f"  {src_tag} {d_emoji} {s['symbol']} {s['direction']} conf={s['confidence']}%")
+
+            # 2. 持仓监控（每60秒）
+            await runner.monitor_positions()
+
+            # 3. AI复盘处理（每10分钟）
+            if cycle % 10 == 0:
+                await runner._process_ai_reviews()
+
+            # 4. 每日报告（每6小时输出一次）
+            hour = datetime.now(timezone.utc).hour
+            if hour % 6 == 0 and cycle % 60 == 1:
+                report = runner.generate_daily_report()
+                if report != last_daily:
+                    last_daily = report
+                    logger.info(f"\n{report}")
+
+            # 5. 优化建议（每天一次）
+            if hour == 0 and cycle % 900 == 1:
+                hints = runner.optimization_hints()
+                logger.info(f"\n{hints}")
+
+        except Exception as e:
+            logger.error(f"主循环异常: {e}", exc_info=True)
+
+        if once:
+            break
+
+        await asyncio.sleep(60)  # 60秒基础循环
+
+
+# ============================================
+# 单次扫描（cron用）
+# ============================================
+async def single_scan():
+    """单次扫描，适合 cron 调用"""
+    runner = AutoRunner()
+    runner._init_modules()
+    result = await runner.run_analysis_cycle()
+
+    # 输出简报
+    if result.get("signals"):
+        print(f"\n🎯 发现 {len(result['signals'])} 个方向信号:")
+        for s in result["signals"]:
+            d_emoji = "🟢" if s["direction"] == "LONG" else "🔴"
+            print(f"  {d_emoji} {s['symbol']} {s['direction']} score={s['score']:+.1f} conf={s['confidence']}%")
+
+    if result.get("opened"):
+        print(f"\n📈 新开仓 {len(result['opened'])} 笔:")
+        for o in result["opened"]:
+            print(f"  {o['symbol']} {o['direction']} @${o['entry']:,.2f} {o['leverage']}x")
+
+    # 持仓状态
+    if runner.paper_engine.risk.positions:
+        dash = await runner.paper_engine.dashboard()
+        print(f"\n{dash}")
+
+    return result
+
+
+# ============================================
+# 入口
+# ============================================
+if __name__ == "__main__":
+    if "--once" in sys.argv:
+        asyncio.run(single_scan())
+    elif "--report" in sys.argv:
+        runner = AutoRunner()
+        runner._init_modules()
+        print(runner.generate_daily_report())
+        print()
+        print(runner.optimization_hints())
+    elif "--test" in sys.argv:
+        asyncio.run(single_scan())
+    else:
+        asyncio.run(main_loop())

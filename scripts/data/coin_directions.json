@@ -1,0 +1,152 @@
+{
+  "GUAUSDT": {
+    "direction": "LONG",
+    "score": 85.0,
+    "reason": "低位8% | 放量5.6x | 高波动111% | 暴跌反弹 | MACD超跌"
+  },
+  "BILLUSDT": {
+    "direction": "LONG",
+    "score": 82,
+    "reason": "低位7% | 高波动24% | 暴跌反弹 | 蓄势 | MACD超跌"
+  },
+  "ZECUSDT": {
+    "direction": "LONG",
+    "score": 80.0,
+    "reason": "低位5% | 蓄势 | MACD超跌"
+  },
+  "BSBUSDT": {
+    "direction": "LONG",
+    "score": 78.0,
+    "reason": "低位2% | 高波动41% | 暴跌反弹 | MACD超跌"
+  },
+  "ESPORTSUSDT": {
+    "direction": "LONG",
+    "score": 76.0,
+    "reason": "低位1% | 高波动27% | 蓄势 | MACD超跌"
+  },
+  "SKYAIUSDT": {
+    "direction": "LONG",
+    "score": 74,
+    "reason": "低位2% | 高波动17% | 暴跌反弹 | MACD超跌"
+  },
+  "CLUSDT": {
+    "direction": "LONG",
+    "score": 68.4,
+    "reason": "低位19% | 蓄势 | MACD超跌"
+  },
+  "EDENUSDT": {
+    "direction": "LONG",
+    "score": 67.0,
+    "reason": "低位2% | 蓄势 | MACD超跌"
+  },
+  "BZUSDT": {
+    "direction": "LONG",
+    "score": 66.0,
+    "reason": "低位19% | 蓄势 | MACD超跌"
+  },
+  "OPGUSDT": {
+    "direction": "LONG",
+    "score": 64,
+    "reason": "低位13% | 高波动13% | 暴跌反弹 | MACD超跌"
+  },
+  "PENGUUSDT": {
+    "direction": "LONG",
+    "score": 62,
+    "reason": "低位1% | 蓄势 | MACD超跌"
+  },
+  "SUIUSDT": {
+    "direction": "LONG",
+    "score": 61.0,
+    "reason": "低位14% | 蓄势 | MACD超跌"
+  },
+  "ALTUSDT": {
+    "direction": "LONG",
+    "score": 57.0,
+    "reason": "低位9% | 高波动24%"
+  },
+  "VVVUSDT": {
+    "direction": "LONG",
+    "score": 56.0,
+    "reason": "低位27% | 蓄势"
+  },
+  "DRIFTUSDT": {
+    "direction": "LONG",
+    "score": 54.4,
+    "reason": "高波动47% | 暴跌反弹"
+  },
+  "ONDOUSDT": {
+    "direction": "LONG",
+    "score": 54.4,
+    "reason": "标准"
+  },
+  "MSTRUSDT": {
+    "direction": "LONG",
+    "score": 54,
+    "reason": "低位16% | MACD超跌"
+  },
+  "CRCLUSDT": {
+    "direction": "LONG",
+    "score": 53.0,
+    "reason": "低位17% | MACD超跌"
+  },
+  "INTCUSDT": {
+    "direction": "LONG",
+    "score": 53.0,
+    "reason": "低位29%"
+  },
+  "PAXGUSDT": {
+    "direction": "LONG",
+    "score": 52.0,
+    "reason": "低位28%"
+  },
+  "WLDUSDT": {
+    "direction": "LONG",
+    "score": 51.4,
+    "reason": "高波动11% | 暴跌反弹"
+  },
+  "BTCUSDT": {
+    "direction": "LONG",
+    "score": 51,
+    "reason": "低位28%"
+  },
+  "GRASSUSDT": {
+    "direction": "LONG",
+    "score": 50.4,
+    "reason": "高波动10% | 暴跌反弹"
+  },
+  "PHAUSDT": {
+    "direction": "LONG",
+    "score": 49.0,
+    "reason": "高波动18% | 暴跌反弹"
+  },
+  "NVDAUSDT": {
+    "direction": "LONG",
+    "score": 48,
+    "reason": "低位23%"
+  },
+  "PUMPUSDT": {
+    "direction": "LONG",
+    "score": 48.0,
+    "reason": "低位2%"
+  },
+  "RONINUSDT": {
+    "direction": "LONG",
+    "score": 48,
+    "reason": "低位21% | 高波动17%"
+  },
+  "PLAYUSDT": {
+    "direction": "LONG",
+    "score": 47.0,
+    "reason": "高波动44% | 蓄势"
+  },
+  "1000PEPEUSDT": {
+    "direction": "LONG",
+    "score": 47.0,
+    "reason": "低位1%"
+  },
+  "NEARUSDT": {
+    "direction": "LONG",
+    "score": 46.4,
+    "reason": "高波动9%"
+  }
+}

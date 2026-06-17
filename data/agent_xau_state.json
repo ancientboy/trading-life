@@ -1,0 +1,12 @@
+{
+  "capital": 10000.0,
+  "initial_capital": 10000.0,
+  "total_trades": 0,
+  "total_wins": 0,
+  "total_pnl": 0,
+  "consecutive_losses": 0,
+  "is_circuit_break": false,
+  "active_positions": [],
+  "pending_orders": [],
+  "trades_history": []
+}

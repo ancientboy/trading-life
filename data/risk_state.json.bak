@@ -1,0 +1,553 @@
+{
+  "capital": 8325.515432605243,
+  "daily_pnl": -414.00260420100017,
+  "stats_today_date": "2026-05-17",
+  "stats_today_start_capital": 8739.518036806245,
+  "stats_week_start_date": "2026-05-11",
+  "stats_week_start_capital": 10000.0,
+  "stats_total_realized_pnl": -1610.6670444467513,
+  "stats_total_trades": 29,
+  "stats_total_wins": 3,
+  "stats_total_losses": 26,
+  "weekly_start_capital": 10000.0,
+  "consecutive_losses": 9,
+  "is_circuit_break": true,
+  "circuit_break_reason": "自动监控触发：连续亏损7次，总胜率仅11.1%（3胜24负），周亏损-16.5%，总实现亏损-$1610.67。暂停开新仓等待人工审查。",
+  "last_review_capital": 8858.466489405246,
+  "need_review": true,
+  "loss_cooldown": {
+    "XAGUSDT": {
+      "time": 1778915253.8010688,
+      "direction": "LONG",
+      "pnl": -5.25555117592965,
+      "rounds_since": 9,
+      "loss_count": 0,
+      "total_losses": 1
+    },
+    "DOGEUSDT": {
+      "time": 1778905304.8345246,
+      "direction": "LONG",
+      "pnl": -16.629809818664242,
+      "rounds_since": 22,
+      "loss_count": 0,
+      "total_losses": 1
+    },
+    "IRYSUSDT": {
+      "time": 1778988291.4009538,
+      "direction": "LONG",
+      "pnl": -26.573426573426527,
+      "rounds_since": 10,
+      "loss_count": 1,
+      "total_losses": 2
+    },
+    "INJUSDT": {
+      "time": 1778912509.9783895,
+      "direction": "LONG",
+      "pnl": -11.057287278854298,
+      "rounds_since": 78,
+      "loss_count": 0,
+      "total_losses": 1
+    },
+    "XRPUSDT": {
+      "time": 1778906000.4474041,
+      "direction": "LONG",
+      "pnl": -31.46346512109284,
+      "rounds_since": 48,
+      "loss_count": 0,
+      "total_losses": 1
+    },
+    "HYPEUSDT": {
+      "time": 1778906061.7196462,
+      "direction": "LONG",
+      "pnl": -20.652551197501072,
+      "rounds_since": 63,
+      "loss_count": 0,
+      "total_losses": 1
+    },
+    "DOTUSDT": {
+      "time": 1778912227.101713,
+      "direction": "LONG",
+      "pnl": -38.109756097561174,
+      "rounds_since": 140,
+      "loss_count": 1,
+      "total_losses": 1
+    },
+    "GWEIUSDT": {
+      "time": 1778926722.1605482,
+      "direction": "LONG",
+      "pnl": -17.18541149513085,
+      "rounds_since": 113,
+      "loss_count": 1,
+      "total_losses": 2
+    },
+    "CHZUSDT": {
+      "time": 1778915492.0342364,
+      "direction": "LONG",
+      "pnl": -15.0,
+      "rounds_since": 83,
+      "loss_count": 0,
+      "total_losses": 1
+    },
+    "TRUTHUSDT": {
+      "time": 1778924182.812048,
+      "direction": "LONG",
+      "pnl": -17.47761355054462,
+      "rounds_since": 113,
+      "loss_count": 1,
+      "total_losses": 1
+    },
+    "FFUSDT": {
+      "time": 1778963038.2092738,
+      "direction": "LONG",
+      "pnl": -2.7005738719479915,
+      "rounds_since": 35,
+      "loss_count": 1,
+      "total_losses": 1
+    },
+    "LTCUSDT": {
+      "time": 1778968980.1929862,
+      "direction": "LONG",
+      "pnl": -4.98132004981322,
+      "rounds_since": 18,
+      "loss_count": 1,
+      "total_losses": 1
+    },
+    "PHAROSUSDT": {
+      "time": 1778988291.1005707,
+      "direction": "LONG",
+      "pnl": -32.385466034755225,
+      "rounds_since": 10,
+      "loss_count": 1,
+      "total_losses": 1
+    },
+    "RIVERUSDT": {
+      "time": 1778988291.2911496,
+      "direction": "LONG",
+      "pnl": -20.99999999999998,
+      "rounds_since": 10,
+      "loss_count": 1,
+      "total_losses": 1
+    }
+  },
+  "positions": {
+    "DOGEUSDT": {
+      "symbol": "DOGEUSDT",
+      "direction": "LONG",
+      "entry_price": 0.10985,
+      "quantity": 60481.1094,
+      "leverage": 15,
+      "stop_loss": 0.10764,
+      "take_profits": [
+        0.1143
+      ],
+      "tp_reached": [],
+      "trailing_stop": 0,
+      "max_profit_pct": 0.2275830678197544,
+      "opened_at": "2026-05-16T16:04:09.488515+00:00",
+      "unrealized_pnl_pct": -0.29130632680928614,
+      "original_quantity": 60481.1094,
+      "tp1_closed": false,
+      "tp2_closed": false,
+      "ob_tp_levels": [],
+      "entry_wave_level": "",
+      "tp_level1_done": false,
+      "entry_time": 1778947449.491351
+    },
+    "HYPEUSDT": {
+      "symbol": "HYPEUSDT",
+      "direction": "LONG",
+      "entry_price": 40.951,
+      "quantity": 81.1195,
+      "leverage": 15,
+      "stop_loss": 40.951,
+      "take_profits": [
+        42.219
+      ],
+      "tp_reached": [
+        "tp1"
+      ],
+      "trailing_stop": 0,
+      "max_profit_pct": 4.222119117970255,
+      "opened_at": "2026-05-16T16:04:10.659374+00:00",
+      "unrealized_pnl_pct": 2.9327733144489767,
+      "original_quantity": 162.239,
+      "tp1_closed": true,
+      "tp2_closed": false,
+      "ob_tp_levels": [],
+      "entry_wave_level": "",
+      "tp_level1_done": true,
+      "entry_time": 1778947450.66624
+    },
+    "AIGENSYNUSDT": {
+      "symbol": "AIGENSYNUSDT",
+      "direction": "LONG",
+      "entry_price": 0.03578,
+      "quantity": 61302.0479,
+      "leverage": 5,
+      "stop_loss": 0.0347066,
+      "take_profits": [
+        0.0381,
+        0.0488,
+        0.0614
+      ],
+      "tp_reached": [],
+      "trailing_stop": 0,
+      "max_profit_pct": 5.422023476802675,
+      "opened_at": "2026-05-16T20:05:34.724221+00:00",
+      "unrealized_pnl_pct": 3.2420346562325357,
+      "original_quantity": 61302.0479,
+      "tp1_closed": false,
+      "tp2_closed": false,
+      "ob_tp_levels": [
+        {
+          "price": 0.0381,
+          "type": "[15m] 看空OB $0.0381~$0.0387",
+          "interval": "15m",
+          "weight": 1.0,
+          "pct": 6.42
+        },
+        {
+          "price": 0.0488,
+          "type": "[15m] 前高 $0.0488",
+          "interval": "15m",
+          "weight": 1.0,
+          "pct": 36.31
+        },
+        {
+          "price": 0.0614,
+          "type": "[4h] 前高 $0.0614",
+          "interval": "4h",
+          "weight": 1.5,
+          "pct": 71.51
+        }
+      ],
+      "entry_wave_level": "",
+      "tp_level1_done": false,
+      "entry_time": 1778961934.731234
+    }
+  },
+  "trade_history": [
+    {
+      "symbol": "XAGUSDT",
+      "direction": "LONG",
+      "entry_price": 76.94,
+      "exit_price": 76.88,
+      "quantity": 129.9714,
+      "pnl_pct": -1.56,
+      "opened_at": "2026-05-15T14:58:56.442422+00:00",
+      "closed_at": "2026-05-15T15:02:58.229404+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "PHAROSUSDT",
+      "direction": "LONG",
+      "entry_price": 0.7106,
+      "exit_price": 0.7218,
+      "quantity": 14061.6405,
+      "pnl_pct": 31.52,
+      "opened_at": "2026-05-15T16:04:22.802794+00:00",
+      "closed_at": "2026-05-15T16:28:17.733833+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "direction": "LONG",
+      "entry_price": 0.11289,
+      "exit_price": 0.11261,
+      "quantity": 89907.8049,
+      "pnl_pct": -4.96,
+      "opened_at": "2026-05-15T16:40:11.005654+00:00",
+      "closed_at": "2026-05-15T16:43:13.520636+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "XAGUSDT",
+      "direction": "LONG",
+      "entry_price": 76.5,
+      "exit_price": 75.89,
+      "quantity": 132.6757,
+      "pnl_pct": -15.95,
+      "opened_at": "2026-05-15T16:34:14.765826+00:00",
+      "closed_at": "2026-05-15T20:07:18.982395+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "NVDAUSDT",
+      "direction": "LONG",
+      "entry_price": 230.58,
+      "exit_price": 224.63,
+      "quantity": 43.9089,
+      "pnl_pct": -51.61,
+      "opened_at": "2026-05-15T18:18:29.520574+00:00",
+      "closed_at": "2026-05-15T23:46:13.825019+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "SAGAUSDT",
+      "direction": "LONG",
+      "entry_price": 0.02448,
+      "exit_price": 0.02446,
+      "quantity": 399604.8927,
+      "pnl_pct": -1.63,
+      "opened_at": "2026-05-16T00:12:41.691859+00:00",
+      "closed_at": "2026-05-16T00:25:33.878991+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "IRYSUSDT",
+      "direction": "LONG",
+      "entry_price": 0.05477,
+      "exit_price": 0.0547,
+      "quantity": 133846.1157,
+      "pnl_pct": -1.92,
+      "opened_at": "2026-05-16T01:44:01.409525+00:00",
+      "closed_at": "2026-05-16T01:52:21.921970+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "STARUSDT",
+      "direction": "LONG",
+      "entry_price": 0.17883,
+      "exit_price": 0.18138,
+      "quantity": 56615.3213,
+      "pnl_pct": 28.52,
+      "opened_at": "2026-05-15T19:03:49.023761+00:00",
+      "closed_at": "2026-05-16T04:01:46.478862+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "INJUSDT",
+      "direction": "LONG",
+      "entry_price": 4.847,
+      "exit_price": 4.819,
+      "quantity": 1007.3207,
+      "pnl_pct": -5.78,
+      "opened_at": "2026-05-16T01:55:46.236840+00:00",
+      "closed_at": "2026-05-16T04:02:48.119493+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "direction": "LONG",
+      "entry_price": 0.11305,
+      "exit_price": 0.11211,
+      "quantity": 89557.8762,
+      "pnl_pct": -16.63,
+      "opened_at": "2026-05-15T18:12:39.585940+00:00",
+      "closed_at": "2026-05-16T04:21:44.834545+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "XRPUSDT",
+      "direction": "LONG",
+      "entry_price": 1.4493,
+      "exit_price": 1.4265,
+      "quantity": 6985.7986,
+      "pnl_pct": -31.46,
+      "opened_at": "2026-05-15T17:09:14.844201+00:00",
+      "closed_at": "2026-05-16T04:33:20.447414+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "HYPEUSDT",
+      "direction": "LONG",
+      "entry_price": 43.215,
+      "exit_price": 42.62,
+      "quantity": 169.6344,
+      "pnl_pct": -20.65,
+      "opened_at": "2026-05-16T01:40:15.726790+00:00",
+      "closed_at": "2026-05-16T04:34:21.719652+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "IRYSUSDT",
+      "direction": "LONG",
+      "entry_price": 0.05558,
+      "exit_price": 0.0547,
+      "quantity": 133336.5941,
+      "pnl_pct": -23.75,
+      "opened_at": "2026-05-16T04:07:14.501065+00:00",
+      "closed_at": "2026-05-16T04:51:41.667362+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "DOTUSDT",
+      "direction": "LONG",
+      "entry_price": 1.312,
+      "exit_price": 1.287,
+      "quantity": 7655.172,
+      "pnl_pct": -38.11,
+      "opened_at": "2026-05-15T21:23:24.140972+00:00",
+      "closed_at": "2026-05-16T06:17:07.101730+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "INJUSDT",
+      "direction": "LONG",
+      "entry_price": 4.748,
+      "exit_price": 4.713,
+      "quantity": 1487.9004,
+      "pnl_pct": -11.06,
+      "opened_at": "2026-05-16T05:42:42.369445+00:00",
+      "closed_at": "2026-05-16T06:21:49.978414+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "GWEIUSDT",
+      "direction": "LONG",
+      "entry_price": 0.15538,
+      "exit_price": 0.15450943972179287,
+      "quantity": 63593.3231,
+      "pnl_pct": -11.21,
+      "opened_at": "2026-05-16T04:07:16.427230+00:00",
+      "closed_at": "2026-05-16T06:42:47.553939+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "XAGUSDT",
+      "direction": "LONG",
+      "entry_price": 76.11,
+      "exit_price": 75.91,
+      "quantity": 128.5288,
+      "pnl_pct": -5.26,
+      "opened_at": "2026-05-16T00:06:56.064595+00:00",
+      "closed_at": "2026-05-16T07:07:33.801154+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "CHZUSDT",
+      "direction": "LONG",
+      "entry_price": 0.0451,
+      "exit_price": 0.043747,
+      "quantity": 54306.7967,
+      "pnl_pct": -15.0,
+      "opened_at": "2026-05-16T04:24:42.973808+00:00",
+      "closed_at": "2026-05-16T07:11:32.034248+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "TRUTHUSDT",
+      "direction": "LONG",
+      "entry_price": 0.018538,
+      "exit_price": 0.018322,
+      "quantity": 395444.5871,
+      "pnl_pct": -17.48,
+      "opened_at": "2026-05-16T01:44:03.180949+00:00",
+      "closed_at": "2026-05-16T09:36:22.812060+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "GWEIUSDT",
+      "direction": "LONG",
+      "entry_price": 0.15711,
+      "exit_price": 0.15441,
+      "quantity": 28710.4601,
+      "pnl_pct": -17.19,
+      "opened_at": "2026-05-16T08:27:35.730362+00:00",
+      "closed_at": "2026-05-16T10:18:42.160587+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "CLUSDT",
+      "direction": "LONG",
+      "entry_price": 100.94,
+      "exit_price": 101.43,
+      "quantity": 98.9915,
+      "pnl_pct": 9.71,
+      "opened_at": "2026-05-15T15:52:16.349052+00:00",
+      "closed_at": "2026-05-16T16:18:59.503627+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "IRYSUSDT",
+      "direction": "LONG",
+      "entry_price": 0.05157,
+      "exit_price": 0.05054,
+      "quantity": 129537.1193,
+      "pnl_pct": -29.96,
+      "opened_at": "2026-05-16T16:38:54.003386+00:00",
+      "closed_at": "2026-05-16T18:13:39.260714+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "FFUSDT",
+      "direction": "LONG",
+      "entry_price": 0.08887,
+      "exit_price": 0.08875,
+      "quantity": 98723.406,
+      "pnl_pct": -2.7,
+      "opened_at": "2026-05-16T20:17:59.521912+00:00",
+      "closed_at": "2026-05-16T20:23:58.209303+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "LTCUSDT",
+      "direction": "LONG",
+      "entry_price": 56.21,
+      "exit_price": 56.07,
+      "quantity": 158.4589,
+      "pnl_pct": -4.98,
+      "opened_at": "2026-05-16T17:38:40.157119+00:00",
+      "closed_at": "2026-05-16T22:03:00.192994+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "PHAROSUSDT",
+      "direction": "LONG",
+      "entry_price": 0.7596,
+      "exit_price": 0.735,
+      "quantity": 5775.1113,
+      "pnl_pct": -32.39,
+      "opened_at": "2026-05-16T20:11:42.559603+00:00",
+      "closed_at": "2026-05-17T03:24:51.100578+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "RIVERUSDT",
+      "direction": "LONG",
+      "entry_price": 7.668,
+      "exit_price": 7.43796,
+      "quantity": 399.9212,
+      "pnl_pct": -21.0,
+      "opened_at": "2026-05-16T21:48:53.725951+00:00",
+      "closed_at": "2026-05-17T03:24:51.291215+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "IRYSUSDT",
+      "direction": "LONG",
+      "entry_price": 0.05005,
+      "exit_price": 0.04872,
+      "quantity": 87307.8725,
+      "pnl_pct": -26.57,
+      "opened_at": "2026-05-16T22:24:21.050957+00:00",
+      "closed_at": "2026-05-17T03:24:51.400965+00:00",
+      "signal_id": ""
+    },
+    {
+      "symbol": "TRXUSDT",
+      "direction": "LONG",
+      "entry_price": 0.35481,
+      "exit_price": 0.35407,
+      "quantity": 24727.4572,
+      "pnl_pct": -0.21,
+      "opened_at": "2026-05-16T20:11:45.437500+00:00",
+      "closed_at": "2026-05-17T18:18:26.381006+00:00",
+      "signal_id": "",
+      "close_reason": "监控Agent强制平仓：R:R=0.13极差，风险不匹配"
+    },
+    {
+      "symbol": "XRPUSDT",
+      "direction": "LONG",
+      "entry_price": 1.4152,
+      "exit_price": 1.4148,
+      "quantity": 6199.5118,
+      "pnl_pct": -0.03,
+      "opened_at": "2026-05-16T19:07:13.434184+00:00",
+      "closed_at": "2026-05-17T18:18:52.259633+00:00",
+      "signal_id": "",
+      "close_reason": "监控Agent强制平仓：R:R=0.78 < 1，风险收益不匹配"
+    }
+  ],
+  "updated_at": "2026-05-17T18:18:52.259661+00:00"
+}

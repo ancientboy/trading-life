@@ -1,0 +1,51 @@
+{
+  "elapsed_seconds": 273.0,
+  "symbols_tested": 30,
+  "param_combos": 200,
+  "best_by_window": {
+    "3d": {
+      "params": {
+        "min_volume_usd": 10000000.0,
+        "min_volatility": 8.0,
+        "momentum_weight": "0",
+        "volatility_weight": "20",
+        "volume_weight": "10",
+        "funding_weight": "10",
+        "oversold_bonus": "0",
+        "overbought_penalty": "-15",
+        "top_n": "30"
+      },
+      "avg_forward_3d": -4.01,
+      "avg_forward_7d": -4.01,
+      "avg_forward_14d": -4.01,
+      "hit_rate_3d": 35.0,
+      "hit_rate_7d": 35.0,
+      "best_coin_avg": -16.95,
+      "total_coins_selected": 40,
+      "diversity": 0,
+      "score": 513.4
+    },
+    "7d": {
+      "params": {
+        "min_volume_usd": 5000000.0,
+        "min_volatility": 8.0,
+        "momentum_weight": "10",
+        "volatility_weight": "10",
+        "volume_weight": "15",
+        "funding_weight": "10",
+        "oversold_bonus": "10",
+        "overbought_penalty": "-10",
+        "top_n": "10"
+      },
+      "avg_forward_3d": -9.76,
+      "avg_forward_7d": -9.76,
+      "avg_forward_14d": -9.76,
+      "hit_rate_3d": 26.7,
+      "hit_rate_7d": 26.7,
+      "best_coin_avg": -39.48,
+      "total_coins_selected": 15,
+      "diversity": 0,
+      "score": 2116.3
+    }
+  }
+}

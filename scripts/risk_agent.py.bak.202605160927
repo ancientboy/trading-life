@@ -1,0 +1,811 @@
+"""
+小风交易系统 - 风控官 Agent
+
+职责：
+1. 审核信号仓位合理性
+2. 计算总体风险敞口
+3. 管理止损/止盈
+4. 紧急熔断机制
+"""
+import json
+import logging
+import time
+import sys
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+from typing import Dict, List, Optional
+from dataclasses import dataclass, field, asdict
+
+sys.path.insert(0, str(Path(__file__).parent))
+from config import DATA_DIR, REDIS_URL
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(levelname)s: %(message)s')
+logger = logging.getLogger("RiskAgent")
+
+import redis as _redis
+try:
+    redis_client = _redis.from_url(REDIS_URL)
+    USE_REDIS = True
+except:
+    USE_REDIS = False
+
+
+# ============================================
+# 风控参数 (来自 trading-config.yaml)
+# ============================================
+RISK_PARAMS = {
+    "max_single_risk_pct": 0.10,       # 单笔最大风险 10%（放宽）
+    "max_position_pct": 0.10,          # 单笔最大保证金 10%（放宽）
+    "max_direction_pct": 1.00,         # 同方向仓位不限制（只做多）
+    "max_total_pct": 0.50,             # 总保证金不超过本金50%（安全垫）
+    "max_positions": 30,               # 最大同时持仓 30 笔
+    "max_leverage": 20,                # 最大杠杆 20x
+    "default_leverage": 20,            # 默认杠杆 20x
+    "min_leverage": 20,                # 最小杠杆 20x（固定）
+    "max_daily_loss_pct": 0.50,        # 日最大亏损 50%（大幅放宽）
+    "max_weekly_drawdown_pct": 0.80,   # 周最大回撤 80%（不限制）
+    "min_confidence": 60,              # 最低置信度 60%
+    "circuit_breaker_single": -0.15,   # 单笔亏15%平仓
+    "circuit_breaker_daily": -0.50,    # 日亏50%停止交易
+    "circuit_breaker_weekly": -0.80,   # 周回撤80%暂停
+    "consecutive_loss_limit": 6,       # 连续亏损限制 6笔（放宽）
+}
+
+# 模拟资金 (Paper Trading)
+INITIAL_CAPITAL = 1000  # $1,000 USDT
+
+
+# ============================================
+# 持仓状态
+# ============================================
+@dataclass
+class Position:
+    symbol: str
+    direction: str           # LONG / SHORT
+    entry_price: float
+    quantity: float
+    leverage: int = 1
+    stop_loss: float = 0
+    take_profits: list = field(default_factory=list)
+    tp_reached: list = field(default_factory=list)  # 记录哪些TP已触发
+    trailing_stop: float = 0      # 移动止盈价
+    max_profit_pct: float = 0     # 最大浮盈百分比
+    opened_at: str = ""
+    unrealized_pnl_pct: float = 0
+    # ---- 分批止盈 ----
+    original_quantity: float = 0  # 初始数量（分批平仓前）
+    tp1_closed: bool = False      # T1已平仓标记（旧字段，保留兼容）
+    tp2_closed: bool = False      # T2已平仓标记（旧字段，保留兼容）
+    ob_tp_levels: list = field(default_factory=list)  # SMC反方向OB目标[{price, type, pct}]
+    # ---- v20 两级止盈 ----
+    entry_wave_level: str = ""    # 入场波浪级别: "4h" / "1h" / ""（未知）
+    tp_level1_done: bool = False  # 第一级止盈已完成（1h顶部结构 → 出50%）
+
+    def notional_value(self) -> float:
+        return self.entry_price * self.quantity * self.leverage
+
+    def risk_amount(self, capital: float) -> float:
+        if self.stop_loss == 0:
+            return capital * RISK_PARAMS["max_single_risk_pct"]
+        return abs(self.entry_price - self.stop_loss) * self.quantity
+
+
+@dataclass
+class TradeRecord:
+    symbol: str
+    direction: str
+    entry_price: float
+    exit_price: float
+    quantity: float
+    pnl_pct: float
+    opened_at: str
+    closed_at: str
+    signal_id: str = ""
+
+
+# ============================================
+# 风控官主类
+# ============================================
+class RiskAgent:
+    def __init__(self, capital: float = INITIAL_CAPITAL):
+        self.capital = capital
+        self.initial_capital = capital
+        self.positions: Dict[str, Position] = {}
+        self.trade_history: List[TradeRecord] = []
+        self.daily_pnl: float = 0
+        self.weekly_start_capital: float = capital
+        self.week_start_time: datetime = datetime.now(timezone.utc)
+        self.consecutive_losses: int = 0
+        self.is_circuit_break: bool = False  # 保留字段兼容，测试阶段不再硬熔断
+        self.circuit_break_reason: str = ""
+        self.circuit_break_until: Optional[datetime] = None
+        self.last_review_capital: float = capital  # 上次复盘后的资金
+        self.need_review: bool = False  # 是否需要自动复盘
+        self.loss_cooldown: Dict[str, dict] = {}  # 止损冷却: {symbol: {time, direction, pnl}}
+        # ---- v20: 清晰的收益统计基准 ----
+        self._today_date: str = ""           # 当天日期 YYYY-MM-DD
+        self._today_start_capital: float = 0 # 今日开盘时的资金
+        self._week_start_date: str = ""      # 本周日期（周一）
+        self._total_realized_pnl: float = 0  # 累计已实现盈亏（从上次重置起）
+        self._total_trades: int = 0          # 累计交易次数
+        self._total_wins: int = 0            # 累计盈利次数
+        self._total_losses: int = 0          # 累计亏损次数
+        self._load_state()
+
+    # ---- 状态持久化 ----
+    def _state_file(self) -> Path:
+        return DATA_DIR / "risk_state.json"
+
+    def _load_state(self):
+        f = self._state_file()
+        if not f.exists():
+            return
+        try:
+            raw = json.loads(f.read_text())
+            self.capital = raw.get("capital", self.capital)
+
+            # ===== v20: 清晰的收益统计 =====
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            # 本周一的日期（UTC）
+            now_utc = datetime.now(timezone.utc)
+            monday = (now_utc - timedelta(days=now_utc.weekday())).strftime("%Y-%m-%d")
+
+            # 恢复统计基准
+            self._today_date = raw.get("stats_today_date", "")
+            self._today_start_capital = raw.get("stats_today_start_capital", 0)
+            self._week_start_date = raw.get("stats_week_start_date", "")
+            self.weekly_start_capital = raw.get("stats_week_start_capital", self.capital)
+            self._total_realized_pnl = raw.get("stats_total_realized_pnl", 0)
+            self._total_trades = raw.get("stats_total_trades", 0)
+            self._total_wins = raw.get("stats_total_wins", 0)
+            self._total_losses = raw.get("stats_total_losses", 0)
+
+            # 跨天：重置日基准
+            if self._today_date != today:
+                old_start = self._today_start_capital
+                self._today_date = today
+                self._today_start_capital = self.capital
+                self.daily_pnl = 0  # 跨天清零已实现日盈亏
+                logger.info(f"📅 新的一天: {self._today_date}, "
+                            f"日初资金=${self._today_start_capital:,.2f}, "
+                            f"昨日起始=${old_start:,.2f}")
+
+            # 跨周：重置周基准
+            if self._week_start_date != monday:
+                self._week_start_date = monday
+                self.weekly_start_capital = self.capital
+                logger.info(f"📆 新的一周: {monday}, 周初资金=${self.weekly_start_capital:,.2f}")
+
+            # 兼容旧字段
+            self.consecutive_losses = raw.get("consecutive_losses", 0)
+            self.is_circuit_break = raw.get("is_circuit_break", False)
+            self.circuit_break_reason = raw.get("circuit_break_reason", "")
+            self.last_review_capital = raw.get("last_review_capital", self.capital)
+            self.need_review = raw.get("need_review", False)
+            self.loss_cooldown = raw.get("loss_cooldown", {})
+            # 清理过期冷却
+            self._clean_expired_cooldown()
+            for sym, p in raw.get("positions", {}).items():
+                self.positions[sym] = Position(**p)
+            for t in raw.get("trade_history", []):
+                self.trade_history.append(TradeRecord(**t))
+            logger.info(f"📂 加载风控状态: 资金=${self.capital:,.0f} 持仓={len(self.positions)}笔 "
+                        f"日初=${self._today_start_capital:,.0f} 周初=${self.weekly_start_capital:,.0f} "
+                        f"累计{self._total_trades}笔 胜{self._total_wins} 负{self._total_losses}")
+        except Exception as e:
+            logger.warning(f"状态加载失败: {e}")
+
+    def _save_state(self):
+        f = self._state_file()
+        state = {
+            "capital": self.capital,
+            "daily_pnl": self.daily_pnl,
+            # ---- v20 统计基准 ----
+            "stats_today_date": self._today_date,
+            "stats_today_start_capital": self._today_start_capital,
+            "stats_week_start_date": self._week_start_date,
+            "stats_week_start_capital": self.weekly_start_capital,
+            "stats_total_realized_pnl": self._total_realized_pnl,
+            "stats_total_trades": self._total_trades,
+            "stats_total_wins": self._total_wins,
+            "stats_total_losses": self._total_losses,
+            # ---- 兼容旧字段 ----
+            "weekly_start_capital": self.weekly_start_capital,
+            "consecutive_losses": self.consecutive_losses,
+            "is_circuit_break": self.is_circuit_break,
+            "circuit_break_reason": self.circuit_break_reason,
+            "last_review_capital": self.last_review_capital,
+            "need_review": self.need_review,
+            "loss_cooldown": self.loss_cooldown,
+            "positions": {s: asdict(p) for s, p in self.positions.items()},
+            "trade_history": [asdict(t) for t in self.trade_history[-100:]],
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        f.write_text(json.dumps(state, ensure_ascii=False, indent=2))
+
+    # ---- 风险敞口 ----
+    def get_exposure(self) -> dict:
+        total_long = 0
+        total_short = 0
+        for pos in self.positions.values():
+            # 用保证金而非名义价值计算仓位占比
+            margin = (pos.entry_price * pos.quantity) / pos.leverage
+            if pos.direction == "LONG":
+                total_long += margin
+            else:
+                total_short += margin
+        total = total_long + total_short
+        # v20: 用日初/周初资金算真实收益率
+        daily_start = self._today_start_capital if self._today_start_capital > 0 else self.capital
+        week_start = self.weekly_start_capital if self.weekly_start_capital > 0 else self.capital
+        return {
+            "total_pct": round(total / self.capital * 100, 1) if self.capital > 0 else 0,
+            "long_pct": round(total_long / self.capital * 100, 1) if self.capital > 0 else 0,
+            "short_pct": round(total_short / self.capital * 100, 1) if self.capital > 0 else 0,
+            "daily_pnl_pct": round(self.daily_pnl / daily_start * 100, 2) if daily_start > 0 else 0,
+            "daily_pnl_usd": round(self.daily_pnl, 2),
+            "weekly_change_pct": round(
+                (self.capital - week_start) / week_start * 100, 2
+            ) if week_start > 0 else 0,
+            "num_positions": len(self.positions),
+            # v20 新增
+            "today_start_capital": daily_start,
+            "week_start_capital": week_start,
+            "total_trades": self._total_trades,
+            "total_wins": self._total_wins,
+            "total_losses": self._total_losses,
+            "win_rate": round(self._total_wins / self._total_trades * 100, 1) if self._total_trades > 0 else 0,
+        }
+
+    # ---- 止损冷却机制 ----
+    COOLDOWN_ROUNDS = 8          # 止损后冷却8轮（约2小时）
+    COOLDOWN_SAME_DIR = 15       # 同方向止损冷却15轮（约3.75小时）
+    COOLDOWN_EXTREME_LOSS = 40   # 大亏(>30%保证金)冷却40轮（约10小时）
+    BLACKLIST_THRESHOLD = 2      # ★ 同一币种累计亏损2次→临时黑名单
+    BLACKLIST_ROUNDS = 40        # ★ 黑名单持续40轮（约10小时）
+
+    def _clean_expired_cooldown(self):
+        """清理过期的冷却记录（保留黑名单币种和有亏损历史的，避免累计亏损计数丢失）"""
+        now = time.time()
+        expired = [sym for sym, info in self.loss_cooldown.items()
+                   if now - info.get("time", 0) > (86400 if info.get("total_losses", 0) >= 1 else 14400)  # 有亏损历史→24h，否则4h
+                   and info.get("total_losses", 0) < self.BLACKLIST_THRESHOLD]  # 但保留黑名单
+        for sym in expired:
+            del self.loss_cooldown[sym]
+
+    def _check_cooldown(self, symbol: str, direction: str) -> Optional[str]:
+        """检查币种是否在冷却期内"""
+        info = self.loss_cooldown.get(symbol)
+        if not info:
+            return None
+
+        cooldown_time = info.get("time", 0)
+        cooldown_dir = info.get("direction", "")
+        pnl = info.get("pnl", 0)
+        loss_count = info.get("loss_count", 1)
+        total_losses = info.get("total_losses", 0)
+        elapsed_rounds = info.get("rounds_since", 0)
+
+        # ★ 黑名单机制：累计亏损≥BLACKLIST_THRESHOLD次→长期禁止
+        if total_losses >= self.BLACKLIST_THRESHOLD:
+            if elapsed_rounds < self.BLACKLIST_ROUNDS:
+                remaining = self.BLACKLIST_ROUNDS - elapsed_rounds
+                return (f"🚫 黑名单: {symbol} 累计亏损{total_losses}次，"
+                        f"禁止交易还剩{remaining}轮({remaining*15//60}小时)")
+            else:
+                # 黑名单到期，重置计数但保留1次底数(下次再亏立即再进黑名单)
+                info["total_losses"] = self.BLACKLIST_THRESHOLD - 1
+                info["loss_count"] = 0
+                info["rounds_since"] = 0
+                logger.info(f"✅ {symbol} 黑名单到期，重置为底数{(self.BLACKLIST_THRESHOLD-1)}次")
+
+        # 确定冷却轮数：大亏更长，连续亏损递增
+        if abs(pnl) >= 30:
+            cooldown_rounds = self.COOLDOWN_EXTREME_LOSS
+        elif direction == cooldown_dir:
+            cooldown_rounds = self.COOLDOWN_SAME_DIR
+        else:
+            cooldown_rounds = self.COOLDOWN_ROUNDS
+        
+        # 连续亏损递增：每多亏一次 +5轮(比旧版+3更严)
+        cooldown_rounds += (loss_count - 1) * 5
+
+        if elapsed_rounds < cooldown_rounds:
+            remaining = cooldown_rounds - elapsed_rounds
+            return (f"🧊 冷却中: {symbol} {cooldown_dir} 止损{pnl:+.1f}% "
+                    f"(连续{loss_count}次/累计{total_losses}次)，还剩{remaining}轮")
+        else:
+            # 冷却结束，保留累计亏损计数（防止跨冷却期重复亏损无法触发黑名单）
+            # 数据支撑: RAVEUSDT -43.75%(05:54 UTC) → 冷却过期被删除 → -62.56%(20:16 UTC)
+            # 因为total_losses被清零，第二次亏损无法触发黑名单(BLACKLIST_THRESHOLD=2)
+            if total_losses >= 1:
+                info["loss_count"] = 0
+                info["rounds_since"] = 0
+                logger.info(f"✅ {symbol} 冷却结束，保留累计亏损{total_losses}次记录")
+            else:
+                del self.loss_cooldown[symbol]
+            return None
+
+    def _record_loss_cooldown(self, symbol: str, direction: str, pnl_pct: float):
+        """记录止损冷却（连续亏损会累积延长冷却）"""
+        existing = self.loss_cooldown.get(symbol)
+        if existing and existing.get("direction") == direction:
+            # 同方向连续亏损，累积计数
+            loss_count = existing.get("loss_count", 1) + 1
+            total_losses = existing.get("total_losses", 0) + 1
+        else:
+            loss_count = 1
+            total_losses = (existing.get("total_losses", 0) + 1) if existing else 1
+        
+        if total_losses >= self.BLACKLIST_THRESHOLD:
+            logger.warning(f"🚫 {symbol} 进入临时黑名单(累计亏损{total_losses}次)，"
+                          f"禁止交易{self.BLACKLIST_ROUNDS}轮({self.BLACKLIST_ROUNDS*15//60}小时)")
+        
+        self.loss_cooldown[symbol] = {
+            "time": time.time(),
+            "direction": direction,
+            "pnl": pnl_pct,
+            "rounds_since": 0,
+            "loss_count": loss_count,
+            "total_losses": total_losses,
+        }
+
+    def tick_cooldown(self):
+        """每轮调用，增加冷却轮数计数"""
+        for sym, info in self.loss_cooldown.items():
+            info["rounds_since"] = info.get("rounds_since", 0) + 1
+
+    # ---- 亏损复盘检查 (替代硬熔断) ----
+    def check_circuit_breaker(self) -> Optional[str]:
+        """
+        测试阶段: 不硬熔断，改为检测是否需要复盘
+        每亏损10%（相对上次复盘后资金）触发复盘
+        返回 None = 正常, 否则返回复盘提示
+        """
+        # 如果已在复盘等待中，不再阻止交易，但返回提示
+        if self.need_review:
+            return f"📋 等待复盘 (当前资金${self.capital:,.0f} vs 复盘基准${self.last_review_capital:,.0f})"
+
+        # 检查相对上次复盘资金的亏损幅度
+        if self.last_review_capital > 0:
+            loss_pct = (self.capital / self.last_review_capital - 1) * 100
+            if loss_pct <= -10:
+                self.need_review = True
+                self.circuit_break_reason = f"资金从${self.last_review_capital:,.0f}跌至${self.capital:,.0f} (亏{abs(loss_pct):.1f}%)"
+                self._save_state()
+                logger.warning(f"🚨 触发10%复盘机制: {self.circuit_break_reason}")
+                return f"🚨 需要复盘: {self.circuit_break_reason}"
+
+        return None
+
+    def mark_review_done(self):
+        """复盘完成，重置基准"""
+        self.last_review_capital = self.capital
+        self.need_review = False
+        self.is_circuit_break = False
+        self.circuit_break_reason = ""
+        self.consecutive_losses = 0
+        self._save_state()
+        logger.info(f"✅ 复盘完成，新基准资金: ${self.last_review_capital:,.0f}")
+
+    def _trigger_break(self, reason: str, hours: int):
+        self.is_circuit_break = True
+        self.circuit_break_reason = reason
+        self.circuit_break_until = datetime.now(timezone.utc) + timedelta(hours=hours)
+        logger.warning(f"🚨 熔断触发: {reason}, 暂停{hours}小时")
+        self._save_state()
+
+    # ---- 信号审核 ----
+    def review_signal(self, signal: dict) -> dict:
+        """审核分析师信号，返回审批结果"""
+        warnings = []
+        adjustments = {}
+
+        # 1. 亏损复盘检查 (测试阶段: 不硬阻止，仅警告)
+        cb = self.check_circuit_breaker()
+        if cb:
+            warnings.append(cb)
+            logger.warning(f"⚠️ 复盘提示(测试中继续交易): {cb}")
+
+        symbol = signal.get("symbol", "")
+        direction = signal.get("direction", "NEUTRAL")
+        confidence = signal.get("confidence", 0)
+        entry_zone = signal.get("entry_zone", [0, 0])
+        stop_loss = signal.get("stop_loss", 0)
+        risk_reward = signal.get("risk_reward", 0)
+
+        # 2. 方向检查
+        if direction == "NEUTRAL":
+            return self._reject("方向为观望，不执行交易", signal)
+
+        # 2.5 止损冷却检查
+        cooldown_msg = self._check_cooldown(symbol, direction)
+        if cooldown_msg:
+            return self._reject(cooldown_msg, signal)
+
+        # 3. 置信度检查
+        min_conf = RISK_PARAMS["min_confidence"]
+        if confidence < min_conf:
+            return self._reject(f"置信度 {confidence}% < 最低 {min_conf}%", signal)
+        if confidence < 75:
+            warnings.append(f"置信度偏低 ({confidence}%)，建议减仓")
+
+        # 4. 止损检查（已由auto_runner基于OB外侧设置，这里不再覆盖）
+        # 止损距离由SMC OB结构决定，不设固定百分比上限
+
+        # 5. 盈亏比检查
+        # ★ 优化(2026-05-04): 将盈亏比拒绝阈值从0.5提高到1.0
+        # 数据支撑: 41%胜率下，RR<1.44的交易期望为负。RR 0.5-1.0的交易几乎必亏
+        # 提高阈值过滤低质量交易，改善整体期望值
+        if risk_reward < 1.5:
+            warnings.append(f"盈亏比 {risk_reward:.1f} < 1.5，风险收益比不佳")
+            if risk_reward < 1.0:
+                return self._reject(f"盈亏比过差 {risk_reward:.1f}", signal)
+
+        # 6. 同方向仓位检查
+        exp = self.get_exposure()
+        dir_pct = exp["long_pct"] if direction == "LONG" else exp["short_pct"]
+        if dir_pct >= RISK_PARAMS["max_direction_pct"] * 100:
+            return self._reject(
+                f"同方向仓位 {dir_pct}% ≥ {RISK_PARAMS['max_direction_pct']*100:.0f}%", signal
+            )
+
+        # 7. 总仓位硬上限
+        if exp["total_pct"] >= RISK_PARAMS["max_total_pct"] * 100:
+            return self._reject(
+                f"总仓位 {exp['total_pct']}% ≥ {RISK_PARAMS['max_total_pct']*100:.0f}% 硬上限", signal
+            )
+
+        # 7.5 最大持仓数量
+        if len(self.positions) >= RISK_PARAMS["max_positions"]:
+            return self._reject(
+                f"持仓数 {len(self.positions)} ≥ {RISK_PARAMS['max_positions']} 笔上限", signal
+            )
+
+        # 8. 计算仓位
+        entry_price = (entry_zone[0] + entry_zone[1]) / 2 if entry_zone[0] and entry_zone[1] else entry_zone[0] or entry_zone[1]
+        if entry_price == 0:
+            return self._reject("入场价无效", signal)
+
+        risk_dist = abs(entry_price - stop_loss)
+        risk_pct = risk_dist / entry_price if entry_price > 0 else 1
+        max_risk_amount = self.capital * RISK_PARAMS["max_single_risk_pct"]
+
+        # 先预估杠杆 — v15: 固定20x
+        min_lev = RISK_PARAMS.get("min_leverage", 20)
+        max_lev = RISK_PARAMS["max_leverage"]
+        
+        # 固定杠杆20x
+        leverage_guess = 20
+        
+        # 仓位计算 — v15放宽保证金上限
+        # 方案: 先用风险金额算理论仓位，再硬限制保证金≤10%资金
+        max_margin = self.capital * RISK_PARAMS["max_position_pct"]  # 单笔最大保证金$
+        
+        # 方案A: 风险反算 (风险金额/止损距离 = 名义数量)
+        risk_based_size = max_risk_amount / risk_dist if risk_dist > 0 else 0
+        # 方案B: 保证金上限反算 (保证金上限 * 杠杆 / 价格 = 名义数量)
+        margin_based_size = max_margin * leverage_guess / entry_price
+        
+        # 取较小值: 不能超过保证金10%上限
+        position_size = min(risk_based_size, margin_based_size)
+        
+        # 实际保证金占比
+        actual_margin = position_size * entry_price / leverage_guess
+        position_pct = actual_margin / self.capital * 100
+        
+        # 硬上限: 绝对不超过10%
+        if position_pct > RISK_PARAMS["max_position_pct"] * 100:
+            position_size = max_margin * leverage_guess / entry_price
+            position_pct = RISK_PARAMS["max_position_pct"] * 100
+
+        # 连续亏损减仓
+        if self.consecutive_losses >= RISK_PARAMS["consecutive_loss_limit"]:
+            reduction = 0.5
+            position_pct *= reduction
+            warnings.append(f"连续{self.consecutive_losses}笔亏损，仓位减半")
+
+        # 置信度调整
+        if confidence < 70:
+            position_pct *= 0.7
+            warnings.append("置信度<70%，仓位打7折")
+
+        # 9. 杠杆 — v15: 固定20x
+        leverage = leverage_guess
+
+        # 10. 风险等级 (基于保证金占比)
+        risk_level = "LOW"
+        if position_pct > 3 or leverage > 10:
+            risk_level = "MEDIUM"
+        if position_pct > 4.5 or leverage > 15 or exp["total_pct"] > 60:
+            risk_level = "HIGH"
+        if position_pct >= 5 or (leverage > 15 and exp["total_pct"] > 70):
+            risk_level = "EXTREME"
+            warnings.append("⚠️ 极高风险！")
+
+        # 智能精度：根据价格量级决定小数位数，避免round(x,2)毁掉小币种止损
+        def smart_round(val, price):
+            """根据价格量级选择精度：>100→2位, >1→4位, >0.01→6位, else→8位"""
+            if val == 0: return 0
+            if price > 100: return round(val, 2)
+            elif price > 1: return round(val, 4)
+            elif price > 0.01: return round(val, 6)
+            else: return round(val, 8)
+        
+        result = {
+            "approved": True,
+            "symbol": symbol,
+            "direction": direction,
+            "entry_price": smart_round(entry_price, entry_price),
+            "adjusted_position_pct": round(position_pct, 1),
+            "position_size": round(position_size, 4),
+            "leverage": leverage,
+            "stop_loss": smart_round(stop_loss, entry_price),
+            "risk_level": risk_level,
+            "warnings": warnings,
+            "confidence": confidence,
+            "risk_reward": risk_reward,
+            "current_exposure": exp,
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        logger.info(f"✅ 审批通过 {symbol} {direction} 仓位={position_pct:.1f}% 风险={risk_level}")
+        return result
+
+    def _reject(self, reason: str, signal: dict) -> dict:
+        logger.info(f"❌ 拒绝信号 {signal.get('symbol','?')}: {reason}")
+        return {
+            "approved": False,
+            "symbol": signal.get("symbol", ""),
+            "reason": reason,
+            "current_exposure": self.get_exposure(),
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    # ---- 开仓/平仓 ----
+    def open_position(self, review: dict, signal: dict):
+        """记录开仓"""
+        sym = review["symbol"]
+        pos = Position(
+            symbol=sym,
+            direction=review["direction"],
+            entry_price=review["entry_price"],
+            quantity=review["position_size"],
+            leverage=review.get("leverage", 1),
+            stop_loss=review["stop_loss"],
+            take_profits=signal.get("targets", []),
+            ob_tp_levels=signal.get("ob_tp_levels", []),
+            opened_at=datetime.now(timezone.utc).isoformat(),
+            entry_wave_level=review.get("entry_wave_level", ""),
+        )
+        pos.original_quantity = pos.quantity  # 记录初始数量
+        self.positions[sym] = pos
+        self._save_state()
+        logger.info(f"📈 开仓 {sym} {pos.direction} {pos.quantity}@{pos.entry_price}")
+
+    def close_position(self, symbol: str, exit_price: float, reason: str = ""):
+        """记录平仓"""
+        if symbol not in self.positions:
+            return None
+        pos = self.positions.pop(symbol)
+        # 杠杆已体现在数量中（开仓时quantity=名义持仓），不再乘leverage
+        pnl = (exit_price - pos.entry_price) * pos.quantity
+        if pos.direction == "SHORT":
+            pnl = -pnl
+        # 收益率 = 盈亏 / 保证金(=名义/杠杆)
+        margin = pos.entry_price * pos.quantity / pos.leverage
+        pnl_pct = pnl / margin * 100 if margin > 0 else 0
+
+        self.capital += pnl
+        self.daily_pnl += pnl
+
+        # v20: 累计统计
+        self._total_realized_pnl += pnl
+        self._total_trades += 1
+        if pnl >= 0:
+            self._total_wins += 1
+        else:
+            self._total_losses += 1
+
+        # 连续亏损计数
+        if pnl < 0:
+            self.consecutive_losses += 1
+            # 止损冷却：记录亏损币种
+            self._record_loss_cooldown(symbol, pos.direction, pnl_pct)
+        else:
+            self.consecutive_losses = 0
+
+        record = TradeRecord(
+            symbol=symbol,
+            direction=pos.direction,
+            entry_price=pos.entry_price,
+            exit_price=exit_price,
+            quantity=pos.quantity,
+            pnl_pct=round(pnl_pct, 2),
+            opened_at=pos.opened_at,
+            closed_at=datetime.now(timezone.utc).isoformat(),
+            signal_id="",
+        )
+        self.trade_history.append(record)
+        self._save_state()
+
+        emoji = "💰" if pnl > 0 else "💸"
+        logger.info(f"{emoji} 平仓 {symbol} PnL={pnl:+.2f} ({pnl_pct:+.2f}%) {reason}")
+        return record
+
+    def close_partial_position(self, symbol: str, exit_price: float,
+                                close_ratio: float, reason: str = ""):
+        """
+        部分平仓（分批止盈用）
+        close_ratio: 平仓比例 (0~1)，如 0.5 = 平50%
+        返回 (TradeRecord, 剩余数量) 或 None
+        """
+        if symbol not in self.positions:
+            return None
+        pos = self.positions[symbol]
+
+        # 计算平仓数量
+        close_qty = pos.quantity * close_ratio
+        remaining_qty = pos.quantity - close_qty
+
+        if remaining_qty < 1e-12:
+            # 剩余太少，全部平仓
+            return self.close_position(symbol, exit_price, reason)
+
+        # 计算这部分盈亏
+        pnl = (exit_price - pos.entry_price) * close_qty
+        if pos.direction == "SHORT":
+            pnl = -pnl
+        margin_closed = pos.entry_price * close_qty / pos.leverage
+        pnl_pct = pnl / margin_closed * 100 if margin_closed > 0 else 0
+
+        self.capital += pnl
+        self.daily_pnl += pnl
+
+        # 盈利不清零连续亏损（部分止盈不算完整交易）
+        if pnl >= 0:
+            pass  # 部分止盈不影响连续亏损计数
+
+        # 记录交易
+        record = TradeRecord(
+            symbol=symbol + "(部分)",  # 标记部分平仓
+            direction=pos.direction,
+            entry_price=pos.entry_price,
+            exit_price=exit_price,
+            quantity=close_qty,
+            pnl_pct=round(pnl_pct, 2),
+            opened_at=pos.opened_at,
+            closed_at=datetime.now(timezone.utc).isoformat(),
+            signal_id="",
+        )
+        self.trade_history.append(record)
+
+        # 更新持仓：减少数量
+        pos.quantity = remaining_qty
+        if pos.original_quantity == 0:
+            pos.original_quantity = pos.quantity + close_qty  # 首次减仓时记录原始数量
+
+        # 止损移到保本价（保底）
+        if pos.direction == "LONG":
+            breakeven = pos.entry_price
+            if pos.stop_loss < breakeven:
+                pos.stop_loss = breakeven
+        else:
+            breakeven = pos.entry_price
+            if pos.stop_loss > breakeven or pos.stop_loss == 0:
+                pos.stop_loss = breakeven
+
+        self._save_state()
+
+        logger.info(f"✂️ 部分平仓 {symbol} {close_ratio*100:.0f}% "
+                    f"PnL={pnl:+.2f}({pnl_pct:+.2f}%) "
+                    f"剩余={remaining_qty:.4f} {reason}")
+        return record, remaining_qty
+
+    # ---- 报告 ----
+    def status_report(self) -> str:
+        exp = self.get_exposure()
+        lines = [
+            "🛡️ *风控状态报告*",
+            f"💰 资金: ${self.capital:,.0f} (初始 ${self.initial_capital:,.0f})",
+            f"📊 总仓位: {exp['total_pct']}% (多{exp['long_pct']}% 空{exp['short_pct']}%)",
+            f"📈 日收益: {exp['daily_pnl_pct']}% (${exp.get('daily_pnl_usd', 0):+,.0f})",
+            f"📉 周收益: {exp.get('weekly_change_pct', 0)}%",
+            f"🔄 持仓: {exp['num_positions']}笔",
+            f"💥 连续亏损: {self.consecutive_losses}笔",
+        ]
+        if self.is_circuit_break:
+            lines.append(f"🚨 熔断中: {self.circuit_break_reason}")
+            if self.circuit_break_until:
+                remaining = self.circuit_break_until - datetime.now(timezone.utc)
+                lines.append(f"⏰ 剩余: {remaining}")
+        else:
+            lines.append("✅ 状态正常")
+
+        if self.positions:
+            lines.append("")
+            lines.append("📋 *当前持仓:*")
+            for sym, pos in self.positions.items():
+                cur_pnl = (1 if pos.direction == "LONG" else -1) * 0  # 需实时价格
+                lines.append(f"  {sym}: {pos.direction} {pos.quantity}@{pos.entry_price:,.2f} SL={pos.stop_loss:,.2f}")
+
+        # 最近交易
+        if self.trade_history:
+            lines.append("")
+            lines.append("📜 *最近交易:*")
+            for t in self.trade_history[-5:]:
+                emoji = "🟢" if t.pnl_pct > 0 else "🔴"
+                lines.append(f"  {emoji} {t.symbol} {t.direction} {t.pnl_pct:+.2f}%")
+
+        return "\n".join(lines)
+
+    def to_telegram_review(self, review: dict) -> str:
+        """审核结果的 Telegram 格式"""
+        if not review.get("approved"):
+            return (
+                f"🛡️ *风控拒绝* {review.get('symbol','')}\n"
+                f"❌ 原因: {review.get('reason','')}\n"
+                f"📊 仓位: {review.get('current_exposure',{}).get('total_pct',0)}%"
+            )
+
+        risk_emoji = {"LOW": "🟢", "MEDIUM": "🟡", "HIGH": "🔴", "EXTREME": "💀"}
+        re = risk_emoji.get(review.get("risk_level", ""), "⚪")
+        lines = [
+            f"🛡️ *风控审批* {review['symbol']}",
+            f"{re} 风险等级: *{review['risk_level']}*",
+            f"✅ 方向: {review['direction']}",
+            f"📍 入场: {review['entry_price']:,.2f}",
+            f"📦 仓位: {review['adjusted_position_pct']}%",
+            f"🔢 数量: {review['position_size']}",
+            f"⚡ 杠杆: {review.get('leverage', 1)}x",
+            f"🛑 止损: {review['stop_loss']:,.2f}",
+            f"🎯 置信度: {review['confidence']}%",
+        ]
+        if review.get("warnings"):
+            lines.append("⚠️ *警告:*")
+            for w in review["warnings"]:
+                lines.append(f"  • {w}")
+        return "\n".join(lines)
+
+
+# ============================================
+# 主入口
+# ============================================
+def main():
+    """风控官测试"""
+    agent = RiskAgent()
+    print(agent.status_report())
+    print()
+
+    # 模拟审核一个信号
+    test_signal = {
+        "signal_id": "SIG-TEST-001",
+        "symbol": "BTCUSDT",
+        "direction": "LONG",
+        "confidence": 72,
+        "entry_zone": [75500, 75800],
+        "stop_loss": 74400,
+        "targets": [76800, 77500, 78200],
+        "risk_reward": 1.8,
+    }
+    review = agent.review_signal(test_signal)
+    print(agent.to_telegram_review(review))
+
+    if review.get("approved"):
+        print("\n--- 模拟开仓 ---")
+        agent.open_position(review, test_signal)
+        print(agent.status_report())
+
+        print("\n--- 模拟平仓 (+2%) ---")
+        agent.close_position("BTCUSDT", 77000, "止盈T1")
+        print(agent.status_report())
+
+    # 推送到 Redis
+    if USE_REDIS:
+        payload = {k: json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
+                   for k, v in review.items()}
+        redis_client.xadd("stream:risk", payload, maxlen=100)
+        print("\n✅ 审核结果已推送到 Redis stream:risk")
+
+
+if __name__ == "__main__":
+    main()

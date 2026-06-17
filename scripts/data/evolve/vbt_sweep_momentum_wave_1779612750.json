@@ -1,0 +1,186 @@
+{
+  "strategy": "momentum_wave",
+  "symbols_tested": 12,
+  "param_combinations": 6300,
+  "total_tests": 75600,
+  "elapsed_seconds": 221.0,
+  "speed": "342 tests/sec",
+  "coverage": "100%",
+  "best_overall": {
+    "strategy": "momentum_wave",
+    "params": {
+      "WAVE_BREAKOUT_BARS": 20,
+      "WAVE_MIN_VOL_RATIO": 0.8,
+      "WAVE_STOP_PCT": 8.0,
+      "WAVE_EMA_EXIT": 12,
+      "WAVE_MAX_HOLD": 60
+    },
+    "pnl_pct": 105.92724246818626,
+    "win_rate": 100.0,
+    "total_trades": 3,
+    "avg_win_pct": 35.30908082272875,
+    "avg_loss_pct": 0,
+    "profit_factor": 10.0,
+    "max_drawdown_pct": 0,
+    "sharpe_ratio": 0,
+    "score": 545.5252987111593
+  },
+  "per_symbol": {
+    "BTCUSDT": {
+      "best_score": 29.64589190997633,
+      "best_pnl": 7.6015107461477776,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 8,
+        "WAVE_MIN_VOL_RATIO": 2.0,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 15,
+        "WAVE_MAX_HOLD": 90
+      },
+      "total_trades": 4,
+      "win_rate": 75.0
+    },
+    "ETHUSDT": {
+      "best_score": 22.660508159540225,
+      "best_pnl": 6.600148007633076,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 8,
+        "WAVE_MIN_VOL_RATIO": 2.0,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 25,
+        "WAVE_MAX_HOLD": 90
+      },
+      "total_trades": 3,
+      "win_rate": 66.66666666666666
+    },
+    "HYPEUSDT": {
+      "best_score": 48.550743022935364,
+      "best_pnl": 9.519753533908894,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 8,
+        "WAVE_MIN_VOL_RATIO": 1.5,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 15,
+        "WAVE_MAX_HOLD": 180
+      },
+      "total_trades": 2,
+      "win_rate": 100.0
+    },
+    "SOLUSDT": {
+      "best_score": 43.004098482792266,
+      "best_pnl": 12.525465577512314,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 8,
+        "WAVE_MIN_VOL_RATIO": 2.0,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 15,
+        "WAVE_MAX_HOLD": 60
+      },
+      "total_trades": 3,
+      "win_rate": 66.66666666666666
+    },
+    "ZECUSDT": {
+      "best_score": 545.5252987111593,
+      "best_pnl": 105.92724246818626,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 20,
+        "WAVE_MIN_VOL_RATIO": 0.8,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 12,
+        "WAVE_MAX_HOLD": 60
+      },
+      "total_trades": 3,
+      "win_rate": 100.0
+    },
+    "NEARUSDT": {
+      "best_score": 35.00374377113947,
+      "best_pnl": 6.863479170811662,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 8,
+        "WAVE_MIN_VOL_RATIO": 2.0,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 12,
+        "WAVE_MAX_HOLD": 90
+      },
+      "total_trades": 2,
+      "win_rate": 100.0
+    },
+    "CLUSDT": {
+      "best_score": 43.70293322238398,
+      "best_pnl": 8.654046182650294,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 8,
+        "WAVE_MIN_VOL_RATIO": 2.0,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 10,
+        "WAVE_MAX_HOLD": 150
+      },
+      "total_trades": 1,
+      "win_rate": 100.0
+    },
+    "BSBUSDT": {
+      "best_score": 117.72638221377065,
+      "best_pnl": 58.57391354301261,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 8,
+        "WAVE_MIN_VOL_RATIO": 1.5,
+        "WAVE_STOP_PCT": 15.0,
+        "WAVE_EMA_EXIT": 15,
+        "WAVE_MAX_HOLD": 150
+      },
+      "total_trades": 4,
+      "win_rate": 50.0
+    },
+    "XRPUSDT": {
+      "best_score": 16.157649796393265,
+      "best_pnl": 3.1995346131471814,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 8,
+        "WAVE_MIN_VOL_RATIO": 1.2,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 25,
+        "WAVE_MAX_HOLD": 180
+      },
+      "total_trades": 1,
+      "win_rate": 100.0
+    },
+    "BEATUSDT": {
+      "best_score": 50.223029135255594,
+      "best_pnl": 9.847652771618744,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 8,
+        "WAVE_MIN_VOL_RATIO": 0.8,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 15,
+        "WAVE_MAX_HOLD": 180
+      },
+      "total_trades": 2,
+      "win_rate": 100.0
+    },
+    "DOGEUSDT": {
+      "best_score": 5.513041597823144,
+      "best_pnl": 6.414574187881724,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 20,
+        "WAVE_MIN_VOL_RATIO": 2.0,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 20,
+        "WAVE_MAX_HOLD": 90
+      },
+      "total_trades": 3,
+      "win_rate": 33.33333333333333
+    },
+    "BZUSDT": {
+      "best_score": 68.12464391364385,
+      "best_pnl": 13.357773316400754,
+      "best_params": {
+        "WAVE_BREAKOUT_BARS": 8,
+        "WAVE_MIN_VOL_RATIO": 0.8,
+        "WAVE_STOP_PCT": 8.0,
+        "WAVE_EMA_EXIT": 25,
+        "WAVE_MAX_HOLD": 60
+      },
+      "total_trades": 2,
+      "win_rate": 100.0
+    }
+  }
+}

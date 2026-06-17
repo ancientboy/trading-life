@@ -1,0 +1,321 @@
+"""
+方向判断引擎 v1 — 纯规则驱动，替代AI方向判断
+
+核心策略：布林带均值回归 + RSI确认 + EMA趋势过滤
+策略原理：
+  - 价格触及BB下轨 → 超卖，大概率回归中轨 → 做多
+  - 价格触及BB上轨 → 超买，大概率回归中轨 → 做空
+  - RSI极值共振确认方向
+  - 4h EMA趋势过滤（不逆势交易）
+
+目标胜率：60%+
+唯一亏损场景：突破行情（趋势穿越布林带），EMA过滤可大幅减少此类亏损
+"""
+
+import logging
+from typing import List, Dict, Optional
+
+logger = logging.getLogger("DirectionRules")
+
+
+# ============================================
+# 基础指标计算
+# ============================================
+
+def calc_bollinger_bands(closes: List[float], period: int = 20, std_dev: float = 2.0) -> Optional[Dict]:
+    """布林带计算，返回 upper/middle/lower/percent_b/bandwidth_pct"""
+    if len(closes) < period:
+        return None
+
+    window = closes[-period:]
+    sma = sum(window) / period
+    variance = sum((c - sma) ** 2 for c in window) / period
+    std = variance ** 0.5
+
+    upper = sma + std_dev * std
+    lower = sma - std_dev * std
+    price = closes[-1]
+
+    # %B: 0=下轨, 50=中轨, 100=上轨, <0=穿下轨, >100=穿上轨
+    bandwidth = upper - lower
+    percent_b = (price - lower) / bandwidth * 100 if bandwidth > 0 else 50.0
+
+    return {
+        'upper': upper,
+        'middle': sma,
+        'lower': lower,
+        'bandwidth_pct': bandwidth / sma * 100 if sma > 0 else 0,
+        'percent_b': percent_b,
+        'price': price,
+    }
+
+
+def calc_rsi(closes: List[float], period: int = 14) -> float:
+    """RSI计算 (Wilder平滑)"""
+    if len(closes) < period + 1:
+        return 50.0
+
+    deltas = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+
+    # 初始SMA
+    gains = [max(0.0, d) for d in deltas[:period]]
+    losses = [max(0.0, -d) for d in deltas[:period]]
+    avg_gain = sum(gains) / period
+    avg_loss = sum(losses) / period
+
+    if avg_loss == 0:
+        rsi = 100.0
+    else:
+        rsi = 100.0 - 100.0 / (1.0 + avg_gain / avg_loss)
+
+    # Wilder平滑
+    for i in range(period, len(deltas)):
+        avg_gain = (avg_gain * (period - 1) + max(0.0, deltas[i])) / period
+        avg_loss = (avg_loss * (period - 1) + max(0.0, -deltas[i])) / period
+        if avg_loss == 0:
+            rsi = 100.0
+        else:
+            rsi = 100.0 - 100.0 / (1.0 + avg_gain / avg_loss)
+
+    return rsi
+
+
+def calc_ema(closes: List[float], period: int) -> float:
+    """EMA计算"""
+    if len(closes) < period:
+        return closes[-1] if closes else 0.0
+
+    multiplier = 2.0 / (period + 1)
+    ema = sum(closes[:period]) / period
+
+    for c in closes[period:]:
+        ema = (c - ema) * multiplier + ema
+
+    return ema
+
+
+# ============================================
+# 方向判断主函数
+# ============================================
+
+def judge_direction(
+    klines_15m: list,
+    klines_1h: list,
+    klines_4h: list,
+) -> Dict:
+    """
+    纯规则方向判断
+
+    评分体系:
+      正分 = 做多信号, 负分 = 做空信号
+
+      布林带15m(主信号): ±30分
+      布林带1h(确认):   ±10分
+      RSI 15m(确认):    ±15分
+      RSI 1h(确认):     ±5分
+      RSI多周期共振:    ±10分
+      EMA4h趋势过滤:    顺势×1.3, 逆势×0.4
+      成交量确认:        放量×1.15, 缩量×0.75
+
+    阈值:
+      |得分|≥30 → 高置信度(65-90%)
+      |得分|≥20 → 中置信度(55-80%)
+      |得分|≥12 → 低置信度(50-70%)
+      |得分|≥5  → 弱信号(45-60%)
+      |得分|≥2  → 边际信号(42-50%) v22新增
+      |得分|<2  → SKIP
+
+    Returns:
+        {direction, confidence, score, reasoning, strategy, indicators}
+    """
+    score = 0
+    reasoning = []
+    indicators = {}
+
+    # === 提取closes ===
+    def get_closes(klines):
+        if not klines:
+            return []
+        return [float(k.get('close', 0)) for k in klines if float(k.get('close', 0)) > 0]
+
+    closes_15m = get_closes(klines_15m)
+    closes_1h = get_closes(klines_1h)
+    closes_4h = get_closes(klines_4h)
+
+    # =============================================
+    # 1. 布林带均值回归 (15m = 主信号, 权重最大)
+    # =============================================
+    bb_15m = calc_bollinger_bands(closes_15m)
+    bb_1h = calc_bollinger_bands(closes_1h)
+    indicators['bb_15m'] = bb_15m
+    indicators['bb_1h'] = bb_1h
+
+    if bb_15m:
+        pb = bb_15m['percent_b']
+
+        if pb < 0:
+            # 价格穿破BB下轨 → 强超卖反弹信号
+            pts = min(30, int(abs(pb) * 0.4 + 15))
+            score += pts
+            reasoning.append(f"BB15m: 下轨下方(%B={pb:.1f})→超卖反弹 +{pts}")
+        elif pb < 15:
+            score += 12
+            reasoning.append(f"BB15m: 接近下轨(%B={pb:.1f})→偏多 +12")
+        elif pb > 100:
+            # 价格穿破BB上轨 → 强超买回落信号
+            pts = min(30, int((pb - 100) * 0.4 + 15))
+            score -= pts
+            reasoning.append(f"BB15m: 上轨上方(%B={pb:.1f})→超买回落 -{pts}")
+        elif pb > 85:
+            score -= 12
+            reasoning.append(f"BB15m: 接近上轨(%B={pb:.1f})→偏空 -12")
+        elif 40 <= pb <= 60:
+            reasoning.append(f"BB15m: 中轨附近(%B={pb:.1f})→无明显信号")
+        else:
+            reasoning.append(f"BB15m: %B={pb:.1f}→弱信号")
+
+    # BB 1h确认
+    if bb_1h:
+        pb_1h = bb_1h['percent_b']
+        if pb_1h < 10:
+            score += 10
+            reasoning.append(f"BB1h: 接近下轨(%B={pb_1h:.1f})→确认超卖 +10")
+        elif pb_1h > 90:
+            score -= 10
+            reasoning.append(f"BB1h: 接近上轨(%B={pb_1h:.1f})→确认超买 -10")
+
+    # =============================================
+    # 2. RSI确认 (15m + 1h)
+    # =============================================
+    rsi_15m = calc_rsi(closes_15m) if len(closes_15m) > 14 else 50.0
+    rsi_1h = calc_rsi(closes_1h) if len(closes_1h) > 14 else 50.0
+    indicators['rsi_15m'] = round(rsi_15m, 1)
+    indicators['rsi_1h'] = round(rsi_1h, 1)
+
+    # RSI 15m
+    if rsi_15m < 25:
+        score += 15
+        reasoning.append(f"RSI15m={rsi_15m:.0f}(深度超卖)→强反弹 +15")
+    elif rsi_15m < 35:
+        score += 8
+        reasoning.append(f"RSI15m={rsi_15m:.0f}(超卖区)→偏多 +8")
+    elif rsi_15m > 75:
+        score -= 15
+        reasoning.append(f"RSI15m={rsi_15m:.0f}(深度超买)→强回调 -15")
+    elif rsi_15m > 65:
+        score -= 8
+        reasoning.append(f"RSI15m={rsi_15m:.0f}(超买区)→偏空 -8")
+
+    # RSI 1h确认
+    if rsi_1h < 35:
+        score += 5
+        reasoning.append(f"RSI1h={rsi_1h:.0f}→确认偏多 +5")
+    elif rsi_1h > 65:
+        score -= 5
+        reasoning.append(f"RSI1h={rsi_1h:.0f}→确认偏空 -5")
+
+    # RSI多周期共振
+    if rsi_15m < 30 and rsi_1h < 35:
+        score += 10
+        reasoning.append("⭐ RSI多周期超卖共振→极强做多 +10")
+    elif rsi_15m > 70 and rsi_1h > 65:
+        score -= 10
+        reasoning.append("⭐ RSI多周期超买共振→极强做空 -10")
+
+    # =============================================
+    # 3. EMA趋势过滤 (4h)
+    #    顺势信号增强，逆势信号大幅减弱
+    # =============================================
+    ema_trend = "neutral"
+    if len(closes_4h) >= 50:
+        ema20 = calc_ema(closes_4h, 20)
+        ema50 = calc_ema(closes_4h, 50)
+        price_4h = closes_4h[-1]
+        indicators['ema20_4h'] = round(ema20, 6)
+        indicators['ema50_4h'] = round(ema50, 6)
+
+        # 需要明显间距才算排列(>0.2%)
+        gap = abs(ema20 - ema50) / ema50 * 100 if ema50 > 0 else 0
+
+        if ema20 > ema50 and gap > 0.2 and price_4h > ema20:
+            ema_trend = "bullish"
+            if score > 0:
+                score = int(score * 1.3)
+                reasoning.append(f"EMA4h多头排列→顺势做多 ×1.3")
+            else:
+                score = int(score * 0.4)
+                reasoning.append(f"⚠️ EMA4h多头排列→逆势做空大减 ×0.4")
+        elif ema20 < ema50 and gap > 0.2 and price_4h < ema20:
+            ema_trend = "bearish"
+            if score < 0:
+                score = int(score * 1.3)
+                reasoning.append(f"EMA4h空头排列→顺势做空 ×1.3")
+            else:
+                score = int(score * 0.4)
+                reasoning.append(f"⚠️ EMA4h空头排列→逆势做多大减 ×0.4")
+        else:
+            reasoning.append(f"EMA4h: 震荡(间距{gap:.2f}%)，无趋势过滤")
+    else:
+        reasoning.append(f"EMA4h: 数据不足({len(closes_4h)}根)，跳过趋势过滤")
+
+    indicators['ema_trend'] = ema_trend
+
+    # =============================================
+    # 4. 成交量确认 (15m)
+    # =============================================
+    if klines_15m and len(klines_15m) >= 10:
+        try:
+            vols = [float(k.get('volume', 0)) for k in klines_15m[-5:]]
+            prev_vols = [float(k.get('volume', 0)) for k in klines_15m[-10:-5]]
+            if prev_vols and sum(prev_vols) > 0:
+                vol_ratio = (sum(vols) / 5) / (sum(prev_vols) / 5)
+                indicators['vol_ratio'] = round(vol_ratio, 2)
+                if vol_ratio > 1.5 and abs(score) > 10:
+                    score = int(score * 1.15)
+                    reasoning.append(f"放量确认(×{vol_ratio:.1f})→信号增强 ×1.15")
+                elif vol_ratio < 0.5 and abs(score) > 10:
+                    score = int(score * 0.75)
+                    reasoning.append(f"缩量(×{vol_ratio:.1f})→信号减弱 ×0.75")
+        except Exception:
+            pass
+
+    # =============================================
+    # 5. 最终决策
+    # =============================================
+    abs_score = abs(score)
+
+    if abs_score >= 30:
+        direction = "LONG" if score > 0 else "SHORT"
+        confidence = min(90, 60 + abs_score)
+        strategy = "strong_bb_reversal"
+    elif abs_score >= 20:
+        direction = "LONG" if score > 0 else "SHORT"
+        confidence = min(80, 55 + abs_score)
+        strategy = "bb_rsi_combo"
+    elif abs_score >= 12:
+        direction = "LONG" if score > 0 else "SHORT"
+        confidence = min(70, 50 + abs_score)
+        strategy = "moderate_signal"
+    elif abs_score >= 5:
+        direction = "LONG" if score > 0 else "SHORT"
+        confidence = min(60, 45 + abs_score)
+        strategy = "weak_signal"
+    elif abs_score >= 2:
+        # v22: 放宽阈值(5→2)，数据支撑：4h内312次跳过中多数score=2，SMC有75-95%置信度但BB/RSI中性
+        direction = "LONG" if score > 0 else "SHORT"
+        confidence = min(50, 40 + abs_score)
+        strategy = "marginal_signal"
+    else:
+        direction = "SKIP"
+        confidence = 0
+        strategy = "no_clear_signal"
+        reasoning.append(f"综合得分={score}，信号不足，跳过")
+
+    return {
+        "direction": direction,
+        "confidence": confidence,
+        "score": score,
+        "reasoning": reasoning,
+        "strategy": strategy,
+        "indicators": indicators,
+    }

@@ -1,0 +1,80 @@
+# XiaoFeng Trading System Configuration
+# 小风交易系统配置
+
+system:
+  name: "XiaoFeng Trading Agent"
+  version: "0.1.0"
+  mode: "paper_trading"  # paper_trading | semi_auto | full_auto
+  
+# 交易参数
+trading:
+  max_position_pct: 0.10        # 单笔最大仓位 10%
+  max_direction_pct: 0.30       # 同方向最大仓位 30%
+  max_leverage: 3               # 最大杠杆 3x
+  max_daily_loss_pct: 0.05      # 日最大亏损 5%
+  max_weekly_drawdown_pct: 0.10 # 周最大回撤 10%
+  
+# 信号阈值
+signal:
+  min_confidence: 60            # 最低置信度
+  source_weight:
+    macro_policy: 1.0           # 宏观政策
+    on_chain: 0.9               # 链上数据
+    social_sentiment: 0.6       # 社交情绪
+    technical: 0.4              # 技术指标
+    news: 0.7                   # 新闻
+
+# 数据源配置
+data_sources:
+  binance:
+    enabled: true
+    websocket: true
+    symbols: ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT"]
+  
+  twitter:
+    enabled: false              # 需要 X API key
+    monitor_accounts: []        # 关注的账户列表
+    
+  on_chain:
+    enabled: false              # 需要链上API
+    watch_whales: true
+    min_transfer_usd: 1000000   # 监控 >100万美元转账
+    
+  news:
+    enabled: true
+    sources: ["coindesk", "cointelegraph", "decrypt"]
+    
+  sentiment:
+    fear_greed_index: true
+    funding_rate: true
+
+# Agent 配置
+agents:
+  intel:
+    enabled: true
+    schedule: "*/5 * * * *"     # 每5分钟巡检
+    
+  analyst:
+    enabled: true
+    schedule: "*/15 * * * *"    # 每15分钟分析
+    
+  strategy:
+    enabled: true
+    
+  risk:
+    enabled: true
+    
+  trader:
+    enabled: true
+    require_confirmation: true   # 需要主人确认才执行
+    
+  reviewer:
+    enabled: true
+    schedule: "0 20 * * *"      # 每天20:00复盘
+
+# 通知配置
+notification:
+  telegram:
+    enabled: true                # 使用当前 Telegram 通知
+  signal_alerts: true            # 信号提醒
+  daily_report: true             # 每日报告

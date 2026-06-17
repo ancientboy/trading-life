@@ -1,0 +1,4 @@
+
+{"timestamp": "2026-05-13T22:50:28.580696+00:00", "capital": 8842.021350838646, "review_baseline": 10000.0, "loss_pct": -11.58, "consecutive_losses": 1, "total_opens": 32, "total_closes": 22, "positions": ["BTCUSDT", "BNBUSDT", "AIGENSYNUSDT", "XRPUSDT", "SIGNUSDT", "SOLUSDT", "JCTUSDT", "IRYSUSDT", "CHIPUSDT", "DOGEUSDT"]}
+{"timestamp": "2026-05-16T14:36:16.886453+00:00", "capital": 8858.466489405246, "review_baseline": 10000.0, "loss_pct": -11.42, "consecutive_losses": 0, "total_opens": 0, "total_closes": 0, "positions": ["CLUSDT", "ESPORTSUSDT"]}
+{"timestamp": "2026-05-23T09:03:59.128977+00:00", "capital": 18788.970933983488, "review_baseline": 8858.466489405246, "loss_pct": 112.1, "consecutive_losses": 0, "total_opens": 0, "total_closes": 0, "positions": ["XAUUSDT"]}

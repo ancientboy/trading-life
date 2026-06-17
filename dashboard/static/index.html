@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Agent Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config={theme:{extend:{fontFamily:{mono:['JetBrains Mono','monospace'],display:['Space Grotesk','sans-serif']}}}}
+</script>
+<style>
+:root{--bg0:#060a12;--bg1:#0c1220;--bg2:#111b2e;--bg3:#172040;--border:#1c2a48;--t1:#e2e8f0;--t2:#64748b;--t3:#475569;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--amber:#f59e0b;--cyan:#06b6d4;--purple:#a855f7}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg0);color:var(--t1);font-family:'Space Grotesk',sans-serif;min-height:100vh}
+.num{font-family:'JetBrains Mono',monospace}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px}
+.card:hover{border-color:#2a3f6a}
+.tag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.4px}
+.tag-long{background:rgba(34,197,94,.12);color:#4ade80}
+.tag-short{background:rgba(239,68,68,.12);color:#f87171}
+.tag-on{background:rgba(34,197,94,.12);color:#4ade80}
+.tag-off{background:rgba(100,116,139,.12);color:#94a3b8}
+.tag-break{background:rgba(239,68,68,.12);color:#f87171}
+.tab-b{padding:8px 16px;font-size:13px;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
+.tab-b:hover{color:var(--t1)}
+.tab-b.on{color:var(--cyan);border-bottom-color:var(--cyan)}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-g{background:var(--green);box-shadow:0 0 6px rgba(34,197,94,.5)}
+.dot-r{background:var(--red);box-shadow:0 0 6px rgba(239,68,68,.5)}
+.dot-y{background:var(--amber);box-shadow:0 0 6px rgba(245,158,11,.5)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.blink{animation:blink 1.8s ease-in-out infinite}
+.btn-s{padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:.2s}
+.btn-start{color:var(--green);border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08)}
+.btn-start:hover{background:rgba(34,197,94,.18)}
+.btn-stop{color:var(--red);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+.btn-stop:hover{background:rgba(239,68,68,.18)}
+.chat-box{height:calc(100vh - 260px);min-height:350px;overflow-y:auto;scroll-behavior:smooth}
+.chat-msg{max-width:85%;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6;word-break:break-word}
+.chat-msg.u{background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.18);margin-left:auto}
+.chat-msg.a{background:var(--bg2);border:1px solid var(--border);margin-right:auto}
+.chat-msg pre{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:5px;padding:6px 8px;margin:4px 0;overflow-x:auto;font-size:11px;font-family:'JetBrains Mono',monospace}
+.chat-msg code{font-family:'JetBrains Mono',monospace;font-size:11px}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg0)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.collapsible{cursor:pointer;user-select:none}
+.collapsible .arrow{transition:transform .2s;display:inline-block}
+.collapsible.open .arrow{transform:rotate(90deg)}
+.phase-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- ticker -->
+<div style="background:var(--bg1);border-bottom:1px solid var(--border)" class="px-5 py-1.5 flex items-center gap-6 text-xs">
+  <span class="text-gray-500">BTC</span><span class="num font-medium" id="pBTC">--</span>
+  <span class="text-gray-500">ETH</span><span class="num font-medium" id="pETH">--</span>
+  <span class="text-gray-500">XAU</span><span class="num font-medium" id="pXAU">--</span>
+  <span class="flex-1"></span>
+  <div class="flex items-center gap-1.5"><div class="dot" id="runnerDot"></div><span class="text-gray-500" id="runnerLbl">--</span></div>
+  <span class="text-gray-600 num" id="updTime">--</span>
+</div>
+
+<!-- header -->
+<div class="px-5 pt-4 pb-1 flex items-end gap-3">
+  <div>
+    <h1 class="text-xl font-bold tracking-tight">Trading Agent</h1>
+    <p class="text-gray-500 text-xs">Multi-Agent Crypto Trading System</p>
+  </div>
+  <span class="flex-1"></span>
+  <div class="flex gap-0 overflow-x-auto" id="tabBar">
+    <div class="tab-b on" data-t="agents" onclick="swTab('agents')">Agents</div>
+    <div class="tab-b" data-t="screener" onclick="swTab('screener')">选币</div>
+    <div class="tab-b" data-t="watchpool" onclick="swTab('watchpool')">监控池</div>
+    <div class="tab-b" data-t="logs" onclick="swTab('logs')">日志</div>
+    <div class="tab-b" data-t="chat" onclick="swTab('chat')">💬 Chat</div>
+  </div>
+</div>
+
+<!-- ===== AGENTS ===== -->
+<div id="p-agents" class="px-5 pb-5 space-y-3">
+  <!-- summary row -->
+  <div class="grid grid-cols-5 gap-3" id="summaryRow"></div>
+  <!-- agent cards -->
+  <div class="space-y-3" id="agentList"></div>
+</div>
+
+<!-- ===== SCREENER ===== -->
+<div id="p-screener" class="px-5 pb-5 hidden">
+  <div class="card p-4" id="screenerBox">加载中...</div>
+</div>
+
+<!-- ===== WATCHPOOL ===== -->
+<div id="p-watchpool" class="px-5 pb-5 hidden">
+  <div class="card p-4" id="watchpoolBox">加载中...</div>
+</div>
+
+<!-- ===== LOGS ===== -->
+<div id="p-logs" class="px-5 pb-5 hidden">
+  <div class="card p-4">
+    <div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">运行日志</div>
+    <div id="logsBox" class="font-mono text-[11px] text-gray-400 max-h-[600px] overflow-y-auto whitespace-pre-wrap">加载中...</div>
+  </div>
+</div>
+
+<!-- ===== CHAT ===== -->
+<div id="p-chat" class="px-5 pb-5 hidden">
+  <div class="card p-4 flex flex-col">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs text-gray-500 uppercase tracking-wider font-semibold">AI 助手 (OpenClaw)</span>
+      <span class="text-[10px] text-gray-600">直接对话修改策略、调试问题</span>
+    </div>
+    <div class="chat-box" id="chatBox">
+      <div class="flex flex-col gap-2" id="chatList">
+        <div class="chat-msg a">👻 你好！我是炮炮。你可以直接跟我对话来管理 Trading Agent，比如：<br>
+        • 查看 momentum agent 当前持仓<br>
+        • 调整 trailing 止盈参数<br>
+        • 重启某个 agent 进程</div>
+      </div>
+    </div>
+    <div class="flex gap-2 pt-3 border-t border-gray-800">
+      <input id="chatIn" type="text" placeholder="输入消息..." class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" onkeydown="if(event.key==='Enter'){event.preventDefault();sendChat()}">
+      <button id="chatBtn" onclick="sendChat()" class="bg-cyan-600 hover:bg-cyan-500 text-black font-semibold text-sm px-5 py-2 rounded-lg transition">发送</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API=location.origin+'/trading';
+let ws=null,curTab='agents';
+
+// -- tabs --
+function swTab(t){
+  curTab=t;
+  document.querySelectorAll('[id^="p-"]').forEach(e=>e.classList.add('hidden'));
+  document.getElementById('p-'+t)?.classList.remove('hidden');
+  document.querySelectorAll('.tab-b').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  if(t==='screener')loadScreener();
+  if(t==='watchpool')loadWatchpool();
+  if(t==='logs')loadLogs();
+  if(t==='chat'){let e=$('chatBox');e.scrollTop=e.scrollHeight}
+}
+
+// -- helpers --
+const $=id=>document.getElementById(id);
+function fmt$(v){return v==null||isNaN(v)?'--':'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtPct(v){return v==null||isNaN(v)?'--':(v>=0?'+':'')+v.toFixed(2)+'%'}
+function pc(v){return v>0?'text-green-400':v<0?'text-red-400':'text-gray-400'}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function fmtMd(t){
+  let h=esc(t);
+  h=h.replace(/```(\w*)\n?([\s\S]*?)```/g,'<pre><code>$2</code></pre>');
+  h=h.replace(/`([^`]+)`/g,'<code class="text-cyan-300">$1</code>');
+  h=h.replace(/\*\*(.+?)\*\*/g,'<strong class="text-white">$1</strong>');
+  h=h.replace(/\n/g,'<br>');
+  return h;
+}
+
+// -- load overview --
+async function loadOV(){
+  try{
+    let r=await fetch(API+'/api/overview');
+    let d=await r.json();
+    renderOV(d);
+  }catch(e){console.error(e)}
+}
+
+function renderOV(d){
+  // summary
+  $('summaryRow').innerHTML=`
+    <div class="card p-3"><div class="text-gray-500 text-[10px] uppercase tracking-wider mb-0.5">总资金</div><div class="num text-xl font-bold">${fmt$(d.total_capital)}</div></div>
+    <div class="card p-3"><div class="text-gray-500 text-[10px] uppercase tracking-wider mb-0.5">总盈亏</div><div class="num text-xl font-bold ${pc(d.total_pnl)}">${fmt$(d.total_pnl)}</div><div class="num text-xs ${pc(d.total_pnl_pct)}">${fmtPct(d.total_pnl_pct)}</div></div>
+    <div class="card p-3"><div class="text-gray-500 text-[10px] uppercase tracking-wider mb-0.5">总交易</div><div class="num text-xl font-bold">${d.total_trades}</div></div>
+    <div class="card p-3"><div class="text-gray-500 text-[10px] uppercase tracking-wider mb-0.5">总胜率</div><div class="num text-xl font-bold">${(d.total_wr||0).toFixed(1)}%</div></div>
+    <div class="card p-3"><div class="text-gray-500 text-[10px] uppercase tracking-wider mb-0.5">风控</div><div class="text-xl font-bold">${d.risk?.circuit_break?'<span class="text-red-400">熔断</span>':'<span class="text-green-400">正常</span>'}</div><div class="text-[10px] text-gray-500">日盈亏 ${fmt$(d.risk?.daily_pnl)}</div></div>`;
+
+  // agents
+  let html='';
+  for(const a of d.agents){
+    html+=renderAgentCard(a);
+  }
+  $('agentList').innerHTML=html;
+
+  // runner
+  $('runnerDot').className='dot '+(d.runner?.running?'dot-g blink':'dot-r');
+  $('runnerLbl').textContent=d.runner?.running?'Running':'Stopped';
+  $('updTime').textContent=new Date().toLocaleTimeString('zh-CN');
+}
+
+function renderAgentCard(a){
+  const stTag=a.is_circuit_break?'<span class="tag tag-break">熔断</span>':a.running?'<span class="tag tag-on">运行中</span>':'<span class="tag tag-off">已停止</span>';
+  const ctrlBtn=a.running
+    ?`<button class="btn-s btn-stop" onclick="agentCtrl('${a.id}','stop')">⏹ 停止</button>`
+    :`<button class="btn-s btn-start" onclick="agentCtrl('${a.id}','start')">▶ 启动</button>`;
+
+  let posHtml='';
+  if(a.positions.length>0){
+    posHtml=a.positions.map(p=>{
+      const dir=(p.direction||'').toUpperCase();
+      const dt=dir.includes('SHORT')?'tag-short':'tag-long';
+      const leverage=p.leverage?` <span class="text-gray-600 text-[10px]">${p.leverage}x</span>`:'';
+      const reason=p.entry_reasoning||p.reason||'';
+      const reasonShort=reason.length>40?reason.slice(0,40)+'…':reason;
+      return`<div class="flex items-center justify-between py-1.5 border-t border-gray-800/40">
+        <div class="flex items-center gap-2"><span class="tag ${dt}">${dir}</span><span class="text-white text-xs font-medium">${p.symbol}</span>${leverage}</div>
+        <div class="flex items-center gap-2"><span class="text-gray-500 text-[10px]">@${p.entry_price?.toFixed(2)||'--'}</span>${p.stop_loss?'<span class="text-gray-600 text-[10px]">SL:'+p.stop_loss.toFixed(2)+'</span>':''}${reason?`<span class="text-gray-500 text-[10px]" title="${esc(reason)}">${esc(reasonShort)}</span>`:''}</div>
+      </div>`;
+    }).join('');
+  }else{
+    posHtml='<div class="text-gray-600 text-[11px] py-1.5">无持仓</div>';
+  }
+
+  // trades history mini table
+  let histHtml='';
+  const hist=a.trades_history||[];
+  if(hist.length>0){
+    const last5=hist.slice(-5).reverse();
+    histHtml=`<div class="collapsible flex items-center gap-1 text-[10px] text-gray-500 mt-2 pt-1 border-t border-gray-800/30" onclick="toggleHist(this)">
+      <span class="arrow">▸</span> 交易记录 (${hist.length})
+    </div>
+    <div class="hist hidden mt-1">
+      <table class="w-full text-[10px]"><thead><tr class="text-gray-500"><th class="text-left py-1">时间</th><th class="text-left">币种</th><th class="text-left">方向</th><th class="text-right">盈亏</th></tr></thead><tbody class="num">
+      ${last5.map(t=>{
+        const p=t.pnl||t.pnl_pct||t.realized_pnl||0;
+        const dir=(t.direction||'').toUpperCase();
+        return`<tr class="border-t border-gray-800/20"><td class="py-0.5 text-gray-500">${(t.timestamp||t.time||'').slice(0,16)}</td><td>${t.symbol||'--'}</td><td><span class="tag ${dir.includes('SHORT')?'tag-short':'tag-long'}">${dir}</span></td><td class="text-right ${pc(p)}">${typeof p==='number'?fmtPct(p):'--'}</td></tr>`;
+      }).join('')}
+      </tbody></table>
+    </div>`;
+  }
+
+  return`<div class="card p-4">
+    <div class="flex items-start justify-between mb-2">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">${a.icon}</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-sm">${a.name}</span>
+            ${stTag}
+            ${ctrlBtn}
+          </div>
+          <div class="text-[10px] text-gray-500 mt-0.5">${a.desc}</div>
+          <div class="flex gap-3 mt-1 text-[10px] text-gray-600">
+            <span>策略: ${a.strategy}</span>
+            <span>周期: ${a.interval}</span>
+            <span>市场: ${a.market}</span>
+          </div>
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="num text-lg font-bold ${pc(a.pnl)}">${fmt$(a.pnl)}</div>
+        <div class="num text-xs ${pc(a.pnl_pct)}">${fmtPct(a.pnl_pct)}</div>
+      </div>
+    </div>
+    <div class="grid grid-cols-4 gap-2 text-[11px]">
+      <div><span class="text-gray-500">资金</span><div class="num font-medium">${fmt$(a.capital)}</div></div>
+      <div><span class="text-gray-500">初始</span><div class="num font-medium text-gray-400">${fmt$(a.initial_capital)}</div></div>
+      <div><span class="text-gray-500">胜率</span><div class="num font-medium">${a.win_rate.toFixed(1)}% <span class="text-gray-600">(${a.wins}/${a.trades})</span></div></div>
+      <div><span class="text-gray-500">连亏</span><div class="num font-medium ${a.consecutive_losses>2?'text-amber-400':'text-gray-400'}">${a.consecutive_losses}</div></div>
+    </div>
+    <div class="mt-2">
+      <div class="text-[10px] text-gray-500 uppercase tracking-wider">持仓 (${a.positions.length})</div>
+      ${posHtml}
+    </div>
+    ${histHtml}
+  </div>`;
+}
+
+function toggleHist(el){
+  el.classList.toggle('open');
+  const h=el.nextElementSibling;
+  h.classList.toggle('hidden');
+}
+
+async function agentCtrl(id,action){
+  try{
+    const r=await fetch(API+'/api/agent/'+id+'/'+action,{method:'POST'});
+    const d=await r.json();
+    setTimeout(loadOV,1500);
+  }catch(e){alert('操作失败: '+e.message)}
+}
+
+// -- screener --
+async function loadScreener(){
+  try{
+    let r=await fetch(API+'/api/screener');
+    let d=await r.json();
+    const tiers=d.tiers||{};
+    const desc=d.tier_descriptions||{};
+    let html=`<div class="text-[10px] text-gray-500 mb-3">Smart Screener 通过多维度技术分析对币种分级：<strong class="text-gray-300">趋势强度、成交量异动、技术形态、多周期确认</strong>。级别越高，信号越可靠。</div>`;
+    html+='<div class="grid grid-cols-1 gap-3">';
+    const tierColors={S:'text-yellow-400 border-yellow-400/20 bg-yellow-400/5',A:'text-green-400 border-green-400/20 bg-green-400/5',B:'text-blue-400 border-blue-400/20 bg-blue-400/5',C:'text-gray-400 border-gray-400/20 bg-gray-400/5'};
+    for(const[tier,coins]of Object.entries(tiers)){
+      const c=tierColors[tier]||'text-gray-400';
+      const cl=Array.isArray(coins)?coins:[];
+      const d=desc[tier]||'';
+      html+=`<div class="rounded-lg border p-3 ${c}">
+        <div class="flex items-center justify-between mb-1">
+          <div class="flex items-center gap-2"><span class="text-xl font-bold">${tier}</span><span class="text-xs opacity-70">${cl.length} 币</span></div>
+        </div>
+        <div class="text-[11px] opacity-60 mb-2">${esc(d)}</div>
+        <div class="flex flex-wrap gap-1.5">${cl.map(s=>`<span class="bg-black/20 px-2 py-0.5 rounded text-[11px] font-mono">${s}</span>`).join('')}</div>
+      </div>`;
+    }
+    html+='</div>';
+    if(d.timestamp)html+=`<div class="text-[10px] text-gray-600 mt-2">更新于: ${d.timestamp}</div>`;
+    $('screenerBox').innerHTML=html;
+  }catch(e){$('screenerBox').innerHTML='<span class="text-red-400">加载失败</span>'}
+}
+
+// -- watchpool --
+async function loadWatchpool(){
+  try{
+    let r=await fetch(API+'/api/watchpool');
+    let d=await r.json();
+    const groups=d.groups||{};
+    const total=d.total||0;
+
+    let html=`<div class="text-[10px] text-gray-500 mb-3">监控池通过<strong class="text-gray-300">启动前信号检测</strong>（吸筹→洗盘→均线粘合→变盘前夜）筛选即将启动的币种。每个阶段代表不同的启动前状态。</div>`;
+    html+=`<div class="text-xs text-gray-500 mb-2">共 ${total} 个币种</div>`;
+
+    const phaseInfo={
+      '吸筹':'🟡 大资金悄悄建仓，成交量温和放大但价格不涨',
+      '洗盘':'🟠 主力打压价格清洗浮筹，散户割肉',
+      '洗盘结束':'🟢 洗盘完毕，卖压耗尽，随时可能拉升',
+      '变盘前夜':'🔴 均线粘合、波动收窄，突破在即',
+      '其他':'⚪ 其他阶段',
+    };
+    const phaseColors={
+      '吸筹':'border-yellow-500/20 bg-yellow-500/5',
+      '洗盘':'border-orange-500/20 bg-orange-500/5',
+      '洗盘结束':'border-green-500/20 bg-green-500/5',
+      '变盘前夜':'border-red-500/20 bg-red-500/5',
+      '其他':'border-gray-500/20 bg-gray-500/5',
+    };
+
+    html+='<div class="space-y-3">';
+    for(const[phase,coins]of Object.entries(groups)){
+      const info=phaseInfo[phase]||phaseInfo['其他'];
+      const bc=phaseColors[phase]||phaseColors['其他'];
+      html+=`<div class="rounded-lg border p-3 ${bc}">
+        <div class="flex items-center justify-between mb-1">
+          <span class="font-semibold text-sm">${phase} <span class="text-gray-500 text-xs">(${coins.length})</span></span>
+        </div>
+        <div class="text-[11px] text-gray-400 mb-2">${info}</div>
+        <div class="space-y-1.5">
+        ${coins.map(c=>{
+          const score=c.prelaunch_score||0;
+          const detail=c.prelaunch_detail||'';
+          const triggered=c.triggered;
+          const bigTrend=c.big_trend||'';
+          const added=(c.added_at||'').slice(0,10);
+          const expired=c.expire_at&&new Date(c.expire_at)<new Date();
+          return`<div class="flex items-center justify-between bg-black/15 rounded px-2.5 py-1.5">
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-medium text-xs">${c.symbol}</span>
+              ${triggered?'<span class="tag tag-long">已触发</span>':''}
+              ${expired?'<span class="tag tag-off">已过期</span>':''}
+            </div>
+            <div class="flex items-center gap-3 text-[10px]">
+              <span class="text-gray-500">评分 <span class="num ${score>=80?'text-green-400':score>=60?'text-amber-400':'text-gray-400'}">${score}</span></span>
+              <span class="text-gray-600" title="${esc(detail)}">${esc(detail.slice(0,30))}</span>
+              <span class="text-gray-600">${added}</span>
+            </div>
+          </div>`;
+        }).join('')}
+        </div>
+      </div>`;
+    }
+    html+='</div>';
+    $('watchpoolBox').innerHTML=html;
+  }catch(e){$('watchpoolBox').innerHTML='<span class="text-red-400">加载失败: '+e.message+'</span>'}
+}
+
+// -- logs --
+async function loadLogs(){
+  try{
+    let r=await fetch(API+'/api/logs?lines=200');
+    let d=await r.json();
+    $('logsBox').textContent=(d.logs||[]).join('\n')||'暂无日志';
+    $('logsBox').scrollTop=$('logsBox').scrollHeight;
+  }catch(e){$('logsBox').textContent='加载失败'}
+}
+
+// -- chat --
+let chatBusy=false;
+async function sendChat(){
+  const inp=$('chatIn'),btn=$('chatBtn');
+  const msg=inp.value.trim();
+  if(!msg||chatBusy)return;
+  chatBusy=true;btn.disabled=true;btn.textContent='...';inp.value='';
+  addChat('u',esc(msg));
+  const tid=addChat('a','<span class="text-gray-500">思考中...</span>');
+  try{
+    let r=await fetch(API+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    let d=await r.json();
+    document.getElementById(tid)?.remove();
+    addChat('a',fmtMd(d.reply||'（无回复）'));
+  }catch(e){
+    document.getElementById(tid)?.remove();
+    addChat('a','<span class="text-red-400">失败: '+esc(e.message)+'</span>');
+  }
+  chatBusy=false;btn.disabled=false;btn.textContent='发送';inp.focus();
+}
+function addChat(role,html){
+  const id='cm'+Date.now()+Math.random().toString(36).slice(2,5);
+  const d=document.createElement('div');
+  d.id=id;d.className='chat-msg '+(role==='u'?'u':'a');d.innerHTML=html;
+  $('chatList').appendChild(d);$('chatBox').scrollTop=$('chatBox').scrollHeight;
+  return id;
+}
+
+// -- ticker --
+async function loadTicker(){
+  try{
+    let r=await fetch(API+'/api/ticker');let d=await r.json();
+    if(d.BTCUSDT)$('pBTC').textContent='$'+Number(d.BTCUSDT).toLocaleString('en-US',{maximumFractionDigits:0});
+    if(d.ETHUSDT)$('pETH').textContent='$'+Number(d.ETHUSDT).toLocaleString('en-US',{maximumFractionDigits:0});
+    if(d.XAUUSDT)$('pXAU').textContent='$'+Number(d.XAUUSDT).toLocaleString('en-US',{maximumFractionDigits:2});
+  }catch(e){}
+}
+
+// -- ws --
+function connectWS(){
+  const p=location.protocol==='https:'?'wss':'ws';
+  ws=new WebSocket(p+'://'+location.host+'/trading/ws');
+  ws.onopen=()=>{};
+  ws.onmessage=e=>{try{renderOV(JSON.parse(e.data))}catch(e){}};
+  ws.onclose=()=>setTimeout(connectWS,5000);
+  ws.onerror=()=>ws.close();
+}
+
+// -- init --
+async function init(){
+  await Promise.all([loadOV(),loadTicker()]);
+  connectWS();
+  setInterval(()=>{if(!ws||ws.readyState!==1)loadOV()},10000);
+  setInterval(loadTicker,30000);
+}
+init();
+</script>
+</body>
+</html>

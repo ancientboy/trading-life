@@ -1,0 +1,17 @@
+{
+  "strategy": "momentum_wave",
+  "train_score": 191.39821065740318,
+  "train_pnl": 37.900635773743204,
+  "train_wr": 100.0,
+  "test_pnl": 2.020868748488866,
+  "test_wr": 37.16269841269841,
+  "degradation_pct": 94.66798192897629,
+  "overfit": "True",
+  "params": {
+    "WAVE_BREAKOUT_BARS": 15,
+    "WAVE_MIN_VOL_RATIO": 0.8,
+    "WAVE_STOP_PCT": 8.0,
+    "WAVE_EMA_EXIT": 20,
+    "WAVE_MAX_HOLD": 60
+  }
+}
