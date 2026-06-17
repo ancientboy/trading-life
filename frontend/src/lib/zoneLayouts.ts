@@ -56,6 +56,9 @@ export const ZONE_LAYOUTS: Record<ZoneId, ZoneLayout> = {
       { id: 'dine_1', nodeId: 'dine_1', r: 48, label: '餐桌 A', action: 'dine' },
       { id: 'dine_2', nodeId: 'dine_2', r: 48, label: '餐桌 B', action: 'dine' },
       { id: 'dine_3', nodeId: 'dine_3', r: 48, label: '餐桌 C', action: 'dine' },
+      { id: 'dine_4', nodeId: 'dine_4', r: 48, label: '餐桌 D', action: 'dine' },
+      { id: 'dine_5', nodeId: 'dine_5', r: 48, label: '餐桌 E', action: 'dine' },
+      { id: 'dine_6', nodeId: 'dine_6', r: 48, label: '餐桌 F', action: 'dine' },
     ],
   },
   spa: {
@@ -66,6 +69,9 @@ export const ZONE_LAYOUTS: Record<ZoneId, ZoneLayout> = {
       { id: 'bed_1', nodeId: 'bed_1', r: 52, label: '按摩床 1', action: 'massage' },
       { id: 'bed_2', nodeId: 'bed_2', r: 52, label: '按摩床 2', action: 'massage' },
       { id: 'bed_3', nodeId: 'bed_3', r: 52, label: '按摩床 3', action: 'massage' },
+      { id: 'bed_4', nodeId: 'bed_4', r: 52, label: '按摩床 4', action: 'massage' },
+      { id: 'bed_5', nodeId: 'bed_5', r: 52, label: '按摩床 5', action: 'massage' },
+      { id: 'bed_6', nodeId: 'bed_6', r: 52, label: '按摩床 6', action: 'massage' },
     ],
   },
   casino: {

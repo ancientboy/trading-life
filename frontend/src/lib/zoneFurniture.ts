@@ -42,27 +42,51 @@ export const SPA_BEDS: MassageBedDef[] = [
 
 export const RESTAURANT_TABLES: DiningTableDef[] = [
   {
-    id: 'dine_1', px: 200, py: 300, label: '餐桌 A',
+    id: 'dine_1', px: 200, py: 280, label: '餐桌 A',
     chairs: [
-      { id: 'dine_1_c1', px: 200, py: 350, facing: 'n' },
-      { id: 'dine_1_c2', px: 165, py: 300, facing: 'e' },
-      { id: 'dine_1_c3', px: 235, py: 300, facing: 'w' },
+      { id: 'dine_1_c1', px: 200, py: 330, facing: 'n' },
+      { id: 'dine_1_c2', px: 165, py: 280, facing: 'e' },
+      { id: 'dine_1_c3', px: 235, py: 280, facing: 'w' },
     ],
   },
   {
-    id: 'dine_2', px: 360, py: 300, label: '餐桌 B',
+    id: 'dine_2', px: 360, py: 280, label: '餐桌 B',
     chairs: [
-      { id: 'dine_2_c1', px: 360, py: 350, facing: 'n' },
-      { id: 'dine_2_c2', px: 325, py: 300, facing: 'e' },
-      { id: 'dine_2_c3', px: 395, py: 300, facing: 'w' },
+      { id: 'dine_2_c1', px: 360, py: 330, facing: 'n' },
+      { id: 'dine_2_c2', px: 325, py: 280, facing: 'e' },
+      { id: 'dine_2_c3', px: 395, py: 280, facing: 'w' },
     ],
   },
   {
-    id: 'dine_3', px: 520, py: 300, label: '餐桌 C',
+    id: 'dine_3', px: 520, py: 280, label: '餐桌 C',
     chairs: [
-      { id: 'dine_3_c1', px: 520, py: 350, facing: 'n' },
-      { id: 'dine_3_c2', px: 485, py: 300, facing: 'e' },
-      { id: 'dine_3_c3', px: 555, py: 300, facing: 'w' },
+      { id: 'dine_3_c1', px: 520, py: 330, facing: 'n' },
+      { id: 'dine_3_c2', px: 485, py: 280, facing: 'e' },
+      { id: 'dine_3_c3', px: 555, py: 280, facing: 'w' },
+    ],
+  },
+  {
+    id: 'dine_4', px: 200, py: 470, label: '餐桌 D',
+    chairs: [
+      { id: 'dine_4_c1', px: 200, py: 520, facing: 'n' },
+      { id: 'dine_4_c2', px: 165, py: 470, facing: 'e' },
+      { id: 'dine_4_c3', px: 235, py: 470, facing: 'w' },
+    ],
+  },
+  {
+    id: 'dine_5', px: 360, py: 470, label: '餐桌 E',
+    chairs: [
+      { id: 'dine_5_c1', px: 360, py: 520, facing: 'n' },
+      { id: 'dine_5_c2', px: 325, py: 470, facing: 'e' },
+      { id: 'dine_5_c3', px: 395, py: 470, facing: 'w' },
+    ],
+  },
+  {
+    id: 'dine_6', px: 520, py: 470, label: '餐桌 F',
+    chairs: [
+      { id: 'dine_6_c1', px: 520, py: 520, facing: 'n' },
+      { id: 'dine_6_c2', px: 485, py: 470, facing: 'e' },
+      { id: 'dine_6_c3', px: 555, py: 470, facing: 'w' },
     ],
   },
 ];

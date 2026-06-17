@@ -5,7 +5,7 @@ export const EXTRA_DESK_NODES = ['seat_6', 'seat_7', 'seat_8'] as const;
 const LEISURE_POOL = {
   booth: ['rest_l_1', 'rest_l_2'],
   massage: ['bed_1', 'bed_2', 'bed_3', 'bed_4', 'bed_5', 'bed_6'],
-  dine: ['dine_1', 'dine_2', 'dine_3'],
+  dine: ['dine_1', 'dine_2', 'dine_3', 'dine_4', 'dine_5', 'dine_6'],
   poker: ['poker_s1', 'poker_s2', 'poker_s3', 'poker_s4', 'poker_s5', 'poker_s6', 'poker_s7', 'poker_s8'],
 };
 
@@ -53,8 +53,8 @@ export function registerCustomAgentSlots(
   const i = index % 3;
   OfficePath.deskByAgent[agentId] = deskNode;
   OfficePath.boothByAgent[agentId] = LEISURE_POOL.booth[i];
-  OfficePath.massageByAgent[agentId] = LEISURE_POOL.massage[i];
-  OfficePath.dineByAgent[agentId] = LEISURE_POOL.dine[i];
+  OfficePath.massageByAgent[agentId] = LEISURE_POOL.massage[i % LEISURE_POOL.massage.length];
+  OfficePath.dineByAgent[agentId] = LEISURE_POOL.dine[i % LEISURE_POOL.dine.length];
   OfficePath.pokerByAgent[agentId] = LEISURE_POOL.poker[i];
   return deskNode;
 }
