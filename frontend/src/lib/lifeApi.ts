@@ -61,11 +61,16 @@ export async function lifeEarn(amount: number, reason = '') {
   return parse<{ ok: boolean; balance: number; earned: number }>(r);
 }
 
-export async function lifeIdleTick(agentCount: number, elapsedMs: number) {
+export async function lifeIdleTick(agentCount: number) {
   const r = await fetch(`${API}/points/idle`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ agent_count: agentCount, elapsed_ms: elapsedMs }),
+    method: 'POST', headers: headers(), body: JSON.stringify({ agent_count: agentCount, elapsed_ms: 0 }),
   });
-  return parse<{ ok: boolean; balance: number; earned: number }>(r);
+  return parse<{ ok: boolean; balance: number; earned: number; daily_cap?: boolean }>(r);
+}
+
+export async function lifeSessionStart() {
+  const r = await fetch(`${API}/session/start`, { method: 'POST', headers: headers() });
+  return parse<{ ok: boolean; balance: number }>(r);
 }
 
 export async function lifeActivityComplete(activity: string) {

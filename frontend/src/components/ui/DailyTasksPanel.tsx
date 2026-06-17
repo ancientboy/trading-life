@@ -85,7 +85,8 @@ export function DailyTasksPanel({ compact = false }: { compact?: boolean }) {
 
       {!compact && (
         <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10, lineHeight: 1.5 }}>
-          挂机、派遣、完成休闲活动可推进任务；每日 0 点（北京时间）重置
+          挂机、派遣、完成休闲活动可推进任务；每日 0 点（北京时间）重置<br />
+          挂机积分仅在页面打开时累计，每日上限 120 分钟
         </p>
       )}
     </div>

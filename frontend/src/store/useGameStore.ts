@@ -15,7 +15,7 @@ import {
   canCreateAgentType, createLimitMessage, type CustomAgentDraft,
 } from '../lib/customAgents';
 import {
-  fetchLifeState, migrateLifeState, lifeIdleTick,
+  fetchLifeState, migrateLifeState, lifeIdleTick, lifeSessionStart,
   lifeActivityComplete, lifeDispatch, lifeClaimTask, lifeShopBuy,
   lifeCreateAgent, lifeSaveAgentSoul, lifeAgentSpeak,
   fetchSeats, claimSeat, releaseSeat, type LifeState,
@@ -84,6 +84,8 @@ interface GameStore {
   shopCatalog: LifeState['shop_catalog'];
   facilityCosts: Record<string, number>;
   agentBubble: { agentId: string; text: string; until: number } | null;
+  /** 上次客户端挂机 tick 时间（performance.now） */
+  lastIdleClientTick: number;
 
   setCameraMode: (m: CameraMode) => void;
   setQuality: (q: QualityTier) => void;
@@ -183,6 +185,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   shopCatalog: [],
   facilityCosts: { ...FACILITY_BASE_COST },
   agentBubble: null,
+  lastIdleClientTick: 0,
 
   setCameraMode: (m) => set({ cameraMode: m }),
   setQuality: (q) => set({ quality: q }),
@@ -482,6 +485,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncLifeState: async () => {
     try {
+      await lifeSessionStart().catch(() => {});
       let state = await fetchLifeState();
       const localMeta = loadCustomAgentMeta();
       const localPoints = loadPoints();
@@ -618,10 +622,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   tickIdlePoints: (now) => {
-    const { paused, agents } = get();
+    const { paused, agents, lastIdleClientTick } = get();
     if (paused) return;
+    if (document.visibilityState === 'hidden') return;
+    if (now - lastIdleClientTick < 55_000) return;
+    set({ lastIdleClientTick: now });
     const count = Object.keys(agents).length;
-    lifeIdleTick(count, 60_000).then(res => {
+    if (count <= 0) return;
+    lifeIdleTick(count).then(res => {
       if (res.earned > 0) {
         set({ points: res.balance });
         get().addMessage(`+${res.earned} 积分 · 挂机奖励（${Math.min(count, 5)} 位 Agent 在线）`);
@@ -710,7 +718,10 @@ export function assignPath(char: CharState, nodeId: string): CharState {
 
   if (destZone && isCrossZoneTravel(fromZone, nodeId, char.travelIntent)) {
     const now = performance.now();
-    store.flyToZone(destZone);
+    // 仅跟随镜头时不自动切区；自主漫步的 Agent 不抢用户视角
+    if (store.followAgentId === char.agentId) {
+      store.flyToZone(destZone);
+    }
     return {
       ...char,
       destNode: nodeId,

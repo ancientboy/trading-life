@@ -26,6 +26,8 @@ ACTIVITY_REWARDS = {"rest": 10, "dine": 15, "massage": 25, "poker": 20}
 FACILITY_COSTS = {"rest": 5, "dine": 40, "massage": 50, "poker": 30}
 IDLE_POINTS_PER_AGENT_PER_MIN = 3
 IDLE_MAX_AGENTS = 5
+IDLE_MAX_ELAPSED_PER_TICK_MS = 60_000
+IDLE_DAILY_MAX_MINUTES = 120
 
 SHOP_CATALOG = [
     {"id": "color_aurora", "type": "color", "value": "#FF6B9D", "cost": 80, "label": "极光粉"},
@@ -105,6 +107,11 @@ def _public_state(user: dict) -> dict:
         "limits": {
             "max_entertainment": MAX_ENTERTAINMENT_AGENTS,
             "max_trading_custom": MAX_TRADING_CUSTOM_AGENTS,
+        },
+        "idle_limits": {
+            "daily_max_minutes": IDLE_DAILY_MAX_MINUTES,
+            "points_per_agent_per_min": IDLE_POINTS_PER_AGENT_PER_MIN,
+            "max_agents": IDLE_MAX_AGENTS,
         },
         "stats": user.get("stats", {}),
     }
@@ -237,22 +244,44 @@ async def life_idle(body: IdleBody, user_id: str = Header(..., alias="X-Life-Use
     user = load_user(uid)
     now_ms = int(datetime.now(CST).timestamp() * 1000)
     last = user.get("last_idle_tick") or now_ms
-    elapsed = body.elapsed_ms or max(0, now_ms - last)
+    if last > now_ms:
+        last = now_ms
+    # 不信任客户端 elapsed_ms，仅用服务端时间差；单次最多结算 1 分钟
+    elapsed = min(max(0, now_ms - last), IDLE_MAX_ELAPSED_PER_TICK_MS)
     if elapsed < 60_000:
         return {"ok": True, "balance": user["points"], "earned": 0}
     minutes = elapsed // 60_000
+    stats = user.setdefault("stats", {})
+    idle_minutes_today = stats.get("idle_minutes_today", 0)
+    remaining = max(0, IDLE_DAILY_MAX_MINUTES - idle_minutes_today)
+    if remaining <= 0:
+        user["last_idle_tick"] = now_ms
+        save_user(uid, user)
+        return {"ok": True, "balance": user["points"], "earned": 0, "daily_cap": True}
+    minutes = min(minutes, remaining)
     agents = min(max(0, body.agent_count), IDLE_MAX_AGENTS)
     earned = minutes * agents * IDLE_POINTS_PER_AGENT_PER_MIN
     balance = _earn(user, earned)
     user["last_idle_tick"] = now_ms
-    stats = user.setdefault("stats", {})
-    stats["idle_ms_today"] = stats.get("idle_ms_today", 0) + elapsed
+    stats["idle_ms_today"] = stats.get("idle_ms_today", 0) + minutes * 60_000
+    stats["idle_minutes_today"] = idle_minutes_today + minutes
     dt = user.setdefault("daily_tasks", {})
     idle_task = dt.get("idle_30", {"progress": 0, "claimed": False})
     idle_task["progress"] = min(30, idle_task.get("progress", 0) + minutes)
     dt["idle_30"] = idle_task
     save_user(uid, user)
-    return {"ok": True, "balance": balance, "earned": earned}
+    return {"ok": True, "balance": balance, "earned": earned, "idle_minutes_today": stats["idle_minutes_today"]}
+
+
+@router.post("/session/start")
+async def life_session_start(user_id: str = Header(..., alias="X-Life-User-Id")):
+    """页面打开时调用：重置挂机计时，离线期间不计入挂机。"""
+    uid = _validate_user_id(user_id)
+    user = load_user(uid)
+    now_ms = int(datetime.now(CST).timestamp() * 1000)
+    user["last_idle_tick"] = now_ms
+    save_user(uid, user)
+    return {"ok": True, "balance": user["points"]}
 
 
 @router.post("/activity/complete")

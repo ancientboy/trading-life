@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AppShell } from './components/layout/AppShell';
 import { useGameStore } from './store/useGameStore';
 import { fetchOverview, fetchTicker } from './lib/api';
+import { lifeSessionStart } from './lib/lifeApi';
 
 import { preloadAllSprites } from './lib/spriteTextures';
 
@@ -26,7 +27,17 @@ export default function App() {
     const a = setInterval(poll, 5000);
     const b = setInterval(tick, 10000);
     const c = setInterval(() => syncSeats(), 15000);
-    return () => { clearInterval(a); clearInterval(b); clearInterval(c); };
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        lifeSessionStart().catch(() => {});
+        useGameStore.setState({ lastIdleClientTick: 0 });
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(a); clearInterval(b); clearInterval(c);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [initAgents, syncLifeState, syncSeats, updateFromOverview, setTicker, addMessage]);
 
   return <AppShell />;
