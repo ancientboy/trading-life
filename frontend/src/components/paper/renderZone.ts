@@ -18,6 +18,7 @@ import {
   drawPokerTable8, drawNpc, drawSpeechBubble,
 } from './paperDraw';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
+import { getRestSofaSprite } from '../../lib/restSofaSprite';
 
 export interface PaperCamera {
   cw: number;
@@ -99,13 +100,16 @@ function drawHallDesks(
 }
 
 function drawHallRest(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null) {
-  HALL_REST_BOOTHS.forEach(b => {
+  const sofaSprite = getRestSofaSprite();
+  HALL_REST_BOOTHS.forEach((b, i) => {
     const s = pt(cam, b.px, b.py);
-    drawRestBooth(ctx, s.x, s.y, cam.scale);
-    b.seats.forEach(ch => {
-      const cs = pt(cam, ch.px, ch.py);
-      drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing);
-    });
+    drawRestBooth(ctx, s.x, s.y, cam.scale, i === 1);
+    if (!sofaSprite) {
+      b.seats.forEach(ch => {
+        const cs = pt(cam, ch.px, ch.py);
+        drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing);
+      });
+    }
     drawFacilityLabel(ctx, s.x, s.y + ws(cam, 52), b.label, cam.scale, hoverId === b.id);
   });
 }

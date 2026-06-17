@@ -3,6 +3,7 @@
 import { getPokerTableSprite } from '../../lib/pokerTableSprite';
 import { getMassageBedSprite } from '../../lib/massageBedSprite';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
+import { getRestSofaSprite } from '../../lib/restSofaSprite';
 
 export function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -485,7 +486,20 @@ export function drawChair(ctx: CanvasRenderingContext2D, x: number, y: number, s
   rrect(ctx, x - 10 * s, y + back * s - 4 * s, 20 * s, 6 * s, 2 * s); ctx.fill();
 }
 
-export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, flip = false) {
+  const sprite = getRestSofaSprite();
+  if (sprite) {
+    const w = 168 * s;
+    const h = w * (sprite.naturalHeight / sprite.naturalWidth);
+    dropShadow(ctx, x, y, w, h * 0.9, 0.1);
+    ctx.save();
+    ctx.translate(x, y);
+    if (flip) ctx.scale(-1, 1);
+    ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+    ctx.restore();
+    return;
+  }
+
   dropShadow(ctx, x, y, 160 * s, 90 * s, 0.08);
   ctx.fillStyle = '#d4c8b8';
   rrect(ctx, x - 70 * s, y - 20 * s, 140 * s, 40 * s, 8 * s); ctx.fill();
