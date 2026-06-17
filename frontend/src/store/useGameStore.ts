@@ -273,12 +273,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!node) return;
 
     let char = { ...s.agents[id], travelIntent: intentMap[action], activity: null, activityUntil: 0 };
-    char = assignPath(char, node);
+    char = teleportAgentToDestination(char, node, performance.now());
 
     set({
       agents: { ...s.agents, [id]: char },
       selectedAgentId: id,
-      followAgentId: id,
+      followAgentId: null,
       activeZone: zone,
       sidebarActive: zone === 'hall' ? 'hall' : zone,
       rightTab: action === 'rest' ? 'hall' : 'facility',
@@ -289,7 +289,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cameraZoom: WORLD_MAP.zoneZoom,
       mapOverview: false,
     });
-    get().addMessage(`${char.data.name} 正前往${cam.label}…`);
+    get().addMessage(`${char.data.name} 已抵达${cam.label}`);
   },
 
   createAgent: (draft) => {
@@ -464,6 +464,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setPokerGlbReady: (v) => set({ pokerGlbReady: v }),
 }));
 
+/** 用户派遣 / 卡住恢复：直接传送到目标节点并进入活动 */
+export function teleportAgentToDestination(char: CharState, nodeId: string, now: number): CharState {
+  const pos = OfficePath.nodes[nodeId];
+  if (!pos) {
+    return { ...char, travelIntent: null, isWalking: false, pathQueue: [], pathIndex: 0, inTransit: false };
+  }
+  const c: CharState = {
+    ...char,
+    destNode: nodeId,
+    isWalking: false,
+    pathQueue: [],
+    pathIndex: 0,
+    inTransit: false,
+    transitUntil: 0,
+    transitZone: undefined,
+    x: pos.x,
+    z: pos.z,
+  };
+  if (c.travelIntent) return onPathComplete(c, now);
+  return { ...c, destNode: null };
+}
+
 export function assignPath(char: CharState, nodeId: string): CharState {
   const store = useGameStore.getState();
   const fromZone = zoneAtPosition(char.x, char.z);
@@ -485,7 +507,10 @@ export function assignPath(char: CharState, nodeId: string): CharState {
   }
 
   const pts = OfficePath.pathToNode(char.x, char.z, nodeId);
-  if (pts.length < 2) return { ...char, destNode: nodeId, isWalking: false, pathQueue: [], inTransit: false };
+  if (pts.length < 2) {
+    if (char.travelIntent) return teleportAgentToDestination({ ...char, destNode: nodeId }, nodeId, performance.now());
+    return { ...char, destNode: nodeId, isWalking: false, pathQueue: [], inTransit: false, travelIntent: null };
+  }
   return {
     ...char, destNode: nodeId, pathQueue: pts.slice(1), pathIndex: 0, isWalking: true,
     inTransit: false, transitUntil: 0, transitZone: undefined,

@@ -1,8 +1,10 @@
-import { useGameStore, assignPath, pickWanderTarget, onPathComplete, maybeDispatchLeisure } from '../store/useGameStore';
+import { useGameStore, assignPath, pickWanderTarget, onPathComplete, maybeDispatchLeisure, teleportAgentToDestination } from '../store/useGameStore';
 import { OfficePath } from './pathfinding';
 import { moveWithCollision } from './collision';
 
 const WALK_SPEED = 2.8;
+const STUCK_SKIP_FRAMES = 24;
+const stuckFrames = new Map<string, number>();
 
 function nextWanderDelay(state: import('./constants').CharState['state']): number {
   if (state === 'trading') return 6000 + Math.random() * 10000;
@@ -46,6 +48,15 @@ export function tickCharacterSim(dt: number) {
       patchChar(c.agentId, c);
       return;
     }
+    if (!c.isWalking && !c.inTransit && c.travelIntent && !c.activity) {
+      const node = c.destNode
+        || (c.travelIntent === 'massage' ? OfficePath.massageByAgent[c.agentId]
+          : c.travelIntent === 'dine' ? OfficePath.dineByAgent[c.agentId]
+          : c.travelIntent === 'poker' ? OfficePath.pokerByAgent[c.agentId]
+          : OfficePath.boothByAgent[c.agentId]);
+      if (node) c = teleportAgentToDestination(c, node, now);
+      else c = { ...c, travelIntent: null };
+    }
     if (!c.isWalking && !c.travelIntent && !c.activity) c = maybeDispatchLeisure(c);
     c.moveTimer += scaledDt * 1000;
     if (!c.isWalking && !c.travelIntent && c.moveTimer > c.nextMoveTime) {
@@ -86,8 +97,21 @@ export function tickCharacterSim(dt: number) {
           const nx = c.x + (dx / dist) * step;
           const nz = c.z + (dz / dist) * step;
           const moved = moveWithCollision(c.x, c.z, nx, nz);
-          c.x = moved.x;
-          c.z = moved.z;
+          if (moved.blocked && moved.x === c.x && moved.z === c.z) {
+            const stuck = (stuckFrames.get(c.agentId) ?? 0) + 1;
+            stuckFrames.set(c.agentId, stuck);
+            if (stuck >= STUCK_SKIP_FRAMES) {
+              c.x = wp.x;
+              c.z = wp.z;
+              c.pathIndex++;
+              stuckFrames.set(c.agentId, 0);
+              if (c.pathIndex >= c.pathQueue.length) c = onPathComplete(c, now);
+            }
+          } else {
+            stuckFrames.set(c.agentId, 0);
+            c.x = moved.x;
+            c.z = moved.z;
+          }
         }
       }
     }

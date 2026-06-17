@@ -33,13 +33,6 @@ export function paperToWorld(zone: ZoneId, px: number, py: number) {
   };
 }
 
-const INTENT_ZONE: Record<string, ZoneId> = {
-  dine: 'restaurant',
-  massage: 'spa',
-  poker: 'casino',
-  rest: 'hall',
-};
-
 const ACTIVITY_ZONE: Record<string, ZoneId> = {
   dine: 'restaurant',
   massage: 'spa',
@@ -64,7 +57,6 @@ export function agentVisibleInZone(
 ): boolean {
   if (char.inTransit) return false;
   if (char.activity && ACTIVITY_ZONE[char.activity] === zone) return true;
-  if (char.travelIntent && INTENT_ZONE[char.travelIntent] === zone) return true;
   if (inZoneBounds(char.x, char.z, zone)) return true;
   return false;
 }
