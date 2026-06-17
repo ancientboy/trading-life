@@ -12,8 +12,12 @@ import { paperToWorld } from '../lib/zoneProjection';
 import { syncFurnitureToPathfinding, getActivitySeatPaper, greetingForActivity, npcForZone, resolveActivitySlot } from '../lib/zoneFurniture';
 import {
   loadCustomAgentMeta, saveCustomAgentMeta, registerCustomAgentSlots,
-  nextCustomAgentId, type CustomAgentDraft,
+  nextCustomAgentId, updateCustomAgentMeta, type CustomAgentDraft,
 } from '../lib/customAgents';
+import {
+  loadPoints, savePoints, ACTIVITY_REWARDS, calcIdleEarn,
+  loadLastIdleTick, saveLastIdleTick,
+} from '../lib/pointsSystem';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
 import { isCrossZoneTravel, zoneForNode, zoneForIntent, ZONE_TRANSIT_MS } from '../lib/zoneTransit';
 
@@ -64,6 +68,8 @@ interface GameStore {
   messages: { text: string; time: string }[];
   npcBubble: { npcId: string; text: string; until: number } | null;
   pokerGlbReady: boolean;
+  /** 用户积分 — 参与活动获得、消费于休闲项目 */
+  points: number;
 
   setCameraMode: (m: CameraMode) => void;
   setQuality: (q: QualityTier) => void;
@@ -106,6 +112,10 @@ interface GameStore {
   addMessage: (text: string) => void;
   setNpcBubble: (npcId: string | null, text: string, until: number) => void;
   setPokerGlbReady: (v: boolean) => void;
+  earnPoints: (amount: number, reason?: string) => void;
+  trySpendPoints: (amount: number) => { ok: boolean; balance: number };
+  saveCustomAgentSoul: (agentId: string, content: string) => boolean;
+  tickIdlePoints: (now: number) => void;
 }
 
 /** 大厅 Agent 使用本地坐标（分区中心为原点） */
@@ -142,6 +152,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   messages: [],
   npcBubble: null,
   pokerGlbReady: false,
+  points: loadPoints(),
 
   setCameraMode: (m) => set({ cameraMode: m }),
   setQuality: (q) => set({ quality: q }),
@@ -304,18 +315,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return false;
     }
     assignAgentSeatSlots(OfficePath);
-    const meta: AgentMeta = {
+    const isEntertainment = draft.agentType === 'entertainment';
+    const meta: AgentMeta = normalizeAgentMeta({
       id,
       name: draft.name.trim() || `Agent ${id}`,
       headwear: draft.headwear,
       hatStyle: draft.hatStyle,
       color: draft.color,
-      desc: draft.desc.trim() || '自定义交易策略 Agent',
-      strategy: draft.strategy.trim() || '自定义策略',
-      market: draft.market.trim() || 'Crypto',
-      interval: draft.interval.trim() || '15m/1h',
-      risk: draft.risk || '中',
-    };
+      agentType: draft.agentType,
+      desc: draft.desc.trim() || (isEntertainment ? '休闲陪伴企鹅' : '自定义交易策略 Agent'),
+      soulMd: isEntertainment ? draft.soul.trim() : '',
+      strategy: isEntertainment ? '休闲陪伴' : (draft.strategy.trim() || '自定义策略'),
+      market: isEntertainment ? '—' : (draft.market.trim() || 'Crypto'),
+      interval: isEntertainment ? '—' : (draft.interval.trim() || '15m/1h'),
+      risk: isEntertainment ? '—' : (draft.risk || '中'),
+    });
     saveCustomAgentMeta({ ...customMeta, [id]: meta });
     const pos = OfficePath.nodes[slot];
     const char: CharState = {
@@ -465,6 +479,52 @@ export const useGameStore = create<GameStore>((set, get) => ({
     npcBubble: npcId && text ? { npcId, text, until } : null,
   }),
   setPokerGlbReady: (v) => set({ pokerGlbReady: v }),
+
+  earnPoints: (amount, reason) => {
+    if (amount <= 0) return;
+    const balance = loadPoints() + amount;
+    savePoints(balance);
+    set({ points: balance });
+    if (reason) get().addMessage(`+${amount} 积分 · ${reason}`);
+  },
+
+  trySpendPoints: (amount) => {
+    const cur = loadPoints();
+    if (amount > cur) return { ok: false, balance: cur };
+    const balance = cur - amount;
+    savePoints(balance);
+    set({ points: balance });
+    return { ok: true, balance };
+  },
+
+  saveCustomAgentSoul: (agentId, content) => {
+    if (!agentId.startsWith('custom_')) return false;
+    const ok = updateCustomAgentMeta(agentId, { soulMd: content });
+    if (ok) {
+      const agents = { ...get().agents };
+      if (agents[agentId]) {
+        agents[agentId] = { ...agents[agentId], data: { ...agents[agentId].data, soulMd: content } };
+        set({ agents, soulMd: content });
+      }
+    }
+    return ok;
+  },
+
+  tickIdlePoints: (now) => {
+    const { paused, agents } = get();
+    if (paused) return;
+    const last = loadLastIdleTick();
+    if (!last) {
+      saveLastIdleTick(now);
+      return;
+    }
+    const count = Object.keys(agents).length;
+    const earned = calcIdleEarn(count, now - last);
+    if (earned > 0) {
+      saveLastIdleTick(now);
+      get().earnPoints(earned, `挂机奖励（${Math.min(count, 5)} 位 Agent 在线）`);
+    }
+  },
 }));
 
 /** 用户派遣 / 卡住恢复：直接传送到目标节点并进入活动 */
@@ -523,6 +583,17 @@ export function assignPath(char: CharState, nodeId: string): CharState {
 export function pickWanderTarget(char: CharState): string {
   const desk = OfficePath.deskByAgent[char.agentId];
   const booth = OfficePath.boothByAgent[char.agentId];
+  const entertainment = char.data.agentType === 'entertainment';
+
+  if (entertainment) {
+    const r = Math.random();
+    if (r > 0.75) return OfficePath.massageByAgent[char.agentId];
+    if (r > 0.55) return OfficePath.dineByAgent[char.agentId];
+    if (r > 0.35) return OfficePath.pokerByAgent[char.agentId];
+    if (r > 0.15) return booth;
+    return 'hall_coffee';
+  }
+
   if (char.state === 'panic') return 'scr_ctr';
   if (char.stress > 65) {
     const r = Math.random();
@@ -608,6 +679,16 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
       : activity === 'poker' ? 0
       : activity === 'rest' ? Math.max(0, char.stress - 20) : char.stress,
   };
+}
+
+/** 活动完成时发放积分 */
+export function awardActivityPoints(activity: NonNullable<CharState['activity']>, agentName: string) {
+  const reward = ACTIVITY_REWARDS[activity];
+  if (reward) useGameStore.getState().earnPoints(reward, `${agentName} 完成${activityLabel(activity)}`);
+}
+
+function activityLabel(activity: NonNullable<CharState['activity']>) {
+  return { rest: '休息', dine: '用餐', massage: '按摩', poker: '德州', idle: '活动' }[activity] ?? '活动';
 }
 
 /** 高压力时自动派遣 Agent 步行去休闲区 */

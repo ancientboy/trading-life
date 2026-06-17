@@ -1,4 +1,4 @@
-import { useGameStore, assignPath, pickWanderTarget, onPathComplete, maybeDispatchLeisure, teleportAgentToDestination } from '../store/useGameStore';
+import { useGameStore, assignPath, pickWanderTarget, onPathComplete, maybeDispatchLeisure, teleportAgentToDestination, awardActivityPoints } from '../store/useGameStore';
 import { OfficePath } from './pathfinding';
 import { moveWithCollision } from './collision';
 
@@ -16,6 +16,7 @@ function nextWanderDelay(state: import('./constants').CharState['state']): numbe
 export function tickCharacterSim(dt: number) {
   const { paused, agents, patchChar, addMessage, simSpeed } = useGameStore.getState();
   if (paused) return;
+  useGameStore.getState().tickIdlePoints(performance.now());
   const scaledDt = dt * simSpeed;
   const now = performance.now();
   Object.values(agents).forEach(char => {
@@ -42,7 +43,9 @@ export function tickCharacterSim(dt: number) {
 
     if (c.activity && now < c.activityUntil) return;
     if (c.activity && now >= c.activityUntil) {
+      const finished = c.activity;
       c = { ...c, activity: null, activityUntil: 0, activityPose: undefined, moveTimer: 0, nextMoveTime: 1500, travelIntent: null };
+      if (finished && finished !== 'idle') awardActivityPoints(finished, c.data.name);
       c = assignPath(c, OfficePath.deskByAgent[c.agentId]);
       addMessage(`${c.data.name} 结束休闲，返回工位`);
       patchChar(c.agentId, c);

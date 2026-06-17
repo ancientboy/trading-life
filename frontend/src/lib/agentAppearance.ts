@@ -14,7 +14,10 @@ export const HAT_STYLES: Record<HatStyleId, { label: string }> = {
   beret: { label: '贝雷帽' },
 };
 
+import type { AgentMeta } from './constants';
+
 export function normalizeAgentMeta(meta: Partial<AgentMeta> & { icon?: string }): AgentMeta {
+  const agentType = meta.agentType ?? 'trading';
   return {
     id: meta.id ?? 'unknown',
     name: meta.name ?? 'Agent',
@@ -22,10 +25,12 @@ export function normalizeAgentMeta(meta: Partial<AgentMeta> & { icon?: string })
     headwear: meta.headwear ?? 'scarf',
     hatStyle: meta.hatStyle ?? 'beanie',
     desc: meta.desc ?? '',
-    strategy: meta.strategy ?? '',
-    market: meta.market ?? '',
-    interval: meta.interval ?? '',
-    risk: meta.risk ?? '中',
+    strategy: meta.strategy ?? (agentType === 'entertainment' ? '休闲陪伴' : ''),
+    market: meta.market ?? (agentType === 'entertainment' ? '—' : ''),
+    interval: meta.interval ?? (agentType === 'entertainment' ? '—' : ''),
+    risk: meta.risk ?? (agentType === 'entertainment' ? '—' : '中'),
+    agentType,
+    soulMd: meta.soulMd ?? '',
   };
 }
 

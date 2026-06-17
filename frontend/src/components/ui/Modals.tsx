@@ -126,9 +126,9 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
       ]} />;
     case 'poker':
       return <LeisureModal type="poker" title="德州扑克" lucide={LucideIcons.poker} items={[
-        { id: 'a', name: '休闲局', desc: '底注 10 代币', cost: 30, effect: '清空负面情绪' },
-        { id: 'b', name: '标准局', desc: '底注 50 代币', cost: 80, effect: '清空压力 + 奖金' },
-        { id: 'c', name: '高手局', desc: '底注 200 代币', cost: 200, effect: '大幅减压 + 奖金' },
+        { id: 'a', name: '休闲局', desc: '底注 10 积分', cost: 30, effect: '清空负面情绪' },
+        { id: 'b', name: '标准局', desc: '底注 50 积分', cost: 80, effect: '清空压力 + 奖金' },
+        { id: 'c', name: '高手局', desc: '底注 200 积分', cost: 200, effect: '大幅减压 + 奖金' },
       ]} />;
     default:
       return null;
@@ -145,12 +145,15 @@ function LeisureModal({ type, title, lucide, items }: {
   const addMessage = useGameStore(s => s.addMessage);
   const selectedAgentId = useGameStore(s => s.selectedAgentId);
   const agents = useGameStore(s => s.agents);
+  const points = useGameStore(s => s.points);
+  const trySpendPoints = useGameStore(s => s.trySpendPoints);
   const sendAgentToLeisure = useGameStore(s => s.sendAgentToLeisure);
   const [picked, setPicked] = useState(items[0].id);
   const [busy, setBusy] = useState(false);
 
   const agent = selectedAgentId ? agents[selectedAgentId] : Object.values(agents).sort((a, b) => b.stress - a.stress)[0];
   const item = items.find(i => i.id === picked) || items[0];
+  const canAfford = points >= item.cost;
 
   return (
     <div style={{ color: '#3d3530' }}>
@@ -160,6 +163,7 @@ function LeisureModal({ type, title, lucide, items }: {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
+          <div style={{ fontSize: 11, color: '#d4af37', marginTop: 4 }}>当前积分：{points}</div>
           {agent && (
             <div style={{ marginTop: 8, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>服务对象：</span>
@@ -177,17 +181,23 @@ function LeisureModal({ type, title, lucide, items }: {
             <div style={{ fontWeight: 600 }}>{it.name}</div>
             <div style={{ fontSize: 11, color: '#8a7e72' }}>{it.desc} · {it.effect}</div>
           </div>
-          <span style={{ color: '#d4af37', fontWeight: 600, fontSize: 12 }}>{it.cost} 代币</span>
+          <span style={{ color: '#d4af37', fontWeight: 600, fontSize: 12 }}>{it.cost} 积分</span>
         </button>
       ))}
-      <button className="ui-btn" style={{ width: '100%', marginTop: 12, padding: '10px 0' }} disabled={!agent || busy} onClick={() => {
+      <button className="ui-btn" style={{ width: '100%', marginTop: 12, padding: '10px 0' }}
+        disabled={!agent || busy || !canAfford} onClick={() => {
         if (!agent) return;
+        const spend = trySpendPoints(item.cost);
+        if (!spend.ok) {
+          addMessage(`积分不足，需要 ${item.cost} 积分（当前 ${spend.balance}）`);
+          return;
+        }
         setBusy(true);
         sendAgentToLeisure(type, agent.agentId);
-        addMessage(`${agent.data.name} 选择了「${item.name}」· ${item.effect}`);
+        addMessage(`${agent.data.name} 选择了「${item.name}」· 消耗 ${item.cost} 积分 · ${item.effect}`);
         setTimeout(() => { setBusy(false); closeModal(); }, 900);
       }}>
-        {busy ? 'Agent 正在前往…' : `确认 · ${item.cost} 代币`}
+        {busy ? 'Agent 正在前往…' : !canAfford ? `积分不足（需 ${item.cost}）` : `确认 · ${item.cost} 积分`}
       </button>
     </div>
   );

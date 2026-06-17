@@ -1,4 +1,4 @@
-import { WalletIcon } from '@heroicons/react/24/solid';
+import { WalletIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import {
   ChartBarIcon, GiftIcon, TrophyIcon, Cog6ToothIcon, QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -22,6 +22,7 @@ const NAV_BTNS = [
 export function TopNavBar() {
   const ticker = useGameStore(s => s.ticker);
   const overview = useGameStore(s => s.overview);
+  const points = useGameStore(s => s.points);
   const selectedAgentId = useGameStore(s => s.selectedAgentId);
   const agents = useGameStore(s => s.agents);
   const openModal = useGameStore(s => s.openModal);
@@ -69,6 +70,12 @@ export function TopNavBar() {
           <div className={`value mono ${pnlPct >= 0 ? 'profit' : 'loss'}`}>
             {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
           </div>
+        </div>
+        <div className="stat-card" style={{ minWidth: 80 }}>
+          <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <AppIcon icon={SparklesIcon} size="mini" color="gold" /> 积分
+          </div>
+          <div className="value mono gold" style={{ fontSize: 14 }}>{points.toLocaleString()}</div>
         </div>
         <div className="stat-card" style={{ minWidth: 80 }}>
           <div className="label">BTC</div>

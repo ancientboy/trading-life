@@ -1,4 +1,4 @@
-import type { AgentMeta } from './constants';
+import type { AgentMeta, AgentType } from './constants';
 import { normalizeAgentMeta, HAT_STYLE_IDS } from './agentAppearance';
 import type { AgentHeadwear, HatStyleId } from './agentAppearance';
 
@@ -8,15 +8,41 @@ export const EXTRA_DESK_NODES = ['seat_6', 'seat_7', 'seat_8'] as const;
 const CUSTOM_KEY = 'trading-life-custom-agents';
 
 export interface CustomAgentDraft {
+  agentType: AgentType;
   name: string;
   headwear: AgentHeadwear;
   hatStyle: HatStyleId;
   color: string;
   desc: string;
+  /** 娱乐 Agent 必填 */
+  soul: string;
   strategy: string;
   market: string;
   interval: string;
   risk: string;
+}
+
+export const DEFAULT_ENTERTAINMENT_SOUL = (name: string) => `# ${name || '我的企鹅'} 的灵魂
+
+你是 ${name || '一只可爱的企鹅'}，生活在「交易人生」的世界里。
+
+## 性格
+- 活泼好奇，喜欢在各个区域闲逛
+- 享受餐厅、按摩、沙发和德州扑克
+- 用轻松幽默的方式陪伴用户
+
+## 行为准则
+- 不执行真实交易，专注休闲与互动
+- 遇到用户时主动打招呼、分享见闻
+- 保持积极心态，帮助缓解压力
+`;
+
+export function updateCustomAgentMeta(agentId: string, patch: Partial<import('./constants').AgentMeta>) {
+  const all = loadCustomAgentMeta();
+  if (!all[agentId]) return false;
+  all[agentId] = { ...all[agentId], ...patch };
+  saveCustomAgentMeta(all);
+  return true;
 }
 
 export function loadCustomAgentMeta(): Record<string, AgentMeta> {
