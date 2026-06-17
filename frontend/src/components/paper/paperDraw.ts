@@ -1,6 +1,7 @@
 /** Canvas 2D 剪纸绘制工具 — 对齐灵犀 144 office-engine.js */
 
 import { getPokerTableSprite } from '../../lib/pokerTableSprite';
+import { getMassageBedSprite } from '../../lib/massageBedSprite';
 
 export function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -442,6 +443,15 @@ export function drawRoundTable(ctx: CanvasRenderingContext2D, x: number, y: numb
 }
 
 export function drawMassageBed(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const sprite = getMassageBedSprite();
+  if (sprite) {
+    const w = 108 * s;
+    const h = w * (sprite.naturalHeight / sprite.naturalWidth);
+    dropShadow(ctx, x, y, w, h * 0.85, 0.1);
+    ctx.drawImage(sprite, x - w / 2, y - h / 2, w, h);
+    return;
+  }
+
   dropShadow(ctx, x, y, 90 * s, 40 * s);
   ctx.fillStyle = '#c4a882';
   rrect(ctx, x - 45 * s, y - 12 * s, 90 * s, 24 * s, 5 * s); ctx.fill();
