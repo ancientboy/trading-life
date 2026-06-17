@@ -4,6 +4,7 @@ import { getPokerTableSprite } from '../../lib/pokerTableSprite';
 import { getMassageBedSprite } from '../../lib/massageBedSprite';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
 import { getRestSofaSprite } from '../../lib/restSofaSprite';
+import type { HatStyle } from '../../lib/constants';
 
 export function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -107,6 +108,7 @@ export function drawAgent(
   opts: {
     selected?: boolean; trading?: boolean; walking?: boolean; t?: number;
     activity?: AgentActivity; icon?: string; facing?: AgentFacing; sitting?: boolean;
+    hat?: HatStyle;
   },
 ) {
   const act = opts.activity;
@@ -128,6 +130,7 @@ function drawAgentSitting(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
   opts: {
     selected?: boolean; t?: number; activity?: AgentActivity; icon?: string; facing?: AgentFacing;
+    hat?: HatStyle;
   },
 ) {
   const t = opts.t ?? 0;
@@ -146,6 +149,9 @@ function drawAgentSitting(
   ctx.beginPath(); ctx.arc(x + 4, py - 4, 2, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.ellipse(x, py + 4, 11, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.translate(x, 0);
+  drawHat(ctx, py, opts.hat, 's');
+  ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }
 
@@ -180,10 +186,53 @@ function drawWalkLimbs(
   void color;
 }
 
+function drawHat(
+  ctx: CanvasRenderingContext2D, py: number, hat: HatStyle | undefined, facing: AgentFacing,
+) {
+  if (!hat || hat === 'none') return;
+  const flip = facing === 'w' ? -1 : 1;
+  const ox = facing === 'e' || facing === 'w' ? flip * 2 : 0;
+  switch (hat) {
+    case 'headband':
+      ctx.fillStyle = '#FACC15';
+      ctx.fillRect(ox - 14, py - 16, 28, 5);
+      ctx.fillStyle = '#22C55E';
+      ctx.fillRect(ox - 14, py - 11, 28, 2);
+      break;
+    case 'cap':
+      ctx.fillStyle = '#3B82F6';
+      ctx.beginPath();
+      if (facing === 'n') {
+        ctx.ellipse(ox, py - 14, 14, 6, 0, 0, Math.PI * 2);
+      } else {
+        ctx.ellipse(ox, py - 14, 14, 7, 0, Math.PI, 0);
+        ctx.fill();
+        ctx.fillStyle = '#2563EB';
+        ctx.fillRect(ox + (facing === 'w' ? -18 : 2), py - 10, 16, 3);
+        return;
+      }
+      ctx.fill();
+      break;
+    case 'beanie':
+      ctx.fillStyle = '#F59E0B';
+      ctx.beginPath(); ctx.ellipse(ox, py - 16, 12, 9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#D97706';
+      ctx.beginPath(); ctx.arc(ox, py - 23, 3, 0, Math.PI * 2); ctx.fill();
+      break;
+    case 'tophat':
+      ctx.fillStyle = '#DC2626';
+      ctx.fillRect(ox - 7, py - 26, 14, 12);
+      ctx.fillRect(ox - 12, py - 14, 24, 3);
+      break;
+    default:
+      break;
+  }
+}
+
 /** 背面 — 圆头 + 后脑围巾 + 手脚 */
 function drawAgentBack(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
-  opts: { selected?: boolean; walking?: boolean; t?: number; activity?: AgentActivity; facing?: AgentFacing },
+  opts: { selected?: boolean; walking?: boolean; t?: number; activity?: AgentActivity; facing?: AgentFacing; hat?: HatStyle },
 ) {
   const t = opts.t ?? 0;
   const walking = !!opts.walking;
@@ -200,6 +249,7 @@ function drawAgentBack(
   ctx.beginPath(); ctx.ellipse(0, py + 2, 14, 17, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.ellipse(0, py - 10, 15, 5, 0, 0, Math.PI * 2); ctx.fill();
+  drawHat(ctx, py, opts.hat, 'n');
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }
@@ -209,7 +259,7 @@ function drawAgentFront(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
   opts: {
     selected?: boolean; trading?: boolean; walking?: boolean; t?: number;
-    activity?: AgentActivity; icon?: string;
+    activity?: AgentActivity; icon?: string; hat?: HatStyle;
   },
 ) {
   const t = opts.t ?? 0;
@@ -237,6 +287,7 @@ function drawAgentFront(
   ctx.beginPath(); ctx.arc(5, py - 2, 1.8, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.ellipse(0, py + 8, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+  drawHat(ctx, py, opts.hat, 's');
   ctx.restore();
   if (opts.icon && !opts.activity) {
     ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
@@ -252,7 +303,7 @@ function drawAgentFront(
 /** 侧面 + 手脚 */
 function drawAgentSide(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
-  opts: { selected?: boolean; walking?: boolean; t?: number; activity?: AgentActivity; icon?: string },
+  opts: { selected?: boolean; walking?: boolean; t?: number; activity?: AgentActivity; icon?: string; hat?: HatStyle },
   facing: 'e' | 'w',
 ) {
   const t = opts.t ?? 0;
@@ -275,6 +326,7 @@ function drawAgentSide(
   ctx.beginPath(); ctx.arc(flip * 6, py - 2, 1.5, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.ellipse(flip * 4, py + 6, 8, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  drawHat(ctx, py, opts.hat, facing);
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }
@@ -294,7 +346,7 @@ export function drawAgentTop(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
   opts: {
     selected?: boolean; walking?: boolean; t?: number;
-    activity?: AgentActivity; facing?: AgentFacing;
+    activity?: AgentActivity; facing?: AgentFacing; hat?: HatStyle;
   },
 ) {
   const t = opts.t ?? 0;
@@ -309,6 +361,9 @@ export function drawAgentTop(
   ctx.beginPath(); ctx.ellipse(x, py + 2, 18, 11, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.ellipse(x, py - 2, 12, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.translate(x, 0);
+  drawHat(ctx, py, opts.hat, 'n');
+  ctx.restore();
   ctx.fillStyle = '#fff'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
   ctx.fillText('✨', x + 14, py - 10 + Math.sin(t * 5) * 2);
 }

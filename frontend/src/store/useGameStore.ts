@@ -306,6 +306,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       name: draft.name.trim() || `Agent ${id}`,
       icon: draft.icon,
       color: draft.color,
+      hat: draft.hat,
       desc: draft.desc.trim() || '自定义交易策略 Agent',
       strategy: draft.strategy.trim() || '自定义策略',
       market: draft.market.trim() || 'Crypto',
@@ -403,7 +404,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         state: 'idle', stress: 0,
         moveTimer: 0, nextMoveTime: 1500 + Math.random() * 2500,
         facing: 'n',
-        data: { ...meta },
+        data: { ...meta, hat: meta.hat ?? 'cap' },
       };
     });
     set({ agents });

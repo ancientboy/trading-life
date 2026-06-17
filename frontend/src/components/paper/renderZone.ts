@@ -283,6 +283,7 @@ export function renderAgents(
       icon: char.data.icon,
       facing: agentFacing(char),
       sitting,
+      hat: char.data.hat,
       t: opts.t,
     });
     const showName = char.agentId === opts.selectedId || char.activity || char.isWalking;

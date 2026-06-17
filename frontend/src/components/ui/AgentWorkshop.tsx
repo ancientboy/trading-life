@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { useGameStore } from '../../store/useGameStore';
 import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
 import { fetchAgentProfile, saveAgentConfig, saveAgentSoul } from '../../lib/api';
 import { APPEARANCE_PRESETS, type CustomAgentDraft } from '../../lib/customAgents';
+import type { HatStyle } from '../../lib/constants';
 import type { CharState } from '../../lib/constants';
 
 export function AgentWorkshop() {
@@ -26,7 +27,7 @@ export function AgentWorkshop() {
   const [loading, setLoading] = useState(false);
 
   const [draft, setDraft] = useState<CustomAgentDraft>({
-    name: '', icon: '🤖', color: APPEARANCE_PRESETS.colors[0],
+    name: '', icon: '🤖', color: APPEARANCE_PRESETS.colors[0], hat: 'cap',
     desc: '', strategy: '趋势跟踪', market: 'BTC/ETH', interval: '15m/1h', risk: '中',
   });
 
@@ -65,7 +66,7 @@ export function AgentWorkshop() {
     if (ok) {
       setMode('list');
       setDraft({
-        name: '', icon: '🤖', color: APPEARANCE_PRESETS.colors[0],
+        name: '', icon: '🤖', color: APPEARANCE_PRESETS.colors[0], hat: 'cap',
         desc: '', strategy: '趋势跟踪', market: 'BTC/ETH', interval: '15m/1h', risk: '中',
       });
       setMsg('');
@@ -109,6 +110,18 @@ export function AgentWorkshop() {
           </div>
         </Field>
 
+        <Field label="外形 · 帽子 / 头饰">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {APPEARANCE_PRESETS.hats.map(h => (
+              <button key={h.id} type="button" className={`ui-btn ${draft.hat === h.id ? 'active' : ''}`}
+                onClick={() => setDraft({ ...draft, hat: h.id as HatStyle })}
+                style={{ fontSize: 12, padding: '4px 10px' }}>
+                {h.label}
+              </button>
+            ))}
+          </div>
+        </Field>
+
         <Field label="简介">
           <input value={draft.desc} onChange={e => setDraft({ ...draft, desc: e.target.value })}
             placeholder="Agent 职能描述" style={inputStyle} />
@@ -135,14 +148,11 @@ export function AgentWorkshop() {
           margin: '14px 0', padding: 12, background: '#faf6ef', borderRadius: 10,
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: '50%', background: '#1a1a1a',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
-          }}>
-            <span style={{ position: 'absolute', top: 6, width: 32, height: 8, borderRadius: 4, background: draft.color }} />
-            <span style={{ fontSize: 18 }}>{draft.icon}</span>
+          <AppearancePreview color={draft.color} hat={draft.hat} icon={draft.icon} />
+          <div style={{ fontSize: 12, color: '#6b5e4e', lineHeight: 1.5 }}>
+            预览：俯视剪纸风<br />
+            黑圆头 + 彩色围巾 + {APPEARANCE_PRESETS.hats.find(h => h.id === draft.hat)?.label ?? '头饰'}
           </div>
-          <div style={{ fontSize: 12, color: '#6b5e4e' }}>预览：俯视剪纸风 · 黑圆头 + 彩色围巾</div>
         </div>
 
         <button className="ui-btn" style={{ width: '100%', padding: '10px 0', marginTop: 4 }} onClick={handleCreate}>
@@ -297,6 +307,62 @@ function InfoRow({ k, v, cls = '', icon }: { k: string; v: string; cls?: string;
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #d4c8b8', marginTop: 3, fontSize: 13,
 };
+
+function AppearancePreview({ color, hat, icon }: { color: string; hat: HatStyle; icon: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const ctx = el.getContext('2d');
+    if (!ctx) return;
+    const w = el.width, h = el.height;
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2, cy = h / 2 + 4;
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.beginPath(); ctx.ellipse(cx, cy + 10, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath(); ctx.ellipse(cx, cy, 14, 16, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(cx - 4, cy - 2, 2.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 4, cy - 2, 2.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.ellipse(cx, cy + 6, 10, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    drawHatPreview(ctx, cx, cy, hat);
+    ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(icon, cx, cy + 10);
+  }, [color, hat, icon]);
+  return <canvas ref={canvasRef} width={56} height={56} style={{ borderRadius: 8, background: '#efe8dc' }} />;
+}
+
+function drawHatPreview(ctx: CanvasRenderingContext2D, cx: number, cy: number, hat: HatStyle) {
+  switch (hat) {
+    case 'headband':
+      ctx.fillStyle = '#FACC15';
+      ctx.fillRect(cx - 12, cy - 14, 24, 5);
+      ctx.fillStyle = '#22C55E';
+      ctx.fillRect(cx - 12, cy - 9, 24, 2);
+      break;
+    case 'cap':
+      ctx.fillStyle = '#3B82F6';
+      ctx.beginPath(); ctx.ellipse(cx, cy - 12, 13, 7, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#2563EB';
+      ctx.fillRect(cx - 4, cy - 8, 16, 3);
+      break;
+    case 'beanie':
+      ctx.fillStyle = '#F59E0B';
+      ctx.beginPath(); ctx.ellipse(cx, cy - 14, 11, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#D97706';
+      ctx.beginPath(); ctx.arc(cx, cy - 20, 3, 0, Math.PI * 2); ctx.fill();
+      break;
+    case 'tophat':
+      ctx.fillStyle = '#DC2626';
+      ctx.fillRect(cx - 6, cy - 22, 12, 10);
+      ctx.fillRect(cx - 11, cy - 12, 22, 3);
+      break;
+    default:
+      break;
+  }
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
