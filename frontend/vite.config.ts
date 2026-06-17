@@ -5,7 +5,8 @@ export default defineConfig({
   plugins: [react()],
   base: '/trading/life/',
   build: {
-    outDir: 'dist',
+    outDir: '../dashboard/static/life',
+    emptyOutDir: true,
     assetsDir: 'assets',
     sourcemap: false,
   },
