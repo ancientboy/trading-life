@@ -44,15 +44,25 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const isSeated = !!seatedAgent;
 
   const revealResults = (
-    results: Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>,
+    results: Array<{
+      name: string; score: number; rank: number; won: number; is_npc?: boolean;
+      hole_cards?: string[]; best_cards?: string[]; hand_name?: string;
+    }>,
     won?: number,
     pot?: number,
     net?: number,
     balance?: number,
+    communityCards?: string[],
   ) => {
     if (balance != null) useGameStore.setState({ points: balance });
     showPokerResult({
-      results, won: won ?? 0, net: net ?? (won ?? 0) - tier.buyIn, buyIn: tier.buyIn, pot, balance,
+      results,
+      community_cards: communityCards,
+      won: won ?? 0,
+      net: net ?? (won ?? 0) - tier.buyIn,
+      buyIn: tier.buyIn,
+      pot,
+      balance,
     });
     const n = net ?? ((won ?? 0) - tier.buyIn);
     if (n > 0) addMessage(`🎉 获胜！赢得奖池 ${won} 积分 · 净赚 +${n}`);
@@ -92,7 +102,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         if (r.balance != null) useGameStore.setState({ points: r.balance });
         return;
       }
-      revealResults(r.results, r.won, r.pot, r.net, r.balance);
+      revealResults(r.results, r.won, r.pot, r.net, r.balance, r.community_cards);
     } catch {
       addMessage('发牌失败，请重试');
     } finally {

@@ -145,11 +145,24 @@ export async function playPokerRound(roomId: string) {
   }>(r);
 }
 
+export type PokerApiPlayerResult = {
+  user_id?: string;
+  name: string;
+  score: number;
+  rank: number;
+  won: number;
+  is_npc?: boolean;
+  hole_cards?: string[];
+  best_cards?: string[];
+  hand_name?: string;
+};
+
 /** 单人练习：1 真人 + 3 NPC，立即开牌 */
 export async function pokerSolo(agentId: string, buyIn = 30) {
   return fetchJson<{
     ok: boolean; mode?: string; room_id?: string; balance?: number; won?: number; pot?: number; net?: number;
-    results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
+    community_cards?: string[];
+    results?: PokerApiPlayerResult[];
     error?: string; cost?: number;
   }>(`${API}/pvp/poker/solo`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, buy_in: buyIn }),

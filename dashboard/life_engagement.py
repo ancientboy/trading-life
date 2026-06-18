@@ -297,37 +297,71 @@ def _add_npc_players_to_room(c, room_id: str, buy_in: int, taken_seats: set[str]
         )
 
 
+def _player_display_name(p: dict, account_id: str) -> str:
+    uid = p["user_id"]
+    name = NPC_DISPLAY.get(uid)
+    if name:
+        return name
+    if uid == account_id or not uid.startswith("npc_"):
+        from life_game import load_user
+        user = load_user(uid)
+        agent_id = p.get("agent_id") or ""
+        if agent_id and agent_id in (user.get("custom_agents") or {}):
+            return user["custom_agents"][agent_id].get("name") or agent_id
+        acc = life_db.get_account_by_id(uid)
+        return (acc or {}).get("display_name") or uid[:8]
+    return uid[:8]
+
+
 def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str) -> dict:
     from life_game import load_user, save_user, _earn
+    from poker_hands import play_round, card_display
 
     plist = [dict(p) if not isinstance(p, dict) else p for p in players]
     if not plist:
         return {"ok": False, "error": "无玩家，无法开牌"}
 
-    scores = [(p, _poker_score(p, room, account_id)) for p in plist]
-    scores.sort(key=lambda x: x[1], reverse=True)
+    round_data = play_round(len(plist))
+    community = round_data["community_cards"]
     pot = room["pot"]
     buy_in = room["buy_in"]
+
+    # 按座位顺序发牌，再按牌力排序
+    seat_order = {p["user_id"]: i for i, p in enumerate(plist)}
+    player_hands = []
+    for p in plist:
+        i = seat_order[p["user_id"]]
+        hand = round_data["players"][i]
+        player_hands.append((p, hand))
+
+    player_hands.sort(key=lambda x: x[1]["hand_score"], reverse=True)
+
     results = []
     with life_db._lock:
         with life_db._conn() as c:
-            for i, (p, sc) in enumerate(scores):
-                rank = i + 1
+            for rank_idx, (p, hand) in enumerate(player_hands):
+                rank = rank_idx + 1
                 win = pot if rank == 1 else 0
                 uid = p["user_id"]
+                sc = hand["score"]
                 c.execute(
                     "UPDATE poker_room_players SET score=?, rank=? WHERE room_id=? AND user_id=?",
                     (sc, rank, room_id, uid),
                 )
-                name = NPC_DISPLAY.get(uid)
-                if not name and uid == account_id:
-                    acc = life_db.get_account_by_id(uid)
-                    name = (acc or {}).get("display_name") or uid[:8]
-                elif not name:
-                    name = uid[:8]
+                name = _player_display_name(p, account_id)
                 results.append({
-                    "user_id": uid, "agent_id": p.get("agent_id", ""), "name": name,
-                    "is_npc": str(uid).startswith("npc_"), "score": sc, "rank": rank, "won": win,
+                    "user_id": uid,
+                    "agent_id": p.get("agent_id", ""),
+                    "name": name,
+                    "is_npc": str(uid).startswith("npc_"),
+                    "score": sc,
+                    "rank": rank,
+                    "won": win,
+                    "hole_cards": hand["hole_cards"],
+                    "best_cards": hand["best_cards"],
+                    "hand_name": hand["hand_name"],
+                    "hole_cards_display": [card_display(c) for c in hand["hole_cards"]],
+                    "best_cards_display": [card_display(c) for c in hand["best_cards"]],
                 })
             c.execute(
                 "UPDATE poker_rooms SET status='settled', settled_at=?, pot=0 WHERE id=?",
@@ -351,7 +385,10 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
     net = human_win - caller_cost if any(p["user_id"] == account_id for p in plist) else 0
 
     return {
-        "ok": True, "results": results,
+        "ok": True,
+        "results": results,
+        "community_cards": community,
+        "community_cards_display": [card_display(c) for c in community],
         "winner": results[0] if results else None,
         "pot": pot, "won": human_win, "cost": caller_cost, "net": net,
         "balance": load_user(account_id)["points"],

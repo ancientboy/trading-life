@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react';
+import { PokerCardRow } from './PokerCard';
 
-const CARD_FACES = ['🂡', '🂱', '🃁', '🃑', '🂮'];
-
-export function PokerDealingCards({ active = true, onComplete }: { active?: boolean; onComplete?: () => void }) {
+export function PokerDealingCards({
+  active = true,
+  onComplete,
+  communityCards = [],
+}: {
+  active?: boolean;
+  onComplete?: () => void;
+  communityCards?: string[];
+}) {
   const [dealt, setDealt] = useState(0);
+  const cards = communityCards.length === 5
+    ? communityCards
+    : ['', '', '', '', ''];
 
   useEffect(() => {
     if (!active) {
@@ -18,27 +28,30 @@ export function PokerDealingCards({ active = true, onComplete }: { active?: bool
     return () => clearTimeout(t);
   }, [dealt, active, onComplete]);
 
+  const visible = cards.slice(0, dealt);
+
   return (
     <div style={{ textAlign: 'center', marginBottom: 12 }}>
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: '#3d3530' }}>
-        {dealt < 5 ? '🃏 荷官 Jack 发牌中…' : '🃏 开牌！'}
+        {dealt < 5 ? '🃏 荷官 Jack 发公共牌…' : '🃏 公共牌'}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, minHeight: 52 }}>
-        {CARD_FACES.map((c, i) => (
-          <div key={i} style={{
-            width: 38, height: 50, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: i < dealt ? '#fff' : '#d4c8b8',
-            border: '1px solid #c4b8a8',
-            fontSize: 22,
-            boxShadow: i < dealt ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
-            transform: i < dealt ? 'translateY(-4px) rotate(-2deg)' : 'translateY(2px)',
-            transition: 'all 0.22s ease',
-            opacity: i < dealt ? 1 : 0.55,
-          }}>
-            {i < dealt ? c : '🂠'}
+      <div style={{ minHeight: 56, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        {dealt === 0 ? (
+          <div style={{ display: 'flex', gap: 6 }}>
+            {cards.map((_, i) => (
+              <div key={i} style={{
+                width: 38, height: 52, borderRadius: 6, background: '#d4c8b8', border: '1px solid #c4b8a8',
+                opacity: 0.55, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+              }}>🂠</div>
+            ))}
           </div>
-        ))}
+        ) : (
+          <PokerCardRow cards={visible} />
+        )}
       </div>
+      {communityCards.length === 5 && dealt >= 5 && (
+        <div style={{ fontSize: 10, color: '#9a8b7a', marginTop: 6 }}>翻牌 · 转牌 · 河牌</div>
+      )}
     </div>
   );
 }

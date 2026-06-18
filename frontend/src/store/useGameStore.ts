@@ -48,8 +48,23 @@ export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'asset
 export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs' | 'tasks';
 export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'shop' | 'scene' | 'tasks' | null;
 
+export type PokerPlayerResult = {
+  name: string;
+  score: number;
+  rank: number;
+  won: number;
+  is_npc?: boolean;
+  hole_cards?: string[];
+  best_cards?: string[];
+  hand_name?: string;
+  hole_cards_display?: string[];
+  best_cards_display?: string[];
+};
+
 export type PokerHandResult = {
-  results: Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
+  results: PokerPlayerResult[];
+  community_cards?: string[];
+  community_cards_display?: string[];
   won: number;
   net: number;
   buyIn: number;

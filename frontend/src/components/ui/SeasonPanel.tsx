@@ -37,12 +37,29 @@ export function SeasonPanel() {
     return operable[0] || aid;
   };
 
-  const showPokerResults = (results?: Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>, won?: number, buyIn = 30, pot?: number, net?: number, balance?: number) => {
+  const showPokerResults = (
+    results?: Array<{
+      name: string; score: number; rank: number; won: number; is_npc?: boolean;
+      hole_cards?: string[]; best_cards?: string[]; hand_name?: string;
+    }>,
+    won?: number,
+    buyIn = 30,
+    pot?: number,
+    net?: number,
+    balance?: number,
+    communityCards?: string[],
+  ) => {
     if (!results?.length) return;
     setLastPokerResults(results);
     if (balance != null) useGameStore.setState({ points: balance });
     useGameStore.getState().showPokerResult({
-      results, won: won ?? 0, net: net ?? ((won ?? 0) - buyIn), buyIn, pot, balance,
+      results,
+      community_cards: communityCards,
+      won: won ?? 0,
+      net: net ?? ((won ?? 0) - buyIn),
+      buyIn,
+      pot,
+      balance,
     });
     syncEngagement();
   };
@@ -142,7 +159,7 @@ export function SeasonPanel() {
               if (!r.ok) { addMessage(r.error || '单人模式失败'); return; }
               if (r.balance != null) useGameStore.setState({ points: r.balance });
               addMessage('牌局开始 · 买入 -30 · vs NPC');
-              showPokerResults(r.results, r.won, 30, r.pot, r.net, r.balance);
+              showPokerResults(r.results, r.won, 30, r.pot, r.net, r.balance, r.community_cards);
               listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
             }}>开始牌局 · -30</button>
           </div>
@@ -186,7 +203,7 @@ export function SeasonPanel() {
                     if (r.ok) {
                       if (r.balance != null) useGameStore.setState({ points: r.balance });
                       addMessage(`牌局开始 · 买入 -${room.buy_in}`);
-                      showPokerResults(r.results, r.won, room.buy_in, r.pot, r.net, r.balance);
+                      showPokerResults(r.results, r.won, room.buy_in, r.pot, r.net, r.balance, r.community_cards);
                     } else addMessage(r.error || '开局失败');
                     listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
                   }}>开始牌局 · -{room.buy_in}</button>
