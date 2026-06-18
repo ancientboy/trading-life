@@ -1,18 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useGameStore, type PokerHandResult } from '../../store/useGameStore';
-import { SPRITE } from '../icons/spritePaths';
-
-const CARD_FACES = ['🂡', '🂱', '🃁', '🃑', '🂮', '🃎', '🂭', '🃍'];
+import { PokerDealingCards } from './PokerDealingCards';
 
 export function PokerResultModal({ data }: { data: PokerHandResult }) {
   const closeModal = useGameStore(s => s.closeModal);
-  const [dealt, setDealt] = useState(0);
-
-  useEffect(() => {
-    if (dealt >= 5) return;
-    const t = setTimeout(() => setDealt(d => d + 1), 280);
-    return () => clearTimeout(t);
-  }, [dealt]);
+  const [dealt, setDealt] = useState(false);
 
   const me = data.results.find(r => !r.is_npc);
   const won = data.won > 0;
@@ -21,33 +13,17 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
   return (
     <div style={{ color: '#3d3530' }}>
       <div style={{ textAlign: 'center', marginBottom: 16 }}>
-        <img src={SPRITE.cards} alt="" style={{ width: 48, height: 48, opacity: 0.9 }} />
-        <div style={{ fontSize: 15, fontWeight: 700, marginTop: 8 }}>
-          {dealt < 5 ? '荷官 Jack 发牌中…' : won ? '🎉 恭喜获胜！' : '本局未获胜'}
+        <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
+          {!dealt ? '荷官 Jack 发牌中…' : won ? '🎉 恭喜获胜！' : '本局未获胜'}
         </div>
         <div style={{ fontSize: 11, color: '#8a7e72', marginTop: 4 }}>
           买入 {data.buyIn} · 奖池 {data.pot ?? '—'}（全员买入合计）
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 16, minHeight: 44 }}>
-        {CARD_FACES.slice(0, 5).map((c, i) => (
-          <div key={i} style={{
-            width: 36, height: 48, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: i < dealt ? '#fff' : '#d4c8b8',
-            border: '1px solid #c4b8a8',
-            fontSize: 22,
-            boxShadow: i < dealt ? '0 2px 6px rgba(0,0,0,0.12)' : 'none',
-            transform: i < dealt ? 'translateY(0)' : 'translateY(4px)',
-            transition: 'all 0.2s ease',
-            opacity: i < dealt ? 1 : 0.5,
-          }}>
-            {i < dealt ? c : '🂠'}
-          </div>
-        ))}
-      </div>
+      <PokerDealingCards active={!dealt} onComplete={() => setDealt(true)} />
 
-      {dealt >= 5 && (
+      {dealt && (
         <>
           {me && (
             <div style={{
@@ -92,8 +68,8 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
       )}
 
       <button className="ui-btn" style={{ width: '100%', marginTop: 14, padding: '10px 0' }}
-        disabled={dealt < 5} onClick={closeModal}>
-        {dealt < 5 ? '发牌中…' : '关闭'}
+        disabled={!dealt} onClick={closeModal}>
+        {dealt ? '关闭' : '发牌中…'}
       </button>
     </div>
   );

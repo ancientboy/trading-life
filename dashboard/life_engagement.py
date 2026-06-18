@@ -300,7 +300,11 @@ def _add_npc_players_to_room(c, room_id: str, buy_in: int, taken_seats: set[str]
 def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str) -> dict:
     from life_game import load_user, save_user, _earn
 
-    scores = [(p, _poker_score(dict(p), dict(room), account_id)) for p in players]
+    plist = [dict(p) if not isinstance(p, dict) else p for p in players]
+    if not plist:
+        return {"ok": False, "error": "无玩家，无法开牌"}
+
+    scores = [(p, _poker_score(p, room, account_id)) for p in plist]
     scores.sort(key=lambda x: x[1], reverse=True)
     pot = room["pot"]
     buy_in = room["buy_in"]
@@ -309,7 +313,6 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
         with life_db._conn() as c:
             for i, (p, sc) in enumerate(scores):
                 rank = i + 1
-                # 胜者通吃：第一名赢得全部奖池（所有玩家买入之和）
                 win = pot if rank == 1 else 0
                 uid = p["user_id"]
                 c.execute(
@@ -323,15 +326,14 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
                 elif not name:
                     name = uid[:8]
                 results.append({
-                    "user_id": uid, "agent_id": p["agent_id"], "name": name,
-                    "is_npc": uid.startswith("npc_"), "score": sc, "rank": rank, "won": win,
+                    "user_id": uid, "agent_id": p.get("agent_id", ""), "name": name,
+                    "is_npc": str(uid).startswith("npc_"), "score": sc, "rank": rank, "won": win,
                 })
             c.execute(
                 "UPDATE poker_rooms SET status='settled', settled_at=?, pot=0 WHERE id=?",
                 (life_db.now_ms(), room_id),
             )
 
-    # 向所有获胜的真人玩家发放奖池积分
     for r in results:
         if r["won"] > 0 and not r["is_npc"]:
             uid = r["user_id"]
@@ -341,16 +343,17 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
             life_db.add_season_points(uid, pvp_win=1, social=5)
 
     caller_cost = buy_in
-    for p in players:
-        if dict(p)["user_id"] == account_id:
-            caller_cost = dict(p).get("buy_in", buy_in) or buy_in
+    for p in plist:
+        if p["user_id"] == account_id:
+            caller_cost = p.get("buy_in", buy_in) or buy_in
             break
     human_win = next((r["won"] for r in results if r["user_id"] == account_id), 0)
-    net = human_win - caller_cost if any(dict(p)["user_id"] == account_id for p in players) else 0
+    net = human_win - caller_cost if any(p["user_id"] == account_id for p in plist) else 0
 
     return {
-        "ok": True, "results": results, "winner": results[0], "pot": pot,
-        "won": human_win, "cost": caller_cost, "net": net,
+        "ok": True, "results": results,
+        "winner": results[0] if results else None,
+        "pot": pot, "won": human_win, "cost": caller_cost, "net": net,
         "balance": load_user(account_id)["points"],
     }
 
@@ -360,38 +363,51 @@ async def poker_solo(body: PokerSoloBody, account_id: str = Depends(resolve_acco
     """单人 vs 系统 NPC（荷官 Jack + 2 位 NPC），立即开局"""
     from life_game import load_user, save_user, _spend
 
-    user = load_user(account_id)
     buy_in = max(10, min(body.buy_in, 500))
+    user = load_user(account_id)
     if not _spend(user, buy_in):
         save_user(account_id, user)
-        return {"ok": False, "error": "积分不足", "cost": buy_in}
+        return {"ok": False, "error": "积分不足", "cost": buy_in, "balance": user["points"]}
     save_user(account_id, user)
 
-    rid = f"solo_{uuid.uuid4().hex[:10]}"
-    ts = life_db.now_ms()
-    pot = buy_in * (1 + len(NPC_POKER_ROSTER))
-    with life_db._lock:
-        with life_db._conn() as c:
-            c.execute(
-                "INSERT INTO poker_rooms (id, status, pot, host_user_id, buy_in, created_at, started_at) VALUES (?,?,?,?,?,?,?)",
-                (rid, "playing", pot, account_id, buy_in, ts, ts),
-            )
-            c.execute(
-                "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
-                (rid, account_id, body.agent_id, "poker_s2", buy_in),
-            )
-            for uid, name, seat in NPC_POKER_ROSTER:
+    try:
+        rid = f"solo_{uuid.uuid4().hex[:10]}"
+        ts = life_db.now_ms()
+        pot = buy_in * (1 + len(NPC_POKER_ROSTER))
+        with life_db._lock:
+            with life_db._conn() as c:
+                c.execute(
+                    "INSERT INTO poker_rooms (id, status, pot, host_user_id, buy_in, created_at, started_at) VALUES (?,?,?,?,?,?,?)",
+                    (rid, "playing", pot, account_id, buy_in, ts, ts),
+                )
                 c.execute(
                     "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
-                    (rid, uid, f"agent_{uid}", seat, buy_in),
+                    (rid, account_id, body.agent_id, "poker_s2", buy_in),
                 )
-            room = c.execute("SELECT * FROM poker_rooms WHERE id=?", (rid,)).fetchone()
-            players = c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (rid,)).fetchall()
+                for uid, name, seat in NPC_POKER_ROSTER:
+                    c.execute(
+                        "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
+                        (rid, uid, f"agent_{uid}", seat, buy_in),
+                    )
+                room = c.execute("SELECT * FROM poker_rooms WHERE id=?", (rid,)).fetchone()
+                players = c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (rid,)).fetchall()
 
-    out = _settle_poker_room(rid, dict(room), players, account_id)
-    out["mode"] = "solo_npc"
-    out["balance"] = load_user(account_id)["points"]
-    return out
+        out = _settle_poker_room(rid, dict(room), list(players), account_id)
+        if not out.get("ok"):
+            user = load_user(account_id)
+            user["points"] = user.get("points", 0) + buy_in
+            save_user(account_id, user)
+            out["balance"] = user["points"]
+            out["error"] = out.get("error") or "开牌失败，买入已退回"
+            return out
+        out["mode"] = "solo_npc"
+        out["balance"] = load_user(account_id)["points"]
+        return out
+    except Exception:
+        user = load_user(account_id)
+        user["points"] = user.get("points", 0) + buy_in
+        save_user(account_id, user)
+        return {"ok": False, "error": "发牌异常，买入已退回", "balance": user["points"]}
 
 
 @pvp_router.post("/pvp/poker/quick-join")

@@ -10,7 +10,27 @@ function headers(): HeadersInit {
 }
 
 async function parse<T>(r: Response): Promise<T> {
-  return r.json() as Promise<T>;
+  const text = await r.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return { ok: false, error: r.ok ? '响应解析失败' : `请求失败 (${r.status})` } as T;
+  }
+}
+
+async function fetchJson<T>(url: string, init?: RequestInit, timeoutMs = 20000): Promise<T> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { ...init, signal: ctrl.signal });
+    clearTimeout(timer);
+    return parse<T>(r);
+  } catch (e) {
+    clearTimeout(timer);
+    const err = e as Error;
+    if (err.name === 'AbortError') return { ok: false, error: '发牌超时，请重试' } as T;
+    return { ok: false, error: '网络错误，请检查连接后重试' } as T;
+  }
 }
 
 // ─── Phase 1 Social ───
@@ -119,14 +139,13 @@ export async function playPokerRound(roomId: string) {
 
 /** 单人练习：1 真人 + 3 NPC，立即开牌 */
 export async function pokerSolo(agentId: string, buyIn = 30) {
-  const r = await fetch(`${API}/pvp/poker/solo`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, buy_in: buyIn }),
-  });
-  return parse<{
-    ok: boolean; mode?: string; room_id?: string; balance?: number; won?: number; pot?: number;
+  return fetchJson<{
+    ok: boolean; mode?: string; room_id?: string; balance?: number; won?: number; pot?: number; net?: number;
     results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
     error?: string; cost?: number;
-  }>(r);
+  }>(`${API}/pvp/poker/solo`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, buy_in: buyIn }),
+  });
 }
 
 /** 快速加入：有公开房则进房，满员自动开牌；无房则单人 vs NPC */
