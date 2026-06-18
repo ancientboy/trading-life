@@ -11,10 +11,93 @@ import { isLoggedIn, getStoredAccount } from '../../lib/lifeAuth';
 const POKER_SEAT_NUMS = [1, 2, 3, 4, 5, 6, 7] as const;
 
 const BUY_IN_TIERS = [
-  { id: 'casual', buyIn: 30, label: '休闲局', desc: '底注 30 · 适合新手' },
-  { id: 'standard', buyIn: 80, label: '标准局', desc: '底注 80 · 奖金更高' },
-  { id: 'high', buyIn: 200, label: '高手局', desc: '底注 200 · 高风险高回报' },
+  { id: 'casual', buyIn: 30, label: '休闲局', desc: '适合新手' },
+  { id: 'standard', buyIn: 80, label: '标准局', desc: '奖金更高' },
+  { id: 'high', buyIn: 200, label: '高手局', desc: '高风险高回报' },
 ] as const;
+
+const BUY_IN_MIN = 10;
+const BUY_IN_MAX = 500;
+
+function clampBuyIn(value: number) {
+  return Math.max(BUY_IN_MIN, Math.min(BUY_IN_MAX, Math.round(value)));
+}
+
+type BuyInPickerProps = {
+  tierId: string;
+  setTierId: (id: string) => void;
+  customBuyIn: number | null;
+  setCustomBuyIn: (value: number | null) => void;
+  compact?: boolean;
+};
+
+function BuyInPicker({ tierId, setTierId, customBuyIn, setCustomBuyIn, compact = false }: BuyInPickerProps) {
+  const tier = BUY_IN_TIERS.find(t => t.id === tierId) ?? BUY_IN_TIERS[0];
+  const selectedBuyIn = customBuyIn ?? tier.buyIn;
+  const usingCustom = customBuyIn != null;
+
+  return (
+    <div style={{ marginBottom: 10, padding: 10, background: '#faf6ef', borderRadius: 8, border: '1px solid #e8dcc8' }}>
+      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>买入积分（开局时扣除）</div>
+      {!compact && BUY_IN_TIERS.map(t => (
+        <button
+          key={t.id}
+          type="button"
+          className={`leisure-option ${!usingCustom && tierId === t.id ? 'selected' : ''}`}
+          onClick={() => { setTierId(t.id); setCustomBuyIn(null); }}>
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontWeight: 600 }}>{t.label}</div>
+            <div style={{ fontSize: 11, color: '#8a7e72' }}>{t.desc}</div>
+          </div>
+          <span style={{ color: '#d4af37', fontWeight: 600, fontSize: 12 }}>{t.buyIn}</span>
+        </button>
+      ))}
+      {compact && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+          {BUY_IN_TIERS.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              className={`ui-btn ${!usingCustom && tierId === t.id ? 'active' : ''}`}
+              style={{ flex: 1, fontSize: 10 }}
+              onClick={() => { setTierId(t.id); setCustomBuyIn(null); }}>
+              {t.buyIn}
+            </button>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: compact ? 0 : 6 }}>
+        <span style={{ fontSize: 11, color: '#8a7e72', whiteSpace: 'nowrap' }}>自定义</span>
+        <input
+          type="number"
+          min={BUY_IN_MIN}
+          max={BUY_IN_MAX}
+          step={10}
+          value={usingCustom ? customBuyIn : ''}
+          placeholder={`${BUY_IN_MIN}–${BUY_IN_MAX}`}
+          inputMode="numeric"
+          onChange={e => {
+            const raw = e.target.value.trim();
+            if (!raw) {
+              setCustomBuyIn(null);
+              return;
+            }
+            const n = Number(raw);
+            if (Number.isFinite(n)) setCustomBuyIn(clampBuyIn(n));
+          }}
+          style={{
+            flex: 1, padding: '6px 8px', borderRadius: 6,
+            border: usingCustom ? '1px solid #d4af37' : '1px solid #d4c8b8',
+            fontSize: 12,
+          }}
+        />
+        <span style={{ fontSize: 11, color: '#d4af37', fontWeight: 600, whiteSpace: 'nowrap' }}>
+          已选 {selectedBuyIn}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 const MIN_DEAL_MS = 1600;
 const HARD_TIMEOUT_MS = 25000;
@@ -45,6 +128,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const activeZone = useGameStore(s => s.activeZone);
 
   const [tierId, setTierId] = useState<string>('casual');
+  const [customBuyIn, setCustomBuyIn] = useState<number | null>(null);
   const [phase, setPhase] = useState<'idle' | 'dealing'>('idle');
   const [busy, setBusy] = useState<'sit' | 'quick' | 'create' | 'join' | 'start' | 'seat' | null>(null);
   const [roomCodeInput, setRoomCodeInput] = useState('');
@@ -68,13 +152,14 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   }, [activeZone, restorePokerRoom]);
 
   const tier = BUY_IN_TIERS.find(t => t.id === tierId) ?? BUY_IN_TIERS[0];
+  const selectedBuyIn = customBuyIn ?? tier.buyIn;
   const operableAgents = Object.values(agents).filter(a => canOperateAgent(a.agentId));
   const agent = (selectedAgentId && canOperateAgent(selectedAgentId) ? agents[selectedAgentId] : null)
     || operableAgents.sort((a, b) => b.stress - a.stress)[0];
-  const canAfford = points >= tier.buyIn;
+  const canAfford = points >= selectedBuyIn;
   const seatedAgent = operableAgents.find(a => a.activity === 'poker');
   const isSeated = !!seatedAgent;
-  const roomBuyIn = inRoom ? pokerRoom.buy_in : tier.buyIn;
+  const roomBuyIn = inRoom ? pokerRoom.buy_in : selectedBuyIn;
   const playerLabel = (p: PokerRoom['players'][0]) => {
     const user = p.user_name || p.display_name || '玩家';
     const agent = p.agent_name;
@@ -101,7 +186,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
     communityCards?: string[],
     tie?: boolean,
     winnersCount?: number,
-    buyIn = tier.buyIn,
+    buyIn = selectedBuyIn,
   ) => {
     if (balance != null) useGameStore.setState({ points: balance });
     showPokerResult({
@@ -143,7 +228,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
     const dealStart = performance.now();
 
     try {
-      const apiPromise = pokerSolo(agent.agentId, tier.buyIn);
+      const apiPromise = pokerSolo(agent.agentId, selectedBuyIn);
       const timeoutPromise = new Promise<{ ok: false; error: string }>(resolve => {
         setTimeout(() => resolve({ ok: false, error: '发牌超时，请重试' }), HARD_TIMEOUT_MS);
       });
@@ -227,6 +312,16 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
 
       <div style={{ fontSize: 11, color: '#d4af37', marginBottom: 8 }}>当前积分：{points}</div>
 
+      {!inRoom && (
+        <BuyInPicker
+          tierId={tierId}
+          setTierId={setTierId}
+          customBuyIn={customBuyIn}
+          setCustomBuyIn={setCustomBuyIn}
+          compact={compact}
+        />
+      )}
+
       {inRoom && (
         <div style={{ marginBottom: 10, padding: 10, background: '#eef4ff', borderRadius: 8, fontSize: 12, border: '1px solid #7aa8e8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -297,7 +392,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
               if (!agent) return;
               if (!isLoggedIn()) { addMessage('请先登录'); return; }
               setBusy('create');
-              const r = await createPokerRoom(tier.buyIn, agent.agentId);
+              const r = await createPokerRoom(selectedBuyIn, agent.agentId);
               if (!r.ok) {
                 addMessage(r.error || '创建失败');
               } else if (r.room) {
@@ -306,7 +401,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
               }
               setBusy(null);
             }}>
-            {busy === 'create' ? '创建中…' : `创建房间（买入 ${tier.buyIn}）`}
+            {busy === 'create' ? '创建中…' : `创建房间（买入 ${selectedBuyIn}）`}
           </button>
           <div style={{ display: 'flex', gap: 6 }}>
             <input
@@ -394,25 +489,6 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         </div>
       )}
 
-      {!compact && BUY_IN_TIERS.map(t => (
-        <button key={t.id} className={`leisure-option ${tierId === t.id ? 'selected' : ''}`} onClick={() => setTierId(t.id)}>
-          <div style={{ flex: 1, textAlign: 'left' }}>
-            <div style={{ fontWeight: 600 }}>{t.label}</div>
-            <div style={{ fontSize: 11, color: '#8a7e72' }}>{t.desc}</div>
-          </div>
-          <span style={{ color: '#d4af37', fontWeight: 600, fontSize: 12 }}>买入 {t.buyIn}</span>
-        </button>
-      ))}
-
-      {compact && (
-        <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-          {BUY_IN_TIERS.map(t => (
-            <button key={t.id} className={`ui-btn ${tierId === t.id ? 'active' : ''}`} style={{ flex: 1, fontSize: 10 }}
-              onClick={() => setTierId(t.id)}>{t.buyIn}</button>
-          ))}
-        </div>
-      )}
-
       {showSitButton && !isSeated && (
         <button className="ui-btn" style={{ width: '100%', marginTop: compact ? 0 : 8, marginBottom: 8, padding: '9px 0' }}
           disabled={!agent || busy !== null}
@@ -438,7 +514,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
           }}
             disabled={!agent || !canAfford}
             onClick={() => void startSolo()}>
-            {!canAfford ? `积分不足（需 ${tier.buyIn}）` : `单人开局 · 发牌（-${tier.buyIn} 积分）`}
+            {!canAfford ? `积分不足（需 ${selectedBuyIn}）` : `单人开局 · 发牌（-${selectedBuyIn} 积分）`}
           </button>
 
           <button className="ui-btn" style={{ width: '100%', marginBottom: 8 }}
@@ -446,7 +522,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
             onClick={async () => {
               if (!agent) return;
               setBusy('quick');
-              const r = await pokerQuickJoin(agent.agentId, tier.buyIn);
+              const r = await pokerQuickJoin(agent.agentId, selectedBuyIn);
               if (!r.ok) {
                 if (r.mode === 'no_room') addMessage('暂无公开房间 · 可创建房间或单人开局');
                 else addMessage(r.error || '匹配失败');
