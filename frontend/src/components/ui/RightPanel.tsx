@@ -3,6 +3,7 @@ import { PlayCircleIcon, DocumentDuplicateIcon } from '@heroicons/react/24/solid
 import { useGameStore, type RightTab } from '../../store/useGameStore';
 import { fetchAgentProfile, saveAgentConfig, saveAgentSoul } from '../../lib/api';
 import type { CharState, Position, TradeRecord } from '../../lib/constants';
+import { AppIcon } from '../icons/AppIcon';
 import { StrategyEditor } from './StrategyEditor';
 import { ProfitIcon, LossIcon, PieAssetIcon } from '../icons/phosphorIcons';
 import { PenguinAvatar } from './PenguinAvatar';
