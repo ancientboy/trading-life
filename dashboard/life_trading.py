@@ -1,6 +1,7 @@
 """用户资产仓库与模拟交易 — 独立于系统 Agent 全局 state"""
 from __future__ import annotations
 
+import asyncio
 import json
 import random
 import time
@@ -90,6 +91,12 @@ STRATEGY_PRESETS: dict[str, dict[str, Any]] = {
 }
 
 RISK_MULT = {"低": 0.7, "中": 1.0, "中高": 1.15, "高": 1.35, "极高": 1.5}
+
+VALID_KLINE_INTERVALS = frozenset({
+    "1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d",
+})
+FILTER_BUMP = {"1m": "5m", "3m": "15m", "5m": "15m", "15m": "1h", "30m": "1h", "1h": "4h", "2h": "4h", "4h": "1d"}
+BINANCE_KLINE_URL = "https://fapi.binance.com/fapi/v1/klines"
 
 
 def _now_ms() -> int:
@@ -182,6 +189,136 @@ async def fetch_prices(symbols: list[str]) -> dict[str, float]:
     return prices
 
 
+def parse_kline_intervals(interval_str: str, preset: dict) -> tuple[str, str]:
+    """解析用户/预设周期，如 15m/1h → (入场周期, 过滤周期)。"""
+    raw = (interval_str or preset.get("interval") or "15m/1h").strip().lower()
+    parts = [p.strip() for p in raw.replace(" ", "").split("/") if p.strip()]
+    parts = [p if p in VALID_KLINE_INTERVALS else "15m" for p in parts]
+    if len(parts) >= 2:
+        return parts[0], parts[1]
+    if len(parts) == 1:
+        return parts[0], FILTER_BUMP.get(parts[0], "1h")
+    return "15m", "1h"
+
+
+def calc_ema(values: list[float], period: int) -> float:
+    if len(values) < period:
+        return values[-1] if values else 0.0
+    k = 2 / (period + 1)
+    ema = sum(values[:period]) / period
+    for v in values[period:]:
+        ema = v * k + ema * (1 - k)
+    return ema
+
+
+def calc_rsi(closes: list[float], period: int = 14) -> float:
+    if len(closes) < period + 1:
+        return 50.0
+    gains, losses = [], []
+    for i in range(1, len(closes)):
+        d = closes[i] - closes[i - 1]
+        gains.append(max(0.0, d))
+        losses.append(max(0.0, -d))
+    ag = sum(gains[:period]) / period
+    al = sum(losses[:period]) / period
+    for i in range(period, len(gains)):
+        ag = (ag * (period - 1) + gains[i]) / period
+        al = (al * (period - 1) + losses[i]) / period
+    if al == 0:
+        return 100.0
+    return 100.0 - 100.0 / (1.0 + ag / al)
+
+
+async def fetch_klines(session: aiohttp.ClientSession, symbol: str, interval: str, limit: int = 80) -> list[float]:
+    params = {"symbol": symbol, "interval": interval, "limit": limit}
+    try:
+        async with session.get(BINANCE_KLINE_URL, params=params, timeout=aiohttp.ClientTimeout(total=8)) as resp:
+            raw = await resp.json()
+            return [float(k[4]) for k in raw]
+    except Exception:
+        return []
+
+
+async def fetch_kline_map(requests: set[tuple[str, str]]) -> dict[tuple[str, str], list[float]]:
+    """批量拉取 K 线收盘价，key=(symbol, interval)。"""
+    out: dict[tuple[str, str], list[float]] = {}
+    if not requests:
+        return out
+    keys = list(requests)
+    async with aiohttp.ClientSession() as session:
+        results = await asyncio.gather(
+            *(fetch_klines(session, sym, iv) for sym, iv in keys),
+            return_exceptions=True,
+        )
+        for key, res in zip(keys, results):
+            out[key] = res if isinstance(res, list) else []
+    return out
+
+
+def _signal_trend(closes_e: list[float], closes_f: list[float]) -> Optional[str]:
+    if len(closes_f) < 50 or len(closes_e) < 25:
+        return None
+    ema20_f, ema50_f = calc_ema(closes_f, 20), calc_ema(closes_f, 50)
+    ema20_e = calc_ema(closes_e, 20)
+    price, prev = closes_e[-1], closes_e[-2]
+    rsi = calc_rsi(closes_e)
+    if ema20_f > ema50_f and price > ema20_e and prev <= ema20_e and rsi < 72:
+        return "LONG"
+    if ema20_f < ema50_f and price < ema20_e and prev >= ema20_e and rsi > 28:
+        return "SHORT"
+    return None
+
+
+def _signal_momentum(closes_e: list[float], threshold_pct: float) -> Optional[str]:
+    if len(closes_e) < 12:
+        return None
+    chg = (closes_e[-1] - closes_e[-5]) / closes_e[-5] * 100
+    rsi = calc_rsi(closes_e)
+    if chg >= threshold_pct * 0.55 and rsi < 78:
+        return "LONG"
+    if chg <= -threshold_pct * 0.55 and rsi > 22:
+        return "SHORT"
+    return None
+
+
+def _signal_breakout(closes_e: list[float], closes_f: list[float], threshold_pct: float) -> Optional[str]:
+    if len(closes_e) < 22:
+        return None
+    window = closes_e[-21:-1]
+    high20, low20 = max(window), min(window)
+    price = closes_e[-1]
+    trend_up = calc_ema(closes_f, 20) > calc_ema(closes_f, 50) if len(closes_f) >= 50 else True
+    if price > high20 * (1 + threshold_pct / 500) and trend_up:
+        return "LONG"
+    if price < low20 * (1 - threshold_pct / 500) and not trend_up:
+        return "SHORT"
+    return None
+
+
+def evaluate_entry_signal(
+    style: str,
+    closes_e: list[float],
+    closes_f: list[float],
+    threshold_pct: float,
+    risk: str,
+) -> tuple[Optional[str], str]:
+    """根据策略风格与 K 线数据评估开仓方向，返回 (方向, 原因)。"""
+    th = threshold_pct * RISK_MULT.get(risk, 1.0)
+    if style == "momentum":
+        sig = _signal_momentum(closes_e, th)
+        return sig, f"动量 {th:.2f}% 阈值"
+    if style == "breakout":
+        sig = _signal_breakout(closes_e, closes_f, th)
+        return sig, "结构突破"
+    sig = _signal_trend(closes_e, closes_f)
+    if sig:
+        return sig, "EMA 趋势回调"
+    if style == "custom":
+        sig = _signal_momentum(closes_e, th * 0.8) or _signal_trend(closes_e, closes_f)
+        return sig, "自定义综合"
+    return None, ""
+
+
 def _position_size(capital: float, risk: str, leverage: int) -> float:
     mult = RISK_MULT.get(risk, 1.0)
     notional = capital * 0.08 * mult * min(leverage, 10)
@@ -191,6 +328,8 @@ def _position_size(capital: float, risk: str, leverage: int) -> float:
 def _maybe_open(
     state: dict, symbol: str, price: float, direction: str,
     capital: float, preset: dict, meta: dict,
+    signal_reason: str = "",
+    interval_label: str = "",
 ) -> tuple[dict, float]:
     if any(p.get("symbol") == symbol for p in state["positions"]):
         return state, capital
@@ -201,6 +340,9 @@ def _maybe_open(
     margin = qty * price / lev
     if margin > capital * 0.4:
         return state, capital
+    reason_parts = [preset.get("strategy", "策略"), interval_label or meta.get("interval", "")]
+    if signal_reason:
+        reason_parts.append(signal_reason)
     pos = {
         "symbol": symbol,
         "direction": direction,
@@ -208,7 +350,7 @@ def _maybe_open(
         "quantity": round(qty, 6),
         "leverage": lev,
         "entry_type": preset.get("style", "sim"),
-        "entry_reasoning": f"{preset['strategy']} 信号",
+        "entry_reasoning": " · ".join(p for p in reason_parts if p),
         "opened_at": _now_iso(),
     }
     state["positions"].append(pos)
@@ -251,16 +393,20 @@ def _close_position(state: dict, idx: int, exit_price: float, reason: str) -> tu
 
 
 def run_sim_tick(
-    state: dict, capital: float, preset: dict, meta: dict, prices: dict[str, float],
+    state: dict,
+    capital: float,
+    preset: dict,
+    meta: dict,
+    prices: dict[str, float],
+    klines: Optional[dict[tuple[str, str], list[float]]] = None,
 ) -> tuple[dict, float]:
     threshold = float(preset.get("threshold_pct", 0.3))
     risk = meta.get("risk", preset.get("risk", "中"))
-    if preset.get("style") == "custom":
-        threshold *= RISK_MULT.get(risk, 1.0)
+    style = preset.get("style", "trend")
+    entry_iv, filter_iv = parse_kline_intervals(meta.get("interval", ""), preset)
+    interval_label = f"{entry_iv}/{filter_iv}"
 
-    last_prices: dict[str, float] = dict(state.get("last_prices") or {})
-
-    # 管理已有持仓
+    # 管理已有持仓（实时价止盈止损）
     i = 0
     while i < len(state["positions"]):
         pos = state["positions"][i]
@@ -286,28 +432,38 @@ def run_sim_tick(
             continue
         i += 1
 
-    # 开新仓
+    # 开新仓 — 优先 K 线策略信号，无 K 线时回退到 tick 价差
+    last_prices: dict[str, float] = dict(state.get("last_prices") or {})
     for sym in preset.get("symbols") or ["BTCUSDT"]:
         price = prices.get(sym)
         if not price:
             continue
-        prev = last_prices.get(sym)
+        closes_e = (klines or {}).get((sym, entry_iv), [])
+        closes_f = (klines or {}).get((sym, filter_iv), [])
+        direction: Optional[str] = None
+        signal_reason = ""
+
+        if closes_e and len(closes_e) >= 12:
+            direction, signal_reason = evaluate_entry_signal(style, closes_e, closes_f, threshold, risk)
+        else:
+            prev = last_prices.get(sym)
+            last_prices[sym] = price
+            if prev:
+                chg = (price - prev) / prev * 100
+                th = threshold * RISK_MULT.get(risk, 1.0)
+                if style == "momentum" and abs(chg) >= th * 0.6:
+                    direction = "LONG" if chg > 0 else "SHORT"
+                    signal_reason = "tick 动量"
+                elif abs(chg) >= th:
+                    direction = "LONG" if chg > 0 else "SHORT"
+                    signal_reason = "tick 突破"
+
+        if direction:
+            state, capital = _maybe_open(
+                state, sym, price, direction, capital, preset, meta,
+                signal_reason, interval_label,
+            )
         last_prices[sym] = price
-        if not prev:
-            continue
-        chg = (price - prev) / prev * 100
-        style = preset.get("style", "trend")
-        if style == "momentum" and abs(chg) >= threshold * 0.6:
-            direction = "LONG" if chg > 0 else "SHORT"
-            state, capital = _maybe_open(state, sym, price, direction, capital, preset, meta)
-        elif style in ("trend", "breakout") and abs(chg) >= threshold:
-            direction = "LONG" if chg > 0 else "SHORT"
-            if style == "breakout" and random.random() > 0.55:
-                continue
-            state, capital = _maybe_open(state, sym, price, direction, capital, preset, meta)
-        elif style == "custom" and abs(chg) >= threshold * RISK_MULT.get(risk, 1.0):
-            direction = "LONG" if chg > 0 else "SHORT"
-            state, capital = _maybe_open(state, sym, price, direction, capital, preset, meta)
 
     state["last_prices"] = last_prices
     state["running"] = True
@@ -374,6 +530,23 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
 
     prices = await fetch_prices(sorted(all_symbols)) if should_tick and all_symbols else {}
 
+    kline_requests: set[tuple[str, str]] = set()
+    if should_tick:
+        for row in rows:
+            aid = row["agent_id"]
+            if aid not in trading_agents:
+                continue
+            meta = trading_agents[aid]
+            preset = preset_for(row.get("strategy_preset") or "major")
+            if meta.get("strategyPreset") == "custom" or row.get("strategy_preset") == "custom":
+                preset = dict(preset)
+                preset["symbols"] = _custom_symbols(meta)
+            entry_iv, filter_iv = parse_kline_intervals(meta.get("interval", ""), preset)
+            for sym in preset.get("symbols") or []:
+                kline_requests.add((sym, entry_iv))
+                kline_requests.add((sym, filter_iv))
+    klines = await fetch_kline_map(kline_requests) if kline_requests else {}
+
     agent_views = []
     total_agent_capital = 0.0
     total_agent_initial = 0.0
@@ -392,7 +565,7 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
                 preset = dict(preset)
                 preset["symbols"] = _custom_symbols(meta)
             st = _parse_state(row.get("state_json") or "{}")
-            st, capital = run_sim_tick(st, capital, preset, meta, prices)
+            st, capital = run_sim_tick(st, capital, preset, meta, prices, klines)
             life_db.save_agent_trading(
                 user_id, aid,
                 strategy_preset=row.get("strategy_preset") or "major",
@@ -433,6 +606,7 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
             for k, v in STRATEGY_PRESETS.items()
         ],
         "source": "user_sim",
+        "sim_tick_interval_sec": SIM_TICK_INTERVAL_MS // 1000,
         "system_agents_note": "大厅内系统 Agent 为全局示范盘，资产仓库仅统计你的模拟账户",
     }
 
