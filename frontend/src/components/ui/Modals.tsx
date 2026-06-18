@@ -20,7 +20,7 @@ const TITLES: Record<Exclude<ModalId, null>, string> = {
   settings: '设置',
   help: '帮助 / 新手引导',
   dine: '广式粤菜馆 · 点餐',
-  massage: '臻享水疗 · 理疗套餐',
+  massage: '禅意理疗 · 理疗套餐',
   poker: '德州扑克 · 开局',
   poker_result: '德州扑克 · 开牌结果',
   shop: '积分商城',
@@ -117,7 +117,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
     case 'dine':
       return <LeisureModal type="dine" title="广式粤菜馆" lucide={LucideIcons.dine} items={DINE_TIERS} />;
     case 'massage':
-      return <LeisureModal type="massage" title="臻享水疗会所" lucide={LucideIcons.massage} items={MASSAGE_TIERS.map(t => ({
+      return <LeisureModal type="massage" title="禅意理疗馆" lucide={LucideIcons.massage} items={MASSAGE_TIERS.map(t => ({
         ...t,
         icon: t.id === 'a' ? LucideIcons.massageBed : t.id === 'b' ? LucideIcons.massageWind : LucideIcons.massageOil,
       }))} />;

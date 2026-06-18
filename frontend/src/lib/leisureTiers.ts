@@ -22,7 +22,7 @@ export const DINE_TIERS: LeisureTierDef[] = [
 export const MASSAGE_TIERS: LeisureTierDef[] = [
   { id: 'a', name: '基础放松', desc: '30 分钟肩颈', cost: 0, effect: '-30% 压力', stressRelief: 0.3 },
   { id: 'b', name: '深度理疗', desc: '60 分钟全身 + 热石', cost: 80, effect: '-50% 压力', stressRelief: 0.5 },
-  { id: 'c', name: '臻享水疗 SPA', desc: '90 分钟精油 + 芳疗', cost: 150, effect: '-70% 压力', stressRelief: 0.7 },
+  { id: 'c', name: '精油禅养 SPA', desc: '90 分钟精油 + 芳疗', cost: 150, effect: '-70% 压力', stressRelief: 0.7 },
 ];
 
 export const LEISURE_TIERS: Record<LeisureService, LeisureTierDef[]> = {

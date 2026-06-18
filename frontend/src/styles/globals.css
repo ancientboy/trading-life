@@ -394,7 +394,7 @@ html, body, #root {
 }
 .leisure-preview.active { animation: leisurePulse 0.8s ease infinite; }
 .leisure-dine { background: linear-gradient(135deg, #faf3e8, #f5e6d0); }
-.leisure-massage { background: linear-gradient(135deg, #f0f4f8, #dce8ef); }
+.leisure-massage { background: linear-gradient(135deg, #f5eef8, #e8d0ff); }
 .leisure-poker { background: linear-gradient(135deg, #1a1520, #2a4030); }
 .leisure-poker span { filter: brightness(1.5); }
 

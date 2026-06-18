@@ -280,7 +280,7 @@ export function RightPanel() {
   function renderFacilityPanel() {
     const zoneInfo: Record<string, { title: string; desc: string; modal: 'dine' | 'massage' | 'poker'; leisure: 'dine' | 'massage' | 'poker' }> = {
       table: { title: '粤菜馆 · 餐桌', desc: '基础套餐免费，招牌/筵席档消耗积分减压', modal: 'dine', leisure: 'dine' },
-      bed: { title: '水疗 · 理疗床', desc: '基础放松免费，深度/臻享档消耗积分', modal: 'massage', leisure: 'massage' },
+      bed: { title: '禅意 · 理疗床', desc: '基础放松免费，深度/精油档消耗积分', modal: 'massage', leisure: 'massage' },
       poker: { title: '德州 · 牌桌', desc: '① 免费入座 → ② 点「开始牌局」才扣买入积分', modal: 'poker', leisure: 'poker' },
     };
     const f = selectedFacility ? zoneInfo[selectedFacility] : null;
