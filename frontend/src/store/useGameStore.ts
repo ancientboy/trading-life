@@ -6,7 +6,7 @@ import type { AgentMeta } from '../lib/constants';
 import { OfficePath } from '../lib/pathfinding';
 import { WORLD_MAP, ZONE_CAMERA } from '../lib/worldMap';
 import { SIDEBAR_TO_ZONE, ZONE_TO_RIGHT_TAB } from '../lib/zones';
-import { ensureHallPathGraph } from '../lib/hallLayout';
+import { HALL_DESKS_8, ensureHallPathGraph } from '../lib/hallLayout';
 import { rebuildNavGraph, assignAgentSeatSlots } from '../lib/navGraph';
 import { paperToWorld } from '../lib/zoneProjection';
 import { syncFurnitureToPathfinding, getActivitySeatPaper, greetingForActivity, npcForZone, resolveActivitySlot } from '../lib/zoneFurniture';
@@ -141,6 +141,7 @@ interface GameStore {
   navigateSidebar: (action: SidebarAction) => void;
   sendAgentToLeisure: (type: 'dine' | 'massage' | 'poker', agentId?: string, cost?: number) => Promise<boolean>;
   sendAgentToFacility: (action: 'dine' | 'massage' | 'poker' | 'rest', opts?: { agentId?: string; nodeId?: string; cost?: number; skipCost?: boolean }) => Promise<boolean>;
+  sendAgentToDesk: (agentId?: string, seatNodeId?: string) => Promise<boolean>;
   createAgent: (draft: CustomAgentDraft) => Promise<boolean>;
   openModal: (id: Exclude<ModalId, null>) => void;
   openWorkshop: (mode?: 'list' | 'create') => void;
@@ -361,11 +362,61 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
-  sendAgentToLeisure: async (type, agentId, cost) => {
+  sendAgentToLeisure: async (type, agentId) => {
     if (type === 'poker') {
       return get().sendAgentToFacility('poker', { agentId, skipCost: true });
     }
-    return get().sendAgentToFacility(type, { agentId, cost, skipCost: cost == null });
+    return get().sendAgentToFacility(type, { agentId, skipCost: true });
+  },
+
+  sendAgentToDesk: async (agentId, seatNodeId) => {
+    const s = get();
+    const id = agentId || s.selectedAgentId
+      || Object.values(s.agents).filter(a => get().canOperateAgent(a.agentId)).sort((a, b) => b.stress - a.stress)[0]?.agentId;
+    if (!id || !s.agents[id]) return false;
+    if (!get().canOperateAgent(id)) {
+      get().addMessage(`${s.agents[id].data.name} 是系统 Agent，请前往工坊创建你自己的 Agent`);
+      return false;
+    }
+    const node = seatNodeId || OfficePath.deskByAgent[id];
+    if (!node || !OfficePath.nodes[node]) {
+      get().addMessage('未找到可用工位');
+      return false;
+    }
+    const now = performance.now();
+    let char: CharState = {
+      ...s.agents[id],
+      travelIntent: null,
+      activity: null,
+      activityUntil: 0,
+      userDispatched: true,
+      isWalking: false,
+      pathQueue: [],
+      pathIndex: 0,
+      inTransit: false,
+    };
+    const pos = OfficePath.nodes[node];
+    char = { ...char, destNode: node, x: pos.x, z: pos.z };
+    char = onPathComplete(char, now);
+
+    const deskDef = HALL_DESKS_8.find(d => d.seatId === node);
+    const deskLabel = deskDef?.id.replace('desk_', '').toUpperCase() ?? '工位';
+
+    set({
+      agents: { ...s.agents, [id]: char },
+      selectedAgentId: id,
+      followAgentId: null,
+      activeZone: 'hall',
+      sidebarActive: 'hall',
+      rightTab: 'agent',
+      rightPanelCollapsed: false,
+      activeModal: null,
+      cameraLookAt: { x: ZONE_CAMERA.hall.x, z: ZONE_CAMERA.hall.z },
+      cameraZoom: WORLD_MAP.zoneZoom,
+      mapOverview: false,
+    });
+    get().addMessage(`${char.data.name} 已派遣至 ${deskLabel} 工位（免费）`);
+    return true;
   },
 
   sendAgentToFacility: async (action, opts) => {
@@ -377,7 +428,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return false;
     }
 
-    const skipCost = opts?.skipCost || action === 'poker';
+    const skipCost = opts?.skipCost ?? (FACILITY_BASE_COST[action] === 0);
     const cost = opts?.cost ?? s.facilityCosts[action] ?? FACILITY_BASE_COST[action];
     if (!skipCost && cost > 0) {
       const disp = await lifeDispatch(action, cost);
@@ -398,7 +449,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!node) return false;
 
     if (!hasFreeSeat(action, id, s.seatOccupancy)) {
-      const queueCost = action === 'poker' ? 0 : (opts?.cost ?? s.facilityCosts[action] ?? FACILITY_BASE_COST[action]);
+      const queueCost = FACILITY_BASE_COST[action] ?? 0;
       await enqueueDispatch(id, action, opts?.nodeId || '', queueCost);
       get().addMessage(`${s.agents[id].data.name} 座位已满，已加入派遣队列`);
       return false;
@@ -421,7 +472,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cameraZoom: WORLD_MAP.zoneZoom,
       mapOverview: false,
     });
-    get().addMessage(`${char.data.name} 已抵达${cam.label}${!skipCost && cost > 0 ? ` · -${cost} 积分` : action === 'poker' ? ' · 已入座（免费）' : ''}`);
+    get().addMessage(`${char.data.name} 已抵达${cam.label}${!skipCost && cost > 0 ? ` · -${cost} 积分` : ' · 免费'}`);
     get().speakForAgent(id, action, action);
     return true;
   },

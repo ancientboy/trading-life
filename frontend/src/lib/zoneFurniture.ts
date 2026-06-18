@@ -1,6 +1,8 @@
 import type { ZoneId } from '../store/useGameStore';
 import { paperToWorld, worldToPaper } from './zoneProjection';
-import { HALL_DESKS_8, seatPaperPos } from './hallLayout';
+import { HALL_DESKS_8, deskPaperPos, seatPaperPos } from './hallLayout';
+
+export type PaperFacilityAction = 'dine' | 'massage' | 'poker' | 'rest' | 'desk';
 
 /** 纸面坐标系下的分区家具（720×640） */
 export interface PaperPoint { px: number; py: number }
@@ -272,7 +274,7 @@ export function getAgentPaperPos(
 export function hitTestPaperFacilities(
   zone: ZoneId,
   paper: PaperPoint,
-): { action: 'dine' | 'massage' | 'poker' | 'rest'; nodeId: string; id: string } | null {
+): { action: PaperFacilityAction; nodeId: string; id: string } | null {
   if (zone === 'spa') {
     for (const b of SPA_BEDS) {
       if (Math.hypot(paper.px - b.px, paper.py - b.py) < 52) {
@@ -297,6 +299,12 @@ export function hitTestPaperFacilities(
     }
   }
   if (zone === 'hall') {
+    for (const d of HALL_DESKS_8) {
+      const p = deskPaperPos(d.row, d.col);
+      if (Math.hypot(paper.px - p.px, paper.py - p.py) < 44) {
+        return { action: 'desk', nodeId: d.seatId, id: d.id };
+      }
+    }
     for (const b of HALL_REST_BOOTHS) {
       if (Math.hypot(paper.px - b.px, paper.py - b.py) < 62) {
         return { action: 'rest', nodeId: b.id, id: b.id };

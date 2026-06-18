@@ -105,7 +105,8 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
       return (
         <div style={{ fontSize: 13, lineHeight: 1.6, color: '#6b5e4e' }}>
           <p><b>五大分区：</b>交易大厅 · 前厅接待 · 餐厅 · 按摩 · 德州扑克</p>
-          <p><b>场景操作：</b>点击家具（餐桌/按摩床/牌桌/包厢）派遣 Agent；点击箭头切换区域；拖拽平移视角</p>
+          <p><b>场景操作：</b>点击工位/家具（餐桌/按摩床/牌桌/休息包厢）派遣 Agent；点击箭头切换区域；拖拽平移视角</p>
+          <p><b>休闲费用：</b>休息、用餐、按摩均免费；德州免费入座，开局才扣买入积分</p>
           <p><b>创建 Agent：</b>左侧「Agent 工坊」→ 点「创建 Agent」→ 填写名称、外形、SOUL</p>
           <p><b>自主活动：</b>无人操作时 Agent 会自行漫步、休息、前往休闲区，到达后播放对应互动动画</p>
           {tradeFeed.length > 0 && <p style={{ fontSize: 11, color: '#9a8b7a' }}>已加载 {tradeFeed.length} 条成交</p>}
@@ -113,15 +114,15 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
       );
     case 'dine':
       return <LeisureModal type="dine" title="餐厅" lucide={LucideIcons.dine} items={[
-        { id: 'a', name: '能量套餐 A', desc: '意面 + 果汁', cost: 50, effect: '-30% 恐慌值' },
-        { id: 'b', name: '豪华套餐 B', desc: '牛排 + 红酒', cost: 80, effect: '-50% 恐慌值' },
-        { id: 'c', name: '甜心下午茶', desc: '蛋糕 + 咖啡', cost: 40, effect: '-20% 压力' },
+        { id: 'a', name: '能量套餐 A', desc: '意面 + 果汁', cost: 0, effect: '-30% 恐慌值' },
+        { id: 'b', name: '豪华套餐 B', desc: '牛排 + 红酒', cost: 0, effect: '-50% 恐慌值' },
+        { id: 'c', name: '甜心下午茶', desc: '蛋糕 + 咖啡', cost: 0, effect: '-20% 压力' },
       ]} />;
     case 'massage':
       return <LeisureModal type="massage" title="按摩区" lucide={LucideIcons.massage} items={[
-        { id: 'a', name: '基础理疗', desc: '30 分钟肩颈', cost: 60, effect: '-30% 压力', icon: LucideIcons.massageBed },
-        { id: 'b', name: '深度按摩', desc: '60 分钟全身', cost: 80, effect: '-50% 压力', icon: LucideIcons.massageWind },
-        { id: 'c', name: '精油 SPA', desc: '90 分钟尊享', cost: 120, effect: '-70% 压力', icon: LucideIcons.massageOil },
+        { id: 'a', name: '基础理疗', desc: '30 分钟肩颈', cost: 0, effect: '-30% 压力', icon: LucideIcons.massageBed },
+        { id: 'b', name: '深度按摩', desc: '60 分钟全身', cost: 0, effect: '-50% 压力', icon: LucideIcons.massageWind },
+        { id: 'c', name: '精油 SPA', desc: '90 分钟尊享', cost: 0, effect: '-70% 压力', icon: LucideIcons.massageOil },
       ]} />;
     case 'poker':
       return <PokerGamePanel />;
@@ -156,7 +157,8 @@ function LeisureModal({ type, title, lucide, items }: {
   const agent = (selectedAgentId && canOperateAgent(selectedAgentId) ? agents[selectedAgentId] : null)
     || operableAgents.sort((a, b) => b.stress - a.stress)[0];
   const item = items.find(i => i.id === picked) || items[0];
-  const canAfford = points >= item.cost;
+  const isFree = item.cost <= 0;
+  const canAfford = isFree || points >= item.cost;
 
   return (
     <div style={{ color: '#3d3530' }}>
@@ -166,7 +168,9 @@ function LeisureModal({ type, title, lucide, items }: {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>
-          <div style={{ fontSize: 11, color: '#d4af37', marginTop: 4 }}>当前积分：{points}</div>
+          <div style={{ fontSize: 11, color: isFree ? '#48d093' : '#d4af37', marginTop: 4 }}>
+            {isFree ? '本区休闲 · 免费' : `当前积分：${points}`}
+          </div>
           {agent ? (
             <div style={{ marginTop: 8, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>服务对象：</span>
@@ -188,7 +192,9 @@ function LeisureModal({ type, title, lucide, items }: {
             <div style={{ fontWeight: 600 }}>{it.name}</div>
             <div style={{ fontSize: 11, color: '#8a7e72' }}>{it.desc} · {it.effect}</div>
           </div>
-          <span style={{ color: '#d4af37', fontWeight: 600, fontSize: 12 }}>{it.cost} 积分</span>
+          <span style={{ color: it.cost <= 0 ? '#48d093' : '#d4af37', fontWeight: 600, fontSize: 12 }}>
+            {it.cost <= 0 ? '免费' : `${it.cost} 积分`}
+          </span>
         </button>
       ))}
       <button className="ui-btn" style={{ width: '100%', marginTop: 12, padding: '10px 0' }}
@@ -198,13 +204,13 @@ function LeisureModal({ type, title, lucide, items }: {
           return;
         }
         setBusy(true);
-        const ok = await sendAgentToLeisure(type, agent.agentId, item.cost);
-        if (ok) addMessage(`${agent.data.name} 选择了「${item.name}」· 消耗 ${item.cost} 积分 · ${item.effect}`);
+        const ok = await sendAgentToLeisure(type, agent.agentId);
+        if (ok) addMessage(`${agent.data.name} 选择了「${item.name}」· 免费 · ${item.effect}`);
         else if (!canAfford) addMessage(`积分不足，需要 ${item.cost} 积分`);
         setBusy(false);
         if (ok) closeModal();
       }}>
-        {busy ? 'Agent 正在前往…' : !canAfford ? `积分不足（需 ${item.cost}）` : `确认 · ${item.cost} 积分`}
+        {busy ? 'Agent 正在前往…' : !canAfford ? `积分不足（需 ${item.cost}）` : isFree ? '免费派遣' : `确认 · ${item.cost} 积分`}
       </button>
     </div>
   );

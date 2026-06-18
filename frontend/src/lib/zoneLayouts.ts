@@ -62,8 +62,8 @@ export const ZONE_LAYOUTS: Record<ZoneId, ZoneLayout> = {
     ],
   },
   spa: {
-    floorColor: '#f0ebf8',
-    accent: 'rgba(155,89,182,0.08)',
+    floorColor: '#e8eef5',
+    accent: 'rgba(120,160,190,0.14)',
     navArrows: [{ x: 22, y: 320, dir: 'w', label: '大厅', target: 'hall' }],
     facilities: [
       { id: 'bed_1', nodeId: 'bed_1', r: 52, label: '按摩床 1', action: 'massage' },

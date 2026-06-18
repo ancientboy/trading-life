@@ -138,7 +138,9 @@ export function RightPanel() {
           <Row k="有持仓" v={`${trading} 个`} />
           <Row k="总盈亏" v={(overview.total_pnl != null ? (overview.total_pnl >= 0 ? '+' : '') + '$' + Math.round(overview.total_pnl).toLocaleString() : '--')} className={(overview.total_pnl || 0) >= 0 ? 'profit' : 'loss'} icon={(overview.total_pnl || 0) >= 0 ? <ProfitIcon /> : <LossIcon />} />
         </div>
-        <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>系统 Agent 仅供观摩；请创建自己的 Agent 进行派遣</div>
+        <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>
+          点击场景工位可派遣 Agent 入座（免费）；系统 Agent 仅供观摩
+        </div>
         {agentList.map(a => (
           <AgentCard
             key={a.agentId}
@@ -277,8 +279,8 @@ export function RightPanel() {
 
   function renderFacilityPanel() {
     const zoneInfo: Record<string, { title: string; desc: string; modal: 'dine' | 'massage' | 'poker'; leisure: 'dine' | 'massage' | 'poker' }> = {
-      table: { title: '餐厅 · 餐桌', desc: '点餐用餐，恢复 Agent 情绪（-30% 压力）', modal: 'dine', leisure: 'dine' },
-      bed: { title: '按摩 · 理疗床', desc: '深度放松，大幅降低压力（-50% 压力）', modal: 'massage', leisure: 'massage' },
+      table: { title: '餐厅 · 餐桌', desc: '免费用餐，恢复 Agent 情绪（-30% 压力）', modal: 'dine', leisure: 'dine' },
+      bed: { title: '按摩 · 理疗床', desc: '免费深度放松，大幅降低压力（-50% 压力）', modal: 'massage', leisure: 'massage' },
       poker: { title: '德州 · 牌桌', desc: '① 免费入座 → ② 点「开始牌局」才扣买入积分', modal: 'poker', leisure: 'poker' },
     };
     const f = selectedFacility ? zoneInfo[selectedFacility] : null;

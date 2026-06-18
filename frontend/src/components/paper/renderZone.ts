@@ -13,10 +13,11 @@ import { ZONE_LAYOUTS } from '../../lib/zoneLayouts';
 import { PAPER, worldToPaper } from '../../lib/zoneProjection';
 import {
   rrect, drawDesk, drawAgent, drawNavArrow,
-  drawDiningTable, drawMassageBed, drawFacilityLabel,
+  drawDiningTable, drawFacilityLabel,
   drawMarketBigScreen, drawCoffeeZone, drawChair, drawRestBooth,
   drawPokerTable8, drawNpc, drawSpeechBubble,
   drawCasinoVipBackdrop, drawCasinoVipDecor, drawCasinoAmbientLights, drawVipChair,
+  drawSpaZenBackdrop, drawSpaVipDecor, drawSpaAmbientLights, drawSpaMassageBed,
 } from './paperDraw';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
 import { getRestSofaSprite } from '../../lib/restSofaSprite';
@@ -80,8 +81,12 @@ function drawBigTicker(
 
 function drawHallDesks(
   ctx: CanvasRenderingContext2D, cam: PaperCamera,
-  agents: Record<string, CharState>, t: number,
+  agents: Record<string, CharState>, t: number, hoverId: string | null,
 ) {
+  const deskLabels: Record<string, string> = {
+    desk_xau: 'XAU', desk_maj: 'Major', desk_alt: 'Altcoin', desk_new: 'Newcoin',
+    desk_mom: 'Momentum', desk_6: '工位 6', desk_7: '工位 7', desk_8: '工位 8',
+  };
   const ds = HALL_GRID.deskScale;
   HALL_DESKS_8.forEach(desk => {
     const dp = deskPaperPos(desk.row, desk.col);
@@ -91,12 +96,23 @@ function drawHallDesks(
     const agent = Object.values(agents).find(a => OfficePath.deskByAgent[a.agentId] === desk.seatId);
     const agentAtDesk = agent && !agent.isWalking && !agent.activity && !agent.travelIntent && !agent.inTransit;
     const trading = agentAtDesk && (agent.state === 'trading' || agent.state === 'scanning');
+    if (hoverId === desk.id) {
+      ctx.strokeStyle = 'rgba(66,133,244,0.55)'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(deskPt.x, deskPt.y, ws(cam, 52), ws(cam, 38), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     drawDesk(ctx, deskPt.x, deskPt.y, cam.scale * ds, {
       active: trading,
       chartSeed: deskChartSeed(desk.id, agent?.agentId),
       t,
     });
     drawChair(ctx, seatPt.x, seatPt.y, cam.scale * ds, 'n');
+    drawFacilityLabel(
+      ctx, deskPt.x, deskPt.y - ws(cam, 36),
+      hoverId === desk.id ? '点击派遣' : `${deskLabels[desk.id] ?? '工位'}`,
+      cam.scale, hoverId === desk.id,
+    );
   });
 }
 
@@ -115,10 +131,12 @@ function drawHallRest(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: 
   });
 }
 
-function drawSpaScene(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null) {
+function drawSpaScene(ctx: CanvasRenderingContext2D, cam: PaperCamera, t: number, hoverId: string | null) {
+  drawSpaVipDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t);
+  drawSpaAmbientLights(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v));
   SPA_BEDS.forEach(b => {
     const s = pt(cam, b.px, b.py);
-    drawMassageBed(ctx, s.x, s.y, cam.scale);
+    drawSpaMassageBed(ctx, s.x, s.y, cam.scale, hoverId === b.id);
     drawFacilityLabel(ctx, s.x, s.y + ws(cam, 38), b.label, cam.scale, hoverId === b.id);
   });
 }
@@ -191,7 +209,7 @@ function drawHallScene(
 ) {
   drawBigTicker(ctx, cam, zone, ticker, t);
   drawCoffeeZone(ctx, pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).x, pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).y, cam.scale, t);
-  drawHallDesks(ctx, cam, agents, t);
+  drawHallDesks(ctx, cam, agents, t, hoverId);
   drawHallRest(ctx, cam, hoverId);
 }
 
@@ -220,6 +238,8 @@ export function renderZone(
   const layout = ZONE_LAYOUTS[zone];
   if (zone === 'casino') {
     drawCasinoVipBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode);
+  } else if (zone === 'spa') {
+    drawSpaZenBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode);
   } else {
     ctx.fillStyle = opts.dayMode === 'day' ? layout.floorColor : '#2a2838';
     ctx.fillRect(0, 0, cam.cw, cam.ch);
@@ -231,7 +251,7 @@ export function renderZone(
       drawHallScene(ctx, cam, zone, agents, opts.ticker, opts.t, opts.hoverFacilityId);
       break;
     case 'spa':
-      drawSpaScene(ctx, cam, opts.hoverFacilityId);
+      drawSpaScene(ctx, cam, opts.t, opts.hoverFacilityId);
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
     case 'restaurant':

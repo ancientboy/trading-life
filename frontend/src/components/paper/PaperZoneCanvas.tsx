@@ -36,6 +36,7 @@ export function PaperZoneCanvas() {
   const selectAgent = useGameStore(s => s.selectAgent);
   const selectNpc = useGameStore(s => s.selectNpc);
   const sendAgentToFacility = useGameStore(s => s.sendAgentToFacility);
+  const sendAgentToDesk = useGameStore(s => s.sendAgentToDesk);
   const openModal = useGameStore(s => s.openModal);
   const setNpcBubble = useGameStore(s => s.setNpcBubble);
   const panCamera = useGameStore(s => s.panCamera);
@@ -201,13 +202,15 @@ export function PaperZoneCanvas() {
       } else if (hit.id === 'lily') openModal('dine');
       else if (hit.id === 'masseur') openModal('massage');
       else selectNpc(hit.id);
-    } else if (hit.type === 'facility') {
-      if (hit.action === 'poker') {
+    }     else if (hit.type === 'facility') {
+      if (hit.action === 'desk') {
+        void sendAgentToDesk(undefined, hit.nodeId);
+      } else if (hit.action === 'poker') {
         void sendAgentToFacility('poker', { nodeId: hit.nodeId, skipCost: true }).then(ok => {
           if (ok) openModal('poker');
         });
       } else {
-        void sendAgentToFacility(hit.action, { nodeId: hit.nodeId });
+        void sendAgentToFacility(hit.action, { nodeId: hit.nodeId, skipCost: true });
       }
     }
   };
