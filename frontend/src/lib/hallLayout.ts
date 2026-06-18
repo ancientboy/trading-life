@@ -58,7 +58,9 @@ export function syncHallDesksToPathfinding(
   });
 }
 
-export const HALL_COFFEE = { px: 52, py: 310 };
+/** 左侧竖向咖啡角 — 避开 Momentum 工位 */
+export const HALL_COFFEE = { px: 34, py: 268, vertical: true as const };
+export const HALL_COFFEE_SIZE = { w: 52, h: 118 };
 
 export function deskChartSeed(deskId: string, agentId?: string): number {
   let h = 0;
@@ -78,7 +80,12 @@ export function hallObstacleRects(): { x: number; y: number; w: number; h: numbe
   });
   rects.push({ x: 120, y: 470, w: 130, h: 70 });
   rects.push({ x: 440, y: 470, w: 130, h: 70 });
-  rects.push({ x: 10, y: 280, w: 90, h: 55 });
+  rects.push({
+    x: HALL_COFFEE.px - HALL_COFFEE_SIZE.w / 2,
+    y: HALL_COFFEE.py - HALL_COFFEE_SIZE.h / 2,
+    w: HALL_COFFEE_SIZE.w,
+    h: HALL_COFFEE_SIZE.h,
+  });
   rects.push({ x: 200, y: 55, w: 320, h: 75 });
   return rects;
 }
@@ -136,7 +143,8 @@ export function ensureHallPathGraph(
   add('u_ctr', 'scr_ctr');
   add('walk_r1_c0', 'rest_l_1');
   add('walk_r1_c3', 'rest_l_2');
-  add('walk_r1_c3', 'hall_coffee');
+  add('walk_r0_c0', 'hall_coffee');
+  add('walk_r1_c0', 'hall_coffee');
   add('walk_r1_c3', 'door_ts');
   add('walk_r0_c2', 'door_tr');
   add('door_ts', 'spa_c');

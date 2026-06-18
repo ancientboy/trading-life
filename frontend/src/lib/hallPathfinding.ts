@@ -14,7 +14,7 @@ export const HallPath = {
     rest_l_2: { x: 6.5, z: 5.8 },
     booth_a1: { x: -5.2, z: 5.8 },
     booth_b1: { x: 5.2, z: 5.8 },
-    coffee: { x: 9, z: 1 },
+    coffee: { x: 2.4, z: 5.6 },
   } as Record<string, { x: number; z: number }>,
 
   deskByAgent: {

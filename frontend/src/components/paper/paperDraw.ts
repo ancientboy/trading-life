@@ -435,33 +435,59 @@ export function drawMarketBigScreen(
   ctx.restore();
 }
 
-/** 咖啡休息区 */
-export function drawCoffeeZone(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
-  const cw = 130 * s, ch = 52 * s;
+/** 咖啡休息区 — vertical 竖向贴边 */
+export function drawCoffeeZone(
+  ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number,
+  vertical = true,
+) {
+  const cw = (vertical ? 52 : 130) * s;
+  const ch = (vertical ? 118 : 52) * s;
   dropShadow(ctx, x, y, cw, ch, 0.09);
   ctx.fillStyle = '#f5f0e8';
   rrect(ctx, x - cw / 2, y - ch / 2, cw, ch, 10 * s); ctx.fill();
   ctx.strokeStyle = '#ddd4c8'; ctx.lineWidth = 1; ctx.stroke();
-  // 咖啡机
-  ctx.fillStyle = '#4a4a4a';
-  rrect(ctx, x - cw / 2 + 8 * s, y - 16 * s, 28 * s, 32 * s, 4 * s); ctx.fill();
-  ctx.fillStyle = '#666';
-  rrect(ctx, x - cw / 2 + 12 * s, y - 12 * s, 20 * s, 8 * s, 2 * s); ctx.fill();
-  // 杯列
-  for (let i = 0; i < 4; i++) {
-    const cx = x - cw / 2 + 48 * s + i * 18 * s;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.ellipse(cx, y + 4 * s, 6 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#8B6914';
-    ctx.beginPath(); ctx.ellipse(cx, y + 2 * s, 4.5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
-    if (i === 0) {
-      ctx.strokeStyle = 'rgba(180,180,180,0.5)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(cx, y - 4 * s);
-      ctx.quadraticCurveTo(cx + 3 * s, y - 10 * s - Math.sin(t * 3) * 2, cx - 2 * s, y - 12 * s);
-      ctx.stroke();
+
+  if (vertical) {
+    ctx.fillStyle = '#4a4a4a';
+    rrect(ctx, x - 14 * s, y - ch / 2 + 10 * s, 28 * s, 32 * s, 4 * s); ctx.fill();
+    ctx.fillStyle = '#666';
+    rrect(ctx, x - 10 * s, y - ch / 2 + 14 * s, 20 * s, 8 * s, 2 * s); ctx.fill();
+    for (let i = 0; i < 4; i++) {
+      const cy = y - ch / 2 + 52 * s + i * 16 * s;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.ellipse(x, cy + 4 * s, 6 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8B6914';
+      ctx.beginPath(); ctx.ellipse(x, cy + 2 * s, 4.5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+      if (i === 0) {
+        ctx.strokeStyle = 'rgba(180,180,180,0.5)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, cy - 4 * s);
+        ctx.quadraticCurveTo(x + 3 * s, cy - 10 * s - Math.sin(t * 3) * 2, x - 2 * s, cy - 12 * s);
+        ctx.stroke();
+      }
     }
+    ctx.fillStyle = '#6b8e4e';
+    ctx.beginPath(); ctx.ellipse(x, y + ch / 2 - 14 * s, 8 * s, 10 * s, 0, 0, Math.PI * 2); ctx.fill();
+    drawFacilityLabel(ctx, x + cw / 2 + 18 * s, y, '☕ 咖啡区', s);
+  } else {
+    ctx.fillStyle = '#4a4a4a';
+    rrect(ctx, x - cw / 2 + 8 * s, y - 16 * s, 28 * s, 32 * s, 4 * s); ctx.fill();
+    ctx.fillStyle = '#666';
+    rrect(ctx, x - cw / 2 + 12 * s, y - 12 * s, 20 * s, 8 * s, 2 * s); ctx.fill();
+    for (let i = 0; i < 4; i++) {
+      const cx = x - cw / 2 + 48 * s + i * 18 * s;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.ellipse(cx, y + 4 * s, 6 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8B6914';
+      ctx.beginPath(); ctx.ellipse(cx, y + 2 * s, 4.5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+      if (i === 0) {
+        ctx.strokeStyle = 'rgba(180,180,180,0.5)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(cx, y - 4 * s);
+        ctx.quadraticCurveTo(cx + 3 * s, y - 10 * s - Math.sin(t * 3) * 2, cx - 2 * s, y - 12 * s);
+        ctx.stroke();
+      }
+    }
+    drawFacilityLabel(ctx, x, y + ch / 2 + 14 * s, '☕ 咖啡区', s);
   }
-  drawFacilityLabel(ctx, x, y + ch / 2 + 14 * s, '☕ 咖啡区', s);
 }
 
 export function drawZoneTransitOverlay(
