@@ -113,24 +113,64 @@ export async function listPokerRooms() {
   return parse<{ ok: boolean; rooms: PokerRoom[] }>(r);
 }
 
-export async function createPokerRoom(buyIn = 30) {
+export async function createPokerRoom(buyIn = 30, agentId = '') {
   const r = await fetch(`${API}/pvp/poker/rooms`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ buy_in: buyIn }),
+    method: 'POST', headers: headers(), body: JSON.stringify({ buy_in: buyIn, agent_id: agentId }),
   });
-  return parse<{ ok: boolean; room_id?: string; buy_in?: number }>(r);
+  return parse<{
+    ok: boolean; room_id?: string; room_code?: string; buy_in?: number; seat_id?: string;
+    room?: PokerRoom; message?: string; error?: string;
+  }>(r);
+}
+
+export async function fetchPokerRoom(roomId: string) {
+  const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}`, { headers: headers() });
+  return parse<{ ok: boolean; room?: PokerRoom; error?: string }>(r);
 }
 
 export async function joinPokerRoom(roomId: string, agentId: string, seatId = '') {
-  const r = await fetch(`${API}/pvp/poker/rooms/${roomId}/join`, {
+  const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/join`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, seat_id: seatId }),
   });
-  return parse<{ ok: boolean; error?: string; balance?: number; seat_id?: string }>(r);
+  return parse<{
+    ok: boolean; error?: string; balance?: number; seat_id?: string;
+    room_id?: string; room_code?: string; room?: PokerRoom; message?: string;
+  }>(r);
+}
+
+export async function joinPokerRoomByCode(roomCode: string, agentId: string, seatId = '') {
+  const r = await fetch(`${API}/pvp/poker/rooms/join-by-code`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ room_code: roomCode, agent_id: agentId, seat_id: seatId }),
+  });
+  return parse<{
+    ok: boolean; error?: string; seat_id?: string;
+    room_id?: string; room_code?: string; room?: PokerRoom; message?: string;
+  }>(r);
+}
+
+export async function leavePokerRoom(roomId: string) {
+  const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/leave`, {
+    method: 'POST', headers: headers(),
+  });
+  return parse<{ ok: boolean; closed?: boolean; message?: string; error?: string }>(r);
+}
+
+export async function changePokerSeat(roomId: string, seatId: string) {
+  const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/seat`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ seat_id: seatId }),
+  });
+  return parse<{
+    ok: boolean; error?: string; seat_id?: string; room?: PokerRoom; message?: string;
+  }>(r);
 }
 
 export async function startPokerRoom(roomId: string) {
-  const r = await fetch(`${API}/pvp/poker/rooms/${roomId}/start`, { method: 'POST', headers: headers() });
+  const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/start`, { method: 'POST', headers: headers() });
   return parse<{
     ok: boolean; mode?: string; balance?: number; won?: number; net?: number; cost?: number; pot?: number;
+    community_cards?: string[];
+    tie?: boolean; winners_count?: number;
     results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
     error?: string;
   }>(r);
@@ -177,8 +217,8 @@ export async function pokerQuickJoin(agentId: string, buyIn = 30) {
     method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, buy_in: buyIn }),
   });
   return parse<{
-    ok: boolean; mode?: string; room_id?: string; balance?: number; won?: number; pot?: number;
-    message?: string; players?: number; joined?: boolean; buy_in?: number;
+    ok: boolean; mode?: string; room_id?: string; room_code?: string; balance?: number; won?: number; pot?: number;
+    message?: string; players?: number; joined?: boolean; buy_in?: number; seat_id?: string; room?: PokerRoom;
     results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
     error?: string; cost?: number;
   }>(r);
@@ -221,8 +261,15 @@ export async function tradingPk(defenderId = '', stake = 50) {
   return parse<{ ok: boolean; winner_id?: string; won?: number; balance?: number; challenger_score?: number; defender_score?: number; error?: string }>(r);
 }
 
+export interface PokerRoomPlayer {
+  user_id: string; agent_id: string; seat_id: string; buy_in?: number; score?: number; rank?: number;
+  display_name?: string; agent_name?: string; user_name?: string;
+  color?: string; headwear?: string; hat_style?: string; is_npc?: boolean;
+}
+
 export interface PokerRoom {
-  id: string; status: string; pot: number; buy_in: number; players: { user_id: string; agent_id: string; seat_id: string }[];
+  id: string; room_code?: string; status: string; pot: number; buy_in: number;
+  human_count?: number; player_names?: string[]; players: PokerRoomPlayer[];
 }
 
 export interface SeatAuction {

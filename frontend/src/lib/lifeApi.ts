@@ -100,11 +100,11 @@ export async function claimDailyAllowance() {
   return parse<{ ok: boolean; balance: number; amount: number; error?: string }>(r);
 }
 
-export async function lifeIdleTick(agentCount: number) {
+export async function lifeIdleTick(agentCount?: number) {
   const r = await fetch(`${API}/points/idle`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ agent_count: agentCount, elapsed_ms: 0 }),
+    method: 'POST', headers: headers(), body: JSON.stringify({ agent_count: agentCount ?? 0, elapsed_ms: 0 }),
   });
-  return parse<{ ok: boolean; balance: number; earned: number; daily_cap?: boolean }>(r);
+  return parse<{ ok: boolean; balance: number; earned: number; daily_cap?: boolean; agent_count?: number; owned_agent_count?: number }>(r);
 }
 
 export async function lifeSessionStart() {

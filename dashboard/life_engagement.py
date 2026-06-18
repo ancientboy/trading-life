@@ -218,11 +218,22 @@ async def table_speak(body: TableSpeakBody, account_id: str = Depends(resolve_ac
 
 class PokerCreateBody(BaseModel):
     buy_in: int = 30
+    agent_id: str = ""
 
 
 class PokerJoinBody(BaseModel):
     agent_id: str
     seat_id: str = ""
+
+
+class PokerJoinByCodeBody(BaseModel):
+    room_code: str
+    agent_id: str
+    seat_id: str = ""
+
+
+class PokerChangeSeatBody(BaseModel):
+    seat_id: str
 
 
 class PokerSoloBody(BaseModel):
@@ -318,6 +329,115 @@ def _player_display_name(p: dict, account_id: str) -> str:
         acc = life_db.get_account_by_id(uid)
         return (acc or {}).get("display_name") or uid[:8]
     return uid[:8]
+
+
+NPC_COLORS = {
+    "npc_lily": "#e8a0bf",
+    "npc_gaga": "#b8a0e8",
+}
+
+
+def _generate_room_code(c) -> str:
+    """生成唯一 5 位数字房间号（10000–99999）。"""
+    for _ in range(40):
+        code = str(random.randint(10000, 99999))
+        if not c.execute("SELECT 1 FROM poker_rooms WHERE id=?", (code,)).fetchone():
+            return code
+    raise HTTPException(500, "无法生成房间号，请稍后重试")
+
+
+def _resolve_room_id(c, room_id_or_code: str) -> Optional[str]:
+    """按房间 ID 或 5 位编号解析房间。"""
+    key = (room_id_or_code or "").strip()
+    if not key:
+        return None
+    if c.execute("SELECT id FROM poker_rooms WHERE id=?", (key,)).fetchone():
+        return key
+    if key.isdigit() and len(key) <= 5:
+        padded = key.zfill(5) if len(key) < 5 else key
+        row = c.execute("SELECT id FROM poker_rooms WHERE id=?", (padded,)).fetchone()
+        if row:
+            return row["id"]
+    return None
+
+
+def _enrich_poker_player(p: dict, account_id: str) -> dict:
+    d = dict(p)
+    uid = d["user_id"]
+    d["is_npc"] = str(uid).startswith("npc_")
+    d["display_name"] = _player_display_name(d, account_id)
+    d["agent_name"] = d["display_name"]
+    d["user_name"] = d["display_name"]
+    d["color"] = NPC_COLORS.get(uid, "#6a8aad")
+    d["headwear"] = ""
+    d["hat_style"] = ""
+    if not d["is_npc"]:
+        from life_game import load_user
+        user = load_user(uid)
+        acc = life_db.get_account_by_id(uid)
+        d["user_name"] = (acc or {}).get("display_name") or (acc or {}).get("username") or uid[:8]
+        agent_id = d.get("agent_id") or ""
+        custom = user.get("custom_agents") or {}
+        if agent_id and agent_id in custom:
+            ca = custom[agent_id]
+            d["agent_name"] = ca.get("name") or agent_id
+            d["color"] = ca.get("color") or d["color"]
+            d["headwear"] = ca.get("headwear") or ""
+            d["hat_style"] = ca.get("hatStyle") or ca.get("hat_style") or ""
+        else:
+            d["agent_name"] = d["user_name"]
+    return d
+
+
+def _human_count_in_room(c, room_id: str) -> int:
+    return c.execute(
+        "SELECT COUNT(*) FROM poker_room_players WHERE room_id=? AND user_id NOT LIKE 'npc_%'",
+        (room_id,),
+    ).fetchone()[0]
+
+
+def _close_poker_room(c, room_id: str) -> None:
+    """关闭等待中的空房间（删除玩家记录并标记 closed）。"""
+    c.execute("DELETE FROM poker_room_players WHERE room_id=?", (room_id,))
+    c.execute(
+        "UPDATE poker_rooms SET status='closed', settled_at=? WHERE id=? AND status='waiting'",
+        (life_db.now_ms(), room_id),
+    )
+
+
+def _cleanup_empty_waiting_rooms(c) -> None:
+    rows = c.execute("SELECT id FROM poker_rooms WHERE status='waiting'").fetchall()
+    for r in rows:
+        if _human_count_in_room(c, r["id"]) == 0:
+            _close_poker_room(c, r["id"])
+
+
+def _leave_poker_room(c, room_id: str, user_id: str) -> bool:
+    """移除玩家；若房间无真人则自动关闭。返回房间是否已关闭。"""
+    c.execute(
+        "DELETE FROM poker_room_players WHERE room_id=? AND user_id=?",
+        (room_id, user_id),
+    )
+    if _human_count_in_room(c, room_id) == 0:
+        _close_poker_room(c, room_id)
+        return True
+    return False
+
+
+def _room_payload(c, room: dict, account_id: str) -> dict:
+    d = dict(room)
+    players = c.execute(
+        "SELECT user_id, agent_id, seat_id, buy_in, score, rank FROM poker_room_players WHERE room_id=?",
+        (room["id"],),
+    ).fetchall()
+    enriched = [_enrich_poker_player(dict(p), account_id) for p in players]
+    humans = [p for p in enriched if not p["is_npc"]]
+    human_count = len(humans)
+    d["room_code"] = room["id"]
+    d["players"] = enriched
+    d["human_count"] = human_count
+    d["player_names"] = [p["user_name"] for p in humans]
+    return d
 
 
 def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str) -> dict:
@@ -490,6 +610,10 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
         with life_db._conn() as c:
             rows = c.execute(
                 """SELECT * FROM poker_rooms WHERE status='waiting' AND id NOT LIKE 'solo_%'
+                   AND EXISTS (
+                     SELECT 1 FROM poker_room_players p
+                     WHERE p.room_id=poker_rooms.id AND p.user_id NOT LIKE 'npc_%'
+                   )
                    ORDER BY created_at ASC LIMIT 10"""
             ).fetchall()
             target = None
@@ -508,18 +632,28 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
     with life_db._lock:
         with life_db._conn() as c:
             count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (target["id"],)).fetchone()[0]
-            seat = body.seat_id or f"poker_s{(count % 7) + 1}"
+            taken = {r["seat_id"] for r in c.execute(
+                "SELECT seat_id FROM poker_room_players WHERE room_id=?", (target["id"],)
+            ).fetchall()}
+            seat = body.seat_id
+            if not seat or seat in taken:
+                for i in range(1, 8):
+                    candidate = f"poker_s{i}"
+                    if candidate not in taken:
+                        seat = candidate
+                        break
+                else:
+                    seat = f"poker_s{(count % 7) + 1}"
             c.execute(
                 "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
                 (target["id"], account_id, body.agent_id, seat, 0),
             )
-            players = c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (target["id"],)).fetchall()
+            payload = _room_payload(c, target, account_id)
 
-    human_count = sum(1 for p in players if not dict(p)["user_id"].startswith("npc_"))
     return {
-        "ok": True, "mode": "waiting", "room_id": target["id"],
-        "players": human_count, "buy_in": target["buy_in"],
-        "message": f"已入座（免费），房间 {human_count} 人 · 满员后点「开始牌局」才扣 {target['buy_in']} 积分",
+        "ok": True, "mode": "waiting", "room_id": target["id"], "room_code": target["id"],
+        "seat_id": seat, "buy_in": target["buy_in"], "room": payload,
+        "message": f"已加入房间 {target['id']}（免费）· {payload['human_count']} 人在座 · 满员后点「开始牌局」才扣 {target['buy_in']} 积分",
     }
 
 
@@ -543,33 +677,65 @@ class TradingPkBody(BaseModel):
 async def list_poker_rooms(account_id: str = Depends(resolve_account_id)):
     with life_db._lock:
         with life_db._conn() as c:
+            _cleanup_empty_waiting_rooms(c)
             rooms = c.execute(
-                "SELECT * FROM poker_rooms WHERE status IN ('waiting','playing') ORDER BY created_at DESC LIMIT 20"
+                """SELECT * FROM poker_rooms WHERE status='waiting'
+                   AND EXISTS (
+                     SELECT 1 FROM poker_room_players p
+                     WHERE p.room_id=poker_rooms.id AND p.user_id NOT LIKE 'npc_%'
+                   )
+                   ORDER BY created_at DESC LIMIT 20"""
             ).fetchall()
-            result = []
-            for r in rooms:
-                d = dict(r)
-                players = c.execute(
-                    "SELECT user_id, agent_id, seat_id, buy_in, score FROM poker_room_players WHERE room_id=?",
-                    (r["id"],),
-                ).fetchall()
-                d["players"] = [dict(p) for p in players]
-                result.append(d)
+            result = [_room_payload(c, dict(r), account_id) for r in rooms]
     return {"ok": True, "rooms": result}
+
+
+@pvp_router.get("/pvp/poker/rooms/{room_id}")
+async def get_poker_room(room_id: str, account_id: str = Depends(resolve_account_id)):
+    with life_db._lock:
+        with life_db._conn() as c:
+            _cleanup_empty_waiting_rooms(c)
+            rid = _resolve_room_id(c, room_id)
+            if not rid:
+                return {"ok": False, "error": "房间不存在"}
+            room = c.execute("SELECT * FROM poker_rooms WHERE id=?", (rid,)).fetchone()
+            if not room:
+                return {"ok": False, "error": "房间不存在"}
+            room = dict(room)
+            if room["status"] == "waiting" and _human_count_in_room(c, rid) == 0:
+                _close_poker_room(c, rid)
+                return {"ok": False, "error": "房间已关闭（无人）"}
+            if room["status"] in ("closed", "settled"):
+                return {"ok": False, "error": "房间已关闭"}
+            payload = _room_payload(c, room, account_id)
+    return {"ok": True, "room": payload}
 
 
 @pvp_router.post("/pvp/poker/rooms")
 async def create_poker_room(body: PokerCreateBody, account_id: str = Depends(resolve_account_id)):
-    rid = f"room_{uuid.uuid4().hex[:10]}"
     ts = life_db.now_ms()
     buy_in = max(10, min(body.buy_in, 500))
+    agent_id = (body.agent_id or "").strip()
+    seat = "poker_s1"
     with life_db._lock:
         with life_db._conn() as c:
+            rid = _generate_room_code(c)
             c.execute(
                 "INSERT INTO poker_rooms (id, status, pot, host_user_id, buy_in, created_at) VALUES (?,?,0,?,?,?)",
                 (rid, "waiting", account_id, buy_in, ts),
             )
-    return {"ok": True, "room_id": rid, "buy_in": buy_in}
+            if agent_id:
+                c.execute(
+                    "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
+                    (rid, account_id, agent_id, seat, 0),
+                )
+            room = dict(c.execute("SELECT * FROM poker_rooms WHERE id=?", (rid,)).fetchone())
+            payload = _room_payload(c, room, account_id)
+    return {
+        "ok": True, "room_id": rid, "room_code": rid, "buy_in": buy_in,
+        "seat_id": seat if agent_id else "", "room": payload,
+        "message": f"房间 {rid} 已创建 · 把编号告诉好友即可加入",
+    }
 
 
 @pvp_router.post("/pvp/poker/rooms/{room_id}/join")
@@ -577,28 +743,123 @@ async def join_poker_room(room_id: str, body: PokerJoinBody, account_id: str = D
     """入座加入房间（免费，开局时才扣买入积分）。"""
     with life_db._lock:
         with life_db._conn() as c:
-            room = c.execute("SELECT * FROM poker_rooms WHERE id=? AND status='waiting'", (room_id,)).fetchone()
+            rid = _resolve_room_id(c, room_id)
+            if not rid:
+                return {"ok": False, "error": "房间不存在"}
+            room = c.execute("SELECT * FROM poker_rooms WHERE id=? AND status='waiting'", (rid,)).fetchone()
             if not room:
                 return {"ok": False, "error": "房间不可用"}
-            if c.execute("SELECT 1 FROM poker_room_players WHERE room_id=? AND user_id=?", (room_id, account_id)).fetchone():
+            if c.execute("SELECT 1 FROM poker_room_players WHERE room_id=? AND user_id=?", (rid, account_id)).fetchone():
                 return {"ok": False, "error": "已在房间中"}
-            count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (room_id,)).fetchone()[0]
+            count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (rid,)).fetchone()[0]
             if count >= 8:
                 return {"ok": False, "error": "房间已满"}
-            seat = body.seat_id or f"poker_s{(count % 7) + 1}"
+            taken = {r["seat_id"] for r in c.execute(
+                "SELECT seat_id FROM poker_room_players WHERE room_id=?", (rid,)
+            ).fetchall()}
+            seat = body.seat_id
+            if not seat or seat in taken:
+                for i in range(1, 8):
+                    candidate = f"poker_s{i}"
+                    if candidate not in taken:
+                        seat = candidate
+                        break
+                else:
+                    seat = f"poker_s{(count % 7) + 1}"
             c.execute(
                 "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
-                (room_id, account_id, body.agent_id, seat, 0),
+                (rid, account_id, body.agent_id, seat, 0),
             )
-            human_count = c.execute(
-                "SELECT COUNT(*) FROM poker_room_players WHERE room_id=? AND user_id NOT LIKE 'npc_%'",
-                (room_id,),
-            ).fetchone()[0]
-    room = dict(room)
+            room = dict(room)
+            payload = _room_payload(c, room, account_id)
     return {
-        "ok": True, "room_id": room_id, "seat_id": seat,
-        "players": human_count, "buy_in": room["buy_in"],
-        "message": f"已入座（免费）· {human_count}/{room['min_players']} 人 · 点「开始牌局」扣 {room['buy_in']} 积分",
+        "ok": True, "room_id": rid, "room_code": rid, "seat_id": seat,
+        "buy_in": room["buy_in"], "room": payload,
+        "message": f"已加入房间 {rid} · 免费入座 · 点「开始牌局」扣 {room['buy_in']} 积分",
+    }
+
+
+@pvp_router.post("/pvp/poker/rooms/join-by-code")
+async def join_poker_room_by_code(body: PokerJoinByCodeBody, account_id: str = Depends(resolve_account_id)):
+    """通过 5 位房间编号加入。"""
+    code = (body.room_code or "").strip()
+    if not code.isdigit() or not (1 <= len(code) <= 5):
+        return {"ok": False, "error": "请输入 5 位数字房间编号"}
+    return await join_poker_room(code.zfill(5) if len(code) < 5 else code, PokerJoinBody(
+        agent_id=body.agent_id, seat_id=body.seat_id,
+    ), account_id)
+
+
+@pvp_router.post("/pvp/poker/rooms/{room_id}/seat")
+async def change_poker_seat(room_id: str, body: PokerChangeSeatBody, account_id: str = Depends(resolve_account_id)):
+    """在房间内更换座位（仅等待中可换）。"""
+    seat_req = (body.seat_id or "").strip()
+    if not seat_req.startswith("poker_s"):
+        return {"ok": False, "error": "无效座位"}
+    try:
+        num = int(seat_req.replace("poker_s", ""))
+        if not 1 <= num <= 7:
+            return {"ok": False, "error": "无效座位"}
+    except ValueError:
+        return {"ok": False, "error": "无效座位"}
+
+    with life_db._lock:
+        with life_db._conn() as c:
+            rid = _resolve_room_id(c, room_id)
+            if not rid:
+                return {"ok": False, "error": "房间不存在"}
+            room = c.execute("SELECT * FROM poker_rooms WHERE id=? AND status='waiting'", (rid,)).fetchone()
+            if not room:
+                return {"ok": False, "error": "牌局已开始，无法换座"}
+            row = c.execute(
+                "SELECT * FROM poker_room_players WHERE room_id=? AND user_id=?",
+                (rid, account_id),
+            ).fetchone()
+            if not row:
+                return {"ok": False, "error": "你不在该房间中"}
+            player = dict(row)
+            if player.get("seat_id") == seat_req:
+                payload = _room_payload(c, dict(room), account_id)
+                return {"ok": True, "seat_id": seat_req, "room": payload, "message": "已在该座位"}
+            taken = c.execute(
+                "SELECT user_id FROM poker_room_players WHERE room_id=? AND seat_id=? AND user_id!=?",
+                (rid, seat_req, account_id),
+            ).fetchone()
+            if taken:
+                return {"ok": False, "error": "该座位已被占用"}
+            c.execute(
+                "UPDATE poker_room_players SET seat_id=? WHERE room_id=? AND user_id=?",
+                (seat_req, rid, account_id),
+            )
+            payload = _room_payload(c, dict(room), account_id)
+    return {
+        "ok": True, "room_id": rid, "seat_id": seat_req, "room": payload,
+        "message": f"已换到座位 {num}",
+    }
+
+
+@pvp_router.post("/pvp/poker/rooms/{room_id}/leave")
+async def leave_poker_room(room_id: str, account_id: str = Depends(resolve_account_id)):
+    """离开房间；若房间无真人则自动关闭。"""
+    with life_db._lock:
+        with life_db._conn() as c:
+            rid = _resolve_room_id(c, room_id)
+            if not rid:
+                return {"ok": True, "closed": True, "message": "房间已不存在"}
+            room = c.execute("SELECT * FROM poker_rooms WHERE id=? AND status='waiting'", (rid,)).fetchone()
+            if not room:
+                return {"ok": True, "closed": True, "message": "房间已结束或关闭"}
+            if not c.execute(
+                "SELECT 1 FROM poker_room_players WHERE room_id=? AND user_id=?",
+                (rid, account_id),
+            ).fetchone():
+                return {"ok": True, "closed": False, "message": "你已不在该房间中"}
+            closed = _leave_poker_room(c, rid, account_id)
+    return {
+        "ok": True,
+        "closed": closed,
+        "room_id": rid,
+        "message": "房间已关闭" if closed else "已离开房间",
     }
 
 
