@@ -1008,41 +1008,56 @@ export function drawPokerTable8(
     rrect(ctx, x - 10 * s + i * 8 * s, y - 46 * s, 6 * s, 9 * s, 1 * s); ctx.fill();
   }
 
-  const cards = ['🂡', '🂱', '🃁', '🃑'];
+  const cards = ['🂡', '🂱', '🃁', '🃑', '🂮'];
+  const cardGap = 13 * s;
+  const cardStart = x - (cards.length - 1) * cardGap / 2;
   cards.forEach((c, i) => {
     ctx.save();
-    ctx.translate(x - 22 * s + i * 15 * s, y + Math.sin(t * 2 + i) * 2 * s);
+    ctx.translate(cardStart + i * cardGap, y + Math.sin(t * 2 + i) * 1.5 * s);
     ctx.fillStyle = '#fffef8';
-    rrect(ctx, -7 * s, -10 * s, 14 * s, 20 * s, 2 * s); ctx.fill();
+    rrect(ctx, -6.5 * s, -9 * s, 13 * s, 18 * s, 2 * s); ctx.fill();
     ctx.strokeStyle = '#c4b8a8'; ctx.lineWidth = 0.8 * s; ctx.stroke();
-    ctx.font = `${Math.max(9, 12 * s)}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(c, 0, 4 * s);
+    ctx.font = `${Math.max(8, 11 * s)}px sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText(c, 0, 3.5 * s);
     ctx.restore();
   });
 
-  drawPokerChips(ctx, x, y + 18 * s, s, chipColors, 5);
-  drawPokerChips(ctx, x - 38 * s, y - 8 * s, s, chipColors.slice(1), 3);
-  drawPokerChips(ctx, x + 38 * s, y - 8 * s, s, chipColors.slice(2), 3);
-
-  drawPokerSeatNumbers(ctx, x, y, s);
+  drawPokerSeatNumbers(ctx, x, y, s, chipColors);
 
   ctx.fillStyle = pal.gold;
-  ctx.font = `700 ${Math.max(9, 11 * s)}px Inter,sans-serif`; ctx.textAlign = 'center';
-  ctx.fillText('TEXAS HOLD\'EM', x, y + 38 * s);
+  ctx.font = `700 ${Math.max(8, 10 * s)}px Inter,sans-serif`; ctx.textAlign = 'center';
+  ctx.fillText('TEXAS HOLD\'EM', x, y + 32 * s);
 }
 
-/** 桌面顺时针 1–7 号位（跳过荷官正北） */
-function drawPokerSeatNumbers(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+/** 桌面顺时针 1–7 号位（跳过荷官正北）+ 各座位前筹码堆 */
+function drawPokerSeatNumbers(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, s: number,
+  chipColors: string[],
+) {
+  const numRx = 100 * s;
+  const numRy = 66 * s;
+  const chipRx = 82 * s;
+  const chipRy = 54 * s;
+  const r = 6 * s;
+
   for (let seatNum = 1; seatNum <= CASINO_PLAYER_SEATS; seatNum++) {
     const ang = casinoSeatSlotAngle(seatNum);
-    const lx = x + Math.cos(ang) * 62 * s;
-    const ly = y + Math.sin(ang) * 42 * s;
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.beginPath(); ctx.arc(lx, ly, 9 * s, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(212,175,55,0.55)'; ctx.lineWidth = 0.8 * s; ctx.stroke();
-    ctx.fillStyle = '#3d3530';
-    ctx.font = `700 ${Math.max(8, 10 * s)}px Inter,sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(String(seatNum), lx, ly + 3 * s);
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const lx = x + cos * numRx;
+    const ly = y + sin * numRy;
+    const cx = x + cos * chipRx;
+    const cy = y + sin * chipRy;
+
+    drawPokerChips(ctx, cx, cy, s, chipColors, 4);
+
+    ctx.fillStyle = 'rgba(45, 28, 38, 0.92)';
+    ctx.beginPath(); ctx.arc(lx, ly, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(212,175,55,0.75)'; ctx.lineWidth = 0.7 * s; ctx.stroke();
+    ctx.fillStyle = '#e8c547';
+    ctx.font = `700 ${Math.max(7, 8.5 * s)}px Inter,sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText(String(seatNum), lx, ly + 2.5 * s);
   }
 }
 
