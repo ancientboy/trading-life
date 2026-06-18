@@ -4,6 +4,7 @@ import { getPokerTableSprite } from '../../lib/pokerTableSprite';
 import { getMassageBedSprite } from '../../lib/massageBedSprite';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
 import { getRestSofaSprite } from '../../lib/restSofaSprite';
+import { PAPER } from '../../lib/zoneProjection';
 import { outfitForRole, type NpcRole } from '../../lib/npcOutfits';
 import { DEFAULT_SCARF, scarfColorsFromAccent, type ScarfPalette } from '../../lib/scarfColors';
 import {
@@ -34,14 +35,24 @@ export function dropShadow(ctx: CanvasRenderingContext2D, x: number, y: number, 
 
 export function drawDesk(
   ctx: CanvasRenderingContext2D, x: number, y: number, s: number,
-  opts: { active?: boolean; chartSeed?: number; t?: number } = {},
+  opts: { active?: boolean; chartSeed?: number; t?: number; skinKey?: string } = {},
 ) {
   const monitorActive = opts.active ?? false;
   const t = opts.t ?? 0;
   const seed = opts.chartSeed ?? 1;
+  const premium = opts.skinKey === 'gold';
   const dw = 82 * s, dh = 50 * s, r = 6 * s, side = 4 * s;
-  dropShadow(ctx, x, y + side / 2, dw, dh);
-  ctx.fillStyle = '#e2e2e2';
+  const woodTop = premium ? '#c9a86c' : '#e8e0d4';
+  const woodSide = premium ? '#8b6914' : '#c8baa8';
+  const woodLeg = premium ? '#6b5010' : '#a89888';
+
+  dropShadow(ctx, x, y + side / 2, dw + 8 * s, dh + 8 * s, 0.1);
+  // 桌腿
+  ctx.fillStyle = woodLeg;
+  rrect(ctx, x - dw / 2 + 6 * s, y + dh / 2 - 2 * s, 8 * s, 14 * s, 2 * s); ctx.fill();
+  rrect(ctx, x + dw / 2 - 14 * s, y + dh / 2 - 2 * s, 8 * s, 14 * s, 2 * s); ctx.fill();
+  // 侧板
+  ctx.fillStyle = woodSide;
   ctx.beginPath();
   ctx.moveTo(x + dw / 2, y - dh / 2);
   ctx.lineTo(x + dw / 2, y + dh / 2);
@@ -49,17 +60,42 @@ export function drawDesk(
   ctx.lineTo(x - dw / 2, y + dh / 2 + side);
   ctx.lineTo(x - dw / 2, y + dh / 2);
   ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#fafafa';
+  // 桌面
+  ctx.fillStyle = woodTop;
   rrect(ctx, x - dw / 2, y - dh / 2, dw, dh, r); ctx.fill();
-  ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = premium ? 'rgba(212,175,55,0.45)' : '#ddd4c8';
+  ctx.lineWidth = premium ? 1.2 * s : 1; ctx.stroke();
+  // 键盘
+  ctx.fillStyle = '#3a3a3a';
+  rrect(ctx, x - 18 * s, y + 4 * s, 36 * s, 10 * s, 2 * s); ctx.fill();
+  ctx.fillStyle = '#555';
+  for (let i = 0; i < 5; i++) {
+    rrect(ctx, x - 14 * s + i * 6 * s, y + 6 * s, 4 * s, 3 * s, 1 * s); ctx.fill();
+  }
+  // 咖啡杯
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.ellipse(x + 24 * s, y + 2 * s, 5 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#8B6914';
+  ctx.beginPath(); ctx.ellipse(x + 24 * s, y + 1 * s, 3.5 * s, 2.5 * s, 0, 0, Math.PI * 2); ctx.fill();
 
   const mw = 36 * s, mh = 22 * s;
   const mx = x - mw / 2, my = y - dh / 2 - mh - 4 * s;
-  ctx.fillStyle = '#2a2a2a';
+  ctx.fillStyle = premium ? '#1a1408' : '#2a2a2a';
   rrect(ctx, mx, my, mw, mh, 4 * s); ctx.fill();
   ctx.fillStyle = monitorActive ? '#0a1520' : '#141820';
   rrect(ctx, mx + 2 * s, my + 2 * s, mw - 4 * s, mh - 4 * s, 3 * s); ctx.fill();
   drawMiniChart(ctx, mx + 3 * s, my + 3 * s, mw - 6 * s, mh - 6 * s, seed, t, monitorActive);
+  // 副屏
+  if (premium) {
+    const sw = 18 * s, sh = 14 * s;
+    ctx.fillStyle = '#1a1408';
+    rrect(ctx, mx + mw + 4 * s, my + 4 * s, sw, sh, 2 * s); ctx.fill();
+    ctx.fillStyle = monitorActive ? '#0a1520' : '#141820';
+    rrect(ctx, mx + mw + 5 * s, my + 5 * s, sw - 2 * s, sh - 2 * s, 2 * s); ctx.fill();
+  }
+  // 显示器支架
+  ctx.fillStyle = '#444';
+  rrect(ctx, x - 4 * s, y - dh / 2 - 3 * s, 8 * s, 4 * s, 1 * s); ctx.fill();
 }
 
 export function drawBooth(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
@@ -538,16 +574,20 @@ export function drawMarketBigScreen(
 }
 
 /** 咖啡休息区 */
-export function drawCoffeeZone(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
+export function drawCoffeeZone(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number, skinKey = 'default') {
+  const premium = skinKey === 'gold';
   const cw = 130 * s, ch = 52 * s;
-  dropShadow(ctx, x, y, cw, ch, 0.09);
-  ctx.fillStyle = '#f5f0e8';
+  dropShadow(ctx, x, y, cw + 10 * s, ch + 10 * s, 0.1);
+  // 吧台
+  ctx.fillStyle = premium ? '#8b6914' : '#c8baa8';
   rrect(ctx, x - cw / 2, y - ch / 2, cw, ch, 10 * s); ctx.fill();
-  ctx.strokeStyle = '#ddd4c8'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = premium ? '#f8f0e0' : '#f5f0e8';
+  rrect(ctx, x - cw / 2 + 3 * s, y - ch / 2 + 3 * s, cw - 6 * s, ch - 6 * s, 8 * s); ctx.fill();
+  ctx.strokeStyle = premium ? 'rgba(212,175,55,0.5)' : '#ddd4c8'; ctx.lineWidth = 1; ctx.stroke();
   // 咖啡机
-  ctx.fillStyle = '#4a4a4a';
+  ctx.fillStyle = premium ? '#2a2218' : '#4a4a4a';
   rrect(ctx, x - cw / 2 + 8 * s, y - 16 * s, 28 * s, 32 * s, 4 * s); ctx.fill();
-  ctx.fillStyle = '#666';
+  ctx.fillStyle = premium ? '#d4af37' : '#666';
   rrect(ctx, x - cw / 2 + 12 * s, y - 12 * s, 20 * s, 8 * s, 2 * s); ctx.fill();
   // 杯列
   for (let i = 0; i < 4; i++) {
@@ -563,7 +603,89 @@ export function drawCoffeeZone(ctx: CanvasRenderingContext2D, x: number, y: numb
       ctx.stroke();
     }
   }
+  // 小绿植
+  ctx.fillStyle = '#6b8e4e';
+  ctx.beginPath(); ctx.ellipse(x + cw / 2 - 16 * s, y - 8 * s, 8 * s, 10 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#8b6914';
+  rrect(ctx, x + cw / 2 - 20 * s, y + 2 * s, 8 * s, 10 * s, 2 * s); ctx.fill();
   drawFacilityLabel(ctx, x, y + ch / 2 + 14 * s, '☕ 咖啡区', s);
+}
+
+/** 交易大厅软装 — 地毯、绿植、壁灯 */
+export function drawHallInteriorDecor(
+  ctx: CanvasRenderingContext2D,
+  cam: { cw: number; ch: number; scale: number; panX: number; panY: number },
+  skinKey: string,
+  t: number,
+) {
+  const pal = hallRestPalette(skinKey);
+  const premium = skinKey === 'gold';
+  const ws = (v: number) => v * cam.scale;
+  const pt = (px: number, py: number) => camToScreen(cam, px, py);
+
+  // 工位区地毯
+  const rugCx = 340, rugCy = 310, rugW = 560, rugH = 280;
+  const rug = pt(rugCx, rugCy);
+  ctx.save();
+  ctx.fillStyle = premium ? 'rgba(201,168,108,0.18)' : 'rgba(180,160,130,0.12)';
+  ctx.beginPath();
+  ctx.ellipse(rug.x, rug.y, ws(rugW / 2), ws(rugH / 2), 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = premium ? 'rgba(212,175,55,0.25)' : 'rgba(160,140,110,0.2)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  // 走道分隔线
+  ctx.strokeStyle = premium ? 'rgba(212,175,55,0.15)' : 'rgba(180,170,155,0.2)';
+  ctx.lineWidth = 1;
+  const aisleL = pt(60, 350);
+  const aisleR = pt(660, 350);
+  ctx.beginPath();
+  ctx.moveTo(aisleL.x, aisleL.y);
+  ctx.lineTo(aisleR.x, aisleR.y);
+  ctx.stroke();
+
+  // 角落绿植
+  const plants = [{ px: 68, py: 175 }, { px: 640, py: 175 }, { px: 68, py: 480 }, { px: 640, py: 480 }];
+  plants.forEach((p, i) => {
+    const s = pt(p.px, p.py);
+    dropShadow(ctx, s.x, s.y + ws(8), ws(24), ws(16), 0.08);
+    ctx.fillStyle = '#8b6914';
+    rrect(ctx, s.x - ws(8), s.y + ws(2), ws(16), ws(14), ws(3)); ctx.fill();
+    ctx.fillStyle = i % 2 === 0 ? '#5a8a4a' : '#6b9e55';
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y - ws(4), ws(14), ws(18), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(90,138,74,0.6)';
+    ctx.beginPath();
+    ctx.ellipse(s.x - ws(6), s.y - ws(8), ws(10), ws(12), -0.3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // 墙面装饰条
+  ctx.fillStyle = premium ? 'rgba(212,175,55,0.12)' : 'rgba(180,160,130,0.15)';
+  const topBar = pt(360, 42);
+  rrect(ctx, topBar.x - ws(300), topBar.y - ws(6), ws(600), ws(12), ws(4)); ctx.fill();
+
+  // 吊灯
+  [180, 360, 540].forEach((px, i) => {
+    const lp = pt(px, 130);
+    const glow = 0.35 + Math.sin(t * 2 + i) * 0.08;
+    ctx.fillStyle = `rgba(212,175,55,${glow * (premium ? 1.2 : 0.7)})`;
+    ctx.beginPath(); ctx.arc(lp.x, lp.y, ws(6), 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = pal.accent; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lp.x, lp.y - ws(18)); ctx.lineTo(lp.x, lp.y - ws(6)); ctx.stroke();
+  });
+}
+
+function camToScreen(cam: { cw: number; ch: number; scale: number; panX: number; panY: number }, px: number, py: number) {
+  const cx = PAPER.zoneW / 2 + cam.panX;
+  const cy = PAPER.zoneH / 2 + cam.panY;
+  return {
+    x: cam.cw / 2 + (px - cx) * cam.scale,
+    y: cam.ch / 2 + (py - cy) * cam.scale,
+  };
 }
 
 export function drawZoneTransitOverlay(

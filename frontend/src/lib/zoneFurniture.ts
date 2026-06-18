@@ -238,6 +238,16 @@ export function resolveActivitySlot(
     const s = booth.seats[agentId.length % booth.seats.length];
     return { ...s, pose: 'sit', slotId: s.id };
   }
+  if (activity === 'desk') {
+    const desk = HALL_DESKS_8.find(d => d.seatId === nodeId || d.id === nodeId);
+    if (desk) {
+      const sp = seatPaperPos(desk.row, desk.col);
+      return { px: sp.px, py: sp.py, facing: 'n', pose: 'desk', slotId: desk.seatId };
+    }
+    const fallback = HALL_DESKS_8[agentId.length % HALL_DESKS_8.length];
+    const sp = seatPaperPos(fallback.row, fallback.col);
+    return { px: sp.px, py: sp.py, facing: 'n', pose: 'desk', slotId: fallback.seatId };
+  }
   return null;
 }
 
@@ -262,10 +272,13 @@ export function getAgentPaperPos(
     if (seat) return seat;
   }
   if (char.activityPose === 'desk' && zone === 'hall') {
-    const desk = HALL_DESKS_8.find(d => d.seatId === char.destNode)
-      || HALL_DESKS_8[char.agentId.length % HALL_DESKS_8.length];
-    const seat = seatPaperPos(desk.row, desk.col);
-    return { px: seat.px, py: seat.py };
+    const desk = char.destNode
+      ? HALL_DESKS_8.find(d => d.seatId === char.destNode || d.id === char.destNode)
+      : null;
+    if (desk) {
+      const seat = seatPaperPos(desk.row, desk.col);
+      return { px: seat.px, py: seat.py };
+    }
   }
   const w = worldToPaper(zone, char.x, char.z);
   return { px: w.x, py: w.y };

@@ -46,13 +46,15 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const revealResults = (
     results: Array<{
       name: string; score: number; rank: number; won: number; is_npc?: boolean;
-      hole_cards?: string[]; best_cards?: string[]; hand_name?: string;
+      hole_cards?: string[]; best_cards?: string[]; hand_name?: string; hand_combo?: string;
     }>,
     won?: number,
     pot?: number,
     net?: number,
     balance?: number,
     communityCards?: string[],
+    tie?: boolean,
+    winnersCount?: number,
   ) => {
     if (balance != null) useGameStore.setState({ points: balance });
     showPokerResult({
@@ -63,9 +65,12 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
       buyIn: tier.buyIn,
       pot,
       balance,
+      tie,
+      winners_count: winnersCount,
     });
     const n = net ?? ((won ?? 0) - tier.buyIn);
-    if (n > 0) addMessage(`🎉 获胜！赢得奖池 ${won} 积分 · 净赚 +${n}`);
+    if (n > 0 && tie) addMessage(`🤝 平局！与 ${winnersCount ?? ''} 人平分奖池 · 你获得 ${won} 积分 · 净赚 +${n}`);
+    else if (n > 0) addMessage(`🎉 获胜！赢得奖池 ${won} 积分 · 净赚 +${n}`);
     else if (n < 0) addMessage(`本局未获胜 · 买入 ${tier.buyIn} 积分`);
     else addMessage(`本局平局 · 买入 ${tier.buyIn} 积分`);
   };
@@ -102,7 +107,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         if (r.balance != null) useGameStore.setState({ points: r.balance });
         return;
       }
-      revealResults(r.results, r.won, r.pot, r.net, r.balance, r.community_cards);
+      revealResults(r.results, r.won, r.pot, r.net, r.balance, r.community_cards, r.tie, r.winners_count);
     } catch {
       addMessage('发牌失败，请重试');
     } finally {

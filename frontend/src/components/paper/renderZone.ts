@@ -14,7 +14,7 @@ import { PAPER, worldToPaper } from '../../lib/zoneProjection';
 import {
   rrect, drawDesk, drawAgent, drawNavArrow,
   drawDiningTable, drawFacilityLabel,
-  drawMarketBigScreen, drawCoffeeZone, drawChair, drawRestBooth,
+  drawMarketBigScreen, drawCoffeeZone, drawChair, drawRestBooth, drawHallInteriorDecor,
   drawPokerTable8, drawNpc, drawSpeechBubble,
   drawCasinoVipBackdrop,   drawCasinoVipDecor, drawCasinoAmbientLights, drawVipChair,
   drawCantoneseBackdrop, drawCantoneseDecor, drawCantoneseAmbientLights,
@@ -88,6 +88,7 @@ function drawBigTicker(
 function drawHallDesks(
   ctx: CanvasRenderingContext2D, cam: PaperCamera,
   agents: Record<string, CharState>, t: number, hoverId: string | null,
+  skinKey: string,
 ) {
   const deskLabels: Record<string, string> = {
     desk_xau: 'XAU', desk_maj: 'Major', desk_alt: 'Altcoin', desk_new: 'Newcoin',
@@ -99,9 +100,16 @@ function drawHallDesks(
     const sp = seatPaperPos(desk.row, desk.col);
     const deskPt = pt(cam, dp.px, dp.py);
     const seatPt = pt(cam, sp.px, sp.py);
-    const agent = Object.values(agents).find(a => OfficePath.deskByAgent[a.agentId] === desk.seatId);
-    const agentAtDesk = agent && !agent.isWalking && !agent.activity && !agent.travelIntent && !agent.inTransit;
-    const trading = agentAtDesk && (agent.state === 'trading' || agent.state === 'scanning');
+    const agent = Object.values(agents).find(a =>
+      a.destNode === desk.seatId && agentAtDesk(a),
+    );
+    const agentAtDeskLegacy = Object.values(agents).find(a =>
+      OfficePath.deskByAgent[a.agentId] === desk.seatId
+      && !a.destNode?.startsWith('seat_')
+      && !a.isWalking && !a.activity && !a.travelIntent && !a.inTransit,
+    );
+    const occupant = agent ?? agentAtDeskLegacy;
+    const trading = !!occupant && (occupant.state === 'trading' || occupant.state === 'scanning');
     if (hoverId === desk.id) {
       ctx.strokeStyle = 'rgba(66,133,244,0.55)'; ctx.lineWidth = 2;
       ctx.beginPath();
@@ -110,10 +118,11 @@ function drawHallDesks(
     }
     drawDesk(ctx, deskPt.x, deskPt.y, cam.scale * ds, {
       active: trading,
-      chartSeed: deskChartSeed(desk.id, agent?.agentId),
+      chartSeed: deskChartSeed(desk.id, occupant?.agentId),
       t,
+      skinKey,
     });
-    drawChair(ctx, seatPt.x, seatPt.y, cam.scale * ds, 'n');
+    drawChair(ctx, seatPt.x, seatPt.y, cam.scale * ds, 'n', skinKey === 'gold' ? 'premium' : 'default');
     drawFacilityLabel(
       ctx, deskPt.x, deskPt.y - ws(cam, 36),
       hoverId === desk.id ? '点击派遣' : `${deskLabels[desk.id] ?? '工位'}`,
@@ -269,9 +278,10 @@ function drawHallScene(
   agents: Record<string, CharState>, ticker: Record<string, number>, t: number,
   hoverId: string | null, skinKey: string,
 ) {
+  drawHallInteriorDecor(ctx, cam, skinKey, t);
   drawBigTicker(ctx, cam, zone, ticker, t);
-  drawCoffeeZone(ctx, pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).x, pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).y, cam.scale, t);
-  drawHallDesks(ctx, cam, agents, t, hoverId);
+  drawCoffeeZone(ctx, pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).x, pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).y, cam.scale, t, skinKey);
+  drawHallDesks(ctx, cam, agents, t, hoverId, skinKey);
   drawHallRest(ctx, cam, hoverId, skinKey);
 }
 
@@ -360,9 +370,14 @@ export function renderZone(
   }
 }
 
+function agentAtDesk(char: CharState): boolean {
+  if (char.activityPose !== 'desk' || !char.destNode?.startsWith('seat_')) return false;
+  return !char.isWalking && !char.activity && !char.travelIntent && !char.inTransit;
+}
+
 function agentFacing(char: CharState): CharState['facing'] {
   if (char.activity || char.activityPose === 'desk') return char.facing ?? 'n';
-  const desk = OfficePath.deskByAgent[char.agentId];
+  const desk = char.destNode?.startsWith('seat_') ? char.destNode : OfficePath.deskByAgent[char.agentId];
   const atDesk = desk && !char.isWalking && !char.activity && !char.travelIntent
     && OfficePath.nodes[desk]
     && Math.hypot(char.x - OfficePath.nodes[desk].x, char.z - OfficePath.nodes[desk].z) < 1.2;
@@ -381,7 +396,8 @@ function agentPose(char: CharState, now = performance.now()): CharState['activit
     if (char.activityPose) return char.activityPose;
     return 'sit';
   }
-  const desk = OfficePath.deskByAgent[char.agentId];
+  if (agentAtDesk(char)) return 'desk';
+  const desk = char.destNode?.startsWith('seat_') ? char.destNode : OfficePath.deskByAgent[char.agentId];
   const atDesk = desk && !char.isWalking && !char.travelIntent
     && OfficePath.nodes[desk]
     && Math.hypot(char.x - OfficePath.nodes[desk].x, char.z - OfficePath.nodes[desk].z) < 1.2;

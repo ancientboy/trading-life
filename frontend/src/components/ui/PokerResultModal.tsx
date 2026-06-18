@@ -18,15 +18,20 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
   const won = data.won > 0;
   const net = data.net ?? (data.won - data.buyIn);
   const community = data.community_cards ?? [];
+  const winners = data.results.filter(r => r.won > 0);
+  const isTie = data.tie ?? winners.length > 1;
+  const winnerNames = winners.map(r => r.name).join('、');
 
   return (
     <div style={{ color: '#3d3530', maxHeight: '70vh', overflowY: 'auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
-          {!dealt ? '荷官 Jack 发牌中…' : won ? '🎉 恭喜获胜！' : '本局未获胜'}
+          {!dealt ? '荷官 Jack 发牌中…' : won
+            ? (isTie ? '🤝 平局！平分奖池' : '🎉 恭喜获胜！')
+            : '本局未获胜'}
         </div>
         <div style={{ fontSize: 11, color: '#8a7e72', marginTop: 4 }}>
-          买入 {data.buyIn} · 奖池 {data.pot ?? '—'}（全员买入合计）
+          买入 {data.buyIn} · 奖池 {data.pot ?? '—'}（{isTie ? '平局平分' : '胜者通吃'}）
         </div>
       </div>
 
@@ -62,14 +67,14 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
               )}
               {won ? (
                 <div style={{ marginTop: 8, fontSize: 14, fontWeight: 700, color: '#2ea872' }}>
-                  赢得奖池 +{data.won} 积分
+                  {isTie ? `平分奖池 +${data.won} 积分` : `赢得奖池 +${data.won} 积分`}
                   <div style={{ fontSize: 12, marginTop: 2, color: '#48d093' }}>
                     净赚 +{net}（买入 -{data.buyIn}）
                   </div>
                 </div>
               ) : (
                 <div style={{ marginTop: 8, fontSize: 13, color: '#b07070' }}>
-                  买入 -{data.buyIn} 积分 · 奖池由 {data.results[0]?.name} 赢得
+                  买入 -{data.buyIn} 积分 · 奖池由 {isTie ? `${winnerNames} 平分` : data.results.find(r => r.rank === 1)?.name ?? '—'} 赢得
                 </div>
               )}
               {data.balance != null && (
@@ -78,15 +83,17 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
             </div>
           )}
 
-          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>对局排名 · 第一名通吃奖池</div>
+          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>
+            对局排名 · {isTie ? '平局平分奖池' : '胜者通吃奖池'}
+          </div>
           {data.results.map(r => (
             <div key={r.name} style={{
-              padding: '8px 10px', background: r.rank === 1 ? '#fff8e8' : '#faf6ef',
+              padding: '8px 10px', background: r.won > 0 ? '#fff8e8' : '#faf6ef',
               borderRadius: 8, marginBottom: 6, fontSize: 12,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: r.hole_cards?.length ? 6 : 0 }}>
-                <span style={{ fontWeight: r.rank === 1 ? 700 : 500 }}>
-                  {r.rank}. {r.name}{r.is_npc ? ' 🤖' : ''}{r.rank === 1 ? ' 👑' : ''}
+                <span style={{ fontWeight: r.won > 0 ? 700 : 500 }}>
+                  {r.rank}. {r.name}{r.is_npc ? ' 🤖' : ''}{r.won > 0 ? (isTie ? ' 🤝' : ' 👑') : ''}
                 </span>
                 <span style={{ color: '#5c4a32', fontWeight: 600 }}>
                   {formatHandLabel(r)}

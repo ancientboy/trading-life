@@ -335,12 +335,34 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
 
     player_hands.sort(key=lambda x: x[1]["hand_score"], reverse=True)
 
+    # 竞争排名（并列同名次）
+    comp_ranks: list[int] = []
+    i = 0
+    while i < len(player_hands):
+        j = i + 1
+        while j < len(player_hands) and player_hands[j][1]["hand_score"] == player_hands[i][1]["hand_score"]:
+            j += 1
+        rank = i + 1
+        for _ in range(i, j):
+            comp_ranks.append(rank)
+        i = j
+
+    best_score = player_hands[0][1]["hand_score"]
+    winner_count = sum(1 for _, h in player_hands if h["hand_score"] == best_score)
+    split_win = pot // winner_count if winner_count else 0
+    split_extra = pot - split_win * winner_count if winner_count else 0
+    extra_left = split_extra
+
     results = []
     with life_db._lock:
         with life_db._conn() as c:
             for rank_idx, (p, hand) in enumerate(player_hands):
-                rank = rank_idx + 1
-                win = pot if rank == 1 else 0
+                rank = comp_ranks[rank_idx]
+                is_winner = hand["hand_score"] == best_score
+                win = split_win if is_winner else 0
+                if is_winner and extra_left > 0:
+                    win += 1
+                    extra_left -= 1
                 uid = p["user_id"]
                 sc = hand["score"]
                 c.execute(
@@ -392,6 +414,8 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
         "winner": results[0] if results else None,
         "pot": pot, "won": human_win, "cost": caller_cost, "net": net,
         "balance": load_user(account_id)["points"],
+        "tie": winner_count > 1,
+        "winners_count": winner_count,
     }
 
 

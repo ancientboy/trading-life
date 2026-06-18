@@ -165,6 +165,7 @@ export async function pokerSolo(agentId: string, buyIn = 30) {
     community_cards?: string[];
     results?: PokerApiPlayerResult[];
     error?: string; cost?: number;
+    tie?: boolean; winners_count?: number;
   }>(`${API}/pvp/poker/solo`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, buy_in: buyIn }),
   });

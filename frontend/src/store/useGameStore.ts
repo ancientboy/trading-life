@@ -71,6 +71,8 @@ export type PokerHandResult = {
   buyIn: number;
   pot?: number;
   balance?: number;
+  tie?: boolean;
+  winners_count?: number;
 };
 export type ZoneId = 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
 
@@ -440,11 +442,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pathIndex: 0,
       inTransit: false,
     };
-    const pos = OfficePath.nodes[node];
-    char = { ...char, destNode: node, x: pos.x, z: pos.z };
-    char = onPathComplete(char, now);
-    char = { ...char, userDispatched: false };
-    const deskDef = HALL_DESKS_8.find(d => d.seatId === node);
+    const mergedSeats = mergeLocalSeatOccupancy(s.seatOccupancy, s.agents, now);
+    const seatId = resolveAvailableSeat('desk', node, id, mergedSeats, now);
+    if (!seatId) {
+      get().addMessage('该工位已被占用');
+      return false;
+    }
+    const pos = OfficePath.nodes[seatId];
+    if (!pos) {
+      get().addMessage('未找到可用工位');
+      return false;
+    }
+    claimSeat(seatId, id, 'desk', 0).then(() => get().syncSeats()).catch(() => {});
+    char = {
+      ...char,
+      destNode: seatId,
+      x: pos.x,
+      z: pos.z,
+      activityPose: 'desk',
+      facing: 'n',
+      userDispatched: false,
+    };
+    const deskDef = HALL_DESKS_8.find(d => d.seatId === seatId);
     const deskLabel = deskDef?.id.replace('desk_', '').toUpperCase() ?? '工位';
 
     set({

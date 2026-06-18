@@ -40,7 +40,7 @@ export function SeasonPanel() {
   const showPokerResults = (
     results?: Array<{
       name: string; score: number; rank: number; won: number; is_npc?: boolean;
-      hole_cards?: string[]; best_cards?: string[]; hand_name?: string;
+      hole_cards?: string[]; best_cards?: string[]; hand_name?: string; hand_combo?: string;
     }>,
     won?: number,
     buyIn = 30,
@@ -48,6 +48,8 @@ export function SeasonPanel() {
     net?: number,
     balance?: number,
     communityCards?: string[],
+    tie?: boolean,
+    winnersCount?: number,
   ) => {
     if (!results?.length) return;
     setLastPokerResults(results);
@@ -60,6 +62,8 @@ export function SeasonPanel() {
       buyIn,
       pot,
       balance,
+      tie,
+      winners_count: winnersCount,
     });
     syncEngagement();
   };
