@@ -884,6 +884,14 @@ export function assignPath(char: CharState, nodeId: string): CharState {
     if (store.followAgentId === char.agentId) {
       store.flyToZone(destZone);
     }
+    // 系统 Agent 跨区静默传送，不触发全屏过场
+    if (!char.userDispatched) {
+      return teleportAgentToDestination(
+        { ...char, destNode: nodeId, isWalking: false, pathQueue: [], pathIndex: 0 },
+        nodeId,
+        now,
+      );
+    }
     return {
       ...char,
       destNode: nodeId,

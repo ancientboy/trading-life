@@ -80,7 +80,7 @@ export function PaperZoneCanvas() {
       pokerGlbReady,
     });
 
-    const transit = Object.values(agents).find(a => a.inTransit);
+    const transit = Object.values(agents).find(a => a.inTransit && a.userDispatched);
     if (transit) {
       const label = ZONE_CAMERA[transit.transitZone ?? activeZone]?.label ?? '目标区域';
       drawZoneTransitOverlay(ctx, cw, ch, t, label);
