@@ -48,7 +48,6 @@ export function tickCharacterSim(dt: number) {
     let c = { ...char };
 
     if (c.inTransit) {
-      if (now < (c.transitUntil ?? 0)) return;
       const node = c.destNode;
       const pos = node ? OfficePath.nodes[node] : null;
       if (pos) { c.x = pos.x; c.z = pos.z; }
@@ -107,11 +106,11 @@ export function tickCharacterSim(dt: number) {
         if ([OfficePath.massageByAgent[c.agentId], OfficePath.dineByAgent[c.agentId], OfficePath.pokerByAgent[c.agentId]].includes(target)) {
           const intent = target === OfficePath.massageByAgent[c.agentId] ? 'massage'
             : target === OfficePath.dineByAgent[c.agentId] ? 'dine' : 'poker';
-          c = { ...assignPath(c, target), travelIntent: intent };
+          c = { ...assignPath({ ...c, userDispatched: false }, target), travelIntent: intent };
         } else if (target === booth || target?.startsWith('rest_l')) {
-          c = { ...assignPath(c, target), travelIntent: 'rest' };
+          c = { ...assignPath({ ...c, userDispatched: false }, target), travelIntent: 'rest' };
         } else {
-          c = assignPath(c, target);
+          c = assignPath({ ...c, userDispatched: false }, target);
         }
       } else {
         c.moveTimer = 0;

@@ -8,7 +8,6 @@ import { PAPER, agentVisibleInZone } from '../../lib/zoneProjection';
 import {
   makePaperCamera, camToScreen, screenToPaper, renderZone, renderAgents,
 } from './renderZone';
-import { drawZoneTransitOverlay } from './paperDraw';
 
 export function PaperZoneCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -80,17 +79,11 @@ export function PaperZoneCanvas() {
       pokerGlbReady,
     });
 
-    const transit = Object.values(agents).find(a => a.inTransit && a.userDispatched);
-    if (transit) {
-      const label = ZONE_CAMERA[transit.transitZone ?? activeZone]?.label ?? '目标区域';
-      drawZoneTransitOverlay(ctx, cw, ch, t, label);
-    } else {
-      renderAgents(ctx, activeZone, cam, agents, c => agentVisibleInZone(c, activeZone), {
-        selectedId: selectedAgentId,
-        t,
-        agentBubble,
-      });
-    }
+    renderAgents(ctx, activeZone, cam, agents, c => agentVisibleInZone(c, activeZone), {
+      selectedId: selectedAgentId,
+      t,
+      agentBubble,
+    });
   }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerGlbReady]);
 
   useEffect(() => {
@@ -100,7 +93,7 @@ export function PaperZoneCanvas() {
       last = now;
       bobRef.current += dt;
       if (!paused) tickCharacterSim(dt);
-      if (followAgentId && agents[followAgentId] && !agents[followAgentId].inTransit) {
+      if (followAgentId && agents[followAgentId]) {
         const a = agents[followAgentId];
         if (Math.abs(a.x - cameraLookAt.x) > 0.15 || Math.abs(a.z - cameraLookAt.z) > 0.15) {
           setCameraLookAt(a.x, a.z);

@@ -30,7 +30,7 @@ import {
   chatChannelForZone, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
 } from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
-import { isCrossZoneTravel, zoneForNode, zoneForIntent, ZONE_TRANSIT_MS } from '../lib/zoneTransit';
+import { isCrossZoneTravel, zoneForNode, zoneForIntent } from '../lib/zoneTransit';
 
 let seatSyncTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleSeatSync(fn: () => Promise<void>) {
@@ -398,7 +398,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const pos = OfficePath.nodes[node];
     char = { ...char, destNode: node, x: pos.x, z: pos.z };
     char = onPathComplete(char, now);
-
+    char = { ...char, userDispatched: false };
     const deskDef = HALL_DESKS_8.find(d => d.seatId === node);
     const deskLabel = deskDef?.id.replace('desk_', '').toUpperCase() ?? '工位';
 
@@ -880,28 +880,15 @@ export function assignPath(char: CharState, nodeId: string): CharState {
 
   if (destZone && isCrossZoneTravel(fromZone, nodeId, char.travelIntent)) {
     const now = performance.now();
-    // 仅跟随镜头时不自动切区；自主漫步的 Agent 不抢用户视角
     if (store.followAgentId === char.agentId) {
       store.flyToZone(destZone);
     }
-    // 系统 Agent 跨区静默传送，不触发全屏过场
-    if (!char.userDispatched) {
-      return teleportAgentToDestination(
-        { ...char, destNode: nodeId, isWalking: false, pathQueue: [], pathIndex: 0 },
-        nodeId,
-        now,
-      );
-    }
-    return {
-      ...char,
-      destNode: nodeId,
-      isWalking: false,
-      pathQueue: [],
-      pathIndex: 0,
-      inTransit: true,
-      transitUntil: now + ZONE_TRANSIT_MS,
-      transitZone: destZone,
-    };
+    // 跨区一律静默传送，不使用全屏过场
+    return teleportAgentToDestination(
+      { ...char, destNode: nodeId, isWalking: false, pathQueue: [], pathIndex: 0, inTransit: false },
+      nodeId,
+      now,
+    );
   }
 
   const pts = OfficePath.pathToNode(char.x, char.z, nodeId);
@@ -1082,5 +1069,5 @@ export function maybeDispatchLeisure(char: CharState): CharState {
   if (r > 0.55) { intent = 'massage'; node = OfficePath.massageByAgent[char.agentId]; }
   else if (r > 0.3) { intent = 'dine'; node = OfficePath.dineByAgent[char.agentId]; }
   else { intent = 'poker'; node = OfficePath.pokerByAgent[char.agentId]; }
-  return { ...assignPath(char, node), travelIntent: intent };
+  return { ...assignPath({ ...char, userDispatched: false }, node), travelIntent: intent };
 }
