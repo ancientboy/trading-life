@@ -30,7 +30,7 @@ import { homeNodeForAgent } from '../lib/agentHome';
 import { isLoggedIn, getStoredAccount } from '../lib/lifeAuth';
 import {
   fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
-  chatChannelForZone, fetchPokerRoom, leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
+  chatChannelForZone, fetchPokerRoom, fetchMyPokerRoom, leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
   type PokerRoom,
 } from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
@@ -225,7 +225,9 @@ interface GameStore {
   syncSeats: () => Promise<void>;
   syncEngagement: () => Promise<void>;
   applyPokerRoom: (room: PokerRoom | null) => void;
+  alignLocalAgentToPokerRoom: (room: PokerRoom) => void;
   syncPokerRoom: () => Promise<void>;
+  restorePokerRoom: () => Promise<void>;
   clearPokerRoom: () => void;
   leavePokerRoom: () => Promise<void>;
   changePokerRoomSeat: (seatId: string) => Promise<boolean>;
@@ -547,7 +549,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     const mergedSeats = mergeLocalSeatOccupancy(s.seatOccupancy, s.agents);
-    const resolvedSeat = resolveAvailableSeat(action, node, id, mergedSeats) ?? node;
+    const forcedPokerSeat = action === 'poker' && opts?.nodeId?.startsWith('poker_s') ? opts.nodeId : null;
+    const resolvedSeat = forcedPokerSeat || resolveAvailableSeat(action, node, id, mergedSeats) || node;
 
     let char = {
       ...s.agents[id],
@@ -763,7 +766,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } catch { /* ignore */ }
   },
 
-  applyPokerRoom: (room) => set({ pokerRoom: room }),
+  applyPokerRoom: (room) => {
+    set({ pokerRoom: room });
+    if (room) get().alignLocalAgentToPokerRoom(room);
+  },
+
+  alignLocalAgentToPokerRoom: (room: PokerRoom) => {
+    const accountId = getStoredAccount()?.id;
+    if (!accountId) return;
+    const me = room.players.find(p => p.user_id === accountId);
+    if (!me?.agent_id || !me.seat_id) return;
+    const agent = get().agents[me.agent_id];
+    if (!agent) return;
+    const needsSeat = agent.destNode !== me.seat_id || agent.activity !== 'poker';
+    if (needsSeat) {
+      void get().seatAgentAtPoker(me.agent_id, me.seat_id);
+    }
+  },
 
   syncPokerRoom: async () => {
     const rid = get().pokerRoom?.id;
@@ -775,7 +794,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return;
       }
       if (r.room.status === 'settled' || r.room.status === 'closed') set({ pokerRoom: null });
-      else set({ pokerRoom: r.room });
+      else {
+        set({ pokerRoom: r.room });
+        get().alignLocalAgentToPokerRoom(r.room);
+      }
+    } catch { /* ignore */ }
+  },
+
+  restorePokerRoom: async () => {
+    try {
+      const r = await fetchMyPokerRoom();
+      if (!r.ok || !r.room || r.room.status !== 'waiting') return;
+      set({ pokerRoom: r.room });
+      get().alignLocalAgentToPokerRoom(r.room);
     } catch { /* ignore */ }
   },
 

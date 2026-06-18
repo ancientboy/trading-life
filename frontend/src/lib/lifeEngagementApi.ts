@@ -128,12 +128,17 @@ export async function fetchPokerRoom(roomId: string) {
   return parse<{ ok: boolean; room?: PokerRoom; error?: string }>(r);
 }
 
+export async function fetchMyPokerRoom() {
+  const r = await fetch(`${API}/pvp/poker/rooms/mine`, { headers: headers() });
+  return parse<{ ok: boolean; room?: PokerRoom | null; error?: string }>(r);
+}
+
 export async function joinPokerRoom(roomId: string, agentId: string, seatId = '') {
   const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/join`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, seat_id: seatId }),
   });
   return parse<{
-    ok: boolean; error?: string; balance?: number; seat_id?: string;
+    ok: boolean; error?: string; balance?: number; seat_id?: string; already_joined?: boolean;
     room_id?: string; room_code?: string; room?: PokerRoom; message?: string;
   }>(r);
 }

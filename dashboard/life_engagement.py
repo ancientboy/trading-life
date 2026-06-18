@@ -690,6 +690,25 @@ async def list_poker_rooms(account_id: str = Depends(resolve_account_id)):
     return {"ok": True, "rooms": result}
 
 
+@pvp_router.get("/pvp/poker/rooms/mine")
+async def get_my_poker_room(account_id: str = Depends(resolve_account_id)):
+    """返回当前用户所在的等待中房间（用于刷新后恢复状态）。"""
+    with life_db._lock:
+        with life_db._conn() as c:
+            _cleanup_empty_waiting_rooms(c)
+            row = c.execute(
+                """SELECT r.* FROM poker_rooms r
+                   INNER JOIN poker_room_players p ON p.room_id = r.id
+                   WHERE p.user_id = ? AND r.status = 'waiting'
+                   ORDER BY r.created_at DESC LIMIT 1""",
+                (account_id,),
+            ).fetchone()
+            if not row:
+                return {"ok": True, "room": None}
+            payload = _room_payload(c, dict(row), account_id)
+    return {"ok": True, "room": payload}
+
+
 @pvp_router.get("/pvp/poker/rooms/{room_id}")
 async def get_poker_room(room_id: str, account_id: str = Depends(resolve_account_id)):
     with life_db._lock:
@@ -750,7 +769,18 @@ async def join_poker_room(room_id: str, body: PokerJoinBody, account_id: str = D
             if not room:
                 return {"ok": False, "error": "房间不可用"}
             if c.execute("SELECT 1 FROM poker_room_players WHERE room_id=? AND user_id=?", (rid, account_id)).fetchone():
-                return {"ok": False, "error": "已在房间中"}
+                me = c.execute(
+                    "SELECT seat_id, agent_id FROM poker_room_players WHERE room_id=? AND user_id=?",
+                    (rid, account_id),
+                ).fetchone()
+                room = dict(room)
+                payload = _room_payload(c, room, account_id)
+                return {
+                    "ok": True, "already_joined": True, "room_id": rid, "room_code": rid,
+                    "seat_id": me["seat_id"] if me else "",
+                    "buy_in": room["buy_in"], "room": payload,
+                    "message": "已在房间中",
+                }
             count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (rid,)).fetchone()[0]
             if count >= 8:
                 return {"ok": False, "error": "房间已满"}

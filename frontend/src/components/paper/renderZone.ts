@@ -457,6 +457,7 @@ export function renderPokerRoomGuests(
 ) {
   if (zone !== 'casino' || !members.length) return;
   members.forEach(member => {
+    if (member.is_npc || member.user_id.startsWith('npc_')) return;
     if (myUserId && member.user_id === myUserId) {
       const local = member.agent_id ? agents[member.agent_id] : null;
       if (local?.activity === 'poker') return;
@@ -475,7 +476,7 @@ export function renderPokerRoomGuests(
       pose: 'sit',
       t,
     });
-    const label = (member.agent_name || member.display_name || '玩家').split(' ')[0];
+    const label = (member.user_name || member.agent_name || member.display_name || '玩家').split(' ')[0];
     ctx.fillStyle = '#3d3530';
     ctx.font = `600 ${Math.max(9, ws(cam, 10))}px Inter,sans-serif`;
     ctx.textAlign = 'center';

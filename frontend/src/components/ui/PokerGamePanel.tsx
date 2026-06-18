@@ -41,6 +41,8 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const changePokerRoomSeat = useGameStore(s => s.changePokerRoomSeat);
   const seatAgentAtPoker = useGameStore(s => s.seatAgentAtPoker);
   const syncPokerRoom = useGameStore(s => s.syncPokerRoom);
+  const restorePokerRoom = useGameStore(s => s.restorePokerRoom);
+  const activeZone = useGameStore(s => s.activeZone);
 
   const [tierId, setTierId] = useState<string>('casual');
   const [phase, setPhase] = useState<'idle' | 'dealing'>('idle');
@@ -60,6 +62,10 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
     const timer = setInterval(refreshPublicRooms, 5000);
     return () => clearInterval(timer);
   }, [inRoom, refreshPublicRooms]);
+
+  useEffect(() => {
+    if (activeZone === 'casino') void restorePokerRoom();
+  }, [activeZone, restorePokerRoom]);
 
   const tier = BUY_IN_TIERS.find(t => t.id === tierId) ?? BUY_IN_TIERS[0];
   const operableAgents = Object.values(agents).filter(a => canOperateAgent(a.agentId));
@@ -318,11 +324,10 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
                 if (!isLoggedIn()) { addMessage('请先登录'); return; }
                 setBusy('join');
                 const r = await joinPokerRoomByCode(roomCodeInput, agent.agentId);
-                if (!r.ok) addMessage(r.error || '加入失败');
-                else if (r.room) {
-                  addMessage(r.message || `已加入房间 ${r.room_code}`);
+                if (r.ok && r.room) {
+                  addMessage(r.message || (r.already_joined ? '已在房间中' : `已加入房间 ${r.room_code}`));
                   await afterRoomJoin(r.room, r.seat_id);
-                }
+                } else addMessage(r.error || '加入失败');
                 setBusy(null);
               }}>
               {busy === 'join' ? '…' : '加入'}
@@ -352,11 +357,10 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
                         if (!agent) return;
                         setBusy('join');
                         const r = await joinPokerRoom(room.id, agent.agentId);
-                        if (!r.ok) addMessage(r.error || '加入失败');
-                        else if (r.room) {
-                          addMessage(r.message || `已加入房间 ${r.room_code}`);
+                        if (r.ok && r.room) {
+                          addMessage(r.message || (r.already_joined ? '已在房间中' : `已加入房间 ${r.room_code}`));
                           await afterRoomJoin(r.room, r.seat_id);
-                        }
+                        } else addMessage(r.error || '加入失败');
                         setBusy(null);
                       }}>
                       加入此房间

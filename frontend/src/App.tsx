@@ -23,7 +23,7 @@ export default function App() {
   useEffect(() => {
     if (!loggedIn) return;
     initAgents();
-    syncLifeState();
+    syncLifeState().then(() => useGameStore.getState().restorePokerRoom().catch(() => {}));
     preloadAllSprites().catch(() => {});
     const pollSystem = () => fetchOverview().then(data => {
       updateFromOverview(data);
@@ -51,8 +51,11 @@ export default function App() {
     }, 30000);
     const pokerPoll = setInterval(() => {
       const st = useGameStore.getState();
-      if (st.activeZone === 'casino' && st.pokerRoom?.id && st.pokerRoom.status === 'waiting') {
+      if (st.activeZone !== 'casino') return;
+      if (st.pokerRoom?.id && st.pokerRoom.status === 'waiting') {
         st.syncPokerRoom().catch(() => {});
+      } else {
+        st.restorePokerRoom().catch(() => {});
       }
     }, 4000);
     const onVis = () => {
