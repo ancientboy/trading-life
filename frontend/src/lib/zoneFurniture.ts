@@ -24,6 +24,22 @@ export interface DiningTableDef extends PaperPoint {
   chairs: ChairSeat[];
 }
 
+/** 餐桌四椅布局 — 与经典贴图一致，椅背朝外、不压桌面（premium 圆桌 rx≈40） */
+const DINE_CHAIR_DX = 54;
+const DINE_CHAIR_DY = 50;
+
+function makeDiningTable(id: string, px: number, py: number, label: string): DiningTableDef {
+  return {
+    id, px, py, label,
+    chairs: [
+      { id: `${id}_c1`, px, py: py + DINE_CHAIR_DY, facing: 'n' },
+      { id: `${id}_c2`, px: px - DINE_CHAIR_DX, py, facing: 'e' },
+      { id: `${id}_c3`, px: px + DINE_CHAIR_DX, py, facing: 'w' },
+      { id: `${id}_c4`, px, py: py - DINE_CHAIR_DY, facing: 's' },
+    ],
+  };
+}
+
 export interface RestBoothDef extends PaperPoint {
   id: string;
   label: string;
@@ -44,54 +60,12 @@ export const SPA_BEDS: MassageBedDef[] = [
 ];
 
 export const RESTAURANT_TABLES: DiningTableDef[] = [
-  {
-    id: 'dine_1', px: 200, py: 280, label: '餐桌 A',
-    chairs: [
-      { id: 'dine_1_c1', px: 200, py: 330, facing: 'n' },
-      { id: 'dine_1_c2', px: 165, py: 280, facing: 'e' },
-      { id: 'dine_1_c3', px: 235, py: 280, facing: 'w' },
-    ],
-  },
-  {
-    id: 'dine_2', px: 360, py: 280, label: '餐桌 B',
-    chairs: [
-      { id: 'dine_2_c1', px: 360, py: 330, facing: 'n' },
-      { id: 'dine_2_c2', px: 325, py: 280, facing: 'e' },
-      { id: 'dine_2_c3', px: 395, py: 280, facing: 'w' },
-    ],
-  },
-  {
-    id: 'dine_3', px: 520, py: 280, label: '餐桌 C',
-    chairs: [
-      { id: 'dine_3_c1', px: 520, py: 330, facing: 'n' },
-      { id: 'dine_3_c2', px: 485, py: 280, facing: 'e' },
-      { id: 'dine_3_c3', px: 555, py: 280, facing: 'w' },
-    ],
-  },
-  {
-    id: 'dine_4', px: 200, py: 470, label: '餐桌 D',
-    chairs: [
-      { id: 'dine_4_c1', px: 200, py: 520, facing: 'n' },
-      { id: 'dine_4_c2', px: 165, py: 470, facing: 'e' },
-      { id: 'dine_4_c3', px: 235, py: 470, facing: 'w' },
-    ],
-  },
-  {
-    id: 'dine_5', px: 360, py: 470, label: '餐桌 E',
-    chairs: [
-      { id: 'dine_5_c1', px: 360, py: 520, facing: 'n' },
-      { id: 'dine_5_c2', px: 325, py: 470, facing: 'e' },
-      { id: 'dine_5_c3', px: 395, py: 470, facing: 'w' },
-    ],
-  },
-  {
-    id: 'dine_6', px: 520, py: 470, label: '餐桌 F',
-    chairs: [
-      { id: 'dine_6_c1', px: 520, py: 520, facing: 'n' },
-      { id: 'dine_6_c2', px: 485, py: 470, facing: 'e' },
-      { id: 'dine_6_c3', px: 555, py: 470, facing: 'w' },
-    ],
-  },
+  makeDiningTable('dine_1', 200, 280, '餐桌 A'),
+  makeDiningTable('dine_2', 360, 280, '餐桌 B'),
+  makeDiningTable('dine_3', 520, 280, '餐桌 C'),
+  makeDiningTable('dine_4', 200, 470, '餐桌 D'),
+  makeDiningTable('dine_5', 360, 470, '餐桌 E'),
+  makeDiningTable('dine_6', 520, 470, '餐桌 F'),
 ];
 
 export const CASINO_TABLE = { px: 360, py: 330, r: 118 };

@@ -806,15 +806,24 @@ export function drawChair(
   dropShadow(ctx, x, y + 4 * s, 24 * s, 20 * s, 0.08);
   const seatColor = skinKey === 'modern' ? pal.woodLight : skinKey === 'premium' ? '#4a3020' : '#8b7355';
   const backColor = skinKey === 'modern' ? pal.jade : skinKey === 'premium' ? pal.wood : '#a08060';
+  const sw = 20 * s, sh = 14 * s, sr = 3 * s;
   ctx.fillStyle = seatColor;
-  rrect(ctx, x - 10 * s, y - 6 * s, 20 * s, 14 * s, 3 * s); ctx.fill();
+  rrect(ctx, x - 10 * s, y - 6 * s, sw, sh, sr); ctx.fill();
   if (skinKey === 'premium') {
     ctx.strokeStyle = pal.gold; ctx.lineWidth = 1 * s;
-    rrect(ctx, x - 10 * s, y - 6 * s, 20 * s, 14 * s, 3 * s); ctx.stroke();
+    rrect(ctx, x - 10 * s, y - 6 * s, sw, sh, sr); ctx.stroke();
   }
   ctx.fillStyle = backColor;
-  const back = facing === 'n' ? -8 : facing === 's' ? 8 : 0;
-  rrect(ctx, x - 10 * s, y + back * s - 4 * s, 20 * s, 6 * s, 2 * s); ctx.fill();
+  const bw = 20 * s, bh = 6 * s, br = 2 * s;
+  if (facing === 'n') {
+    rrect(ctx, x - 10 * s, y - 14 * s, bw, bh, br); ctx.fill();
+  } else if (facing === 's') {
+    rrect(ctx, x - 10 * s, y + 8 * s, bw, bh, br); ctx.fill();
+  } else if (facing === 'e') {
+    rrect(ctx, x - 16 * s, y - 4 * s, bh, bh + 2 * s, br); ctx.fill();
+  } else {
+    rrect(ctx, x + 10 * s, y - 4 * s, bh, bh + 2 * s, br); ctx.fill();
+  }
 }
 
 export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, flip = false, skinKey = 'default') {
