@@ -219,6 +219,7 @@ export function WorldScene() {
               hatStyle={meta.hatStyle}
               outfitId={meta.outfitId}
               speciesId={meta.speciesId}
+              hairStyle={meta.hairStyle}
               scarfEnabled={meta.scarfEnabled}
               hatEnabled={meta.hatEnabled}
               label={meta.name}

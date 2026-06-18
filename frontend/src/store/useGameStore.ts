@@ -215,7 +215,8 @@ interface GameStore {
   saveCustomAgentSoul: (agentId: string, content: string) => Promise<boolean>;
   saveCustomAgentAppearance: (agentId: string, appearance: {
     speciesId?: import('../lib/agentSpecies').SpeciesId;
-    outfitId?: import('../lib/agentOutfits').OutfitId | import('../lib/agentSpecies').ManiuSkinId;
+    outfitId?: import('../lib/agentOutfits').OutfitId | import('../lib/agentSpecies').NiumaSkinId;
+    hairStyle?: string;
     scarfEnabled?: boolean;
     hatEnabled?: boolean;
     headwear: import('../lib/agentAppearance').AgentHeadwear;

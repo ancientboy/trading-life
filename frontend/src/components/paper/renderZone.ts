@@ -429,6 +429,7 @@ export function renderAgents(
       hatStyle: char.data.hatStyle,
       outfitId: char.data.outfitId,
       speciesId: char.data.speciesId,
+      hairStyle: char.data.hairStyle,
       scarfEnabled: char.data.scarfEnabled,
       hatEnabled: char.data.hatEnabled,
       facing: agentFacing(char),

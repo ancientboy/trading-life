@@ -10,11 +10,12 @@ import {
   countCustomByType, canCreateAgentType, loadCustomAgentMeta, type CustomAgentDraft,
   STRATEGY_PRESET_OPTIONS, applyStrategyPreset,
 } from '../../lib/customAgents';
-import { unlockedColors, unlockedHatStyles, unlockedSkinsForSpecies, unlockedSpecies, skinCatalogForSpecies, SPECIES_CATALOG } from '../../lib/lifeShop';
+import { unlockedColors, unlockedHatStyles, unlockedSkinsForSpecies, unlockedSpecies, unlockedHairStylesForNiuma, skinCatalogForSpecies, SPECIES_CATALOG } from '../../lib/lifeShop';
 import { PenguinAvatar } from './PenguinAvatar';
 import { AgentScenePreview } from './AgentScenePreview';
 import { HatStylePicker } from './HatStylePicker';
-import type { SpeciesId, ManiuSkinId } from '../../lib/agentSpecies';
+import { HairStylePicker } from './HairStylePicker';
+import type { SpeciesId, NiumaSkinId, HairStyleId } from '../../lib/agentSpecies';
 import type { OutfitId } from '../../lib/agentOutfits';
 import { resolveAppearance, appearanceSummary, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
 import { StrategyEditor } from './StrategyEditor';
@@ -96,7 +97,8 @@ export function AgentWorkshop() {
 
   const [appearDraft, setAppearDraft] = useState({
     speciesId: 'penguin' as SpeciesId,
-    outfitId: 'default' as OutfitId | ManiuSkinId,
+    outfitId: 'default' as OutfitId | NiumaSkinId,
+    hairStyle: 'pompadour' as HairStyleId,
     scarfEnabled: true,
     hatEnabled: false,
     headwear: 'scarf' as AgentHeadwear,
@@ -130,15 +132,16 @@ export function AgentWorkshop() {
   useEffect(() => {
     if (!d || !custom) return;
     setAppearDraft({
-      speciesId: (d.speciesId as SpeciesId) ?? (d.outfitId === 'maniu' ? 'maniu' : 'penguin'),
-      outfitId: d.outfitId === 'maniu' ? 'default' : (d.outfitId ?? 'default') as OutfitId | ManiuSkinId,
+      speciesId: (d.speciesId === 'maniu' ? 'niuma' : (d.speciesId as SpeciesId)) ?? (d.outfitId === 'maniu' ? 'niuma' : 'penguin'),
+      outfitId: d.outfitId === 'maniu' ? 'default' : (d.outfitId ?? 'default') as OutfitId | NiumaSkinId,
+      hairStyle: (d.hairStyle as HairStyleId) ?? 'pompadour',
       scarfEnabled: d.scarfEnabled ?? (d.headwear !== 'hat'),
       hatEnabled: d.hatEnabled ?? (d.headwear === 'hat'),
       headwear: d.headwear ?? 'scarf',
       hatStyle: d.hatStyle ?? 'beanie',
       color: d.color ?? APPEARANCE_PRESETS.colors[0],
     });
-  }, [editId, custom, d?.speciesId, d?.outfitId, d?.scarfEnabled, d?.hatEnabled, d?.headwear, d?.hatStyle, d?.color]);
+  }, [editId, custom, d?.speciesId, d?.outfitId, d?.hairStyle, d?.scarfEnabled, d?.hatEnabled, d?.headwear, d?.hatStyle, d?.color]);
 
   const pickAgent = (id: string) => {
     setMode('list');
@@ -189,6 +192,8 @@ export function AgentWorkshop() {
   const speciesOptions = unlockedSpecies(shopUnlocks);
   const skinOptions = unlockedSkinsForSpecies(appearDraft.speciesId, shopUnlocks);
   const skinCatalog = skinCatalogForSpecies(appearDraft.speciesId);
+  const hairOptions = unlockedHairStylesForNiuma(shopUnlocks);
+  const isNiumaDraft = appearDraft.speciesId === 'niuma';
 
   if (mode === 'create') {
     const entertainment = draft.agentType === 'entertainment';
@@ -434,11 +439,11 @@ export function AgentWorkshop() {
               <div className="workshop-grid-create" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 16, alignItems: 'start' }}>
                 <div>
                   <p style={{ fontSize: 12, color: '#8a7e72', marginBottom: 12, lineHeight: 1.5 }}>
-                    先选<strong>角色类型</strong>（企鹅 / 马牛），再换该角色专属皮肤；围巾、帽子可叠加穿戴。
+                    先选<strong>角色类型</strong>（企鹅 / 牛马），再换专属皮肤；企鹅可戴围巾帽子，牛马可换发型。
                   </p>
                   <Field label="角色类型">
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {(['penguin', 'maniu'] as SpeciesId[]).map(sid => {
+                      {(['penguin', 'niuma'] as SpeciesId[]).map(sid => {
                         const unlocked = speciesOptions.includes(sid);
                         return (
                           <button key={sid} type="button"
@@ -453,55 +458,80 @@ export function AgentWorkshop() {
                       })}
                     </div>
                   </Field>
-                  <Field label={appearDraft.speciesId === 'maniu' ? '马牛专属皮肤' : '企鹅服装皮肤'}>
+                  <Field label={isNiumaDraft ? '牛马专属皮肤' : '企鹅服装皮肤'}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {skinOptions.map(oid => (
                         <button key={oid} type="button" className={`ui-btn ${appearDraft.outfitId === oid ? 'active' : ''}`}
                           style={{ fontSize: 11, padding: '6px 10px' }}
-                          onClick={() => setAppearDraft({ ...appearDraft, outfitId: oid as OutfitId | ManiuSkinId })}>
+                          onClick={() => setAppearDraft({ ...appearDraft, outfitId: oid as OutfitId | NiumaSkinId })}>
                           {(skinCatalog as Record<string, { preview: string; label: string }>)[oid]?.preview ?? '✨'} {(skinCatalog as Record<string, { label: string }>)[oid]?.label ?? oid}
                         </button>
                       ))}
                     </div>
                   </Field>
-                  <Field label="配饰">
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                      <button type="button" className={`ui-btn ${appearDraft.scarfEnabled ? 'active' : ''}`}
-                        style={{ flex: 1, padding: '8px 0' }}
-                        onClick={() => setAppearDraft({ ...appearDraft, scarfEnabled: !appearDraft.scarfEnabled, headwear: appearDraft.hatEnabled && !appearDraft.scarfEnabled ? 'hat' : 'scarf' })}>
-                        围巾 {appearDraft.scarfEnabled ? '✓' : ''}
-                      </button>
-                      <button type="button" className={`ui-btn ${appearDraft.hatEnabled ? 'active' : ''}`}
-                        style={{ flex: 1, padding: '8px 0' }}
-                        onClick={() => setAppearDraft({ ...appearDraft, hatEnabled: !appearDraft.hatEnabled, headwear: appearDraft.hatEnabled && appearDraft.scarfEnabled ? 'scarf' : 'hat' })}>
-                        帽子 {appearDraft.hatEnabled ? '✓' : ''}
-                      </button>
-                    </div>
-                  </Field>
-                  {appearDraft.hatEnabled && (
-                    <Field label="帽子款式">
-                      <HatStylePicker value={appearDraft.hatStyle} color={appearDraft.color}
-                        allowedStyles={hatOptions}
-                        onChange={hatStyle => setAppearDraft({ ...appearDraft, hatStyle })} />
-                    </Field>
+                  {isNiumaDraft ? (
+                    <>
+                      <Field label="发型款式">
+                        <HairStylePicker value={appearDraft.hairStyle} color={appearDraft.color}
+                          allowedStyles={hairOptions}
+                          onChange={hairStyle => setAppearDraft({ ...appearDraft, hairStyle })} />
+                      </Field>
+                      <Field label="发色">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {colorOptions.map(c => (
+                            <button key={c} type="button" onClick={() => setAppearDraft({ ...appearDraft, color: c })}
+                              style={{
+                                width: 28, height: 28, borderRadius: 6,
+                                border: appearDraft.color === c ? '2px solid #d4af37' : '1px solid #ddd',
+                                background: c, cursor: 'pointer',
+                              }} />
+                          ))}
+                        </div>
+                      </Field>
+                    </>
+                  ) : (
+                    <>
+                      <Field label="配饰">
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                          <button type="button" className={`ui-btn ${appearDraft.scarfEnabled ? 'active' : ''}`}
+                            style={{ flex: 1, padding: '8px 0' }}
+                            onClick={() => setAppearDraft({ ...appearDraft, scarfEnabled: !appearDraft.scarfEnabled, headwear: appearDraft.hatEnabled && !appearDraft.scarfEnabled ? 'hat' : 'scarf' })}>
+                            围巾 {appearDraft.scarfEnabled ? '✓' : ''}
+                          </button>
+                          <button type="button" className={`ui-btn ${appearDraft.hatEnabled ? 'active' : ''}`}
+                            style={{ flex: 1, padding: '8px 0' }}
+                            onClick={() => setAppearDraft({ ...appearDraft, hatEnabled: !appearDraft.hatEnabled, headwear: appearDraft.hatEnabled && appearDraft.scarfEnabled ? 'scarf' : 'hat' })}>
+                            帽子 {appearDraft.hatEnabled ? '✓' : ''}
+                          </button>
+                        </div>
+                      </Field>
+                      {appearDraft.hatEnabled && (
+                        <Field label="帽子款式">
+                          <HatStylePicker value={appearDraft.hatStyle} color={appearDraft.color}
+                            allowedStyles={hatOptions}
+                            onChange={hatStyle => setAppearDraft({ ...appearDraft, hatStyle })} />
+                        </Field>
+                      )}
+                      <Field label="围巾/帽子配色">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {colorOptions.map(c => (
+                            <button key={c} type="button" onClick={() => setAppearDraft({ ...appearDraft, color: c })}
+                              style={{
+                                width: 28, height: 28, borderRadius: 6,
+                                border: appearDraft.color === c ? '2px solid #d4af37' : '1px solid #ddd',
+                                background: c, cursor: 'pointer',
+                              }} />
+                          ))}
+                        </div>
+                      </Field>
+                    </>
                   )}
-                  <Field label="围巾/帽子配色">
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {colorOptions.map(c => (
-                        <button key={c} type="button" onClick={() => setAppearDraft({ ...appearDraft, color: c })}
-                          style={{
-                            width: 28, height: 28, borderRadius: 6,
-                            border: appearDraft.color === c ? '2px solid #d4af37' : '1px solid #ddd',
-                            background: c, cursor: 'pointer',
-                          }} />
-                      ))}
-                    </div>
-                  </Field>
                   <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={async () => {
                     const payload = resolveAppearance(appearDraft);
                     const ok = await saveCustomAgentAppearance(editId, {
                       speciesId: payload.speciesId,
                       outfitId: payload.outfitId as string,
+                      hairStyle: payload.hairStyle,
                       scarfEnabled: payload.scarfEnabled,
                       hatEnabled: payload.hatEnabled,
                       headwear: payload.headwear,
@@ -516,6 +546,7 @@ export function AgentWorkshop() {
                     color={appearDraft.color}
                     speciesId={appearDraft.speciesId}
                     outfitId={appearDraft.outfitId}
+                    hairStyle={appearDraft.hairStyle}
                     scarfEnabled={appearDraft.scarfEnabled}
                     hatEnabled={appearDraft.hatEnabled}
                     headwear={appearDraft.headwear}

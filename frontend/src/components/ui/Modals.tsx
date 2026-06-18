@@ -12,7 +12,7 @@ import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
 import { DINE_TIERS, MASSAGE_TIERS } from '../../lib/leisureTiers';
 import { isZoneSkinShopItem } from '../../lib/zoneSkins';
-import { isOutfitShopItem, isSpeciesShopItem } from '../../lib/lifeShop';
+import { isOutfitShopItem, isSpeciesShopItem, isHairShopItem } from '../../lib/lifeShop';
 import { StrategyEditor } from './StrategyEditor';
 import { SceneSkinsPanel } from './SceneSkinsPanel';
 
@@ -220,7 +220,8 @@ function ShopPanel() {
   const agentItems = shopCatalog.filter(i => i.type === 'color' || i.type === 'hat');
   const speciesItems = shopCatalog.filter(i => isSpeciesShopItem(i) && !i.legacy);
   const outfitItems = shopCatalog.filter(i => i.type === 'outfit');
-  const maniuOutfitItems = shopCatalog.filter(i => i.type === 'maniu_outfit');
+  const niumaOutfitItems = shopCatalog.filter(i => i.type === 'niuma_outfit' || i.type === 'maniu_outfit');
+  const hairItems = shopCatalog.filter(i => isHairShopItem(i));
   const zoneItems = shopCatalog.filter(i => isZoneSkinShopItem(i) && !i.legacy);
   // 旧版皮肤包仍在 catalog 中时也展示
   const legacyZoneItems = shopCatalog.filter(i => i.type === 'zone_skin' && i.legacy);
@@ -229,7 +230,8 @@ function ShopPanel() {
     if (type === 'color') return '解锁围巾/帽子颜色';
     if (type === 'hat') return '解锁帽子款式';
     if (type === 'outfit') return '解锁企鹅服装皮肤';
-    if (type === 'maniu_outfit') return '解锁马牛专属皮肤';
+    if (type === 'niuma_outfit' || type === 'maniu_outfit') return '解锁牛马专属皮肤';
+    if (type === 'hair') return '解锁牛马发型款式';
     if (type === 'species') return '解锁独立角色类型';
     if (type === 'zone_skin') return '区域场景皮肤包';
     return '场景装饰';
@@ -277,7 +279,7 @@ function ShopPanel() {
 
           <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>角色类型</div>
           <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
-            马牛是与企鹅同级的独立角色，可在工坊切换
+            牛马是与企鹅同级的独立角色，可在工坊切换
           </p>
           {speciesItems.map(renderShopRow)}
 
@@ -287,8 +289,14 @@ function ShopPanel() {
           </p>
           {outfitItems.map(renderShopRow)}
 
-          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>马牛专属皮肤</div>
-          {maniuOutfitItems.map(renderShopRow)}
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>牛马专属皮肤</div>
+          {niumaOutfitItems.map(renderShopRow)}
+
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>牛马发型</div>
+          <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
+            牛马专属可变配饰，在工坊选牛马后更换发型与发色
+          </p>
+          {hairItems.map(renderShopRow)}
 
           <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>区域皮肤包</div>
           <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>

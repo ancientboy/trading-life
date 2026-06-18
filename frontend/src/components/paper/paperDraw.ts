@@ -9,7 +9,7 @@ import {
   type AgentHeadwear, type HatStyleId,
 } from '../../lib/agentAppearance';
 import { drawAgentOutfitFull2d, drawOutfitAccessories2d, drawOutfitLimbs2d, outfitReplacesBaseCharacter, type OutfitId } from '../../lib/agentOutfits';
-import { drawManiuAccessories2d, drawManiuCharacter2d, drawManiuLimbs2d, type ManiuSkinId } from '../../lib/agentSpecies';
+import { drawNiumaCharacter2d, drawNiumaAccessories2d, drawNiumaLimbs2d, type NiumaSkinId } from '../../lib/agentSpecies';
 import {
   cantonesePalette, hallRestPalette, spaPalette, vipPalette, receptionPalette,
   type CantonesePalette, type SpaPalette, type VipPalette, type ReceptionPalette,
@@ -154,7 +154,7 @@ export function drawAgent(
     activity?: AgentActivity; facing?: AgentFacing; sitting?: boolean;
     pose?: 'stand' | 'sit' | 'lie' | 'desk';
     headwear?: AgentHeadwear; hatStyle?: HatStyleId;
-    outfitId?: OutfitId | ManiuSkinId; speciesId?: string;
+    outfitId?: OutfitId | NiumaSkinId; speciesId?: string; hairStyle?: string;
     scarfEnabled?: boolean; hatEnabled?: boolean;
     blanket?: boolean;
   },
@@ -332,13 +332,16 @@ function drawPenguinBody(ctx: CanvasRenderingContext2D, py: number, profile = fa
   }
 }
 
-function resolveDrawAppearance(opts: { speciesId?: string; outfitId?: OutfitId | ManiuSkinId; scarfEnabled?: boolean; hatEnabled?: boolean; headwear?: AgentHeadwear; hatStyle?: HatStyleId; color?: string }): AgentAppearanceState {
+function resolveDrawAppearance(opts: { speciesId?: string; outfitId?: OutfitId | NiumaSkinId; hairStyle?: string; scarfEnabled?: boolean; hatEnabled?: boolean; headwear?: AgentHeadwear; hatStyle?: HatStyleId; color?: string }): AgentAppearanceState {
   return resolveAppearance(opts);
 }
 
-function drawAgentTorso(ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState, view: 'front' | 'back' | 'side', flip = 1) {
-  if (ap.speciesId === 'maniu') {
-    drawManiuCharacter2d(ctx, py, ap.outfitId as ManiuSkinId, view, flip);
+function drawAgentTorso(
+  ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState,
+  view: 'front' | 'back' | 'side', flip = 1, anim?: { swing: number; bounce: number },
+) {
+  if (ap.speciesId === 'niuma') {
+    drawNiumaCharacter2d(ctx, py, ap.outfitId as NiumaSkinId, view, flip, anim?.swing ?? 0, anim?.bounce ?? 0);
     return;
   }
   if (outfitReplacesBaseCharacter(ap.outfitId as OutfitId)) {
@@ -349,8 +352,8 @@ function drawAgentTorso(ctx: CanvasRenderingContext2D, py: number, color: string
 }
 
 function drawAgentHeadLayer(ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState, view: 'front' | 'back' | 'side', flip = 1) {
-  if (ap.speciesId === 'maniu') {
-    drawManiuAccessories2d(ctx, py, ap.outfitId as ManiuSkinId, color, ap.scarfEnabled, ap.hatEnabled, ap.hatStyle, view, flip);
+  if (ap.speciesId === 'niuma') {
+    drawNiumaAccessories2d(ctx, py, ap.hairStyle, color, view, flip);
     return;
   }
   if (outfitReplacesBaseCharacter(ap.outfitId as OutfitId)) {
@@ -379,8 +382,8 @@ function drawWalkLimbs(
   const phase = walkPhase(t, walking);
   const swing = walking ? Math.sin(phase) * 5 : 0;
   const bounce = walking ? Math.abs(Math.sin(phase)) * 2 : 0;
-  if (ap.speciesId === 'maniu') {
-    drawManiuLimbs2d(ctx, py, facing, swing, bounce);
+  if (ap.speciesId === 'niuma') {
+    drawNiumaLimbs2d(ctx, py, facing, swing, bounce);
     return;
   }
   if (drawOutfitLimbs2d(ctx, py, ap.outfitId as OutfitId, color, facing, walking, t, swing, bounce)) return;
@@ -421,8 +424,10 @@ function drawAgentBack(
   }
   dropShadow(ctx, x, py + 6, 32, 36, 0.12);
   ctx.save(); ctx.translate(x, 0);
+  const phase = walkPhase(t, walking);
+  const anim = { swing: walking ? Math.sin(phase) * 5 : 0, bounce: walking ? Math.abs(Math.sin(phase)) * 2 : 0 };
   drawWalkLimbs(ctx, py, 'n', walking, t, color, ap);
-  drawAgentTorso(ctx, py, color, ap, 'back');
+  drawAgentTorso(ctx, py, color, ap, 'back', 1, anim);
   drawAgentHeadLayer(ctx, py, color, ap, 'back');
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
@@ -434,7 +439,7 @@ function drawAgentFront(
   opts: {
     selected?: boolean; trading?: boolean; walking?: boolean; t?: number;
     activity?: AgentActivity; headwear?: AgentHeadwear; hatStyle?: HatStyleId;
-    outfitId?: OutfitId | ManiuSkinId; speciesId?: string;
+    outfitId?: OutfitId | NiumaSkinId; speciesId?: string; hairStyle?: string;
     scarfEnabled?: boolean; hatEnabled?: boolean;
   },
 ) {
@@ -453,8 +458,10 @@ function drawAgentFront(
   }
   dropShadow(ctx, x, py + 6, 32, 36, 0.12);
   ctx.save(); ctx.translate(x, 0);
+  const phase = walkPhase(t, walking);
+  const anim = { swing: walking ? Math.sin(phase) * 5 : 0, bounce: walking ? Math.abs(Math.sin(phase)) * 2 : 0 };
   drawWalkLimbs(ctx, py, 's', walking, t, color, ap);
-  drawAgentTorso(ctx, py, color, ap, 'front');
+  drawAgentTorso(ctx, py, color, ap, 'front', 1, anim);
   drawAgentHeadLayer(ctx, py, color, ap, 'front');
   ctx.restore();
   if (opts.trading) {
@@ -485,8 +492,10 @@ function drawAgentSide(
   }
   dropShadow(ctx, x, py + 6, 28, 34, 0.12);
   ctx.save(); ctx.translate(x, 0);
+  const phase = walkPhase(t, walking);
+  const anim = { swing: walking ? Math.sin(phase) * 5 : 0, bounce: walking ? Math.abs(Math.sin(phase)) * 2 : 0 };
   drawWalkLimbs(ctx, py, facing, walking, t, color, ap);
-  drawAgentTorso(ctx, py, color, ap, 'side', flip);
+  drawAgentTorso(ctx, py, color, ap, 'side', flip, anim);
   drawAgentHeadLayer(ctx, py, color, ap, 'side', flip);
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);

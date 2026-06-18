@@ -218,6 +218,7 @@ export async function lifeSaveAgentAppearance(
   appearance: {
     speciesId?: string;
     outfitId?: string;
+    hairStyle?: string;
     scarfEnabled?: boolean;
     hatEnabled?: boolean;
     headwear: string;

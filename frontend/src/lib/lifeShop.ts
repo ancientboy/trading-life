@@ -2,8 +2,10 @@ import { APPEARANCE_PRESETS } from './customAgents';
 import type { HatStyleId } from './agentAppearance';
 import { OUTFIT_CATALOG, OUTFIT_IDS, OUTFIT_UNLOCK_MAP, type OutfitId } from './agentOutfits';
 import {
-  SPECIES_CATALOG, SPECIES_IDS, isSpeciesUnlocked, isManiuSkinUnlocked,
-  unlockedManiuSkins, MANIU_SKIN_CATALOG, MANIU_SKIN_IDS, type SpeciesId, type ManiuSkinId,
+  SPECIES_CATALOG, SPECIES_IDS, isSpeciesUnlocked, isNiumaSkinUnlocked,
+  unlockedNiumaSkins, NIUMa_SKIN_CATALOG, NIUMa_SKIN_IDS,
+  isHairUnlocked, unlockedHairStyles, HAIR_STYLES,
+  type SpeciesId, type NiumaSkinId, type HairStyleId,
 } from './agentSpecies';
 
 const FREE_COLORS = new Set(APPEARANCE_PRESETS.colors);
@@ -48,8 +50,8 @@ export function unlockedOutfits(shopUnlocks: string[]): OutfitId[] {
   return OUTFIT_IDS.filter(id => isOutfitUnlocked(id, shopUnlocks));
 }
 
-export function unlockedSkinsForSpecies(speciesId: SpeciesId, shopUnlocks: string[]): (OutfitId | ManiuSkinId)[] {
-  if (speciesId === 'maniu') return unlockedManiuSkins(shopUnlocks);
+export function unlockedSkinsForSpecies(speciesId: SpeciesId, shopUnlocks: string[]): (OutfitId | NiumaSkinId)[] {
+  if (speciesId === 'niuma') return unlockedNiumaSkins(shopUnlocks);
   return unlockedOutfits(shopUnlocks);
 }
 
@@ -57,25 +59,32 @@ export function unlockedSpecies(shopUnlocks: string[]): SpeciesId[] {
   return SPECIES_IDS.filter(id => isSpeciesUnlocked(id, shopUnlocks));
 }
 
+export function unlockedHairStylesForNiuma(shopUnlocks: string[]): HairStyleId[] {
+  return unlockedHairStyles(shopUnlocks);
+}
+
 export function ownedZoneSkinPacks(shopUnlocks: string[]) {
   return shopUnlocks.filter(id => id.startsWith('zone_skin_') || id.startsWith('skin_'));
 }
 
-/** @deprecated 使用 ownedZoneSkinPacks */
 export function ownedCosmetics(shopUnlocks: string[]) {
   return ownedZoneSkinPacks(shopUnlocks);
 }
 
 export function isOutfitShopItem(item: { id: string; type: string }): boolean {
-  return item.type === 'outfit' || item.type === 'maniu_outfit';
+  return item.type === 'outfit' || item.type === 'niuma_outfit' || item.type === 'maniu_outfit';
 }
 
 export function isSpeciesShopItem(item: { id: string; type: string }): boolean {
   return item.type === 'species';
 }
 
-export function skinCatalogForSpecies(speciesId: SpeciesId) {
-  return speciesId === 'maniu' ? MANIU_SKIN_CATALOG : OUTFIT_CATALOG;
+export function isHairShopItem(item: { id: string; type: string }): boolean {
+  return item.type === 'hair';
 }
 
-export { OUTFIT_CATALOG, OUTFIT_IDS, SPECIES_CATALOG, MANIU_SKIN_CATALOG, MANIU_SKIN_IDS };
+export function skinCatalogForSpecies(speciesId: SpeciesId) {
+  return speciesId === 'niuma' ? NIUMa_SKIN_CATALOG : OUTFIT_CATALOG;
+}
+
+export { OUTFIT_CATALOG, OUTFIT_IDS, SPECIES_CATALOG, NIUMa_SKIN_CATALOG, NIUMa_SKIN_IDS, HAIR_STYLES };

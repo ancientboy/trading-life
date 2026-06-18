@@ -1,30 +1,57 @@
-/** 角色物种 — 与企鹅同级的独立基础角色（各有专属皮肤） */
+/** 角色物种 — 牛马等与企鹅同级的独立基础角色 */
 
-import { drawAgentHat2d, drawAgentScarf2d, type HatStyleId } from './agentAppearance';
-
-export const SPECIES_IDS = ['penguin', 'maniu'] as const;
+export const SPECIES_IDS = ['penguin', 'niuma'] as const;
 export type SpeciesId = typeof SPECIES_IDS[number];
 
 export const SPECIES_CATALOG: Record<SpeciesId, { label: string; desc: string; preview: string }> = {
   penguin: { label: '经典企鹅', desc: '黑白 Q 版企鹅造型', preview: '🐧' },
-  maniu: { label: '马牛', desc: '圆球头身 · 商务西装 · 漂浮小手', preview: '👔' },
+  niuma: { label: '牛马', desc: '圆球头身 · 商务西装 · 漂浮圆手', preview: '👔' },
 };
 
 export const SPECIES_UNLOCK_MAP: Partial<Record<Exclude<SpeciesId, 'penguin'>, string>> = {
-  maniu: 'species_maniu',
+  niuma: 'species_niuma',
 };
 
-/** 马牛专属皮肤（default = 蓝色商务西装基础造型） */
-export const MANIU_SKIN_IDS = ['default', 'casual', 'executive'] as const;
-export type ManiuSkinId = typeof MANIU_SKIN_IDS[number];
+/** 牛马专属皮肤 */
+export const NIUMa_SKIN_IDS = ['default', 'casual', 'executive'] as const;
+export type NiumaSkinId = typeof NIUMa_SKIN_IDS[number];
 
-export const MANIU_SKIN_CATALOG: Record<ManiuSkinId, { label: string; desc: string; preview: string }> = {
-  default: { label: '商务西装', desc: '蓝色西装 + 工牌「马牛」', preview: '👔' },
+export const NIUMa_SKIN_CATALOG: Record<NiumaSkinId, { label: string; desc: string; preview: string }> = {
+  default: { label: '商务西装', desc: '蓝色西装 + 工牌「牛马」', preview: '👔' },
   casual: { label: '休闲 Polo', desc: '绿色 Polo + 轻松造型', preview: '👕' },
   executive: { label: '总裁黑金', desc: '黑色高定 + 金边领带', preview: '🎩' },
 };
 
-export const MANIU_SKIN_UNLOCK_MAP: Record<Exclude<ManiuSkinId, 'default'>, string> = {
+export const NIUMa_SKIN_UNLOCK_MAP: Record<Exclude<NiumaSkinId, 'default'>, string> = {
+  casual: 'outfit_niuma_casual',
+  executive: 'outfit_niuma_executive',
+};
+
+/** 牛马发型（类似企鹅帽子，可换款式 + 配色） */
+export const HAIR_STYLE_IDS = ['pompadour', 'buzz', 'sidepart', 'curly', 'spiky', 'afro', 'twin'] as const;
+export type HairStyleId = typeof HAIR_STYLE_IDS[number];
+
+export const HAIR_STYLES: Record<HairStyleId, { label: string }> = {
+  pompadour: { label: '飞机头' },
+  buzz: { label: '寸头' },
+  sidepart: { label: '侧分' },
+  curly: { label: '卷发' },
+  spiky: { label: '刺猬头' },
+  afro: { label: '爆炸头' },
+  twin: { label: '双丸子' },
+};
+
+export const FREE_HAIR_STYLES = new Set<HairStyleId>(['pompadour', 'buzz', 'sidepart']);
+
+export const HAIR_UNLOCK_MAP: Partial<Record<HairStyleId, string>> = {
+  curly: 'hair_curly_unlock',
+  spiky: 'hair_spiky_unlock',
+  afro: 'hair_afro_unlock',
+  twin: 'hair_twin_unlock',
+};
+
+const LEGACY_SPECIES_UNLOCKS = ['species_maniu', 'outfit_maniu'];
+const LEGACY_SKIN_UNLOCKS: Record<string, string> = {
   casual: 'outfit_maniu_casual',
   executive: 'outfit_maniu_executive',
 };
@@ -33,38 +60,52 @@ export function isSpeciesUnlocked(speciesId: SpeciesId, shopUnlocks: string[]): 
   if (speciesId === 'penguin') return true;
   const id = SPECIES_UNLOCK_MAP[speciesId];
   if (id && shopUnlocks.includes(id)) return true;
-  // 旧版 outfit_maniu 购买记录兼容为物种解锁
-  if (speciesId === 'maniu' && shopUnlocks.includes('outfit_maniu')) return true;
+  if (speciesId === 'niuma' && LEGACY_SPECIES_UNLOCKS.some(k => shopUnlocks.includes(k))) return true;
   return false;
 }
 
-export function isManiuSkinUnlocked(skinId: ManiuSkinId, shopUnlocks: string[]): boolean {
+export function isNiumaSkinUnlocked(skinId: NiumaSkinId, shopUnlocks: string[]): boolean {
   if (skinId === 'default') return true;
-  const id = MANIU_SKIN_UNLOCK_MAP[skinId];
-  return id ? shopUnlocks.includes(id) : false;
+  const id = NIUMa_SKIN_UNLOCK_MAP[skinId];
+  if (id && shopUnlocks.includes(id)) return true;
+  const legacy = LEGACY_SKIN_UNLOCKS[skinId];
+  return legacy ? shopUnlocks.includes(legacy) : false;
 }
 
-export function unlockedManiuSkins(shopUnlocks: string[]): ManiuSkinId[] {
-  return MANIU_SKIN_IDS.filter(id => isManiuSkinUnlocked(id, shopUnlocks));
+export function isHairUnlocked(style: HairStyleId, shopUnlocks: string[]): boolean {
+  if (FREE_HAIR_STYLES.has(style)) return true;
+  const id = HAIR_UNLOCK_MAP[style];
+  return id ? shopUnlocks.includes(id) : true;
+}
+
+export function unlockedNiumaSkins(shopUnlocks: string[]): NiumaSkinId[] {
+  return NIUMa_SKIN_IDS.filter(id => isNiumaSkinUnlocked(id, shopUnlocks));
+}
+
+export function unlockedHairStyles(shopUnlocks: string[]): HairStyleId[] {
+  return HAIR_STYLE_IDS.filter(id => isHairUnlocked(id, shopUnlocks));
 }
 
 export function normalizeSpeciesId(raw?: string): SpeciesId {
-  return raw === 'maniu' ? 'maniu' : 'penguin';
+  if (raw === 'niuma' || raw === 'maniu') return 'niuma';
+  return 'penguin';
 }
 
-/** 旧数据迁移：outfitId=maniu → speciesId=maniu + outfitId=default */
 export function migrateLegacyAppearance(meta: { speciesId?: string; outfitId?: string }): {
   speciesId: SpeciesId;
   outfitId: string;
 } {
+  const legacySpecies = meta.speciesId === 'maniu' || meta.outfitId === 'maniu';
+  if (legacySpecies && normalizeSpeciesId(meta.speciesId) !== 'niuma') {
+    return { speciesId: 'niuma', outfitId: meta.outfitId === 'maniu' ? 'default' : (meta.outfitId || 'default') };
+  }
   if (meta.outfitId === 'maniu' && !meta.speciesId) {
-    return { speciesId: 'maniu', outfitId: 'default' };
+    return { speciesId: 'niuma', outfitId: 'default' };
   }
   const speciesId = normalizeSpeciesId(meta.speciesId);
   let outfitId = meta.outfitId || 'default';
-  if (speciesId === 'maniu') {
-    if (!MANIU_SKIN_IDS.includes(outfitId as ManiuSkinId)) outfitId = 'default';
-  }
+  if (outfitId === 'maniu') outfitId = 'default';
+  if (speciesId === 'niuma' && !NIUMa_SKIN_IDS.includes(outfitId as NiumaSkinId)) outfitId = 'default';
   return { speciesId, outfitId };
 }
 
@@ -77,7 +118,7 @@ function darken(hex: string, amt = 0.3): string {
   return `#${[r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
 }
 
-function drawManiuFace(ctx: CanvasRenderingContext2D, py: number) {
+function drawNiumaFace(ctx: CanvasRenderingContext2D, py: number) {
   ctx.fillStyle = '#2a2220';
   ctx.fillRect(-9, py - 8, 7, 2.2);
   ctx.fillRect(2, py - 8, 7, 2.2);
@@ -88,29 +129,95 @@ function drawManiuFace(ctx: CanvasRenderingContext2D, py: number) {
   ctx.beginPath(); ctx.moveTo(0, py + 4); ctx.quadraticCurveTo(3, py + 6, 5, py + 4); ctx.stroke();
 }
 
-function drawManiuHair(ctx: CanvasRenderingContext2D, py: number, view: 'front' | 'back' | 'side') {
-  ctx.fillStyle = '#2a2018';
-  if (view === 'front') {
-    ctx.beginPath();
-    ctx.moveTo(-14, py - 10);
-    ctx.quadraticCurveTo(-8, py - 32, 6, py - 22);
-    ctx.quadraticCurveTo(12, py - 18, 10, py - 8);
-    ctx.quadraticCurveTo(2, py - 14, -14, py - 10);
-    ctx.fill();
-  } else if (view === 'back') {
+/** 牛马发型 2D — 可换款式与颜色 */
+export function drawNiumaHair2d(
+  ctx: CanvasRenderingContext2D,
+  py: number,
+  style: HairStyleId,
+  hairColor: string,
+  view: 'front' | 'back' | 'side' = 'front',
+  flip = 1,
+) {
+  const main = hairColor;
+  const shade = darken(hairColor, 0.22);
+  ctx.fillStyle = main;
+  if (view === 'back') {
     ctx.beginPath(); ctx.ellipse(0, py - 14, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
-  } else {
-    ctx.beginPath();
-    ctx.moveTo(2, py - 8);
-    ctx.quadraticCurveTo(8, py - 30, 16, py - 18);
-    ctx.quadraticCurveTo(14, py - 10, 6, py - 6);
-    ctx.closePath(); ctx.fill();
+    return;
+  }
+  if (view === 'side') {
+    ctx.save();
+    if (flip === -1) ctx.scale(-1, 1);
+    switch (style) {
+      case 'pompadour':
+        ctx.beginPath();
+        ctx.moveTo(2, py - 8);
+        ctx.quadraticCurveTo(8, py - 30, 16, py - 18);
+        ctx.quadraticCurveTo(14, py - 10, 6, py - 6);
+        ctx.closePath(); ctx.fill();
+        break;
+      case 'afro':
+        ctx.beginPath(); ctx.arc(8, py - 14, 12, 0, Math.PI * 2); ctx.fill();
+        break;
+      default:
+        ctx.beginPath(); ctx.ellipse(8, py - 12, 11, 7, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+  switch (style) {
+    case 'pompadour':
+      ctx.beginPath();
+      ctx.moveTo(-14, py - 10);
+      ctx.quadraticCurveTo(-8, py - 32, 6, py - 22);
+      ctx.quadraticCurveTo(12, py - 18, 10, py - 8);
+      ctx.quadraticCurveTo(2, py - 14, -14, py - 10);
+      ctx.fill();
+      break;
+    case 'buzz':
+      ctx.beginPath(); ctx.ellipse(0, py - 16, 15, 6, 0, 0, Math.PI * 2); ctx.fill();
+      break;
+    case 'sidepart':
+      ctx.beginPath();
+      ctx.moveTo(-15, py - 8);
+      ctx.quadraticCurveTo(-4, py - 28, 12, py - 14);
+      ctx.quadraticCurveTo(8, py - 8, -10, py - 6);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = shade;
+      ctx.fillRect(-2, py - 22, 2, 14);
+      break;
+    case 'curly':
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath(); ctx.arc(i * 6, py - 18 + (i % 2) * 2, 5, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    case 'spiky':
+      ctx.fillStyle = main;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 5 - 2, py - 8);
+        ctx.lineTo(i * 5, py - 26);
+        ctx.lineTo(i * 5 + 2, py - 8);
+        ctx.closePath(); ctx.fill();
+      }
+      break;
+    case 'afro':
+      ctx.beginPath(); ctx.arc(0, py - 16, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = shade;
+      ctx.beginPath(); ctx.arc(-4, py - 18, 5, 0, Math.PI * 2); ctx.fill();
+      break;
+    case 'twin':
+      ctx.beginPath(); ctx.arc(-9, py - 22, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(9, py - 22, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = shade;
+      ctx.beginPath(); ctx.arc(-9, py - 23, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(9, py - 23, 2.5, 0, Math.PI * 2); ctx.fill();
+      break;
   }
 }
 
-function drawManiuBodySphere(ctx: CanvasRenderingContext2D, py: number, view: 'front' | 'back' | 'side') {
-  const skin = '#f5efe6';
-  ctx.fillStyle = skin;
+function drawNiumaBodySphere(ctx: CanvasRenderingContext2D, py: number, view: 'front' | 'back' | 'side') {
+  ctx.fillStyle = '#f5efe6';
   if (view === 'side') {
     ctx.beginPath(); ctx.arc(7, py + 2, 16, 0, Math.PI * 2); ctx.fill();
   } else {
@@ -118,7 +225,32 @@ function drawManiuBodySphere(ctx: CanvasRenderingContext2D, py: number, view: 'f
   }
 }
 
-function drawManiuSuitDefault(ctx: CanvasRenderingContext2D, py: number, view: 'front' | 'back' | 'side') {
+/** 漂浮圆手 — 始终绘制在角色两侧 */
+export function drawNiumaHands2d(
+  ctx: CanvasRenderingContext2D,
+  py: number,
+  view: 'front' | 'back' | 'side',
+  swing = 0,
+  bounce = 0,
+) {
+  const hand = '#faf8f4';
+  const outline = 'rgba(40,30,20,0.18)';
+  ctx.fillStyle = hand;
+  ctx.strokeStyle = outline;
+  ctx.lineWidth = 1;
+  const r = 5.8;
+  if (view === 'front') {
+    ctx.beginPath(); ctx.arc(-15 - swing * 0.25, py + 3 - bounce, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(15 + swing * 0.25, py + 3 - bounce, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  } else if (view === 'back') {
+    ctx.beginPath(); ctx.arc(-13 - swing * 0.2, py + 3 - bounce, r - 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(13 + swing * 0.2, py + 3 - bounce, r - 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(15 + swing * 0.25, py + 3 - bounce, r - 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+}
+
+function drawNiumaSuitDefault(ctx: CanvasRenderingContext2D, py: number, view: 'front' | 'back' | 'side') {
   const suit = '#2b7fd4';
   const lapel = '#1a4a8a';
   const tie = '#f4a89a';
@@ -143,7 +275,7 @@ function drawManiuSuitDefault(ctx: CanvasRenderingContext2D, py: number, view: '
     ctx.strokeStyle = '#ccc'; ctx.lineWidth = 0.6; ctx.strokeRect(-12, py + 9, 10, 6);
     ctx.fillStyle = '#1a1a1a';
     ctx.font = 'bold 5px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('马牛', -7, py + 13.5);
+    ctx.fillText('牛马', -7, py + 13.5);
     ctx.restore();
   } else if (view === 'back') {
     ctx.save();
@@ -164,21 +296,17 @@ function drawManiuSuitDefault(ctx: CanvasRenderingContext2D, py: number, view: '
   }
 }
 
-function drawManiuSuitCasual(ctx: CanvasRenderingContext2D, py: number, view: 'front' | 'back' | 'side') {
+function drawNiumaSuitCasual(ctx: CanvasRenderingContext2D, py: number, view: 'front' | 'back' | 'side') {
   const polo = '#4a9e5c';
-  const collar = '#fafafa';
   if (view === 'front') {
     ctx.save();
     ctx.beginPath(); ctx.arc(0, py + 2, 18, 0, Math.PI * 2); ctx.clip();
     ctx.fillStyle = polo;
     ctx.fillRect(-18, py + 6, 36, 18);
-    ctx.fillStyle = collar;
+    ctx.fillStyle = '#fafafa';
     ctx.beginPath(); ctx.moveTo(-6, py + 6); ctx.lineTo(0, py + 12); ctx.lineTo(6, py + 6); ctx.closePath(); ctx.fill();
     ctx.fillStyle = darken(polo, 0.2);
     ctx.fillRect(-3, py + 10, 6, 10);
-    ctx.fillStyle = '#fafafa';
-    ctx.font = 'bold 6px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('MN', 0, py + 20);
     ctx.restore();
   } else if (view === 'back') {
     ctx.save();
@@ -195,7 +323,7 @@ function drawManiuSuitCasual(ctx: CanvasRenderingContext2D, py: number, view: 'f
   }
 }
 
-function drawManiuSuitExecutive(ctx: CanvasRenderingContext2D, py: number, view: 'front' | 'back' | 'side') {
+function drawNiumaSuitExecutive(ctx: CanvasRenderingContext2D, py: number, view: 'front' | 'back' | 'side') {
   const suit = '#1a1a2e';
   const gold = '#d4af37';
   if (view === 'front') {
@@ -209,17 +337,12 @@ function drawManiuSuitExecutive(ctx: CanvasRenderingContext2D, py: number, view:
     ctx.beginPath(); ctx.moveTo(-4, py + 4); ctx.lineTo(0, py + 16); ctx.lineTo(4, py + 4); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#c0392b';
     ctx.fillRect(-2, py + 6, 4, 12);
-    ctx.fillStyle = gold;
-    ctx.fillRect(-8, py + 10, 6, 1.5);
-    ctx.fillRect(2, py + 10, 6, 1.5);
     ctx.restore();
   } else if (view === 'back') {
     ctx.save();
     ctx.beginPath(); ctx.arc(0, py + 2, 18, 0, Math.PI * 2); ctx.clip();
     ctx.fillStyle = '#12121f';
     ctx.fillRect(-18, py + 2, 36, 22);
-    ctx.strokeStyle = gold; ctx.lineWidth = 0.8;
-    ctx.strokeRect(-8, py + 4, 16, 18);
     ctx.restore();
   } else {
     ctx.save();
@@ -230,63 +353,62 @@ function drawManiuSuitExecutive(ctx: CanvasRenderingContext2D, py: number, view:
   }
 }
 
-/** 绘制马牛完整角色（物种基础 + 皮肤） */
-export function drawManiuCharacter2d(
+/** 绘制牛马完整角色（身体 + 皮肤 + 圆手；发型在 head 层单独绘制） */
+export function drawNiumaCharacter2d(
   ctx: CanvasRenderingContext2D,
   py: number,
-  skinId: ManiuSkinId,
+  skinId: NiumaSkinId,
   view: 'front' | 'back' | 'side' = 'front',
   flip = 1,
+  swing = 0,
+  bounce = 0,
 ) {
   ctx.save();
   if (view === 'side') ctx.scale(flip, 1);
-  drawManiuBodySphere(ctx, py, view);
-  drawManiuHair(ctx, py, view);
-  if (view === 'front') drawManiuFace(ctx, py);
+  drawNiumaBodySphere(ctx, py, view);
+  if (view === 'front') drawNiumaFace(ctx, py);
   else if (view === 'side') {
     ctx.fillStyle = '#2a2220';
     ctx.beginPath(); ctx.ellipse(10, py - 2, 2.8, 3.8, 0, 0, Math.PI * 2); ctx.fill();
   }
   switch (skinId) {
-    case 'default': drawManiuSuitDefault(ctx, py, view); break;
-    case 'casual': drawManiuSuitCasual(ctx, py, view); break;
-    case 'executive': drawManiuSuitExecutive(ctx, py, view); break;
+    case 'default': drawNiumaSuitDefault(ctx, py, view); break;
+    case 'casual': drawNiumaSuitCasual(ctx, py, view); break;
+    case 'executive': drawNiumaSuitExecutive(ctx, py, view); break;
   }
+  drawNiumaHands2d(ctx, py, view, swing, bounce);
   ctx.restore();
 }
 
-export function drawManiuLimbs2d(
-  ctx: CanvasRenderingContext2D,
-  py: number,
-  facing: 'n' | 's' | 'e' | 'w',
-  swing: number,
-  bounce: number,
+export function drawNiumaLimbs2d(
+  _ctx: CanvasRenderingContext2D,
+  _py: number,
+  _facing: 'n' | 's' | 'e' | 'w',
+  _swing: number,
+  _bounce: number,
 ) {
-  const vert = facing === 'n' || facing === 's';
-  ctx.fillStyle = '#faf8f4';
-  if (vert) {
-    ctx.beginPath(); ctx.arc(-13 - swing * 0.3, py + 6 - bounce + swing * 0.2, 4.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(13 + swing * 0.3, py + 6 - bounce - swing * 0.2, 4.5, 0, Math.PI * 2); ctx.fill();
-  } else {
-    const flip = facing === 'w' ? -1 : 1;
-    ctx.beginPath(); ctx.arc(flip * (12 + swing * 0.3), py + 6 - bounce, 4.2, 0, Math.PI * 2); ctx.fill();
-  }
+  // 圆手在 drawNiumaCharacter2d 末尾绘制（避免被身体遮挡）
   return true;
 }
 
-export function drawManiuAccessories2d(
+/** 牛马 head 层 — 仅发型（替代企鹅围巾/帽子） */
+export function drawNiumaAccessories2d(
   ctx: CanvasRenderingContext2D,
   py: number,
-  skinId: ManiuSkinId,
-  color: string,
-  scarfEnabled: boolean,
-  hatEnabled: boolean,
-  hatStyle: HatStyleId,
+  hairStyle: HairStyleId,
+  hairColor: string,
   view: 'front' | 'back' | 'side',
   flip = 1,
 ) {
-  const neck = py + (skinId === 'default' ? 4 : 6);
-  const hatY = py - 24;
-  if (scarfEnabled) drawAgentScarf2d(ctx, neck, color, view, flip);
-  if (hatEnabled) drawAgentHat2d(ctx, hatY, hatStyle, color, view, flip);
+  drawNiumaHair2d(ctx, py, hairStyle, hairColor, view, flip);
 }
+
+// ─── 旧名兼容 ───────────────────────────────────────────────────
+export type ManiuSkinId = NiumaSkinId;
+export const MANIU_SKIN_IDS = NIUMa_SKIN_IDS;
+export const MANIU_SKIN_CATALOG = NIUMa_SKIN_CATALOG;
+export const drawManiuCharacter2d = drawNiumaCharacter2d;
+export const drawManiuLimbs2d = drawNiumaLimbs2d;
+export const drawManiuAccessories2d = drawNiumaAccessories2d;
+export const unlockedManiuSkins = unlockedNiumaSkins;
+export const isManiuSkinUnlocked = isNiumaSkinUnlocked;

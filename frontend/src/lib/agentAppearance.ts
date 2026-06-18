@@ -3,7 +3,8 @@ import type { AgentMeta } from './constants';
 import type { OutfitId } from './agentOutfits';
 import { OUTFIT_CATALOG } from './agentOutfits';
 import {
-  type SpeciesId, type ManiuSkinId, SPECIES_CATALOG, MANIU_SKIN_CATALOG,
+  type SpeciesId, type NiumaSkinId, type HairStyleId,
+  SPECIES_CATALOG, NIUMa_SKIN_CATALOG, HAIR_STYLES,
   migrateLegacyAppearance,
 } from './agentSpecies';
 
@@ -22,10 +23,11 @@ export const HAT_STYLES: Record<HatStyleId, { label: string }> = {
 
 export interface AgentAppearanceState {
   speciesId: SpeciesId;
-  outfitId: OutfitId | ManiuSkinId;
+  outfitId: OutfitId | NiumaSkinId;
   scarfEnabled: boolean;
   hatEnabled: boolean;
   hatStyle: HatStyleId;
+  hairStyle: HairStyleId;
   color: string;
   /** 兼容旧 API / 存储 */
   headwear: AgentHeadwear;
@@ -47,12 +49,14 @@ export function resolveAppearance(meta: Partial<AgentMeta>): AgentAppearanceStat
   hatEnabled = hatEnabled ?? false;
   const headwear: AgentHeadwear = hatEnabled && !scarfEnabled ? 'hat' : 'scarf';
   const migrated = migrateLegacyAppearance(meta);
+  const speciesId = migrated.speciesId;
   return {
-    speciesId: migrated.speciesId,
-    outfitId: migrated.outfitId as OutfitId | ManiuSkinId,
-    scarfEnabled,
-    hatEnabled,
+    speciesId,
+    outfitId: migrated.outfitId as OutfitId | NiumaSkinId,
+    scarfEnabled: speciesId === 'niuma' ? false : scarfEnabled,
+    hatEnabled: speciesId === 'niuma' ? false : hatEnabled,
     hatStyle: meta.hatStyle ?? 'beanie',
+    hairStyle: (meta.hairStyle as HairStyleId) ?? 'pompadour',
     color: meta.color ?? '#FFD700',
     headwear,
   };
@@ -67,6 +71,7 @@ export function normalizeAgentMeta(meta: Partial<AgentMeta> & { icon?: string })
     color: appearance.color,
     headwear: appearance.headwear,
     hatStyle: appearance.hatStyle,
+    hairStyle: appearance.hairStyle,
     speciesId: appearance.speciesId,
     outfitId: appearance.outfitId as string,
     scarfEnabled: appearance.scarfEnabled,
@@ -84,15 +89,16 @@ export function normalizeAgentMeta(meta: Partial<AgentMeta> & { icon?: string })
 export function appearanceSummary(meta: Partial<AgentMeta>): string {
   const a = resolveAppearance(meta);
   const parts: string[] = [];
-  if (a.speciesId === 'maniu') {
-    parts.push(SPECIES_CATALOG.maniu.label);
-    if (a.outfitId !== 'default') parts.push(MANIU_SKIN_CATALOG[a.outfitId as ManiuSkinId]?.label ?? String(a.outfitId));
+  if (a.speciesId === 'niuma') {
+    parts.push(SPECIES_CATALOG.niuma.label);
+    if (a.outfitId !== 'default') parts.push(NIUMa_SKIN_CATALOG[a.outfitId as NiumaSkinId]?.label ?? String(a.outfitId));
+    parts.push(HAIR_STYLES[a.hairStyle].label);
   } else {
     if (a.outfitId !== 'default') parts.push(OUTFIT_CATALOG[a.outfitId as OutfitId]?.label ?? String(a.outfitId));
     else parts.push(SPECIES_CATALOG.penguin.label);
+    if (a.scarfEnabled) parts.push('围巾');
+    if (a.hatEnabled) parts.push(HAT_STYLES[a.hatStyle].label);
   }
-  if (a.scarfEnabled) parts.push('围巾');
-  if (a.hatEnabled) parts.push(HAT_STYLES[a.hatStyle].label);
   return parts.join(' · ');
 }
 
