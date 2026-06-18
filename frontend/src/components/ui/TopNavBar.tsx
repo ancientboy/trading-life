@@ -1,10 +1,11 @@
 import { WalletIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import {
-  ChartBarIcon, GiftIcon, TrophyIcon, Cog6ToothIcon, QuestionMarkCircleIcon,
+  ChartBarIcon, GiftIcon, TrophyIcon, Cog6ToothIcon, QuestionMarkCircleIcon, PaintBrushIcon,
 } from '@heroicons/react/24/outline';
 import {
   ChartBarIcon as ChartBarSolid, GiftIcon as GiftSolid, TrophyIcon as TrophySolid,
   Cog6ToothIcon as CogSolid, QuestionMarkCircleIcon as HelpSolid,
+  PaintBrushIcon as PaintBrushSolid,
 } from '@heroicons/react/24/solid';
 import { useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
@@ -16,6 +17,7 @@ const NAV_BTNS = [
   { id: 'market', label: '行情', outline: ChartBarIcon, solid: ChartBarSolid, modal: 'market' as const },
   { id: 'tasks', label: '任务', outline: GiftIcon, solid: GiftSolid, modal: 'tasks' as const },
   { id: 'shop', label: '商城', outline: GiftIcon, solid: GiftSolid, modal: 'shop' as const },
+  { id: 'scene', label: '场景装扮', outline: PaintBrushIcon, solid: PaintBrushSolid, modal: 'scene' as const },
   { id: 'rank', label: '排行', outline: TrophyIcon, solid: TrophySolid, modal: 'rank' as const },
   { id: 'settings', label: '设置', outline: Cog6ToothIcon, solid: CogSolid, modal: 'settings' as const },
   { id: 'help', label: '帮助', outline: QuestionMarkCircleIcon, solid: HelpSolid, modal: 'help' as const },

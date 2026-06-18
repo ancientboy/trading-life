@@ -375,6 +375,7 @@ function agentPose(char: CharState, now = performance.now()): CharState['activit
       if (phase === 'arriving') return 'stand';
       return 'lie';
     }
+    if (char.activity === 'rest') return 'sit';
     if (char.activityPose) return char.activityPose;
     return 'sit';
   }

@@ -1,5 +1,5 @@
 import type { CharState } from './constants';
-import { RESTAURANT_TABLES, SPA_BEDS } from './zoneFurniture';
+import { RESTAURANT_TABLES, SPA_BEDS, HALL_REST_BOOTHS } from './zoneFurniture';
 
 export type LeisurePhase = 'arriving' | 'serve' | 'active';
 
@@ -52,6 +52,15 @@ export function getLeisureRenderPaperPos(
   if (zone === 'restaurant' && char.activity === 'dine') {
     const chair = RESTAURANT_TABLES.flatMap(t => t.chairs).find(c => c.id === char.destNode);
     if (chair) return { px: chair.px, py: chair.py };
+  }
+  if (zone === 'hall' && char.activity === 'rest') {
+    const seat = HALL_REST_BOOTHS.flatMap(b => b.seats).find(s => s.id === char.destNode);
+    if (seat) {
+      const tuck = seat.facing === 'e' ? -10 : 10;
+      return { px: seat.px + tuck, py: seat.py - 6 };
+    }
+    const booth = HALL_REST_BOOTHS.find(b => b.id === char.destNode);
+    if (booth) return { px: booth.px, py: booth.py - 4 };
   }
   return null;
 }

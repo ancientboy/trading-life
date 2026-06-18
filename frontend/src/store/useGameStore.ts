@@ -46,7 +46,7 @@ function scheduleSeatSync(fn: () => Promise<void>) {
 
 export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages' | 'tasks' | 'social';
 export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs' | 'tasks';
-export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'shop' | 'tasks' | null;
+export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'shop' | 'scene' | 'tasks' | null;
 
 export type PokerHandResult = {
   results: Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
@@ -915,6 +915,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().applyLifeState(state);
     }
     get().addMessage(`已解锁：${res.item?.label ?? itemId}`);
+    if (res.item?.type === 'zone_skin') {
+      get().addMessage('请到顶部导航「场景装扮」切换各区域风格');
+      get().openModal('scene');
+    }
     return true;
   },
 

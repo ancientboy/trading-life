@@ -128,6 +128,10 @@ export function drawAgent(
     drawAgentTop(ctx, x, y, color, { ...opts, facing: 's', activity: act ?? 'massage', blanket: opts.blanket });
     return;
   }
+  if (act === 'rest' && (pose === 'sit' || !opts.pose)) {
+    drawAgentResting(ctx, x, y, color, opts);
+    return;
+  }
   if (pose === 'sit' || pose === 'desk') {
     drawAgentSitting(ctx, x, y, color, { ...opts, pose, activity: act });
     return;
@@ -182,6 +186,58 @@ function drawAgentSitting(
   }
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
+}
+
+/** 休息包厢 — 侧向倚靠沙发，带呼吸与打盹动效 */
+function drawAgentResting(
+  ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
+  opts: {
+    selected?: boolean; t?: number; facing?: AgentFacing;
+    headwear?: AgentHeadwear; hatStyle?: HatStyleId;
+  },
+) {
+  const t = opts.t ?? 0;
+  const facing = opts.facing === 'w' ? 'w' : 'e';
+  const flip = facing === 'w' ? -1 : 1;
+  const breathe = Math.sin(t * 1.5) * 1.8;
+  const nod = Math.sin(t * 0.9) * 0.04;
+  const py = y + breathe;
+
+  if (opts.selected) {
+    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(x, py, 24, 20, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  dropShadow(ctx, x, py + 8, 46, 18, 0.1);
+  ctx.fillStyle = 'rgba(200,188,168,0.45)';
+  rrect(ctx, x - 28, py + 2, 56, 14, 5); ctx.fill();
+
+  ctx.save();
+  ctx.translate(x, py);
+  ctx.scale(flip, 1);
+  ctx.rotate(-0.18 + nod);
+
+  ctx.fillStyle = PENGUIN.foot;
+  ctx.beginPath(); ctx.ellipse(10, 14, 7, 3.5, 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(18, 12, 6, 3, 0.1, 0, Math.PI * 2); ctx.fill();
+
+  drawPenguinBody(ctx, -2, true);
+  const hw = agentHw(opts);
+  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, -2, color, 'side', 1);
+  drawPenguinFace(ctx, -2, true, 1);
+  if (hw.headwear === 'hat') drawAgentHat2d(ctx, -4, hw.hatStyle, color, 'side', 1);
+
+  ctx.restore();
+
+  const zzzPhase = (t * 0.8) % 3;
+  ctx.font = `${Math.max(9, 11)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(107,91,138,0.85)';
+  if (zzzPhase > 0.2) ctx.fillText('z', x + 16 + Math.sin(t * 2) * 2, py - 20);
+  if (zzzPhase > 1.0) ctx.fillText('z', x + 22 + Math.sin(t * 2 + 1) * 2, py - 28);
+  if (zzzPhase > 1.8) ctx.fillText('Z', x + 28 + Math.sin(t * 2 + 2) * 2, py - 36);
+
+  drawActivityBadge(ctx, x, py, 'rest', t);
 }
 
 function walkPhase(t: number, walking: boolean) {
