@@ -35,12 +35,12 @@ export interface PokerSeatDef extends ChairSeat {
 }
 
 export const SPA_BEDS: MassageBedDef[] = [
-  { id: 'bed_1', px: 130, py: 260, label: '按摩床 1', seat: { px: 130, py: 285 } },
-  { id: 'bed_2', px: 310, py: 260, label: '按摩床 2', seat: { px: 310, py: 285 } },
-  { id: 'bed_3', px: 490, py: 260, label: '按摩床 3', seat: { px: 490, py: 285 } },
-  { id: 'bed_4', px: 130, py: 420, label: '按摩床 4', seat: { px: 130, py: 445 } },
-  { id: 'bed_5', px: 310, py: 420, label: '按摩床 5', seat: { px: 310, py: 445 } },
-  { id: 'bed_6', px: 490, py: 420, label: '按摩床 6', seat: { px: 490, py: 445 } },
+  { id: 'bed_1', px: 130, py: 260, label: '按摩床 1', seat: { px: 130, py: 260 } },
+  { id: 'bed_2', px: 310, py: 260, label: '按摩床 2', seat: { px: 310, py: 260 } },
+  { id: 'bed_3', px: 490, py: 260, label: '按摩床 3', seat: { px: 490, py: 260 } },
+  { id: 'bed_4', px: 130, py: 420, label: '按摩床 4', seat: { px: 130, py: 420 } },
+  { id: 'bed_5', px: 310, py: 420, label: '按摩床 5', seat: { px: 310, py: 420 } },
+  { id: 'bed_6', px: 490, py: 420, label: '按摩床 6', seat: { px: 490, py: 420 } },
 ];
 
 export const RESTAURANT_TABLES: DiningTableDef[] = [
@@ -218,7 +218,7 @@ export function resolveActivitySlot(
       || SPA_BEDS.find(b => b.id === nodeId?.replace(/_lie$/, ''))
       || SPA_BEDS[agentId.length % SPA_BEDS.length];
     if (!bed) return null;
-    return { px: bed.seat.px, py: bed.seat.py, facing: 'n', pose: 'lie', slotId: bed.id };
+    return { px: bed.px, py: bed.py, facing: 'n', pose: 'lie', slotId: bed.id };
   }
   if (activity === 'dine') {
     const chair = RESTAURANT_TABLES.flatMap(t => t.chairs).find(c => c.id === nodeId);

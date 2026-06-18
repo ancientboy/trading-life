@@ -19,7 +19,9 @@ import {
   drawCasinoVipBackdrop, drawCasinoVipDecor, drawCasinoAmbientLights, drawVipChair,
   drawCantoneseBackdrop, drawCantoneseDecor, drawCantoneseAmbientLights,
   drawSpaZenBackdrop, drawSpaVipDecor, drawSpaAmbientLights, drawSpaMassageBed,
+  drawTableDishes, drawWaiterServeMotion, drawMassageTherapistHands,
 } from './paperDraw';
+import { leisurePhase, tableIdForDineAgent, bedIdForMassageAgent, getLeisureRenderPaperPos, DINE_SERVE_MS } from '../../lib/leisureActivity';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
 import { getRestSofaSprite } from '../../lib/restSofaSprite';
 
@@ -132,7 +134,10 @@ function drawHallRest(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: 
   });
 }
 
-function drawSpaScene(ctx: CanvasRenderingContext2D, cam: PaperCamera, t: number, hoverId: string | null) {
+function drawSpaScene(
+  ctx: CanvasRenderingContext2D, cam: PaperCamera, t: number, hoverId: string | null,
+  agents: Record<string, CharState>,
+) {
   drawSpaVipDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t);
   drawSpaAmbientLights(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v));
   SPA_BEDS.forEach(b => {
@@ -140,22 +145,68 @@ function drawSpaScene(ctx: CanvasRenderingContext2D, cam: PaperCamera, t: number
     drawSpaMassageBed(ctx, s.x, s.y, cam.scale, hoverId === b.id);
     drawFacilityLabel(ctx, s.x, s.y + ws(cam, 38), b.label, cam.scale, hoverId === b.id);
   });
+
+  const now = performance.now();
+  const masseur = ZONE_NPCS.spa[0];
+  Object.values(agents).forEach(char => {
+    if (char.activity !== 'massage') return;
+    const bedId = bedIdForMassageAgent(char);
+    const bed = SPA_BEDS.find(b => b.id === bedId);
+    if (!bed) return;
+    const phase = leisurePhase(char, now);
+    const bedPt = pt(cam, bed.px, bed.py);
+    if (phase === 'serve' || phase === 'active') {
+      drawMassageTherapistHands(ctx, bedPt.x, bedPt.y, cam.scale, t);
+    } else if (phase === 'arriving' && masseur) {
+      const mPt = pt(cam, masseur.px, masseur.py);
+      const elapsed = char.activityStartedAt ? now - char.activityStartedAt : 0;
+      const progress = Math.min(1, elapsed / 900);
+      const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      const nx = mPt.x + (bedPt.x + ws(cam, 44) - mPt.x) * ease;
+      const ny = mPt.y + (bedPt.y - mPt.y) * ease;
+      ctx.font = `${Math.max(10, 12 * cam.scale)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('🧴', nx, ny);
+    }
+  });
 }
 
-function drawRestaurantScene(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null, t: number) {
+function drawRestaurantScene(
+  ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null, t: number,
+  agents: Record<string, CharState>,
+) {
   drawCantoneseDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t);
   drawCantoneseAmbientLights(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v));
   const diningSprite = getDiningTableSprite();
-  RESTAURANT_TABLES.forEach(t => {
-    const s = pt(cam, t.px, t.py);
+  const now = performance.now();
+  const waiter = ZONE_NPCS.restaurant[0];
+
+  RESTAURANT_TABLES.forEach(tbl => {
+    const s = pt(cam, tbl.px, tbl.py);
     drawDiningTable(ctx, s.x, s.y, cam.scale);
     if (!diningSprite) {
-      t.chairs.forEach(ch => {
+      tbl.chairs.forEach(ch => {
         const cs = pt(cam, ch.px, ch.py);
         drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing);
       });
     }
-    drawFacilityLabel(ctx, s.x, s.y + ws(cam, 44), t.label, cam.scale, hoverId === t.id);
+    drawFacilityLabel(ctx, s.x, s.y + ws(cam, 44), tbl.label, cam.scale, hoverId === tbl.id);
+  });
+
+  Object.values(agents).forEach(char => {
+    if (char.activity !== 'dine') return;
+    const tableId = tableIdForDineAgent(char);
+    const table = RESTAURANT_TABLES.find(tbl => tbl.id === tableId);
+    if (!table) return;
+    const tablePt = pt(cam, table.px, table.py);
+    const phase = leisurePhase(char, now);
+    if (phase === 'active') {
+      drawTableDishes(ctx, tablePt.x, tablePt.y, cam.scale, t, char.leisureTier === 'c' ? 4 : char.leisureTier === 'b' ? 3 : 2);
+    } else if (phase === 'serve' && waiter) {
+      const wPt = pt(cam, waiter.px, waiter.py);
+      const elapsed = char.activityStartedAt ? now - char.activityStartedAt : 0;
+      drawWaiterServeMotion(ctx, wPt.x, wPt.y, tablePt.x, tablePt.y, cam.scale, elapsed / DINE_SERVE_MS, t);
+    }
   });
 }
 
@@ -256,11 +307,11 @@ export function renderZone(
       drawHallScene(ctx, cam, zone, agents, opts.ticker, opts.t, opts.hoverFacilityId);
       break;
     case 'spa':
-      drawSpaScene(ctx, cam, opts.t, opts.hoverFacilityId);
+      drawSpaScene(ctx, cam, opts.t, opts.hoverFacilityId, agents);
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
     case 'restaurant':
-      drawRestaurantScene(ctx, cam, opts.hoverFacilityId, opts.t);
+      drawRestaurantScene(ctx, cam, opts.hoverFacilityId, opts.t, agents);
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
     case 'casino':
@@ -296,10 +347,15 @@ function agentFacing(char: CharState): CharState['facing'] {
   return char.facing ?? 's';
 }
 
-function agentPose(char: CharState): CharState['activityPose'] | undefined {
+function agentPose(char: CharState, now = performance.now()): CharState['activityPose'] | undefined {
   if (char.activity) {
+    if (char.activity === 'massage') {
+      const phase = leisurePhase(char, now);
+      if (phase === 'arriving') return 'stand';
+      return 'lie';
+    }
     if (char.activityPose) return char.activityPose;
-    return char.activity === 'massage' ? 'lie' : 'sit';
+    return 'sit';
   }
   const desk = OfficePath.deskByAgent[char.agentId];
   const atDesk = desk && !char.isWalking && !char.travelIntent
@@ -322,9 +378,11 @@ export function renderAgents(
   const now = performance.now();
   Object.values(agents).forEach(char => {
     if (!visible(char)) return;
-    const paper = getAgentPaperPos(zone, char);
+    const leisurePos = getLeisureRenderPaperPos(zone, char, now);
+    const paper = leisurePos ?? getAgentPaperPos(zone, char);
     const s = pt(cam, paper.px, paper.py);
-    const pose = agentPose(char);
+    const pose = agentPose(char, now);
+    const phase = char.activity ? leisurePhase(char, now) : 'active';
     const trading = char.state === 'trading' || char.state === 'scanning';
     drawAgent(ctx, s.x, s.y, char.data.color, {
       selected: char.agentId === opts.selectedId,
@@ -335,6 +393,7 @@ export function renderAgents(
       hatStyle: char.data.hatStyle,
       facing: agentFacing(char),
       pose,
+      blanket: char.activity === 'massage' && (phase === 'serve' || phase === 'active'),
       t: opts.t,
     });
     const showName = char.agentId === opts.selectedId || char.activity || char.isWalking;

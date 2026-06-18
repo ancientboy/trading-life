@@ -115,12 +115,13 @@ export function drawAgent(
     activity?: AgentActivity; facing?: AgentFacing; sitting?: boolean;
     pose?: 'stand' | 'sit' | 'lie' | 'desk';
     headwear?: AgentHeadwear; hatStyle?: HatStyleId;
+    blanket?: boolean;
   },
 ) {
   const act = opts.activity;
   const pose = opts.pose ?? (act === 'massage' ? 'lie' : (opts.sitting || act === 'dine' || act === 'poker' || act === 'rest') ? 'sit' : 'stand');
   if (pose === 'lie') {
-    drawAgentTop(ctx, x, y, color, { ...opts, facing: 's', activity: act ?? 'massage' });
+    drawAgentTop(ctx, x, y, color, { ...opts, facing: 's', activity: act ?? 'massage', blanket: opts.blanket });
     return;
   }
   if (pose === 'sit' || pose === 'desk') {
@@ -384,37 +385,54 @@ function drawActivityBadge(ctx: CanvasRenderingContext2D, x: number, py: number,
   }
 }
 
-/** 俯视（按摩等） */
+/** 俯视（按摩躺卧） */
 export function drawAgentTop(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
   opts: {
     selected?: boolean; walking?: boolean; t?: number;
     activity?: AgentActivity; facing?: AgentFacing;
     headwear?: AgentHeadwear; hatStyle?: HatStyleId;
+    blanket?: boolean;
   },
 ) {
   const t = opts.t ?? 0;
   const hw = agentHw(opts);
-  const bob = opts.walking ? Math.abs(Math.sin(t * 10)) * 3 : Math.sin(t * 1.5) * 1;
-  const py = y + bob;
+  const breathe = Math.sin(t * 1.8) * 0.8;
+  const py = y + breathe;
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(x, py, 22, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(x, py, 30, 18, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  dropShadow(ctx, x, py + 4, 28, 28, 0.12);
+  dropShadow(ctx, x, py + 2, 52, 22, 0.1);
+  ctx.save();
+  ctx.translate(x, py);
+  ctx.rotate(-0.08);
+  if (opts.blanket) {
+    ctx.fillStyle = 'rgba(210,195,235,0.92)';
+    rrect(ctx, -26, -9, 52, 18, 5); ctx.fill();
+    ctx.strokeStyle = 'rgba(155,135,196,0.45)'; ctx.lineWidth = 1;
+    ctx.stroke();
+  }
   ctx.fillStyle = PENGUIN.black;
-  ctx.beginPath(); ctx.ellipse(x, py + 2, 18, 11, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0, 24, 10, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = PENGUIN.belly;
-  ctx.beginPath(); ctx.ellipse(x, py + 4, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(2, 2, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = PENGUIN.black;
+  ctx.beginPath(); ctx.ellipse(-18, -2, 9, 9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = PENGUIN.white;
+  ctx.beginPath(); ctx.ellipse(-19, -3, 4, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = PENGUIN.beak;
+  ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-28, 2); ctx.lineTo(-24, 4); ctx.closePath(); ctx.fill();
   if (hw.headwear === 'scarf') {
-    drawPenguinScarf(ctx, x, py - 1, 20, 5, false, scarfColorsFromAccent(color));
-  } else {
+    drawPenguinScarf(ctx, -14, -4, 12, 4, false, scarfColorsFromAccent(color));
+  } else if (hw.headwear === 'hat') {
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.ellipse(x, py - 2, 10, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-18, -6, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
   }
+  ctx.restore();
   if (opts.activity === 'massage') {
     ctx.fillStyle = '#fff'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('✨', x + 14, py - 10 + Math.sin(t * 5) * 2);
+    ctx.fillText('✨', x + 20, py - 12 + Math.sin(t * 5) * 2);
   }
 }
 
@@ -1086,6 +1104,60 @@ function drawLazySusanHint(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.beginPath(); ctx.arc(x, y, r * s, t * 0.4, t * 0.4 + Math.PI * 1.2); ctx.stroke();
 }
 
+/** 餐桌上菜 — 多份菜品 */
+export function drawTableDishes(
+  ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number, count = 3,
+) {
+  const dishes = ['🥟', '🦐', '🥬', '🍚', '🍵'].slice(0, count);
+  dishes.forEach((emoji, i) => {
+    const ang = (i / dishes.length) * Math.PI * 2 + t * 0.3;
+    const dx = Math.cos(ang) * 14 * s;
+    const dy = Math.sin(ang) * 10 * s;
+    ctx.font = `${Math.max(9, 11 * s)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(emoji, x + dx, y + dy + Math.sin(t * 3 + i) * 1.5);
+  });
+  ctx.fillStyle = 'rgba(184,50,50,0.35)';
+  ctx.font = `600 ${Math.max(7, 8 * s)}px Inter,sans-serif`;
+  ctx.fillText('已上菜', x, y - 18 * s);
+}
+
+/** 服务员端盘动画 */
+export function drawWaiterServeMotion(
+  ctx: CanvasRenderingContext2D,
+  fromX: number, fromY: number,
+  toX: number, toY: number,
+  s: number, progress: number, t: number,
+) {
+  const p = Math.min(1, Math.max(0, progress));
+  const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+  const x = fromX + (toX - fromX) * ease;
+  const y = fromY + (toY - fromY) * ease - Math.sin(p * Math.PI) * 8 * s;
+  ctx.font = `${Math.max(12, 16 * s)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('🍽️', x, y + Math.sin(t * 8) * 2);
+  if (p < 0.95) {
+    ctx.strokeStyle = 'rgba(232,121,169,0.35)'; ctx.lineWidth = 1.5 * s;
+    ctx.setLineDash([4 * s, 4 * s]);
+    ctx.beginPath(); ctx.moveTo(fromX, fromY); ctx.lineTo(toX, toY); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+/** 按摩技师手势 */
+export function drawMassageTherapistHands(
+  ctx: CanvasRenderingContext2D, bedX: number, bedY: number, s: number, t: number,
+) {
+  const hx = bedX + 28 * s + Math.sin(t * 4) * 4 * s;
+  const hy = bedY - 6 * s + Math.cos(t * 3.5) * 3 * s;
+  ctx.font = `${Math.max(11, 14 * s)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('🤲', hx, hy);
+  ctx.font = `${Math.max(8, 10 * s)}px sans-serif`;
+  ctx.fillStyle = 'rgba(107,91,138,0.75)';
+  ctx.fillText('理疗中…', bedX, bedY - 22 * s);
+}
+
 export function drawCantoneseBackdrop(
   ctx: CanvasRenderingContext2D, cam: { cw: number; ch: number; scale: number },
   toScreen: (px: number, py: number) => { x: number; y: number },
@@ -1134,7 +1206,7 @@ export function drawCantoneseDecor(
     }
   });
 
-  const tea = toScreen(360, 520);
+  const tea = toScreen(120, 555);
   drawTeaStation(ctx, tea.x, tea.y, s);
 
   [[200, 280], [360, 280], [520, 280], [200, 470], [360, 470], [520, 470]].forEach(([px, py]) => {
@@ -1326,8 +1398,8 @@ export function drawSpaVipDecor(
   });
 
   [
-    { px: 130, py: 300 }, { px: 310, py: 300 }, { px: 490, py: 300 },
-    { px: 130, py: 460 }, { px: 310, py: 460 }, { px: 490, py: 460 },
+    { px: 130, py: 260 }, { px: 310, py: 260 }, { px: 490, py: 260 },
+    { px: 130, py: 420 }, { px: 310, py: 420 }, { px: 490, py: 420 },
   ].forEach(({ px, py }) => {
     const p = toScreen(px, py);
     ctx.fillStyle = 'rgba(155,135,196,0.12)';

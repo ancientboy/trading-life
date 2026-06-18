@@ -20,7 +20,7 @@ import {
   lifeCreateAgent, lifeSaveAgentSoul, lifeAgentSpeak,
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
 } from '../lib/lifeApi';
-import { resolveAvailableSeat, hasFreeSeat, type SeatMap } from '../lib/seatRegistry';
+import { resolveAvailableSeat, hasFreeSeat, mergeLocalSeatOccupancy, type SeatMap } from '../lib/seatRegistry';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
 import type { LeisureTierId } from '../lib/leisureTiers';
@@ -461,12 +461,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const node = opts?.nodeId || nodeMap[action][id];
     if (!node) return false;
 
-    if (!hasFreeSeat(action, id, s.seatOccupancy)) {
+    if (!hasFreeSeat(action, id, mergeLocalSeatOccupancy(s.seatOccupancy, s.agents))) {
       const queueCost = FACILITY_BASE_COST[action] ?? 0;
       await enqueueDispatch(id, action, opts?.nodeId || '', queueCost);
       get().addMessage(`${s.agents[id].data.name} 座位已满，已加入派遣队列`);
       return false;
     }
+
+    const mergedSeats = mergeLocalSeatOccupancy(s.seatOccupancy, s.agents);
+    const resolvedSeat = resolveAvailableSeat(action, node, id, mergedSeats) ?? node;
 
     let char = {
       ...s.agents[id],
@@ -476,7 +479,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       userDispatched: true,
       leisureTier: opts?.tierId ?? 'a',
     };
-    char = teleportAgentToDestination(char, node, performance.now());
+    char = teleportAgentToDestination(char, resolvedSeat, performance.now());
 
     set({
       agents: { ...s.agents, [id]: char },
@@ -998,7 +1001,8 @@ export function onPathComplete(char: CharState, now: number): CharState {
   }
   if (node?.startsWith('seat_')) {
     const store = useGameStore.getState();
-    const seatId = resolveAvailableSeat('desk', node, char.agentId, store.seatOccupancy, now);
+    const mergedSeats = mergeLocalSeatOccupancy(store.seatOccupancy, store.agents, now);
+    const seatId = resolveAvailableSeat('desk', node, char.agentId, mergedSeats, now);
     if (!seatId) {
       store.addMessage(`${char.data.name} 工位已被占用`);
       return { ...char, destNode: null, isWalking: false, pathQueue: [] };
@@ -1022,8 +1026,9 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   const zone = activity ? zoneMap[activity] : null;
 
   const store = useGameStore.getState();
+  const mergedSeats = mergeLocalSeatOccupancy(store.seatOccupancy, store.agents, now);
   const seatId = activity
-    ? resolveAvailableSeat(activity, nodeId, char.agentId, store.seatOccupancy, now)
+    ? resolveAvailableSeat(activity, nodeId, char.agentId, mergedSeats, now)
     : null;
   if (activity && !seatId) {
     store.addMessage(`${char.data.name} 找不到空座位，活动取消`);
@@ -1058,7 +1063,7 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     : activity === 'massage' ? stressReliefFor('massage', char.leisureTier)
     : activity === 'rest' ? 0.2 : 0;
   const started = {
-    ...char, activity, activityUntil: until,
+    ...char, activity, activityUntil: until, activityStartedAt: now,
     travelIntent: null, isWalking: false, pathQueue: [], destNode: slot?.slotId ?? seatId ?? nodeId,
     x: wx, z: wz, facing, activityPose,
     stress: relief > 0 ? Math.max(0, char.stress * (1 - relief))

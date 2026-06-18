@@ -1,3 +1,4 @@
+import type { CharState } from './constants';
 import { HALL_DESKS_8 } from './hallLayout';
 import { SPA_BEDS, RESTAURANT_TABLES, CASINO_SEATS, HALL_REST_BOOTHS, resolveActivitySlot } from './zoneFurniture';
 
@@ -62,4 +63,29 @@ export function resolveAvailableSeat(
 
 export function hasFreeSeat(activity: string, agentId: string, occupied: SeatMap, nowMs = Date.now()): boolean {
   return resolveAvailableSeat(activity, null, agentId, occupied, nowMs) !== null;
+}
+
+const LOCAL_SEAT_ACTIVITIES = new Set(['dine', 'massage', 'poker', 'rest', 'desk']);
+
+/** 合并服务端占座与本地 Agent 当前占用，避免多人叠坐 */
+export function mergeLocalSeatOccupancy(
+  serverSeats: SeatMap,
+  agents: Record<string, CharState>,
+  nowMs = Date.now(),
+): SeatMap {
+  const merged: SeatMap = { ...serverSeats };
+  for (const char of Object.values(agents)) {
+    if (!char.destNode) continue;
+    const seatId = char.destNode;
+    const activity = char.activity ?? (char.activityPose === 'desk' ? 'desk' : null);
+    if (!activity || !LOCAL_SEAT_ACTIVITIES.has(activity)) continue;
+    if (!allSeatIds().includes(seatId)) continue;
+    merged[seatId] = {
+      user_id: 'local',
+      agent_id: char.agentId,
+      activity,
+      until_ts: char.activityUntil > nowMs ? char.activityUntil : nowMs + 60_000,
+    };
+  }
+  return merged;
 }
