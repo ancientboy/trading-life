@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { PenguinAvatar } from './PenguinAvatar';
 import { PokerDealingCards } from './PokerDealingCards';
 import {
-  pokerSolo, pokerQuickJoin, createPokerRoom, joinPokerRoomByCode, startPokerRoom,
+  pokerSolo, pokerQuickJoin, createPokerRoom, joinPokerRoomByCode, joinPokerRoom,
+  startPokerRoom, listPokerRooms, type PokerRoom,
 } from '../../lib/lifeEngagementApi';
 import { isLoggedIn } from '../../lib/lifeAuth';
 
@@ -34,6 +35,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const pokerRoom = useGameStore(s => s.pokerRoom);
   const applyPokerRoom = useGameStore(s => s.applyPokerRoom);
   const clearPokerRoom = useGameStore(s => s.clearPokerRoom);
+  const leavePokerRoom = useGameStore(s => s.leavePokerRoom);
   const seatAgentAtPoker = useGameStore(s => s.seatAgentAtPoker);
   const syncPokerRoom = useGameStore(s => s.syncPokerRoom);
 
@@ -41,6 +43,20 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const [phase, setPhase] = useState<'idle' | 'dealing'>('idle');
   const [busy, setBusy] = useState<'sit' | 'quick' | 'create' | 'join' | 'start' | null>(null);
   const [roomCodeInput, setRoomCodeInput] = useState('');
+  const [publicRooms, setPublicRooms] = useState<PokerRoom[]>([]);
+
+  const refreshPublicRooms = useCallback(() => {
+    listPokerRooms().then(r => { if (r.ok) setPublicRooms(r.rooms); });
+  }, []);
+
+  const inRoom = pokerRoom?.status === 'waiting';
+
+  useEffect(() => {
+    if (inRoom) return;
+    refreshPublicRooms();
+    const timer = setInterval(refreshPublicRooms, 5000);
+    return () => clearInterval(timer);
+  }, [inRoom, refreshPublicRooms]);
 
   const tier = BUY_IN_TIERS.find(t => t.id === tierId) ?? BUY_IN_TIERS[0];
   const operableAgents = Object.values(agents).filter(a => canOperateAgent(a.agentId));
@@ -49,8 +65,13 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const canAfford = points >= tier.buyIn;
   const seatedAgent = operableAgents.find(a => a.activity === 'poker');
   const isSeated = !!seatedAgent;
-  const inRoom = pokerRoom?.status === 'waiting';
   const roomBuyIn = inRoom ? pokerRoom.buy_in : tier.buyIn;
+  const playerLabel = (p: PokerRoom['players'][0]) => {
+    const user = p.user_name || p.display_name || '玩家';
+    const agent = p.agent_name;
+    return agent && agent !== user ? `${user} · ${agent}` : user;
+  };
+
   const humanCount = pokerRoom?.human_count ?? pokerRoom?.players.filter(p => !p.is_npc && !p.user_id.startsWith('npc_')).length ?? 0;
 
   const revealResults = (
@@ -91,6 +112,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
     if (agent && seatId) await seatAgentAtPoker(agent.agentId, seatId);
     else if (agent && !isSeated) await seatAgentAtPoker(agent.agentId);
     void syncPokerRoom();
+    refreshPublicRooms();
   };
 
   const startSolo = async () => {
@@ -199,10 +221,10 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
           <div style={{ fontSize: 11, color: '#5a7a9a', marginBottom: 8 }}>
             把编号告诉好友，对方在下方输入即可加入
           </div>
-          {pokerRoom.players.map(p => (
+          {pokerRoom.players.filter(p => !p.is_npc && !p.user_id.startsWith('npc_')).map(p => (
             <div key={`${p.user_id}-${p.seat_id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 11 }}>
               <span style={{ width: 52, color: '#8a7e72' }}>{p.seat_id?.replace('poker_s', '座位 ')}</span>
-              <span style={{ flex: 1, fontWeight: 600 }}>{p.agent_name || p.display_name || '玩家'}{p.is_npc ? ' 🤖' : ''}</span>
+              <span style={{ flex: 1, fontWeight: 600 }}>{playerLabel(p)}</span>
             </div>
           ))}
           <button className="ui-btn" style={{
@@ -215,7 +237,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
             {busy === 'start' ? '发牌中…' : `开始牌局 · 发牌（-${roomBuyIn} 积分）`}
           </button>
           <button className="ui-btn" style={{ width: '100%', marginTop: 6, fontSize: 11, opacity: 0.75 }}
-            onClick={() => clearPokerRoom()}>
+            onClick={() => void leavePokerRoom().then(() => refreshPublicRooms())}>
             离开房间
           </button>
         </div>
@@ -267,6 +289,44 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
               {busy === 'join' ? '…' : '加入'}
             </button>
           </div>
+          {publicRooms.length > 0 && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #e0d4c4' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6a5a48', marginBottom: 6 }}>进行中的房间（{publicRooms.length}）</div>
+              {publicRooms.map(room => {
+                const names = room.player_names?.length
+                  ? room.player_names
+                  : room.players.filter(p => !p.is_npc && !p.user_id.startsWith('npc_'))
+                    .map(p => p.user_name || p.display_name || p.agent_name || '玩家');
+                const count = room.human_count ?? names.length;
+                return (
+                  <div key={room.id} style={{ padding: '8px 0', borderBottom: '1px dashed #eee8dc' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                      <b>#{room.room_code || room.id}</b>
+                      <span style={{ fontSize: 11, color: '#8a7e72' }}>{count} 人 · 买入 {room.buy_in}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#6a8aad', margin: '4px 0 6px', lineHeight: 1.45 }}>
+                      {names.join('、')}
+                    </div>
+                    <button className="ui-btn" style={{ width: '100%', fontSize: 11 }}
+                      disabled={!agent || busy !== null}
+                      onClick={async () => {
+                        if (!agent) return;
+                        setBusy('join');
+                        const r = await joinPokerRoom(room.id, agent.agentId);
+                        if (!r.ok) addMessage(r.error || '加入失败');
+                        else if (r.room) {
+                          addMessage(r.message || `已加入房间 ${r.room_code}`);
+                          await afterRoomJoin(r.room, r.seat_id);
+                        }
+                        setBusy(null);
+                      }}>
+                      加入此房间
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

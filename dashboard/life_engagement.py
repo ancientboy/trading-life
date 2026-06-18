@@ -363,12 +363,15 @@ def _enrich_poker_player(p: dict, account_id: str) -> dict:
     d["is_npc"] = str(uid).startswith("npc_")
     d["display_name"] = _player_display_name(d, account_id)
     d["agent_name"] = d["display_name"]
+    d["user_name"] = d["display_name"]
     d["color"] = NPC_COLORS.get(uid, "#6a8aad")
     d["headwear"] = ""
     d["hat_style"] = ""
     if not d["is_npc"]:
         from life_game import load_user
         user = load_user(uid)
+        acc = life_db.get_account_by_id(uid)
+        d["user_name"] = (acc or {}).get("display_name") or (acc or {}).get("username") or uid[:8]
         agent_id = d.get("agent_id") or ""
         custom = user.get("custom_agents") or {}
         if agent_id and agent_id in custom:
@@ -377,7 +380,44 @@ def _enrich_poker_player(p: dict, account_id: str) -> dict:
             d["color"] = ca.get("color") or d["color"]
             d["headwear"] = ca.get("headwear") or ""
             d["hat_style"] = ca.get("hatStyle") or ca.get("hat_style") or ""
+        else:
+            d["agent_name"] = d["user_name"]
     return d
+
+
+def _human_count_in_room(c, room_id: str) -> int:
+    return c.execute(
+        "SELECT COUNT(*) FROM poker_room_players WHERE room_id=? AND user_id NOT LIKE 'npc_%'",
+        (room_id,),
+    ).fetchone()[0]
+
+
+def _close_poker_room(c, room_id: str) -> None:
+    """关闭等待中的空房间（删除玩家记录并标记 closed）。"""
+    c.execute("DELETE FROM poker_room_players WHERE room_id=?", (room_id,))
+    c.execute(
+        "UPDATE poker_rooms SET status='closed', settled_at=? WHERE id=? AND status='waiting'",
+        (life_db.now_ms(), room_id),
+    )
+
+
+def _cleanup_empty_waiting_rooms(c) -> None:
+    rows = c.execute("SELECT id FROM poker_rooms WHERE status='waiting'").fetchall()
+    for r in rows:
+        if _human_count_in_room(c, r["id"]) == 0:
+            _close_poker_room(c, r["id"])
+
+
+def _leave_poker_room(c, room_id: str, user_id: str) -> bool:
+    """移除玩家；若房间无真人则自动关闭。返回房间是否已关闭。"""
+    c.execute(
+        "DELETE FROM poker_room_players WHERE room_id=? AND user_id=?",
+        (room_id, user_id),
+    )
+    if _human_count_in_room(c, room_id) == 0:
+        _close_poker_room(c, room_id)
+        return True
+    return False
 
 
 def _room_payload(c, room: dict, account_id: str) -> dict:
@@ -387,10 +427,12 @@ def _room_payload(c, room: dict, account_id: str) -> dict:
         (room["id"],),
     ).fetchall()
     enriched = [_enrich_poker_player(dict(p), account_id) for p in players]
-    human_count = sum(1 for p in enriched if not p["is_npc"])
+    humans = [p for p in enriched if not p["is_npc"]]
+    human_count = len(humans)
     d["room_code"] = room["id"]
     d["players"] = enriched
     d["human_count"] = human_count
+    d["player_names"] = [p["user_name"] for p in humans]
     return d
 
 
@@ -564,6 +606,10 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
         with life_db._conn() as c:
             rows = c.execute(
                 """SELECT * FROM poker_rooms WHERE status='waiting' AND id NOT LIKE 'solo_%'
+                   AND EXISTS (
+                     SELECT 1 FROM poker_room_players p
+                     WHERE p.room_id=poker_rooms.id AND p.user_id NOT LIKE 'npc_%'
+                   )
                    ORDER BY created_at ASC LIMIT 10"""
             ).fetchall()
             target = None
@@ -627,8 +673,14 @@ class TradingPkBody(BaseModel):
 async def list_poker_rooms(account_id: str = Depends(resolve_account_id)):
     with life_db._lock:
         with life_db._conn() as c:
+            _cleanup_empty_waiting_rooms(c)
             rooms = c.execute(
-                "SELECT * FROM poker_rooms WHERE status IN ('waiting','playing') ORDER BY created_at DESC LIMIT 20"
+                """SELECT * FROM poker_rooms WHERE status='waiting'
+                   AND EXISTS (
+                     SELECT 1 FROM poker_room_players p
+                     WHERE p.room_id=poker_rooms.id AND p.user_id NOT LIKE 'npc_%'
+                   )
+                   ORDER BY created_at DESC LIMIT 20"""
             ).fetchall()
             result = [_room_payload(c, dict(r), account_id) for r in rooms]
     return {"ok": True, "rooms": result}
@@ -638,13 +690,20 @@ async def list_poker_rooms(account_id: str = Depends(resolve_account_id)):
 async def get_poker_room(room_id: str, account_id: str = Depends(resolve_account_id)):
     with life_db._lock:
         with life_db._conn() as c:
+            _cleanup_empty_waiting_rooms(c)
             rid = _resolve_room_id(c, room_id)
             if not rid:
                 return {"ok": False, "error": "房间不存在"}
             room = c.execute("SELECT * FROM poker_rooms WHERE id=?", (rid,)).fetchone()
             if not room:
                 return {"ok": False, "error": "房间不存在"}
-            payload = _room_payload(c, dict(room), account_id)
+            room = dict(room)
+            if room["status"] == "waiting" and _human_count_in_room(c, rid) == 0:
+                _close_poker_room(c, rid)
+                return {"ok": False, "error": "房间已关闭（无人）"}
+            if room["status"] in ("closed", "settled"):
+                return {"ok": False, "error": "房间已关闭"}
+            payload = _room_payload(c, room, account_id)
     return {"ok": True, "room": payload}
 
 
@@ -725,6 +784,31 @@ async def join_poker_room_by_code(body: PokerJoinByCodeBody, account_id: str = D
     return await join_poker_room(code.zfill(5) if len(code) < 5 else code, PokerJoinBody(
         agent_id=body.agent_id, seat_id=body.seat_id,
     ), account_id)
+
+
+@pvp_router.post("/pvp/poker/rooms/{room_id}/leave")
+async def leave_poker_room(room_id: str, account_id: str = Depends(resolve_account_id)):
+    """离开房间；若房间无真人则自动关闭。"""
+    with life_db._lock:
+        with life_db._conn() as c:
+            rid = _resolve_room_id(c, room_id)
+            if not rid:
+                return {"ok": True, "closed": True, "message": "房间已不存在"}
+            room = c.execute("SELECT * FROM poker_rooms WHERE id=? AND status='waiting'", (rid,)).fetchone()
+            if not room:
+                return {"ok": True, "closed": True, "message": "房间已结束或关闭"}
+            if not c.execute(
+                "SELECT 1 FROM poker_room_players WHERE room_id=? AND user_id=?",
+                (rid, account_id),
+            ).fetchone():
+                return {"ok": True, "closed": False, "message": "你已不在该房间中"}
+            closed = _leave_poker_room(c, rid, account_id)
+    return {
+        "ok": True,
+        "closed": closed,
+        "room_id": rid,
+        "message": "房间已关闭" if closed else "已离开房间",
+    }
 
 
 @pvp_router.post("/pvp/poker/rooms/{room_id}/start")

@@ -30,7 +30,7 @@ import { homeNodeForAgent } from '../lib/agentHome';
 import { isLoggedIn, getStoredAccount } from '../lib/lifeAuth';
 import {
   fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
-  chatChannelForZone, fetchPokerRoom, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
+  chatChannelForZone, fetchPokerRoom, leavePokerRoom as apiLeavePokerRoom, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
   type PokerRoom,
 } from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
@@ -226,6 +226,7 @@ interface GameStore {
   applyPokerRoom: (room: PokerRoom | null) => void;
   syncPokerRoom: () => Promise<void>;
   clearPokerRoom: () => void;
+  leavePokerRoom: () => Promise<void>;
   seatAgentAtPoker: (agentId: string, seatId?: string) => Promise<boolean>;
   setChatMessages: (msgs: ChatMessage[]) => void;
   setNpcEvents: (ev: NpcEvent[]) => void;
@@ -760,15 +761,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
     try {
       const r = await fetchPokerRoom(rid);
       if (!r.ok || !r.room) {
-        if (r.error?.includes('不存在')) set({ pokerRoom: null });
+        set({ pokerRoom: null });
         return;
       }
-      if (r.room.status === 'settled') set({ pokerRoom: null });
+      if (r.room.status === 'settled' || r.room.status === 'closed') set({ pokerRoom: null });
       else set({ pokerRoom: r.room });
     } catch { /* ignore */ }
   },
 
   clearPokerRoom: () => set({ pokerRoom: null }),
+
+  leavePokerRoom: async () => {
+    const rid = get().pokerRoom?.id;
+    set({ pokerRoom: null });
+    if (!rid) return;
+    try {
+      const r = await apiLeavePokerRoom(rid);
+      if (r.message) get().addMessage(r.message);
+    } catch { /* ignore */ }
+  },
 
   seatAgentAtPoker: async (agentId, seatId) => {
     const ok = await get().sendAgentToFacility('poker', {

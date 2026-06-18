@@ -149,6 +149,13 @@ export async function joinPokerRoomByCode(roomCode: string, agentId: string, sea
   }>(r);
 }
 
+export async function leavePokerRoom(roomId: string) {
+  const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/leave`, {
+    method: 'POST', headers: headers(),
+  });
+  return parse<{ ok: boolean; closed?: boolean; message?: string; error?: string }>(r);
+}
+
 export async function startPokerRoom(roomId: string) {
   const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/start`, { method: 'POST', headers: headers() });
   return parse<{
@@ -247,12 +254,13 @@ export async function tradingPk(defenderId = '', stake = 50) {
 
 export interface PokerRoomPlayer {
   user_id: string; agent_id: string; seat_id: string; buy_in?: number; score?: number; rank?: number;
-  display_name?: string; agent_name?: string; color?: string; headwear?: string; hat_style?: string; is_npc?: boolean;
+  display_name?: string; agent_name?: string; user_name?: string;
+  color?: string; headwear?: string; hat_style?: string; is_npc?: boolean;
 }
 
 export interface PokerRoom {
   id: string; room_code?: string; status: string; pot: number; buy_in: number;
-  human_count?: number; players: PokerRoomPlayer[];
+  human_count?: number; player_names?: string[]; players: PokerRoomPlayer[];
 }
 
 export interface SeatAuction {
