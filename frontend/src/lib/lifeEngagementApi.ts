@@ -113,9 +113,9 @@ export async function listPokerRooms() {
   return parse<{ ok: boolean; rooms: PokerRoom[] }>(r);
 }
 
-export async function createPokerRoom(buyIn = 30, agentId = '') {
+export async function createPokerRoom(buyIn = 30, agentId = '', gameMode: 'classic' | 'advanced' = 'classic') {
   const r = await fetch(`${API}/pvp/poker/rooms`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ buy_in: buyIn, agent_id: agentId }),
+    method: 'POST', headers: headers(), body: JSON.stringify({ buy_in: buyIn, agent_id: agentId, game_mode: gameMode }),
   });
   return parse<{
     ok: boolean; room_id?: string; room_code?: string; buy_in?: number; seat_id?: string;
@@ -174,6 +174,8 @@ export async function startPokerRoom(roomId: string) {
   const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/start`, { method: 'POST', headers: headers() });
   return parse<{
     ok: boolean; mode?: string; balance?: number; won?: number; net?: number; cost?: number; pot?: number;
+    room_id?: string;
+    game?: AdvancedPokerGame;
     community_cards?: string[];
     tie?: boolean; winners_count?: number;
     results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
@@ -274,7 +276,93 @@ export interface PokerRoomPlayer {
 
 export interface PokerRoom {
   id: string; room_code?: string; status: string; pot: number; buy_in: number;
+  game_mode?: 'classic' | 'advanced';
+  spectator?: boolean;
   human_count?: number; player_names?: string[]; players: PokerRoomPlayer[];
+}
+
+export interface AdvancedPokerPlayer {
+  seat_index: number; user_id: string; agent_id: string; seat_id: string;
+  name: string; is_npc: boolean; stack: number; hole_cards: string[];
+  folded: boolean; all_in: boolean; bet_street: number; eliminated: boolean;
+  poker_preset?: string;
+}
+
+export interface AdvancedPokerEvent {
+  seq: number; kind: string;
+  seat_index?: number; name?: string; action?: string; amount?: number;
+  phase?: string; community?: string[];
+  hand_name?: string; reason?: string;
+}
+
+export interface AdvancedPokerGame {
+  room_id: string; buy_in: number; hand_number: number;
+  phase: string; status: string; community: string[];
+  pot: number; current_bet: number; actor_index: number; actor_name: string;
+  button_index: number; big_blind: number; small_blind: number;
+  players: AdvancedPokerPlayer[];
+  winners_last_hand: Array<{ seat_index: number; name: string; amount: number; hand_name?: string }>;
+  events: AdvancedPokerEvent[];
+  event_count: number;
+  last_reasoning?: { seat_index: number; name: string; action: string; reason: string };
+}
+
+export interface PokerProfile {
+  preset: string; label?: string;
+  vpip: number; pfr: number; aggression: number; bluff_freq: number; fold_to_raise: number;
+  notes?: string;
+  stats?: { hands: number; wins: number; vpip_hits?: number; pfr_hits?: number };
+}
+
+export async function fetchPokerPresets() {
+  const r = await fetch(`${API}/pvp/poker/presets`, { headers: headers() });
+  return parse<{ ok: boolean; presets: Array<{ id: string; label: string }>; advanced_buy_ins: number[]; classic_buy_ins: number[] }>(r);
+}
+
+export async function startAiSpectator(agentId: string, buyIn = 1000, numPlayers = 4) {
+  return fetchJson<{
+    ok: boolean; room_id?: string; buy_in?: number; balance?: number; message?: string;
+    game?: AdvancedPokerGame; settlement?: { results: Array<{ name: string; stack: number; rank: number; won: number }>; winner?: { name: string } };
+    error?: string;
+  }>(`${API}/pvp/poker/ai-spectator/start`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ agent_id: agentId, buy_in: buyIn, num_players: numPlayers }),
+  }, 60000);
+}
+
+export async function fetchAdvancedPokerState(roomId: string, sinceSeq = 0) {
+  const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/advanced/state?since_seq=${sinceSeq}`, { headers: headers() });
+  return parse<{
+    ok: boolean; room_id?: string; game?: AdvancedPokerGame; status?: string;
+    settlement?: { results: Array<{ name: string; stack: number; rank: number; won: number; eliminated: boolean }>; winner?: { name: string }; balance?: number; net?: number; won?: number };
+    error?: string;
+  }>(r);
+}
+
+export async function fetchAgentPokerProfile(agentId: string) {
+  const r = await fetch(`${API}/agents/${encodeURIComponent(agentId)}/poker-profile`, { headers: headers() });
+  return parse<{ ok: boolean; profile: PokerProfile; presets: string[]; error?: string }>(r);
+}
+
+export async function parseAgentPokerStyle(agentId: string, text: string) {
+  const r = await fetch(`${API}/agents/${encodeURIComponent(agentId)}/poker-style/parse`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ text }),
+  });
+  return parse<{ ok: boolean; profile?: PokerProfile; source?: string; message?: string; error?: string }>(r);
+}
+
+export async function feedbackAgentPokerStyle(agentId: string, feedback: string) {
+  const r = await fetch(`${API}/agents/${encodeURIComponent(agentId)}/poker-style/feedback`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ feedback }),
+  });
+  return parse<{ ok: boolean; profile?: PokerProfile; message?: string; error?: string }>(r);
+}
+
+export async function setAgentPokerPreset(agentId: string, preset: string) {
+  const r = await fetch(`${API}/agents/${encodeURIComponent(agentId)}/poker-profile`, {
+    method: 'PUT', headers: headers(), body: JSON.stringify({ preset }),
+  });
+  return parse<{ ok: boolean; profile?: PokerProfile; error?: string }>(r);
 }
 
 export interface SeatAuction {

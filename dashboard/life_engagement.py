@@ -219,6 +219,25 @@ async def table_speak(body: TableSpeakBody, account_id: str = Depends(resolve_ac
 class PokerCreateBody(BaseModel):
     buy_in: int = 30
     agent_id: str = ""
+    game_mode: str = "classic"
+
+
+class PokerAiSpectatorBody(BaseModel):
+    agent_id: str
+    buy_in: int = 1000
+    num_players: int = 4
+
+
+class PokerStyleBody(BaseModel):
+    text: str = ""
+
+
+class PokerStyleFeedbackBody(BaseModel):
+    feedback: str = ""
+
+
+class PokerStylePresetBody(BaseModel):
+    preset: str = "tag"
 
 
 class PokerJoinBody(BaseModel):
@@ -273,7 +292,7 @@ def _charge_human_buy_ins(room_id: str, room: dict, players: list) -> tuple[bool
     for p in players:
         pd = dict(p)
         uid = pd["user_id"]
-        if uid.startswith("npc_"):
+        if uid.startswith("npc_") or uid.startswith("ai_"):
             continue
         if pd.get("buy_in", 0) >= buy_in:
             continue
@@ -333,8 +352,15 @@ def _player_display_name(p: dict, account_id: str) -> str:
 
 NPC_COLORS = {
     "npc_lily": "#e8a0bf",
-    "npc_gaga": "#b8a0e8",
+    "npc_gaga": "#7ec8a4",
+    "npc_jack": "#d4af37",
 }
+from poker_style import AI_BOT_ROSTER as _AI_ROSTER
+for _ai_uid, _ai_name, _ in _AI_ROSTER:
+    NPC_COLORS.setdefault(_ai_uid, "#8a7e72")
+
+AI_DISPLAY = {uid: name for uid, name, _ in _AI_ROSTER}
+NPC_DISPLAY.update(AI_DISPLAY)
 
 
 def _generate_room_code(c) -> str:
@@ -363,8 +389,8 @@ def _resolve_room_id(c, room_id_or_code: str) -> Optional[str]:
 
 def _enrich_poker_player(p: dict, account_id: str) -> dict:
     d = dict(p)
-    uid = d["user_id"]
-    d["is_npc"] = str(uid).startswith("npc_")
+    uid = p["user_id"]
+    d["is_npc"] = str(uid).startswith("npc_") or str(uid).startswith("ai_")
     d["display_name"] = _player_display_name(d, account_id)
     d["agent_name"] = d["display_name"]
     d["user_name"] = d["display_name"]
@@ -391,7 +417,8 @@ def _enrich_poker_player(p: dict, account_id: str) -> dict:
 
 def _human_count_in_room(c, room_id: str) -> int:
     return c.execute(
-        "SELECT COUNT(*) FROM poker_room_players WHERE room_id=? AND user_id NOT LIKE 'npc_%'",
+        """SELECT COUNT(*) FROM poker_room_players
+           WHERE room_id=? AND user_id NOT LIKE 'npc_%' AND user_id NOT LIKE 'ai_%'""",
         (room_id,),
     ).fetchone()[0]
 
@@ -437,7 +464,53 @@ def _room_payload(c, room: dict, account_id: str) -> dict:
     d["players"] = enriched
     d["human_count"] = human_count
     d["player_names"] = [p["user_name"] for p in humans]
+    d["game_mode"] = room.get("game_mode") or "classic"
+    d["spectator"] = bool(room.get("spectator"))
     return d
+
+
+async def _start_advanced_tournament(
+    room_id: str,
+    room: dict,
+    players: list,
+    account_id: str,
+    spectator: bool = False,
+) -> dict:
+    """进阶模式 — 初始化锦标赛并自动推进首步"""
+    from poker_advanced import build_roster_from_db, get_advanced_state, validate_advanced_buy_in
+    from poker_style import ADVANCED_BUY_INS
+
+    buy_in = validate_advanced_buy_in(room["buy_in"])
+    if buy_in not in ADVANCED_BUY_INS:
+        return {"ok": False, "error": f"进阶模式买入须为 {ADVANCED_BUY_INS}"}
+
+    plist = _sort_poker_players(players)
+    if len(plist) < 2:
+        return {"ok": False, "error": "至少需要 2 名选手"}
+    if len(plist) > 7:
+        return {"ok": False, "error": "最多 7 人桌"}
+
+    names = {}
+    for p in plist:
+        names[p["user_id"]] = _player_display_name(p, account_id)
+
+    roster = build_roster_from_db(
+        [_enrich_poker_player(dict(p), account_id) for p in plist],
+        names,
+    )
+
+    from poker_advanced import init_advanced_room
+    with life_db._lock:
+        with life_db._conn() as c:
+            init_advanced_room(c, room_id, buy_in, room["host_user_id"], roster, spectator=spectator, create_new=False)
+
+    state_out = await get_advanced_state(room_id, account_id, since_seq=0, auto_run=True)
+    state_out["mode"] = "advanced_spectator" if spectator else "advanced"
+    state_out["buy_in"] = buy_in
+    state_out["room_id"] = room_id
+    if state_out.get("settlement"):
+        state_out["balance"] = state_out["settlement"].get("balance")
+    return state_out
 
 
 def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str) -> dict:
@@ -732,16 +805,28 @@ async def get_poker_room(room_id: str, account_id: str = Depends(resolve_account
 
 @pvp_router.post("/pvp/poker/rooms")
 async def create_poker_room(body: PokerCreateBody, account_id: str = Depends(resolve_account_id)):
+    from poker_advanced import validate_advanced_buy_in
+    from poker_style import ADVANCED_BUY_INS
+
     ts = life_db.now_ms()
-    buy_in = max(10, min(body.buy_in, 500))
+    game_mode = (body.game_mode or "classic").strip().lower()
+    if game_mode == "advanced":
+        buy_in = validate_advanced_buy_in(body.buy_in)
+        if buy_in not in ADVANCED_BUY_INS:
+            buy_in = ADVANCED_BUY_INS[0]
+    else:
+        game_mode = "classic"
+        buy_in = max(10, min(body.buy_in, 500))
     agent_id = (body.agent_id or "").strip()
     seat = "poker_s1"
     with life_db._lock:
         with life_db._conn() as c:
             rid = _generate_room_code(c)
             c.execute(
-                "INSERT INTO poker_rooms (id, status, pot, host_user_id, buy_in, created_at) VALUES (?,?,0,?,?,?)",
-                (rid, "waiting", account_id, buy_in, ts),
+                """INSERT INTO poker_rooms
+                   (id, status, pot, host_user_id, buy_in, created_at, game_mode, min_players)
+                   VALUES (?,?,0,?,?,?,?,?)""",
+                (rid, "waiting", account_id, buy_in, ts, game_mode, 2 if game_mode == "advanced" else 2),
             )
             if agent_id:
                 c.execute(
@@ -750,10 +835,11 @@ async def create_poker_room(body: PokerCreateBody, account_id: str = Depends(res
                 )
             room = dict(c.execute("SELECT * FROM poker_rooms WHERE id=?", (rid,)).fetchone())
             payload = _room_payload(c, room, account_id)
+    mode_label = "进阶" if game_mode == "advanced" else "经典"
     return {
-        "ok": True, "room_id": rid, "room_code": rid, "buy_in": buy_in,
+        "ok": True, "room_id": rid, "room_code": rid, "buy_in": buy_in, "game_mode": game_mode,
         "seat_id": seat if agent_id else "", "room": payload,
-        "message": f"房间 {rid} 已创建 · 把编号告诉好友即可加入",
+        "message": f"{mode_label}房间 {rid} 已创建 · 最多 7 人 · 买入 {buy_in}",
     }
 
 
@@ -908,13 +994,36 @@ async def start_poker_room(room_id: str, account_id: str = Depends(resolve_accou
                 return {"ok": False, "error": "你不在该房间中，请先加入"}
 
     room = dict(room)
-    humans = [p for p in players if not p["user_id"].startswith("npc_")]
+    game_mode = room.get("game_mode") or "classic"
+    humans = [p for p in players if not p["user_id"].startswith("npc_") and not p["user_id"].startswith("ai_")]
     if len(humans) < room["min_players"]:
-        if len(humans) == 1:
+        if len(humans) == 1 and game_mode == "classic":
             taken = {p["seat_id"] for p in players}
             with life_db._lock:
                 with life_db._conn() as c:
                     _add_npc_players_to_room(c, room_id, room["buy_in"], taken)
+                    players = [dict(p) for p in c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()]
+        elif game_mode == "advanced" and len(players) < 7:
+            # 进阶多人：不足 7 人时用 AI 选手补位
+            taken = {p["seat_id"] for p in players}
+            from poker_advanced import pick_ai_opponents
+            need = max(0, min(6, 7 - len(players)))
+            bots = pick_ai_opponents(need, {p["user_id"] for p in players})
+            with life_db._lock:
+                with life_db._conn() as c:
+                    si = 1
+                    for uid, name, _preset in bots:
+                        while f"poker_s{si}" in taken and si <= 7:
+                            si += 1
+                        if si > 7:
+                            break
+                        seat = f"poker_s{si}"
+                        taken.add(seat)
+                        c.execute(
+                            "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
+                            (room_id, uid, f"agent_{uid}", seat, 0),
+                        )
+                        si += 1
                     players = [dict(p) for p in c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()]
         else:
             return {"ok": False, "error": f"至少需要 {room['min_players']} 名玩家才能开始"}
@@ -922,6 +1031,13 @@ async def start_poker_room(room_id: str, account_id: str = Depends(resolve_accou
     ok, err = _charge_human_buy_ins(room_id, room, players)
     if not ok:
         return {"ok": False, "error": err, "cost": room["buy_in"]}
+
+    if game_mode == "advanced":
+        out = await _start_advanced_tournament(room_id, room, players, account_id, spectator=False)
+        out["cost"] = room["buy_in"]
+        if not out.get("balance"):
+            out["balance"] = load_user(account_id)["points"]
+        return out
 
     with life_db._lock:
         with life_db._conn() as c:
@@ -935,7 +1051,7 @@ async def start_poker_room(room_id: str, account_id: str = Depends(resolve_accou
             players = c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()
 
     out = _settle_poker_room(room_id, room, players, account_id)
-    out["mode"] = "started"
+    out["mode"] = "classic"
     out["balance"] = load_user(account_id)["points"]
     out["cost"] = room["buy_in"]
     return out
@@ -970,6 +1086,94 @@ async def play_poker_round(room_id: str, account_id: str = Depends(resolve_accou
     out["mode"] = "pvp"
     out["balance"] = load_user(account_id)["points"]
     return out
+
+
+@pvp_router.get("/pvp/poker/presets")
+async def poker_presets_catalog(account_id: str = Depends(resolve_account_id)):
+    from poker_style import catalog_presets, ADVANCED_BUY_INS, CLASSIC_BUY_INS
+    return {
+        "ok": True,
+        "presets": catalog_presets(),
+        "advanced_buy_ins": ADVANCED_BUY_INS,
+        "classic_buy_ins": CLASSIC_BUY_INS,
+    }
+
+
+@pvp_router.post("/pvp/poker/ai-spectator/start")
+async def start_ai_spectator(body: PokerAiSpectatorBody, account_id: str = Depends(resolve_account_id)):
+    """AI 观赛桌 — 用户 Agent 与 AI 选手自动博弈，用户仅观看"""
+    from life_game import load_user, save_user, _spend
+    from poker_advanced import init_advanced_room, get_advanced_state, validate_advanced_buy_in, pick_ai_opponents
+    from poker_advanced import build_roster_from_db, _agent_profile_and_soul
+    from poker_bot import merge_profile
+
+    buy_in = validate_advanced_buy_in(body.buy_in)
+    num = max(2, min(body.num_players, 7))
+    agent_id = (body.agent_id or "").strip()
+    if not agent_id:
+        return {"ok": False, "error": "请选择你的 Agent"}
+
+    user = load_user(account_id)
+    custom = user.get("custom_agents") or {}
+    if agent_id not in custom:
+        return {"ok": False, "error": "Agent 不存在"}
+    if not _spend(user, buy_in):
+        save_user(account_id, user)
+        return {"ok": False, "error": f"积分不足（需 {buy_in}）", "balance": user["points"]}
+    save_user(account_id, user)
+
+    acc = life_db.get_account_by_id(account_id)
+    agent_name = custom[agent_id].get("name") or agent_id
+    profile, soul = _agent_profile_and_soul(account_id, agent_id)
+
+    roster = [{
+        "user_id": account_id,
+        "agent_id": agent_id,
+        "seat_id": "poker_s1",
+        "name": agent_name,
+        "is_npc": False,
+        "poker_profile": profile,
+        "soul_md": soul,
+    }]
+    bots = pick_ai_opponents(num - 1, {account_id})
+    for i, (uid, name, preset) in enumerate(bots):
+        roster.append({
+            "user_id": uid,
+            "agent_id": f"agent_{uid}",
+            "seat_id": f"poker_s{i + 2}",
+            "name": name,
+            "is_npc": True,
+            "poker_profile": merge_profile({"preset": preset}),
+            "soul_md": "",
+        })
+
+    rid = f"adv_{uuid.uuid4().hex[:10]}"
+    with life_db._lock:
+        with life_db._conn() as c:
+            init_advanced_room(c, rid, buy_in, account_id, roster, spectator=True, create_new=True)
+
+    out = await get_advanced_state(rid, account_id, since_seq=0, auto_run=True)
+    out["room_id"] = rid
+    out["buy_in"] = buy_in
+    out["balance"] = load_user(account_id)["points"]
+    out["message"] = f"观赛开始 · {num} 人桌 · 买入 {buy_in}"
+    return out
+
+
+@pvp_router.get("/pvp/poker/rooms/{room_id}/advanced/state")
+async def get_advanced_poker_state(
+    room_id: str,
+    since_seq: int = 0,
+    account_id: str = Depends(resolve_account_id),
+):
+    from poker_advanced import get_advanced_state
+    return await get_advanced_state(room_id, account_id, since_seq=since_seq, auto_run=True)
+
+
+@pvp_router.post("/pvp/poker/rooms/{room_id}/advanced/tick")
+async def tick_advanced_poker(room_id: str, account_id: str = Depends(resolve_account_id)):
+    from poker_advanced import get_advanced_state
+    return await get_advanced_state(room_id, account_id, since_seq=0, auto_run=True)
 
 
 @pvp_router.get("/pvp/seats/auctions")

@@ -242,8 +242,38 @@ def init_db(data_dir: Path) -> None:
             PRIMARY KEY (user_id, agent_id)
         );
         """)
+    _migrate_poker_advanced_columns()
     _migrate_json_files(data_dir)
     _seed_engagement_data()
+
+
+def _migrate_poker_advanced_columns() -> None:
+    """进阶德州扑克 — 房间状态 / 玩家筹码字段"""
+    cols_rooms = [
+        ("game_mode", "TEXT NOT NULL DEFAULT 'classic'"),
+        ("phase", "TEXT NOT NULL DEFAULT ''"),
+        ("hand_number", "INTEGER NOT NULL DEFAULT 0"),
+        ("game_state_json", "TEXT NOT NULL DEFAULT ''"),
+        ("spectator", "INTEGER NOT NULL DEFAULT 0"),
+    ]
+    cols_players = [
+        ("stack", "INTEGER NOT NULL DEFAULT 0"),
+        ("hole_cards_json", "TEXT NOT NULL DEFAULT '[]'"),
+        ("folded", "INTEGER NOT NULL DEFAULT 0"),
+        ("all_in", "INTEGER NOT NULL DEFAULT 0"),
+        ("current_bet", "INTEGER NOT NULL DEFAULT 0"),
+        ("eliminated", "INTEGER NOT NULL DEFAULT 0"),
+        ("meta_json", "TEXT NOT NULL DEFAULT '{}'"),
+    ]
+    with _conn() as c:
+        existing_r = {r[1] for r in c.execute("PRAGMA table_info(poker_rooms)").fetchall()}
+        for name, ddl in cols_rooms:
+            if name not in existing_r:
+                c.execute(f"ALTER TABLE poker_rooms ADD COLUMN {name} {ddl}")
+        existing_p = {r[1] for r in c.execute("PRAGMA table_info(poker_room_players)").fetchall()}
+        for name, ddl in cols_players:
+            if name not in existing_p:
+                c.execute(f"ALTER TABLE poker_room_players ADD COLUMN {name} {ddl}")
 
 
 def _conn() -> sqlite3.Connection:

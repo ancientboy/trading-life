@@ -793,6 +793,73 @@ async def life_agent_speak(body: AgentSpeakBody, account_id: str = Depends(resol
     return {"ok": True, "line": line}
 
 
+class AgentPokerStyleBody(BaseModel):
+    text: str = ""
+
+
+class AgentPokerFeedbackBody(BaseModel):
+    feedback: str = ""
+
+
+class AgentPokerPresetBody(BaseModel):
+    preset: str = "tag"
+
+
+@router.get("/agents/{agent_id}/poker-profile")
+async def get_agent_poker_profile(agent_id: str, account_id: str = Depends(resolve_account_id)):
+    from poker_bot import merge_profile, POKER_PRESETS
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    meta = (user.get("custom_agents") or {}).get(agent_id)
+    if not meta:
+        raise HTTPException(404, "Agent not found")
+    profile = merge_profile(meta.get("pokerProfile"))
+    return {"ok": True, "profile": profile, "presets": list(POKER_PRESETS.keys())}
+
+
+@router.put("/agents/{agent_id}/poker-profile")
+async def update_agent_poker_preset(agent_id: str, body: AgentPokerPresetBody, account_id: str = Depends(resolve_account_id)):
+    from poker_bot import default_profile
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    custom = user.get("custom_agents") or {}
+    if agent_id not in custom:
+        raise HTTPException(404, "Agent not found")
+    custom[agent_id]["pokerProfile"] = default_profile(body.preset or "tag")
+    save_user(uid, user)
+    return {"ok": True, "profile": custom[agent_id]["pokerProfile"]}
+
+
+@router.post("/agents/{agent_id}/poker-style/parse")
+async def parse_agent_poker_style(agent_id: str, body: AgentPokerStyleBody, account_id: str = Depends(resolve_account_id)):
+    from poker_style import parse_poker_style
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    custom = user.get("custom_agents") or {}
+    if agent_id not in custom:
+        raise HTTPException(404, "Agent not found")
+    out = await parse_poker_style(body.text)
+    if out.get("ok") and out.get("profile"):
+        custom[agent_id]["pokerProfile"] = out["profile"]
+        save_user(uid, user)
+    return out
+
+
+@router.post("/agents/{agent_id}/poker-style/feedback")
+async def feedback_agent_poker_style(agent_id: str, body: AgentPokerFeedbackBody, account_id: str = Depends(resolve_account_id)):
+    from poker_style import apply_style_feedback
+    from poker_bot import merge_profile
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    custom = user.get("custom_agents") or {}
+    if agent_id not in custom:
+        raise HTTPException(404, "Agent not found")
+    profile = apply_style_feedback(merge_profile(custom[agent_id].get("pokerProfile")), body.feedback)
+    custom[agent_id]["pokerProfile"] = profile
+    save_user(uid, user)
+    return {"ok": True, "profile": profile, "message": "风格已根据反馈微调"}
+
+
 @router.get("/seats")
 async def life_get_seats():
     return {"ok": True, "seats": life_db.get_all_seats()}
