@@ -26,6 +26,11 @@ DAILY_TASK_DEFS = life_db.DAILY_TASK_DEFS
 
 ACTIVITY_REWARDS = {"rest": 10, "dine": 15, "massage": 25, "poker": 0}
 FACILITY_COSTS = {"rest": 0, "dine": 0, "massage": 0, "poker": 0}
+DAILY_ALLOWANCE = 1000
+LEISURE_TIER_COSTS = {
+    "dine": {"a": 0, "b": 50, "c": 120},
+    "massage": {"a": 0, "b": 80, "c": 150},
+}
 IDLE_POINTS_PER_AGENT_PER_MIN = 3
 IDLE_MAX_AGENTS = 5
 IDLE_MAX_ELAPSED_PER_TICK_MS = 60_000
@@ -131,6 +136,11 @@ def _public_state(user: dict, account_id: str = "") -> dict:
         "custom_agents": user["custom_agents"],
         "activity_rewards": ACTIVITY_REWARDS,
         "facility_costs": FACILITY_COSTS,
+        "leisure_tier_costs": LEISURE_TIER_COSTS,
+        "daily_allowance": {
+            "amount": DAILY_ALLOWANCE,
+            "claimed_today": user.get("stats", {}).get("daily_allowance_date") == _today(),
+        },
         "limits": {
             "max_entertainment": MAX_ENTERTAINMENT_AGENTS,
             "max_trading_custom": MAX_TRADING_CUSTOM_AGENTS,
@@ -248,6 +258,21 @@ async def life_spend(body: SpendBody, account_id: str = Depends(resolve_account_
         return {"ok": False, "balance": user["points"], "error": "insufficient"}
     save_user(uid, user)
     return {"ok": True, "balance": user["points"], "reason": body.reason}
+
+
+@router.post("/points/daily-claim")
+async def life_daily_claim(account_id: str = Depends(resolve_account_id)):
+    """每日免费领取积分（默认 1000）"""
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    today = _today()
+    stats = user.setdefault("stats", {})
+    if stats.get("daily_allowance_date") == today:
+        return {"ok": False, "balance": user["points"], "error": "already_claimed", "amount": DAILY_ALLOWANCE}
+    stats["daily_allowance_date"] = today
+    balance = _earn(user, DAILY_ALLOWANCE, account_id=uid)
+    save_user(uid, user)
+    return {"ok": True, "balance": balance, "amount": DAILY_ALLOWANCE}
 
 
 @router.post("/points/earn")

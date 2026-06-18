@@ -25,6 +25,9 @@ export function TopNavBar() {
   const ticker = useGameStore(s => s.ticker);
   const overview = useGameStore(s => s.overview);
   const points = useGameStore(s => s.points);
+  const dailyAllowanceClaimed = useGameStore(s => s.dailyAllowanceClaimed);
+  const dailyAllowanceAmount = useGameStore(s => s.dailyAllowanceAmount);
+  const claimDailyAllowance = useGameStore(s => s.claimDailyAllowance);
   const openModal = useGameStore(s => s.openModal);
   const [hover, setHover] = useState<string | null>(null);
 
@@ -67,11 +70,17 @@ export function TopNavBar() {
             {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
           </div>
         </div>
-        <div className="stat-card" style={{ minWidth: 80 }}>
+        <div className="stat-card" style={{ minWidth: 100 }}>
           <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <AppIcon icon={SparklesIcon} size="mini" color="gold" /> 积分
           </div>
           <div className="value mono gold" style={{ fontSize: 14 }}>{points.toLocaleString()}</div>
+          {!dailyAllowanceClaimed && (
+            <button className="ui-btn" style={{ marginTop: 4, fontSize: 10, padding: '2px 6px', width: '100%' }}
+              onClick={() => void claimDailyAllowance()}>
+              领 {dailyAllowanceAmount}
+            </button>
+          )}
         </div>
         <div className="stat-card" style={{ minWidth: 80 }}>
           <div className="label">BTC</div>

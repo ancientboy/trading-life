@@ -91,6 +91,8 @@ export interface CharState {
   transitZone?: 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
   /** 用户主动派遣的活动才发放积分奖励 */
   userDispatched?: boolean;
+  /** 休闲服务分档 a/b/c */
+  leisureTier?: 'a' | 'b' | 'c';
   data: AgentData;
 }
 

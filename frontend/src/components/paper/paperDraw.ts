@@ -1037,113 +1037,194 @@ export function drawCasinoAmbientLights(
   ctx.fillRect(0, 0, cam.cw, cam.ch);
 }
 
-/* ─── Spa zen lounge decor ─── */
+/* ─── Cantonese restaurant decor ─── */
 
-const SPA = {
-  lavender: '#9b87c4',
-  lavenderDeep: '#6b5b8a',
-  sage: '#5a8a6a',
-  sageDeep: '#3d6a52',
-  bamboo: '#c4a574',
-  bambooDark: '#8b7355',
-  cream: '#f8f4ef',
-  stone: '#d8d0c8',
-  teal: '#6aabb8',
-  glow: 'rgba(180,150,220,0.28)',
+const YUE = {
+  crimson: '#b83232',
+  crimsonDeep: '#8a2424',
+  gold: '#d4af37',
+  goldDim: '#a88828',
+  cream: '#faf3e8',
+  wood: '#5c3d28',
+  woodLight: '#8b5a3c',
+  jade: '#3d7a62',
 };
 
-function drawBambooScreen(
-  ctx: CanvasRenderingContext2D, x: number, y: number, s: number, h: number, flip = false,
-) {
-  ctx.save();
-  ctx.translate(x, y);
-  if (flip) ctx.scale(-1, 1);
-  dropShadow(ctx, 0, h * 0.35 * s, 36 * s, h * s, 0.08);
-  ctx.fillStyle = SPA.bambooDark;
-  rrect(ctx, -16 * s, -h * 0.45 * s, 32 * s, h * s, 4 * s); ctx.fill();
-  ctx.strokeStyle = SPA.bamboo; ctx.lineWidth = 1.2 * s;
-  for (let i = 0; i < 7; i++) {
-    const ly = -h * 0.38 * s + i * (h * 0.11 * s);
-    ctx.beginPath(); ctx.moveTo(-12 * s, ly); ctx.lineTo(12 * s, ly); ctx.stroke();
+function drawChineseLantern(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
+  const sway = Math.sin(t * 2 + x * 0.02) * 3 * s;
+  ctx.strokeStyle = YUE.gold; ctx.lineWidth = 1.2 * s;
+  ctx.beginPath(); ctx.moveTo(x, y - 18 * s); ctx.lineTo(x + sway, y - 6 * s); ctx.stroke();
+  dropShadow(ctx, x + sway, y, 16 * s, 22 * s, 0.1);
+  ctx.fillStyle = YUE.crimson;
+  ctx.beginPath(); ctx.ellipse(x + sway, y, 14 * s, 18 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = YUE.gold; ctx.lineWidth = 1.5 * s; ctx.stroke();
+  ctx.fillStyle = YUE.gold;
+  ctx.beginPath(); ctx.ellipse(x + sway, y - 16 * s, 5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + sway, y + 16 * s, 4 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = YUE.goldDim;
+  ctx.font = `700 ${Math.max(7, 8 * s)}px serif`; ctx.textAlign = 'center';
+  ctx.fillText('福', x + sway, y + 3 * s);
+}
+
+function drawTeaStation(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  dropShadow(ctx, x, y, 70 * s, 40 * s, 0.08);
+  ctx.fillStyle = YUE.wood;
+  rrect(ctx, x - 35 * s, y - 8 * s, 70 * s, 16 * s, 4 * s); ctx.fill();
+  ctx.fillStyle = YUE.woodLight;
+  rrect(ctx, x - 30 * s, y - 22 * s, 24 * s, 14 * s, 3 * s); ctx.fill();
+  ctx.fillStyle = '#fff8f0';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath(); ctx.ellipse(x + 8 * s + i * 16 * s, y - 2 * s, 6 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.strokeStyle = SPA.sageDeep; ctx.lineWidth = 2 * s;
-  ctx.beginPath(); ctx.moveTo(-14 * s, -h * 0.45 * s); ctx.lineTo(-14 * s, h * 0.55 * s); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(14 * s, -h * 0.45 * s); ctx.lineTo(14 * s, h * 0.55 * s); ctx.stroke();
-  ctx.restore();
+  ctx.fillStyle = YUE.goldDim;
+  ctx.font = `600 ${Math.max(7, 8 * s)}px Inter,sans-serif`; ctx.textAlign = 'center';
+  ctx.fillText('功夫茶', x, y + 14 * s);
 }
 
-function drawSpaCandle(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
-  const flicker = 0.7 + Math.sin(t * 5 + x * 0.01) * 0.3;
-  ctx.fillStyle = `rgba(200,170,255,${0.14 * flicker})`;
-  ctx.beginPath(); ctx.ellipse(x, y - 8 * s, 18 * s, 14 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = SPA.cream;
-  rrect(ctx, x - 4 * s, y - 2 * s, 8 * s, 14 * s, 2 * s); ctx.fill();
-  ctx.fillStyle = `rgba(255,220,180,${0.95 * flicker})`;
-  ctx.beginPath(); ctx.ellipse(x, y - 6 * s, 3 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
+function drawLazySusanHint(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, s: number, t: number) {
+  ctx.strokeStyle = 'rgba(212,175,55,0.35)'; ctx.lineWidth = 1 * s;
+  ctx.beginPath(); ctx.arc(x, y, r * s, t * 0.4, t * 0.4 + Math.PI * 1.2); ctx.stroke();
 }
 
-function drawTowelRack(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
-  dropShadow(ctx, x, y, 50 * s, 36 * s, 0.08);
-  ctx.strokeStyle = SPA.bambooDark; ctx.lineWidth = 2 * s;
-  ctx.beginPath(); ctx.moveTo(x - 22 * s, y); ctx.lineTo(x + 22 * s, y); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x - 18 * s, y); ctx.lineTo(x - 18 * s, y + 22 * s); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(x + 18 * s, y); ctx.lineTo(x + 18 * s, y + 22 * s); ctx.stroke();
-  const colors = ['#f5f0ea', '#e8e0f0', '#eef5f0'];
+export function drawCantoneseBackdrop(
+  ctx: CanvasRenderingContext2D, cam: { cw: number; ch: number; scale: number },
+  toScreen: (px: number, py: number) => { x: number; y: number },
+  ws: (v: number) => number,
+  dayMode: 'day' | 'night',
+) {
+  const w = cam.cw, h = cam.ch;
+  const grd = ctx.createRadialGradient(w / 2, h * 0.4, 0, w / 2, h * 0.4, Math.max(w, h) * 0.72);
+  grd.addColorStop(0, dayMode === 'night' ? '#3a2820' : '#faf3e8');
+  grd.addColorStop(1, dayMode === 'night' ? '#241810' : '#f0e4d4');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, w, h);
+
+  const header = toScreen(360, 48);
+  ctx.fillStyle = YUE.crimsonDeep;
+  rrect(ctx, header.x - ws(300), header.y - ws(8), ws(600), ws(68), ws(6)); ctx.fill();
+  ctx.strokeStyle = YUE.gold; ctx.lineWidth = ws(2);
+  ctx.strokeRect(header.x - ws(290), header.y - ws(4), ws(580), ws(58));
+
+  ctx.fillStyle = YUE.gold;
+  ctx.font = `700 ${Math.max(12, ws(15))}px Georgia,serif`; ctx.textAlign = 'center';
+  ctx.fillText('◆  广式粤菜馆  ◆', header.x, header.y + ws(28));
+  ctx.font = `400 ${Math.max(8, ws(9))}px Inter,sans-serif`;
+  ctx.fillStyle = 'rgba(250,243,232,0.75)';
+  ctx.fillText('CANTONESE CUISINE · 老火靓汤 · 烧味双拼', header.x, header.y + ws(46));
+}
+
+export function drawCantoneseDecor(
+  ctx: CanvasRenderingContext2D,
+  toScreen: (px: number, py: number) => { x: number; y: number },
+  ws: (v: number) => number,
+  s: number,
+  t: number,
+) {
+  [[120, 120], [360, 110], [600, 120]].forEach(([px, py]) => {
+    const p = toScreen(px, py);
+    drawChineseLantern(ctx, p.x, p.y, s, t);
+  });
+
+  [[85, 380], [635, 380]].forEach(([px, py]) => {
+    const p = toScreen(px, py);
+    ctx.fillStyle = YUE.wood;
+    rrect(ctx, p.x - ws(14), p.y - ws(90), ws(28), ws(180), ws(3)); ctx.fill();
+    ctx.strokeStyle = YUE.goldDim; ctx.lineWidth = 1 * s;
+    for (let i = 0; i < 6; i++) {
+      ctx.strokeRect(p.x - ws(10), p.y - ws(80) + i * ws(28), ws(20), ws(22));
+    }
+  });
+
+  const tea = toScreen(360, 520);
+  drawTeaStation(ctx, tea.x, tea.y, s);
+
+  [[200, 280], [360, 280], [520, 280], [200, 470], [360, 470], [520, 470]].forEach(([px, py]) => {
+    const p = toScreen(px, py);
+    drawLazySusanHint(ctx, p.x, p.y, 22, s, t);
+  });
+
+  ctx.fillStyle = 'rgba(184,50,50,0.06)';
+  const aisle = toScreen(360, 340);
+  ctx.beginPath(); ctx.ellipse(aisle.x, aisle.y, ws(280), ws(180), 0, 0, Math.PI * 2); ctx.fill();
+}
+
+export function drawCantoneseAmbientLights(
+  ctx: CanvasRenderingContext2D, cam: { cw: number; ch: number },
+  toScreen: (px: number, py: number) => { x: number; y: number },
+  ws: (v: number) => number,
+) {
+  const center = toScreen(360, 320);
+  const grd = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, ws(340));
+  grd.addColorStop(0, 'rgba(255,220,160,0.14)');
+  grd.addColorStop(0.5, 'rgba(212,175,55,0.06)');
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, cam.cw, cam.ch);
+}
+
+/* ─── Modern luxury spa decor ─── */
+
+const LUX = {
+  marble: '#eceff4',
+  marbleDark: '#c8d0dc',
+  charcoal: '#2a3038',
+  charcoalLight: '#3d4654',
+  aqua: '#6aabb8',
+  aquaGlow: 'rgba(106,171,184,0.22)',
+  white: '#ffffff',
+  silver: '#b8c4d0',
+};
+
+function drawMarbleTile(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, s: number) {
+  ctx.fillStyle = LUX.marble;
+  rrect(ctx, x - (w / 2) * s, y - (h / 2) * s, w * s, h * s, 4 * s); ctx.fill();
+  ctx.strokeStyle = LUX.marbleDark; ctx.lineWidth = 0.6 * s;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(184,196,208,0.35)'; ctx.lineWidth = 0.5 * s;
+  ctx.beginPath(); ctx.moveTo(x - w * 0.3 * s, y - h * 0.2 * s); ctx.lineTo(x + w * 0.2 * s, y + h * 0.25 * s); ctx.stroke();
+}
+
+function drawSpaReception(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  dropShadow(ctx, x, y, 120 * s, 36 * s, 0.1);
+  ctx.fillStyle = LUX.charcoal;
+  rrect(ctx, x - 60 * s, y - 12 * s, 120 * s, 24 * s, 6 * s); ctx.fill();
+  ctx.fillStyle = LUX.white;
+  rrect(ctx, x - 54 * s, y - 8 * s, 108 * s, 16 * s, 4 * s); ctx.fill();
+  ctx.fillStyle = LUX.aqua;
+  ctx.font = `600 ${Math.max(8, 9 * s)}px Inter,sans-serif`; ctx.textAlign = 'center';
+  ctx.fillText('RECEPTION', x, y + 4 * s);
+}
+
+function drawEssentialOilSet(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const colors = ['#9b87c4', '#6aabb8', '#c4a574'];
   colors.forEach((c, i) => {
     ctx.fillStyle = c;
-    rrect(ctx, x - 16 * s + i * 14 * s, y - 10 * s, 12 * s, 18 * s, 2 * s); ctx.fill();
+    rrect(ctx, x - 12 * s + i * 14 * s, y - 10 * s, 8 * s, 16 * s, 2 * s); ctx.fill();
+    ctx.fillStyle = LUX.silver;
+    ctx.beginPath(); ctx.ellipse(x - 8 * s + i * 14 * s, y - 12 * s, 3 * s, 2 * s, 0, 0, Math.PI * 2); ctx.fill();
   });
 }
 
-function drawAromaDiffuser(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
-  dropShadow(ctx, x, y, 24 * s, 20 * s, 0.06);
-  ctx.fillStyle = SPA.stone;
-  ctx.beginPath(); ctx.ellipse(x, y + 4 * s, 10 * s, 6 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = SPA.teal;
-  ctx.beginPath(); ctx.ellipse(x, y, 8 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
-  const drift = Math.sin(t * 2) * 4 * s;
-  ctx.strokeStyle = `rgba(155,135,196,${0.35 + Math.sin(t * 3) * 0.15})`;
-  ctx.lineWidth = 1.5 * s;
-  for (let i = 0; i < 3; i++) {
-    ctx.beginPath();
-    ctx.moveTo(x + drift, y - 8 * s);
-    ctx.quadraticCurveTo(x + 6 * s + i * 3 * s, y - 18 * s - i * 6 * s, x + 12 * s, y - 28 * s - i * 8 * s);
-    ctx.stroke();
-  }
-}
-
-function drawZenPlant(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
-  dropShadow(ctx, x, y + 6 * s, 30 * s, 18 * s, 0.07);
-  ctx.fillStyle = SPA.stone;
+function drawModernPlant(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  dropShadow(ctx, x, y + 8 * s, 24 * s, 20 * s, 0.07);
+  ctx.fillStyle = LUX.charcoalLight;
   ctx.beginPath();
-  ctx.moveTo(x - 14 * s, y + 8 * s);
-  ctx.lineTo(x + 14 * s, y + 8 * s);
-  ctx.lineTo(x + 10 * s, y + 22 * s);
-  ctx.lineTo(x - 10 * s, y + 22 * s);
+  ctx.moveTo(x - 12 * s, y + 10 * s); ctx.lineTo(x + 12 * s, y + 10 * s);
+  ctx.lineTo(x + 8 * s, y + 24 * s); ctx.lineTo(x - 8 * s, y + 24 * s);
   ctx.closePath(); ctx.fill();
-  ctx.fillStyle = SPA.sage;
-  for (let i = -2; i <= 2; i++) {
-    ctx.beginPath();
-    ctx.ellipse(x + i * 10 * s, y - 4 * s, 12 * s, 6 * s, i * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.fillStyle = SPA.sageDeep;
-  ctx.beginPath(); ctx.ellipse(x, y - 14 * s, 6 * s, 10 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2d6a52';
+  ctx.beginPath(); ctx.ellipse(x - 8 * s, y - 2 * s, 14 * s, 8 * s, -0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + 10 * s, y - 6 * s, 12 * s, 7 * s, 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3d8a62';
+  ctx.beginPath(); ctx.ellipse(x, y - 16 * s, 8 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-function drawSpaFloorMat(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, s: number) {
-  dropShadow(ctx, x, y, w * s, h * s, 0.06);
-  ctx.fillStyle = '#e8e0d4';
-  rrect(ctx, x - (w / 2) * s, y - (h / 2) * s, w * s, h * s, 6 * s); ctx.fill();
-  ctx.strokeStyle = SPA.bamboo; ctx.lineWidth = 1 * s;
-  ctx.stroke();
-  ctx.strokeStyle = 'rgba(155,135,196,0.25)'; ctx.lineWidth = 0.8 * s;
-  for (let i = -2; i <= 2; i++) {
-    ctx.beginPath();
-    ctx.moveTo(x - (w / 2 - 8) * s, y + i * 10 * s);
-    ctx.lineTo(x + (w / 2 - 8) * s, y + i * 10 * s);
-    ctx.stroke();
-  }
+function drawSpaPendantLight(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
+  const glow = 0.75 + Math.sin(t * 3 + x * 0.01) * 0.25;
+  ctx.fillStyle = `rgba(106,171,184,${0.12 * glow})`;
+  ctx.beginPath(); ctx.ellipse(x, y + 8 * s, 28 * s, 20 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = LUX.silver; ctx.lineWidth = 1.5 * s;
+  ctx.beginPath(); ctx.moveTo(x, y - 20 * s); ctx.lineTo(x, y); ctx.stroke();
+  ctx.fillStyle = LUX.white;
+  ctx.beginPath(); ctx.moveTo(x - 12 * s, y); ctx.lineTo(x + 12 * s, y); ctx.lineTo(x, y + 14 * s); ctx.closePath(); ctx.fill();
 }
 
 export function drawSpaZenBackdrop(
@@ -1153,38 +1234,36 @@ export function drawSpaZenBackdrop(
   dayMode: 'day' | 'night',
 ) {
   const w = cam.cw, h = cam.ch;
-  const grd = ctx.createRadialGradient(w / 2, h * 0.42, 0, w / 2, h * 0.42, Math.max(w, h) * 0.7);
+  const grd = ctx.createLinearGradient(0, 0, 0, h);
   if (dayMode === 'night') {
-    grd.addColorStop(0, '#3a3548');
-    grd.addColorStop(1, '#252030');
+    grd.addColorStop(0, '#1e242c'); grd.addColorStop(1, '#141820');
   } else {
-    grd.addColorStop(0, '#ebe8f2');
-    grd.addColorStop(1, '#ddd6e8');
+    grd.addColorStop(0, '#f4f6f9'); grd.addColorStop(1, '#e4e9f0');
   }
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, w, h);
+
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 12; col++) {
+      const p = toScreen(50 + col * 52, 80 + row * 48);
+      if (p.x < -20 || p.x > w + 20 || p.y < -20 || p.y > h + 20) continue;
+      drawMarbleTile(ctx, p.x, p.y, 48, 40, cam.scale * 0.35);
+    }
+  }
 
   const header = toScreen(310, 42);
-  ctx.fillStyle = dayMode === 'night' ? '#2a2438' : '#f0ebe6';
-  rrect(ctx, header.x - ws(280), header.y - ws(6), ws(560), ws(72), ws(6)); ctx.fill();
-  ctx.strokeStyle = SPA.lavender; ctx.lineWidth = ws(1.5);
+  ctx.fillStyle = LUX.charcoal;
+  rrect(ctx, header.x - ws(270), header.y - ws(4), ws(540), ws(64), ws(4)); ctx.fill();
+  ctx.strokeStyle = LUX.aqua; ctx.lineWidth = ws(1.5);
   ctx.beginPath();
-  ctx.moveTo(header.x - ws(250), header.y + ws(58));
-  ctx.lineTo(header.x + ws(250), header.y + ws(58));
-  ctx.stroke();
+  ctx.moveTo(header.x - ws(240), header.y + ws(52));
+  ctx.lineTo(header.x + ws(240), header.y + ws(52)); ctx.stroke();
 
-  ctx.fillStyle = SPA.lavenderDeep;
-  ctx.font = `700 ${Math.max(11, ws(14))}px Georgia,serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText('☯  禅意理疗馆  ☯', header.x, header.y + ws(32));
+  ctx.fillStyle = LUX.white;
+  ctx.font = `700 ${Math.max(11, ws(14))}px Inter,sans-serif`; ctx.textAlign = 'center';
+  ctx.fillText('PREMIUM SPA & WELLNESS', header.x, header.y + ws(28));
   ctx.font = `400 ${Math.max(8, ws(9))}px Inter,sans-serif`;
-  ctx.fillStyle = 'rgba(107,91,138,0.65)';
-  ctx.fillText('ZEN SPA & WELLNESS LOUNGE', header.x, header.y + ws(48));
-
-  [[55, 300, false], [565, 300, true]].forEach(([px, py, flip]) => {
-    const p = toScreen(px, py);
-    drawBambooScreen(ctx, p.x, p.y, cam.scale, 2.2, flip);
-  });
+  ctx.fillStyle = LUX.aqua;
+  ctx.fillText('臻享水疗会所 · MODERN LUXURY', header.x, header.y + ws(44));
 }
 
 export function drawSpaVipDecor(
@@ -1194,53 +1273,43 @@ export function drawSpaVipDecor(
   s: number,
   t: number,
 ) {
-  // 中央走道地垫
-  [
-    { px: 310, py: 340, w: 340, h: 48 },
-    { px: 310, py: 200, w: 280, h: 36 },
-  ].forEach(({ px, py, w, h }) => {
+  const recv = toScreen(310, 155);
+  drawSpaReception(ctx, recv.x, recv.y, s);
+
+  [[130, 175], [310, 175], [490, 175]].forEach(([px, py]) => {
     const p = toScreen(px, py);
-    drawSpaFloorMat(ctx, p.x, p.y, w, h, s);
+    drawSpaPendantLight(ctx, p.x, p.y, s, t);
   });
 
-  // 每排床位下方小地毯
+  [
+    { px: 72, py: 340, kind: 'plant' as const },
+    { px: 548, py: 340, kind: 'plant' as const },
+    { px: 95, py: 520, kind: 'oil' as const },
+    { px: 525, py: 520, kind: 'oil' as const },
+  ].forEach(({ px, py, kind }) => {
+    const p = toScreen(px, py);
+    if (kind === 'plant') drawModernPlant(ctx, p.x, p.y, s);
+    else drawEssentialOilSet(ctx, p.x, p.y, s);
+  });
+
   [
     { px: 130, py: 300 }, { px: 310, py: 300 }, { px: 490, py: 300 },
     { px: 130, py: 460 }, { px: 310, py: 460 }, { px: 490, py: 460 },
   ].forEach(({ px, py }) => {
     const p = toScreen(px, py);
-    ctx.fillStyle = 'rgba(155,135,196,0.12)';
-    ctx.beginPath(); ctx.ellipse(p.x, p.y, ws(58), ws(38), 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(155,135,196,0.28)'; ctx.lineWidth = 1 * s;
-    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, ws(62), ws(40), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(106,171,184,0.25)'; ctx.lineWidth = 1 * s; ctx.stroke();
   });
 
-  // 角落装饰
-  [
-    { px: 72, py: 175, kind: 'plant' as const },
-    { px: 548, py: 175, kind: 'plant' as const },
-    { px: 72, py: 520, kind: 'candle' as const },
-    { px: 548, py: 520, kind: 'candle' as const },
-    { px: 310, py: 155, kind: 'diffuser' as const },
-    { px: 95, py: 380, kind: 'towel' as const },
-    { px: 525, py: 380, kind: 'towel' as const },
-  ].forEach(({ px, py, kind }) => {
-    const p = toScreen(px, py);
-    if (kind === 'plant') drawZenPlant(ctx, p.x, p.y, s);
-    else if (kind === 'candle') drawSpaCandle(ctx, p.x, p.y, s, t);
-    else if (kind === 'diffuser') drawAromaDiffuser(ctx, p.x, p.y, s, t);
-    else drawTowelRack(ctx, p.x, p.y, s);
-  });
-
-  // 侧墙柔光条
   [[40, 340], [580, 340]].forEach(([px, py]) => {
     const p = toScreen(px, py);
+    ctx.fillStyle = LUX.charcoalLight;
+    rrect(ctx, p.x - ws(6), p.y - ws(100), ws(12), ws(200), ws(2)); ctx.fill();
     const lg = ctx.createLinearGradient(p.x, p.y - ws(100), p.x, p.y + ws(100));
-    lg.addColorStop(0, 'rgba(155,135,196,0)');
-    lg.addColorStop(0.5, 'rgba(155,135,196,0.18)');
-    lg.addColorStop(1, 'rgba(155,135,196,0)');
+    lg.addColorStop(0, 'rgba(106,171,184,0)'); lg.addColorStop(0.5, LUX.aquaGlow); lg.addColorStop(1, 'rgba(106,171,184,0)');
     ctx.fillStyle = lg;
-    ctx.fillRect(p.x - ws(8), p.y - ws(110), ws(16), ws(220));
+    ctx.fillRect(p.x - ws(20), p.y - ws(110), ws(40), ws(220));
   });
 }
 
@@ -1250,21 +1319,11 @@ export function drawSpaAmbientLights(
   ws: (v: number) => number,
 ) {
   const center = toScreen(310, 340);
-  const grd = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, ws(320));
-  grd.addColorStop(0, 'rgba(180,160,220,0.16)');
-  grd.addColorStop(0.45, 'rgba(106,171,184,0.08)');
+  const grd = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, ws(330));
+  grd.addColorStop(0, 'rgba(255,255,255,0.18)');
+  grd.addColorStop(0.45, 'rgba(106,171,184,0.1)');
   grd.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, cam.cw, cam.ch);
-
-  [[130, 260], [490, 420]].forEach(([px, py]) => {
-    const p = toScreen(px, py);
-    const spot = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, ws(90));
-    spot.addColorStop(0, 'rgba(200,180,240,0.12)');
-    spot.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = spot;
-    ctx.beginPath(); ctx.arc(p.x, p.y, ws(90), 0, Math.PI * 2); ctx.fill();
-  });
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, cam.cw, cam.ch);
 }
 
 export function drawSpaMassageBed(
@@ -1275,28 +1334,27 @@ export function drawSpaMassageBed(
     const w = 118 * s;
     const h = w * (sprite.naturalHeight / sprite.naturalWidth);
     if (hover) {
-      ctx.strokeStyle = 'rgba(155,135,196,0.75)'; ctx.lineWidth = 2.5 * s;
-      rrect(ctx, x - w / 2 - 4 * s, y - h / 2 - 4 * s, w + 8 * s, h + 8 * s, 8 * s);
-      ctx.stroke();
+      ctx.strokeStyle = 'rgba(106,171,184,0.85)'; ctx.lineWidth = 2.5 * s;
+      rrect(ctx, x - w / 2 - 4 * s, y - h / 2 - 4 * s, w + 8 * s, h + 8 * s, 8 * s); ctx.stroke();
     }
-    dropShadow(ctx, x, y, w, h * 0.85, 0.1);
+    dropShadow(ctx, x, y, w, h * 0.85, 0.12);
     ctx.drawImage(sprite, x - w / 2, y - h / 2, w, h);
-    ctx.fillStyle = SPA.lavender;
-    ctx.beginPath(); ctx.ellipse(x, y - h * 0.38, 6 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = LUX.aqua;
+    rrect(ctx, x - 8 * s, y - h * 0.42, 16 * s, 6 * s, 2 * s); ctx.fill();
     return;
   }
 
-  dropShadow(ctx, x, y, 100 * s, 44 * s, 0.1);
+  dropShadow(ctx, x, y, 100 * s, 44 * s, 0.12);
   if (hover) {
-    ctx.strokeStyle = 'rgba(155,135,196,0.75)'; ctx.lineWidth = 2 * s;
+    ctx.strokeStyle = 'rgba(106,171,184,0.85)'; ctx.lineWidth = 2 * s;
     rrect(ctx, x - 52 * s, y - 18 * s, 104 * s, 36 * s, 8 * s); ctx.stroke();
   }
-  ctx.fillStyle = SPA.bambooDark;
+  ctx.fillStyle = LUX.charcoalLight;
   rrect(ctx, x - 48 * s, y - 14 * s, 96 * s, 28 * s, 6 * s); ctx.fill();
-  ctx.fillStyle = SPA.cream;
+  ctx.fillStyle = LUX.white;
   rrect(ctx, x - 44 * s, y - 11 * s, 88 * s, 22 * s, 5 * s); ctx.fill();
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = LUX.marble;
   rrect(ctx, x - 38 * s, y - 8 * s, 76 * s, 16 * s, 4 * s); ctx.fill();
-  ctx.fillStyle = SPA.lavender;
+  ctx.fillStyle = LUX.aqua;
   rrect(ctx, x - 10 * s, y - 16 * s, 20 * s, 8 * s, 3 * s); ctx.fill();
 }

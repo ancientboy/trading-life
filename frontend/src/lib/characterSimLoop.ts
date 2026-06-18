@@ -71,7 +71,7 @@ export function tickCharacterSim(dt: number) {
       const seatId = c.destNode;
       const userDispatched = c.userDispatched;
       useGameStore.getState().releaseAgentSeat(c.agentId, seatId);
-      c = { ...c, activity: null, activityUntil: 0, activityPose: undefined, moveTimer: 0, nextMoveTime: 1500, travelIntent: null, destNode: null, userDispatched: false };
+      c = { ...c, activity: null, activityUntil: 0, activityPose: undefined, moveTimer: 0, nextMoveTime: 1500, travelIntent: null, destNode: null, userDispatched: false, leisureTier: undefined };
       if (finished && finished !== 'idle') awardActivityPoints(finished, c.data.name, !!userDispatched);
       const label = ACTIVITY_END_LABEL[finished ?? ''] ?? '休闲';
       const dest = c.data.agentType === 'entertainment' ? '休息区' : '工位';

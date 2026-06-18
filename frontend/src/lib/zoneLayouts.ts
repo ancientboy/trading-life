@@ -49,8 +49,8 @@ export const ZONE_LAYOUTS: Record<ZoneId, ZoneLayout> = {
     facilities: [{ id: 'recv_ctr', nodeId: 'recv_ctr', r: 70, label: '接待台', action: 'rest' }],
   },
   restaurant: {
-    floorColor: '#fff8eb',
-    accent: 'rgba(255,180,80,0.08)',
+    floorColor: '#faf3e8',
+    accent: 'rgba(196,48,48,0.08)',
     navArrows: [{ x: 360, y: 42, dir: 'n', label: '大厅', target: 'hall' }],
     facilities: [
       { id: 'dine_1', nodeId: 'dine_1', r: 48, label: '餐桌 A', action: 'dine' },
@@ -62,8 +62,8 @@ export const ZONE_LAYOUTS: Record<ZoneId, ZoneLayout> = {
     ],
   },
   spa: {
-    floorColor: '#e8eef5',
-    accent: 'rgba(120,160,190,0.14)',
+    floorColor: '#eceff4',
+    accent: 'rgba(80,120,160,0.12)',
     navArrows: [{ x: 22, y: 320, dir: 'w', label: '大厅', target: 'hall' }],
     facilities: [
       { id: 'bed_1', nodeId: 'bed_1', r: 52, label: '按摩床 1', action: 'massage' },

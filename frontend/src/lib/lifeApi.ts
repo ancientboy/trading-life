@@ -22,6 +22,8 @@ export interface LifeState {
   custom_agents: Record<string, AgentMeta>;
   activity_rewards: Record<string, number>;
   facility_costs: Record<string, number>;
+  leisure_tier_costs?: Record<string, Record<string, number>>;
+  daily_allowance?: { amount: number; claimed_today: boolean };
   limits: { max_entertainment: number; max_trading_custom: number };
   permissions?: {
     is_admin: boolean;
@@ -89,6 +91,11 @@ export async function lifeEarn(amount: number, reason = '') {
     method: 'POST', headers: headers(), body: JSON.stringify({ amount, reason }),
   });
   return parse<{ ok: boolean; balance: number; earned: number }>(r);
+}
+
+export async function claimDailyAllowance() {
+  const r = await fetch(`${API}/points/daily-claim`, { method: 'POST', headers: headers() });
+  return parse<{ ok: boolean; balance: number; amount: number; error?: string }>(r);
 }
 
 export async function lifeIdleTick(agentCount: number) {

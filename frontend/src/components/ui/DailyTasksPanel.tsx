@@ -5,6 +5,9 @@ export function DailyTasksPanel({ compact = false }: { compact?: boolean }) {
   const dailyTasks = useGameStore(s => s.dailyTasks);
   const dailyTaskDefs = useGameStore(s => s.dailyTaskDefs);
   const claimDailyTask = useGameStore(s => s.claimDailyTask);
+  const claimDailyAllowance = useGameStore(s => s.claimDailyAllowance);
+  const dailyAllowanceClaimed = useGameStore(s => s.dailyAllowanceClaimed);
+  const dailyAllowanceAmount = useGameStore(s => s.dailyAllowanceAmount);
   const dailyDate = useGameStore(s => s.dailyDate);
 
   const totalReward = dailyTaskDefs.reduce((sum, d) => sum + d.reward, 0);
@@ -36,6 +39,15 @@ export function DailyTasksPanel({ compact = false }: { compact?: boolean }) {
           </div>
         </div>
         <div style={{ fontSize: 11, color: '#d4af37', marginTop: 6 }}>当前积分：{points}</div>
+        {!dailyAllowanceClaimed && (
+          <button className="ui-btn" style={{ width: '100%', marginTop: 8, fontSize: 12, padding: '8px 0' }}
+            onClick={() => void claimDailyAllowance()}>
+            🎁 领取每日积分 +{dailyAllowanceAmount}
+          </button>
+        )}
+        {dailyAllowanceClaimed && (
+          <div style={{ fontSize: 11, color: '#48d093', marginTop: 8 }}>✓ 今日每日积分已领取</div>
+        )}
       </div>
 
       {dailyTaskDefs.map(def => {

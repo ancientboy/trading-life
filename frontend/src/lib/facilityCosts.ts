@@ -1,4 +1,4 @@
-/** 点击场景派遣的基础积分消费（与后端 FACILITY_COSTS 对齐；休闲均免费） */
+/** 点击场景派遣的基础积分（与后端 FACILITY_COSTS 对齐；基础档免费） */
 export const FACILITY_BASE_COST: Record<'rest' | 'dine' | 'massage' | 'poker', number> = {
   rest: 0,
   dine: 0,

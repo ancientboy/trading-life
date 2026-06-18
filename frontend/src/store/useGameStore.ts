@@ -18,11 +18,13 @@ import {
   fetchLifeState, migrateLifeState, lifeIdleTick, lifeSessionStart,
   lifeActivityComplete, lifeDispatch, lifeClaimTask, lifeShopBuy,
   lifeCreateAgent, lifeSaveAgentSoul, lifeAgentSpeak,
-  fetchSeats, claimSeat, releaseSeat, type LifeState,
+  fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
 } from '../lib/lifeApi';
 import { resolveAvailableSeat, hasFreeSeat, type SeatMap } from '../lib/seatRegistry';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
+import type { LeisureTierId } from '../lib/leisureTiers';
+import { DAILY_ALLOWANCE_AMOUNT, stressReliefFor } from '../lib/leisureTiers';
 import { homeNodeForAgent } from '../lib/agentHome';
 import { isLoggedIn, getStoredAccount } from '../lib/lifeAuth';
 import {
@@ -105,6 +107,8 @@ interface GameStore {
   shopUnlocks: string[];
   shopCatalog: LifeState['shop_catalog'];
   facilityCosts: Record<string, number>;
+  dailyAllowanceClaimed: boolean;
+  dailyAllowanceAmount: number;
   agentBubble: { agentId: string; text: string; until: number } | null;
   chatMessages: ChatMessage[];
   npcEvents: NpcEvent[];
@@ -139,8 +143,8 @@ interface GameStore {
   toggleMinimalUi: () => void;
   setSidebarActive: (id: string) => void;
   navigateSidebar: (action: SidebarAction) => void;
-  sendAgentToLeisure: (type: 'dine' | 'massage' | 'poker', agentId?: string, cost?: number) => Promise<boolean>;
-  sendAgentToFacility: (action: 'dine' | 'massage' | 'poker' | 'rest', opts?: { agentId?: string; nodeId?: string; cost?: number; skipCost?: boolean }) => Promise<boolean>;
+  sendAgentToLeisure: (type: 'dine' | 'massage' | 'poker', agentId?: string, tierId?: LeisureTierId, cost?: number) => Promise<boolean>;
+  sendAgentToFacility: (action: 'dine' | 'massage' | 'poker' | 'rest', opts?: { agentId?: string; nodeId?: string; cost?: number; skipCost?: boolean; tierId?: LeisureTierId }) => Promise<boolean>;
   sendAgentToDesk: (agentId?: string, seatNodeId?: string) => Promise<boolean>;
   createAgent: (draft: CustomAgentDraft) => Promise<boolean>;
   openModal: (id: Exclude<ModalId, null>) => void;
@@ -172,6 +176,7 @@ interface GameStore {
   saveCustomAgentSoul: (agentId: string, content: string) => Promise<boolean>;
   tickIdlePoints: (now: number) => void;
   claimDailyTask: (taskId: string) => Promise<boolean>;
+  claimDailyAllowance: () => Promise<boolean>;
   buyShopItem: (itemId: string) => Promise<boolean>;
   speakForAgent: (agentId: string, context?: string, activity?: string | null) => Promise<void>;
   setAgentBubble: (agentId: string | null, text: string, until: number) => void;
@@ -226,6 +231,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   shopUnlocks: [],
   shopCatalog: [],
   facilityCosts: { ...FACILITY_BASE_COST },
+  dailyAllowanceClaimed: false,
+  dailyAllowanceAmount: DAILY_ALLOWANCE_AMOUNT,
   agentBubble: null,
   chatMessages: [],
   npcEvents: [],
@@ -362,11 +369,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
-  sendAgentToLeisure: async (type, agentId) => {
+  sendAgentToLeisure: async (type, agentId, tierId = 'a', cost) => {
     if (type === 'poker') {
       return get().sendAgentToFacility('poker', { agentId, skipCost: true });
     }
-    return get().sendAgentToFacility(type, { agentId, skipCost: true });
+    const tierCost = cost ?? 0;
+    return get().sendAgentToFacility(type, {
+      agentId,
+      tierId,
+      cost: tierCost,
+      skipCost: tierCost <= 0,
+    });
   },
 
   sendAgentToDesk: async (agentId, seatNodeId) => {
@@ -455,7 +468,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return false;
     }
 
-    let char = { ...s.agents[id], travelIntent: intentMap[action], activity: null, activityUntil: 0, userDispatched: true };
+    let char = {
+      ...s.agents[id],
+      travelIntent: intentMap[action],
+      activity: null,
+      activityUntil: 0,
+      userDispatched: true,
+      leisureTier: opts?.tierId ?? 'a',
+    };
     char = teleportAgentToDestination(char, node, performance.now());
 
     set({
@@ -679,6 +699,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       shopUnlocks: state.shop_unlocks ?? get().shopUnlocks,
       shopCatalog: state.shop_catalog ?? get().shopCatalog,
       facilityCosts: state.facility_costs ?? get().facilityCosts,
+      dailyAllowanceClaimed: state.daily_allowance?.claimed_today ?? get().dailyAllowanceClaimed,
+      dailyAllowanceAmount: state.daily_allowance?.amount ?? DAILY_ALLOWANCE_AMOUNT,
       operableAgentIds: operable,
       isAdmin: perms?.is_admin ?? false,
     };
@@ -808,6 +830,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
     set({ points: res.balance });
     get().addMessage(`+${res.reward} 积分 · 每日任务奖励`);
+    const state = await fetchLifeState();
+    get().applyLifeState(state);
+    return true;
+  },
+
+  claimDailyAllowance: async () => {
+    const res = await claimDailyAllowance();
+    if (!res.ok) {
+      get().addMessage(res.error === 'already_claimed' ? '今日每日积分已领取' : '领取失败');
+      return false;
+    }
+    set({ points: res.balance, dailyAllowanceClaimed: true });
+    get().addMessage(`+${res.amount ?? DAILY_ALLOWANCE_AMOUNT} 积分 · 每日免费领取`);
     const state = await fetchLifeState();
     get().applyLifeState(state);
     return true;
@@ -1019,14 +1054,15 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
       store.setNpcBubble(npc?.id ?? null, greet ?? '', now + 4500);
     }
   }
+  const relief = activity === 'dine' ? stressReliefFor('dine', char.leisureTier)
+    : activity === 'massage' ? stressReliefFor('massage', char.leisureTier)
+    : activity === 'rest' ? 0.2 : 0;
   const started = {
     ...char, activity, activityUntil: until,
     travelIntent: null, isWalking: false, pathQueue: [], destNode: slot?.slotId ?? seatId ?? nodeId,
     x: wx, z: wz, facing, activityPose,
-    stress: activity === 'massage' ? Math.max(0, char.stress - 50)
-      : activity === 'dine' ? Math.max(0, char.stress - 30)
-      : activity === 'poker' ? 0
-      : activity === 'rest' ? Math.max(0, char.stress - 20) : char.stress,
+    stress: relief > 0 ? Math.max(0, char.stress * (1 - relief))
+      : activity === 'poker' ? char.stress : char.stress,
   };
   useGameStore.getState().speakForAgent(char.agentId, activity ?? 'greeting', activity);
   if (zone && slot) {

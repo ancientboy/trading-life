@@ -279,8 +279,8 @@ export function RightPanel() {
 
   function renderFacilityPanel() {
     const zoneInfo: Record<string, { title: string; desc: string; modal: 'dine' | 'massage' | 'poker'; leisure: 'dine' | 'massage' | 'poker' }> = {
-      table: { title: '餐厅 · 餐桌', desc: '免费用餐，恢复 Agent 情绪（-30% 压力）', modal: 'dine', leisure: 'dine' },
-      bed: { title: '按摩 · 理疗床', desc: '免费深度放松，大幅降低压力（-50% 压力）', modal: 'massage', leisure: 'massage' },
+      table: { title: '粤菜馆 · 餐桌', desc: '基础套餐免费，招牌/筵席档消耗积分减压', modal: 'dine', leisure: 'dine' },
+      bed: { title: '水疗 · 理疗床', desc: '基础放松免费，深度/臻享档消耗积分', modal: 'massage', leisure: 'massage' },
       poker: { title: '德州 · 牌桌', desc: '① 免费入座 → ② 点「开始牌局」才扣买入积分', modal: 'poker', leisure: 'poker' },
     };
     const f = selectedFacility ? zoneInfo[selectedFacility] : null;

@@ -17,6 +17,7 @@ import {
   drawMarketBigScreen, drawCoffeeZone, drawChair, drawRestBooth,
   drawPokerTable8, drawNpc, drawSpeechBubble,
   drawCasinoVipBackdrop, drawCasinoVipDecor, drawCasinoAmbientLights, drawVipChair,
+  drawCantoneseBackdrop, drawCantoneseDecor, drawCantoneseAmbientLights,
   drawSpaZenBackdrop, drawSpaVipDecor, drawSpaAmbientLights, drawSpaMassageBed,
 } from './paperDraw';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
@@ -141,7 +142,9 @@ function drawSpaScene(ctx: CanvasRenderingContext2D, cam: PaperCamera, t: number
   });
 }
 
-function drawRestaurantScene(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null) {
+function drawRestaurantScene(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null, t: number) {
+  drawCantoneseDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t);
+  drawCantoneseAmbientLights(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v));
   const diningSprite = getDiningTableSprite();
   RESTAURANT_TABLES.forEach(t => {
     const s = pt(cam, t.px, t.py);
@@ -240,6 +243,8 @@ export function renderZone(
     drawCasinoVipBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode);
   } else if (zone === 'spa') {
     drawSpaZenBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode);
+  } else if (zone === 'restaurant') {
+    drawCantoneseBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode);
   } else {
     ctx.fillStyle = opts.dayMode === 'day' ? layout.floorColor : '#2a2838';
     ctx.fillRect(0, 0, cam.cw, cam.ch);
@@ -255,7 +260,7 @@ export function renderZone(
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
     case 'restaurant':
-      drawRestaurantScene(ctx, cam, opts.hoverFacilityId);
+      drawRestaurantScene(ctx, cam, opts.hoverFacilityId, opts.t);
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
     case 'casino':
