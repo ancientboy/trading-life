@@ -654,21 +654,43 @@ export function drawDiningTable(ctx: CanvasRenderingContext2D, x: number, y: num
     return;
   }
 
+  if (skinKey === 'premium' || skinKey === 'modern') {
+    dropShadow(ctx, x, y, 100 * s, 80 * s, 0.12);
+    ctx.fillStyle = pal.wood;
+    ctx.fillRect(x - 5 * s, y + 10 * s, 10 * s, 16 * s);
+    ctx.fillStyle = pal.woodLight;
+    ctx.beginPath(); ctx.ellipse(x, y + 4 * s, 46 * s, 34 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = pal.tableTop;
+    ctx.beginPath(); ctx.ellipse(x, y, 40 * s, 30 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = pal.gold; ctx.lineWidth = skinKey === 'premium' ? 2.5 * s : 1.5 * s;
+    ctx.beginPath(); ctx.ellipse(x, y, 38 * s, 28 * s, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = skinKey === 'premium' ? 'rgba(212,175,55,0.45)' : 'rgba(90,152,136,0.35)';
+    ctx.lineWidth = 1.2 * s;
+    ctx.beginPath(); ctx.ellipse(x, y, 22 * s, 16 * s, 0, 0, Math.PI * 2); ctx.stroke();
+    return;
+  }
+
   dropShadow(ctx, x, y, 70 * s, 70 * s);
   ctx.fillStyle = pal.tableTop;
   ctx.beginPath(); ctx.ellipse(x, y, 32 * s, 32 * s, 0, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = pal.tableEdge; ctx.lineWidth = 1.5 * s; ctx.stroke();
-  if (skinKey === 'premium') {
-    ctx.strokeStyle = pal.gold; ctx.lineWidth = 2 * s;
-    ctx.beginPath(); ctx.ellipse(x, y, 28 * s, 28 * s, 0, 0, Math.PI * 2); ctx.stroke();
-  }
 }
 
-export function drawChair(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, facing: 'n' | 's' | 'e' | 'w' = 's') {
+export function drawChair(
+  ctx: CanvasRenderingContext2D, x: number, y: number, s: number,
+  facing: 'n' | 's' | 'e' | 'w' = 's', skinKey = 'default',
+) {
+  const pal = cantonesePalette(skinKey);
   dropShadow(ctx, x, y + 4 * s, 24 * s, 20 * s, 0.08);
-  ctx.fillStyle = '#8b7355';
+  const seatColor = skinKey === 'modern' ? pal.woodLight : skinKey === 'premium' ? '#4a3020' : '#8b7355';
+  const backColor = skinKey === 'modern' ? pal.jade : skinKey === 'premium' ? pal.wood : '#a08060';
+  ctx.fillStyle = seatColor;
   rrect(ctx, x - 10 * s, y - 6 * s, 20 * s, 14 * s, 3 * s); ctx.fill();
-  ctx.fillStyle = '#a08060';
+  if (skinKey === 'premium') {
+    ctx.strokeStyle = pal.gold; ctx.lineWidth = 1 * s;
+    rrect(ctx, x - 10 * s, y - 6 * s, 20 * s, 14 * s, 3 * s); ctx.stroke();
+  }
+  ctx.fillStyle = backColor;
   const back = facing === 'n' ? -8 : facing === 's' ? 8 : 0;
   rrect(ctx, x - 10 * s, y + back * s - 4 * s, 20 * s, 6 * s, 2 * s); ctx.fill();
 }

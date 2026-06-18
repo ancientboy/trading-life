@@ -124,10 +124,11 @@ function drawHallDesks(
 
 function drawHallRest(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null, skinKey: string) {
   const sofaSprite = getRestSofaSprite();
+  const useSofaSprite = skinKey === 'default' && !!sofaSprite;
   HALL_REST_BOOTHS.forEach((b, i) => {
     const s = pt(cam, b.px, b.py);
     drawRestBooth(ctx, s.x, s.y, cam.scale, i === 1, skinKey);
-    if (!sofaSprite) {
+    if (!useSofaSprite) {
       b.seats.forEach(ch => {
         const cs = pt(cam, ch.px, ch.py);
         drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing);
@@ -181,16 +182,17 @@ function drawRestaurantScene(
   drawCantoneseDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t, skinKey);
   drawCantoneseAmbientLights(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v));
   const diningSprite = getDiningTableSprite();
+  const useTableSprite = skinKey === 'default' && !!diningSprite;
   const now = performance.now();
   const waiter = ZONE_NPCS.restaurant[0];
 
   RESTAURANT_TABLES.forEach(tbl => {
     const s = pt(cam, tbl.px, tbl.py);
     drawDiningTable(ctx, s.x, s.y, cam.scale, skinKey);
-    if (!diningSprite) {
+    if (!useTableSprite) {
       tbl.chairs.forEach(ch => {
         const cs = pt(cam, ch.px, ch.py);
-        drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing);
+        drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing, skinKey);
       });
     }
     drawFacilityLabel(ctx, s.x, s.y + ws(cam, 44), tbl.label, cam.scale, hoverId === tbl.id);
