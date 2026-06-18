@@ -45,6 +45,11 @@ SHOP_CATALOG = [
     {"id": "hat_beret_unlock", "type": "hat", "value": "beret", "cost": 120, "label": "贝雷帽款式"},
     {"id": "hat_top_unlock", "type": "hat", "value": "top", "cost": 150, "label": "礼帽款式"},
     {"id": "hat_bobble_unlock", "type": "hat", "value": "bobble", "cost": 100, "label": "毛球帽款式"},
+    {"id": "outfit_panda", "type": "outfit", "value": "panda", "cost": 180, "label": "熊猫连体服"},
+    {"id": "outfit_astronaut", "type": "outfit", "value": "astronaut", "cost": 220, "label": "太空探险服"},
+    {"id": "outfit_chef", "type": "outfit", "value": "chef", "cost": 160, "label": "星级厨师服"},
+    {"id": "outfit_knight", "type": "outfit", "value": "knight", "cost": 260, "label": "皇家骑士甲"},
+    {"id": "outfit_street", "type": "outfit", "value": "street", "cost": 150, "label": "潮牌卫衣"},
     {"id": "zone_skin_hall_gold", "type": "zone_skin", "value": "hall:gold", "cost": 200, "label": "大厅 · 金色 lounge 皮肤包"},
     {"id": "zone_skin_restaurant_premium", "type": "zone_skin", "value": "restaurant:premium", "cost": 180, "label": "粤菜馆 · 尊享宴席皮肤包"},
     {"id": "zone_skin_restaurant_modern", "type": "zone_skin", "value": "restaurant:modern", "cost": 220, "label": "粤菜馆 · 现代简约皮肤包"},
@@ -163,6 +168,14 @@ HAT_UNLOCK_MAP = {
     "top": "hat_top_unlock",
     "bobble": "hat_bobble_unlock",
 }
+OUTFIT_IDS = {"default", "panda", "astronaut", "chef", "knight", "street"}
+OUTFIT_UNLOCK_MAP = {
+    "panda": "outfit_panda",
+    "astronaut": "outfit_astronaut",
+    "chef": "outfit_chef",
+    "knight": "outfit_knight",
+    "street": "outfit_street",
+}
 
 
 def _parse_zone_skin_value(value: str) -> tuple[str, str] | None:
@@ -205,14 +218,23 @@ def _normalize_zone_skins(user: dict) -> dict[str, str]:
     return out
 
 
-def _appearance_allowed(user: dict, headwear: str, hat_style: str, color: str) -> tuple[bool, str]:
-    if headwear not in ("scarf", "hat"):
-        return False, "无效的配饰类型"
+def _appearance_allowed(
+    user: dict,
+    outfit_id: str,
+    scarf_enabled: bool,
+    hat_enabled: bool,
+    hat_style: str,
+    color: str,
+) -> tuple[bool, str]:
+    if outfit_id not in OUTFIT_IDS:
+        return False, "无效的服装款式"
+    if outfit_id != "default":
+        unlock_id = OUTFIT_UNLOCK_MAP.get(outfit_id)
+        if unlock_id and unlock_id not in user.get("shop_unlocks", []):
+            return False, "该服装尚未解锁，请先在积分商城购买"
     if hat_style not in ("beanie", "cap", "top", "bobble", "beret"):
         return False, "无效的帽子款式"
-    if headwear == "scarf" and hat_style not in FREE_HAT_STYLES:
-        hat_style = "beanie"
-    if hat_style not in FREE_HAT_STYLES:
+    if hat_enabled and hat_style not in FREE_HAT_STYLES:
         unlock_id = HAT_UNLOCK_MAP.get(hat_style)
         if unlock_id and unlock_id not in user.get("shop_unlocks", []):
             return False, "该帽子款式尚未解锁，请先在积分商城购买"
@@ -224,6 +246,21 @@ def _appearance_allowed(user: dict, headwear: str, hat_style: str, color: str) -
         if not ok:
             return False, "该颜色尚未解锁，请先在积分商城购买"
     return True, ""
+
+
+def _resolve_appearance_body(body: "AgentAppearanceBody") -> tuple[str, bool, bool, str, str]:
+    """解析外观请求（兼容旧 headwear 字段）。"""
+    scarf = body.scarfEnabled
+    hat = body.hatEnabled
+    if scarf is None and hat is None:
+        if body.headwear == "hat":
+            scarf, hat = False, True
+        else:
+            scarf, hat = True, False
+    scarf = True if scarf is None else bool(scarf)
+    hat = False if hat is None else bool(hat)
+    outfit_id = (body.outfitId or "default").strip()
+    return outfit_id, scarf, hat, body.hatStyle, body.color
 
 
 def _permissions_for(account_id: str, user: dict) -> dict:
@@ -333,6 +370,9 @@ class AgentSoulBody(BaseModel):
 
 
 class AgentAppearanceBody(BaseModel):
+    outfitId: str = "default"
+    scarfEnabled: Optional[bool] = None
+    hatEnabled: Optional[bool] = None
     headwear: str = "scarf"
     hatStyle: str = "beanie"
     color: str = "#FFD700"
@@ -639,13 +679,17 @@ async def life_update_appearance(agent_id: str, body: AgentAppearanceBody, accou
     custom = user.get("custom_agents", {})
     if agent_id not in custom:
         raise HTTPException(404, "Agent not found")
-    ok, err = _appearance_allowed(user, body.headwear, body.hatStyle, body.color)
+    outfit_id, scarf, hat, hat_style, color = _resolve_appearance_body(body)
+    ok, err = _appearance_allowed(user, outfit_id, scarf, hat, hat_style, color)
     if not ok:
         return {"ok": False, "error": err}
     meta = custom[agent_id]
-    meta["headwear"] = body.headwear
-    meta["hatStyle"] = body.hatStyle if body.headwear == "hat" else meta.get("hatStyle", "beanie")
-    meta["color"] = body.color
+    meta["outfitId"] = outfit_id
+    meta["scarfEnabled"] = scarf
+    meta["hatEnabled"] = hat
+    meta["headwear"] = "hat" if hat and not scarf else "scarf"
+    meta["hatStyle"] = hat_style
+    meta["color"] = color
     custom[agent_id] = meta
     save_user(uid, user)
     return {"ok": True, "message": "外形已保存", "agent": meta}

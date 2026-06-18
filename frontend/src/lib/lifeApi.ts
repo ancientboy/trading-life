@@ -215,7 +215,14 @@ export async function lifeSaveAgentSoul(agentId: string, content: string) {
 
 export async function lifeSaveAgentAppearance(
   agentId: string,
-  appearance: { headwear: string; hatStyle: string; color: string },
+  appearance: {
+    outfitId?: string;
+    scarfEnabled?: boolean;
+    hatEnabled?: boolean;
+    headwear: string;
+    hatStyle: string;
+    color: string;
+  },
 ) {
   const r = await fetch(`${API}/agents/${agentId}/appearance`, {
     method: 'PUT', headers: headers(), body: JSON.stringify(appearance),

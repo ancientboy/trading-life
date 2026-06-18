@@ -213,7 +213,14 @@ interface GameStore {
   earnPoints: (amount: number, reason?: string) => void;
   trySpendPoints: (amount: number) => { ok: boolean; balance: number };
   saveCustomAgentSoul: (agentId: string, content: string) => Promise<boolean>;
-  saveCustomAgentAppearance: (agentId: string, appearance: { headwear: import('../lib/agentAppearance').AgentHeadwear; hatStyle: import('../lib/agentAppearance').HatStyleId; color: string }) => Promise<boolean>;
+  saveCustomAgentAppearance: (agentId: string, appearance: {
+    outfitId?: import('../lib/agentOutfits').OutfitId;
+    scarfEnabled?: boolean;
+    hatEnabled?: boolean;
+    headwear: import('../lib/agentAppearance').AgentHeadwear;
+    hatStyle: import('../lib/agentAppearance').HatStyleId;
+    color: string;
+  }) => Promise<boolean>;
   tickIdlePoints: (now: number) => void;
   claimDailyTask: (taskId: string) => Promise<boolean>;
   claimDailyAllowance: () => Promise<boolean>;

@@ -4,9 +4,12 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { NameTag } from '../ui/NameTag';
 import { NpcAccessories } from './NpcAccessories';
 import { AgentHat3d } from './AgentHat3d';
+import { AgentOutfit3d } from './AgentOutfit3d';
 import type { NpcRole } from '../../../lib/npcOutfits';
 import { DEFAULT_SCARF, scarfColorsFromAccent, scarfPaletteForCharacter, type ScarfPalette } from '../../../lib/scarfColors';
 import type { AgentHeadwear, HatStyleId } from '../../../lib/agentAppearance';
+import { resolveAppearance } from '../../../lib/agentAppearance';
+import type { OutfitId } from '../../../lib/agentOutfits';
 
 export interface GugugagaProps {
   accentColor?: string;
@@ -21,6 +24,9 @@ export interface GugugagaProps {
   isWalking?: boolean;
   headwear?: AgentHeadwear;
   hatStyle?: HatStyleId;
+  outfitId?: OutfitId;
+  scarfEnabled?: boolean;
+  hatEnabled?: boolean;
   onClick?: () => void;
 }
 
@@ -114,6 +120,9 @@ export function Gugugaga({
   isWalking = false,
   headwear = 'scarf',
   hatStyle = 'beanie',
+  outfitId,
+  scarfEnabled,
+  hatEnabled,
   onClick,
 }: GugugagaProps) {
   const g = useRef<THREE.Group>(null);
@@ -139,12 +148,17 @@ export function Gugugaga({
     }
   });
 
+  const appearance = useMemo(
+    () => resolveAppearance({ outfitId, scarfEnabled, hatEnabled, headwear, hatStyle, color: accentColor }),
+    [outfitId, scarfEnabled, hatEnabled, headwear, hatStyle, accentColor],
+  );
   const isNpc = role !== 'agent';
   const scarfPalette = useMemo(
     () => (isNpc ? scarfPaletteForCharacter(accentColor, true) : scarfColorsFromAccent(accentColor)),
     [accentColor, isNpc],
   );
-  const agentHeadwear = isNpc ? 'scarf' as const : headwear;
+  const showScarf = isNpc || appearance.scarfEnabled;
+  const showHat = !isNpc && appearance.hatEnabled;
 
   return (
     <group ref={g} scale={scale} onClick={(e) => { e.stopPropagation(); onClick?.(); }}>
@@ -167,8 +181,11 @@ export function Gugugaga({
         <sphereGeometry args={[0.4, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
       </mesh>
       <PenguinFace />
-      {agentHeadwear === 'scarf' && <PenguinScarf palette={isNpc ? DEFAULT_SCARF : scarfPalette} />}
-      {agentHeadwear === 'hat' && !isNpc && <AgentHat3d style={hatStyle} color={accentColor} />}
+      {!isNpc && appearance.outfitId !== 'default' && (
+        <AgentOutfit3d outfitId={appearance.outfitId} accentColor={accentColor} />
+      )}
+      {showScarf && <PenguinScarf palette={isNpc ? DEFAULT_SCARF : scarfPalette} />}
+      {showHat && <AgentHat3d style={appearance.hatStyle} color={accentColor} />}
       <group ref={wingL} position={[-0.44, 0.52, 0.02]}>
         <mesh rotation={[0, 0, 0.55]} material={flat('#1a1a1a')}><boxGeometry args={[0.12, 0.28, 0.04]} /></mesh>
       </group>

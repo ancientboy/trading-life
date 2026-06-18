@@ -1,5 +1,6 @@
 import { APPEARANCE_PRESETS } from './customAgents';
 import type { HatStyleId } from './agentAppearance';
+import { OUTFIT_CATALOG, OUTFIT_IDS, OUTFIT_UNLOCK_MAP, type OutfitId } from './agentOutfits';
 
 const FREE_COLORS = new Set(APPEARANCE_PRESETS.colors);
 const FREE_HATS = new Set<HatStyleId>(['beanie', 'cap']);
@@ -20,6 +21,12 @@ export function isHatUnlocked(style: HatStyleId, shopUnlocks: string[]) {
   return id ? shopUnlocks.includes(id) : true;
 }
 
+export function isOutfitUnlocked(outfitId: OutfitId, shopUnlocks: string[]): boolean {
+  if (outfitId === 'default') return true;
+  const unlockId = OUTFIT_UNLOCK_MAP[outfitId];
+  return unlockId ? shopUnlocks.includes(unlockId) : false;
+}
+
 export function unlockedColors(catalog: { id: string; type: string; value: string; label: string }[], shopUnlocks: string[]) {
   const base = [...APPEARANCE_PRESETS.colors];
   catalog.filter(i => i.type === 'color' && shopUnlocks.includes(i.id)).forEach(i => {
@@ -33,6 +40,10 @@ export function unlockedHatStyles(shopUnlocks: string[]): HatStyleId[] {
   return all.filter(h => isHatUnlocked(h, shopUnlocks));
 }
 
+export function unlockedOutfits(shopUnlocks: string[]): OutfitId[] {
+  return OUTFIT_IDS.filter(id => isOutfitUnlocked(id, shopUnlocks));
+}
+
 export function ownedZoneSkinPacks(shopUnlocks: string[]) {
   return shopUnlocks.filter(id => id.startsWith('zone_skin_') || id.startsWith('skin_'));
 }
@@ -41,3 +52,9 @@ export function ownedZoneSkinPacks(shopUnlocks: string[]) {
 export function ownedCosmetics(shopUnlocks: string[]) {
   return ownedZoneSkinPacks(shopUnlocks);
 }
+
+export function isOutfitShopItem(item: { id: string; type: string }): boolean {
+  return item.type === 'outfit';
+}
+
+export { OUTFIT_CATALOG, OUTFIT_IDS };

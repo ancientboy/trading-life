@@ -217,6 +217,9 @@ export function WorldScene() {
               accentColor={meta.color}
               headwear={meta.headwear}
               hatStyle={meta.hatStyle}
+              outfitId={meta.outfitId}
+              scarfEnabled={meta.scarfEnabled}
+              hatEnabled={meta.hatEnabled}
               label={meta.name}
               status={status}
               stress={char.stress}

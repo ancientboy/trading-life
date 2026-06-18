@@ -12,6 +12,7 @@ import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
 import { DINE_TIERS, MASSAGE_TIERS } from '../../lib/leisureTiers';
 import { isZoneSkinShopItem } from '../../lib/zoneSkins';
+import { isOutfitShopItem } from '../../lib/lifeShop';
 import { StrategyEditor } from './StrategyEditor';
 
 const TITLES: Record<Exclude<ModalId, null>, string> = {
@@ -216,6 +217,7 @@ function ShopPanel() {
   const [tab, setTab] = useState<'buy' | 'scene'>(hasZoneSkins ? 'scene' : 'buy');
 
   const agentItems = shopCatalog.filter(i => i.type === 'color' || i.type === 'hat');
+  const outfitItems = shopCatalog.filter(i => isOutfitShopItem(i));
   const zoneItems = shopCatalog.filter(i => isZoneSkinShopItem(i) && !i.legacy);
   // 旧版皮肤包仍在 catalog 中时也展示
   const legacyZoneItems = shopCatalog.filter(i => i.type === 'zone_skin' && i.legacy);
@@ -223,6 +225,7 @@ function ShopPanel() {
   const shopTypeLabel = (type: string) => {
     if (type === 'color') return '解锁围巾/帽子颜色';
     if (type === 'hat') return '解锁帽子款式';
+    if (type === 'outfit') return '解锁 Agent 服装皮肤';
     if (type === 'zone_skin') return '区域场景皮肤包';
     return '场景装饰';
   };
@@ -266,6 +269,12 @@ function ShopPanel() {
 
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Agent 装扮</div>
           {agentItems.map(renderShopRow)}
+
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>Agent 服装皮肤</div>
+          <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
+            购买后在 Agent 工坊 →「装扮」更换；可与围巾、帽子同时穿戴
+          </p>
+          {outfitItems.map(renderShopRow)}
 
           <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>区域皮肤包</div>
           <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>

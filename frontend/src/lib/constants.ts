@@ -18,6 +18,10 @@ export interface AgentMeta {
   id: string; name: string; color: string;
   headwear: 'scarf' | 'hat';
   hatStyle: 'beanie' | 'cap' | 'top' | 'bobble' | 'beret';
+  /** 服装皮肤 id，与围巾/帽子可同时穿戴 */
+  outfitId?: string;
+  scarfEnabled?: boolean;
+  hatEnabled?: boolean;
   desc: string; strategy: string; market: string; interval: string; risk: string;
   /** trading=策略交易；entertainment=纯娱乐陪伴 */
   agentType?: AgentType;

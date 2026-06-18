@@ -5,9 +5,10 @@ import { casinoSeatSlotAngle, CASINO_PLAYER_SEATS } from '../../lib/zoneFurnitur
 import { outfitForRole, type NpcRole } from '../../lib/npcOutfits';
 import { DEFAULT_SCARF, scarfColorsFromAccent, type ScarfPalette } from '../../lib/scarfColors';
 import {
-  drawAgentHat2d, drawAgentScarf2d,
+  drawAgentHat2d, drawAgentScarf2d, resolveAppearance, type AgentAppearanceState,
   type AgentHeadwear, type HatStyleId,
 } from '../../lib/agentAppearance';
+import { drawAgentOutfit2d, type OutfitId } from '../../lib/agentOutfits';
 import {
   cantonesePalette, hallRestPalette, spaPalette, vipPalette, receptionPalette,
   type CantonesePalette, type SpaPalette, type VipPalette, type ReceptionPalette,
@@ -152,6 +153,7 @@ export function drawAgent(
     activity?: AgentActivity; facing?: AgentFacing; sitting?: boolean;
     pose?: 'stand' | 'sit' | 'lie' | 'desk';
     headwear?: AgentHeadwear; hatStyle?: HatStyleId;
+    outfitId?: OutfitId; scarfEnabled?: boolean; hatEnabled?: boolean;
     blanket?: boolean;
   },
 ) {
@@ -186,7 +188,7 @@ function drawAgentSitting(
   const t = opts.t ?? 0;
   const facing = opts.facing ?? 's';
   const py = y + (opts.activity === 'dine' ? Math.abs(Math.sin(t * 3)) * 1.5 : 0);
-  const hw = agentHw(opts);
+  const ap = resolveDrawAppearance({ ...opts, color });
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 20, 18, 0, 0, Math.PI * 2); ctx.stroke();
@@ -198,18 +200,16 @@ function drawAgentSitting(
     ctx.fillStyle = PENGUIN.foot;
     ctx.beginPath(); ctx.ellipse(flip * 6, py + 10, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
     drawPenguinBody(ctx, py - 4, true);
-    if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 4, color, 'side', flip);
-    drawPenguinFace(ctx, py - 4, true, flip);
-    if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 6, hw.hatStyle, color, 'side', flip);
+    drawAppearanceBody(ctx, py - 4, color, ap, 'side', flip);
+    drawAppearanceHeadSide(ctx, py - 4, color, ap, flip);
   } else if (facing === 'n') {
     drawPenguinBody(ctx, py - 4, false, false);
-    if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 4, color, 'back');
-    else if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 6, hw.hatStyle, color, 'back');
+    drawAppearanceBody(ctx, py - 4, color, ap, 'back');
+    drawAppearanceHeadBack(ctx, py - 4, color, ap);
   } else {
     drawPenguinBody(ctx, py - 2);
-    if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 2, color, 'front');
-    drawPenguinFace(ctx, py - 2);
-    if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 4, hw.hatStyle, color, 'front');
+    drawAppearanceBody(ctx, py - 2, color, ap, 'front');
+    drawAppearanceHeadFront(ctx, py - 2, color, ap);
     if (opts.pose === 'desk' || opts.trading) {
       ctx.fillStyle = '#4285F4';
       ctx.fillRect(-14, py - 18, 28, 5);
@@ -255,10 +255,9 @@ function drawAgentResting(
   ctx.beginPath(); ctx.ellipse(18, 12, 6, 3, 0.1, 0, Math.PI * 2); ctx.fill();
 
   drawPenguinBody(ctx, -2, true);
-  const hw = agentHw(opts);
-  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, -2, color, 'side', 1);
-  drawPenguinFace(ctx, -2, true, 1);
-  if (hw.headwear === 'hat') drawAgentHat2d(ctx, -4, hw.hatStyle, color, 'side', 1);
+  const ap = resolveDrawAppearance({ ...opts, color });
+  drawAppearanceBody(ctx, -2, color, ap, 'side', 1);
+  drawAppearanceHeadSide(ctx, -2, color, ap, 1);
 
   ctx.restore();
 
@@ -335,25 +334,29 @@ function drawPenguinBody(ctx: CanvasRenderingContext2D, py: number, profile = fa
   }
 }
 
-function agentHw(opts: { headwear?: AgentHeadwear; hatStyle?: HatStyleId }) {
-  return { headwear: opts.headwear ?? 'scarf' as AgentHeadwear, hatStyle: opts.hatStyle ?? 'beanie' as HatStyleId };
+function resolveDrawAppearance(opts: { outfitId?: OutfitId; scarfEnabled?: boolean; hatEnabled?: boolean; headwear?: AgentHeadwear; hatStyle?: HatStyleId; color?: string }): AgentAppearanceState {
+  return resolveAppearance(opts);
 }
 
-function drawHeadwearFront(ctx: CanvasRenderingContext2D, py: number, color: string, hw: ReturnType<typeof agentHw>) {
-  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py, color, 'front');
+function drawAppearanceBody(ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState, view: 'front' | 'back' | 'side', flip = 1) {
+  drawAgentOutfit2d(ctx, py, ap.outfitId, color, view, flip);
+}
+
+function drawAppearanceHeadFront(ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState) {
+  if (ap.scarfEnabled) drawAgentScarf2d(ctx, py, color, 'front');
   drawPenguinFace(ctx, py - 2);
-  if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'front');
+  if (ap.hatEnabled) drawAgentHat2d(ctx, py - 2, ap.hatStyle, color, 'front');
 }
 
-function drawHeadwearBack(ctx: CanvasRenderingContext2D, py: number, color: string, hw: ReturnType<typeof agentHw>) {
-  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py, color, 'back');
-  else drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'back');
+function drawAppearanceHeadBack(ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState) {
+  if (ap.scarfEnabled) drawAgentScarf2d(ctx, py, color, 'back');
+  if (ap.hatEnabled) drawAgentHat2d(ctx, py - 2, ap.hatStyle, color, 'back');
 }
 
-function drawHeadwearSide(ctx: CanvasRenderingContext2D, py: number, color: string, hw: ReturnType<typeof agentHw>, flip: number) {
-  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py, color, 'side', flip);
+function drawAppearanceHeadSide(ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState, flip: number) {
+  if (ap.scarfEnabled) drawAgentScarf2d(ctx, py, color, 'side', flip);
   drawPenguinFace(ctx, py - 2, true, flip);
-  if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'side', flip);
+  if (ap.hatEnabled) drawAgentHat2d(ctx, py - 2, ap.hatStyle, color, 'side', flip);
 }
 
 /** 手脚摆动 — 参考 144 office-engine */
@@ -394,7 +397,7 @@ function drawAgentBack(
   const walking = !!opts.walking;
   const bob = walking ? Math.abs(Math.sin(walkPhase(t, walking))) * 2.5 : 0;
   const py = y + bob;
-  const hw = agentHw(opts);
+  const ap = resolveDrawAppearance({ ...opts, color });
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 18, 22, 0, 0, Math.PI * 2); ctx.stroke();
@@ -403,7 +406,8 @@ function drawAgentBack(
   ctx.save(); ctx.translate(x, 0);
   drawWalkLimbs(ctx, py, 'n', walking, t, color);
   drawPenguinBody(ctx, py, false, false);
-  drawHeadwearBack(ctx, py, color, hw);
+  drawAppearanceBody(ctx, py, color, ap, 'back');
+  drawAppearanceHeadBack(ctx, py, color, ap);
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }
@@ -414,6 +418,7 @@ function drawAgentFront(
   opts: {
     selected?: boolean; trading?: boolean; walking?: boolean; t?: number;
     activity?: AgentActivity; headwear?: AgentHeadwear; hatStyle?: HatStyleId;
+    outfitId?: OutfitId; scarfEnabled?: boolean; hatEnabled?: boolean;
   },
 ) {
   const t = opts.t ?? 0;
@@ -423,7 +428,7 @@ function drawAgentFront(
   else if (opts.trading) bob = Math.sin(t * 4) * 1.5;
   else if (opts.activity === 'dine') bob = Math.abs(Math.sin(t * 3)) * 1.5;
   const py = y + bob;
-  const hw = agentHw(opts);
+  const ap = resolveDrawAppearance({ ...opts, color });
 
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
@@ -433,7 +438,8 @@ function drawAgentFront(
   ctx.save(); ctx.translate(x, 0);
   drawWalkLimbs(ctx, py, 's', walking, t, color);
   drawPenguinBody(ctx, py);
-  drawHeadwearFront(ctx, py, color, hw);
+  drawAppearanceBody(ctx, py, color, ap, 'front');
+  drawAppearanceHeadFront(ctx, py, color, ap);
   ctx.restore();
   if (opts.trading) {
     ctx.fillStyle = '#4285F4';
@@ -455,7 +461,7 @@ function drawAgentSide(
   const walking = !!opts.walking;
   const bob = walking ? Math.abs(Math.sin(walkPhase(t, walking))) * 2.5 : 0;
   const py = y + bob;
-  const hw = agentHw(opts);
+  const ap = resolveDrawAppearance({ ...opts, color });
   const flip = facing === 'w' ? -1 : 1;
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
@@ -465,7 +471,8 @@ function drawAgentSide(
   ctx.save(); ctx.translate(x, 0);
   drawWalkLimbs(ctx, py, facing, walking, t, color);
   drawPenguinBody(ctx, py, true);
-  drawHeadwearSide(ctx, py, color, hw, flip);
+  drawAppearanceBody(ctx, py, color, ap, 'side', flip);
+  drawAppearanceHeadSide(ctx, py, color, ap, flip);
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }
@@ -491,7 +498,7 @@ export function drawAgentTop(
   },
 ) {
   const t = opts.t ?? 0;
-  const hw = agentHw(opts);
+  const ap = resolveDrawAppearance({ ...opts, color });
   const breathe = Math.sin(t * 1.8) * 0.8;
   const py = y + breathe;
   if (opts.selected) {
@@ -518,9 +525,10 @@ export function drawAgentTop(
   ctx.beginPath(); ctx.ellipse(-19, -3, 4, 4.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = PENGUIN.beak;
   ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-28, 2); ctx.lineTo(-24, 4); ctx.closePath(); ctx.fill();
-  if (hw.headwear === 'scarf') {
+  if (ap.scarfEnabled) {
     drawPenguinScarf(ctx, -14, -4, 12, 4, false, scarfColorsFromAccent(color));
-  } else if (hw.headwear === 'hat') {
+  }
+  if (ap.hatEnabled) {
     ctx.fillStyle = color;
     ctx.beginPath(); ctx.ellipse(-18, -6, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
   }
