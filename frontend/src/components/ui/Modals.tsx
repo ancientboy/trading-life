@@ -239,7 +239,12 @@ function ShopPanel() {
           </button>
         );
       })}
-      <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10 }}>购买后可在 Agent 工坊创建/编辑外形时使用</p>
+      <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10 }}>
+        购买后前往 Agent 工坊 → 选择 Agent →「装扮」标签页应用
+      </p>
+      <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={() => useGameStore.getState().openWorkshop('list')}>
+        打开 Agent 工坊装扮
+      </button>
     </div>
   );
 }

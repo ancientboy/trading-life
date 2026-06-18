@@ -17,7 +17,7 @@ import {
 import {
   fetchLifeState, migrateLifeState, lifeIdleTick, lifeSessionStart,
   lifeActivityComplete, lifeDispatch, lifeClaimTask, lifeShopBuy,
-  lifeCreateAgent, lifeSaveAgentSoul, lifeAgentSpeak,
+  lifeCreateAgent, lifeSaveAgentSoul, lifeSaveAgentAppearance, lifeAgentSpeak,
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
 } from '../lib/lifeApi';
 import { resolveAvailableSeat, hasFreeSeat, mergeLocalSeatOccupancy, type SeatMap } from '../lib/seatRegistry';
@@ -174,6 +174,7 @@ interface GameStore {
   earnPoints: (amount: number, reason?: string) => void;
   trySpendPoints: (amount: number) => { ok: boolean; balance: number };
   saveCustomAgentSoul: (agentId: string, content: string) => Promise<boolean>;
+  saveCustomAgentAppearance: (agentId: string, appearance: { headwear: import('../lib/agentAppearance').AgentHeadwear; hatStyle: import('../lib/agentAppearance').HatStyleId; color: string }) => Promise<boolean>;
   tickIdlePoints: (now: number) => void;
   claimDailyTask: (taskId: string) => Promise<boolean>;
   claimDailyAllowance: () => Promise<boolean>;
@@ -803,6 +804,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const customMeta = loadCustomAgentMeta(getStoredAccount()?.id);
     if (customMeta[agentId]) {
       customMeta[agentId] = { ...customMeta[agentId], soulMd: content };
+      saveCustomAgentMeta(customMeta, getStoredAccount()?.id);
+    }
+    return true;
+  },
+
+  saveCustomAgentAppearance: async (agentId, appearance) => {
+    if (!agentId.startsWith('custom_')) return false;
+    try {
+      const r = await lifeSaveAgentAppearance(agentId, appearance);
+      if (!r.ok) {
+        if (r.error) get().addMessage(r.error);
+        return false;
+      }
+    } catch {
+      return false;
+    }
+    const agents = { ...get().agents };
+    if (agents[agentId]) {
+      agents[agentId] = {
+        ...agents[agentId],
+        data: { ...agents[agentId].data, ...appearance },
+      };
+      set({ agents });
+    }
+    const customMeta = loadCustomAgentMeta(getStoredAccount()?.id);
+    if (customMeta[agentId]) {
+      customMeta[agentId] = { ...customMeta[agentId], ...appearance };
       saveCustomAgentMeta(customMeta, getStoredAccount()?.id);
     }
     return true;

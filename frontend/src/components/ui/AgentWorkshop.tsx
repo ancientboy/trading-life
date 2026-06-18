@@ -13,8 +13,10 @@ import { unlockedColors, unlockedHatStyles } from '../../lib/lifeShop';
 import { PenguinAvatar } from './PenguinAvatar';
 import { AgentScenePreview } from './AgentScenePreview';
 import { HatStylePicker } from './HatStylePicker';
-import type { AgentHeadwear } from '../../lib/agentAppearance';
+import type { AgentHeadwear, HatStyleId } from '../../lib/agentAppearance';
 import type { AgentType, CharState } from '../../lib/constants';
+
+type WorkshopTab = 'info' | 'appearance' | 'config' | 'soul';
 
 const DEFAULT_DRAFT: CustomAgentDraft = {
   agentType: 'entertainment',
@@ -34,6 +36,7 @@ function agentTypeOf(d: CharState['data'] | undefined): AgentType {
 export function AgentWorkshop() {
   const agents = useGameStore(s => s.agents);
   const selectedAgentId = useGameStore(s => s.selectedAgentId);
+  const canOperateAgent = useGameStore(s => s.canOperateAgent);
   const selectAgent = useGameStore(s => s.selectAgent);
   const createAgent = useGameStore(s => s.createAgent);
   const setProfile = useGameStore(s => s.setProfile);
@@ -41,24 +44,32 @@ export function AgentWorkshop() {
   const config = useGameStore(s => s.profileConfig);
   const soulMd = useGameStore(s => s.soulMd);
   const saveCustomAgentSoul = useGameStore(s => s.saveCustomAgentSoul);
+  const saveCustomAgentAppearance = useGameStore(s => s.saveCustomAgentAppearance);
   const closeModal = useGameStore(s => s.closeModal);
   const setFollowAgent = useGameStore(s => s.setFollowAgent);
   const workshopMode = useGameStore(s => s.workshopMode);
 
+  const myAgents = (Object.values(agents) as CharState[]).filter(a => canOperateAgent(a.agentId));
+  const defaultEditId = (selectedAgentId && canOperateAgent(selectedAgentId) ? selectedAgentId : myAgents[0]?.agentId) ?? '';
+
   const [mode, setMode] = useState<'list' | 'create'>(workshopMode === 'create' ? 'create' : 'list');
-  const [editId, setEditId] = useState(selectedAgentId || Object.keys(agents)[0] || 'xau');
-  const [tab, setTab] = useState<'info' | 'config' | 'soul'>('info');
+  const [editId, setEditId] = useState(defaultEditId);
+  const [tab, setTab] = useState<WorkshopTab>('info');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
   const [draft, setDraft] = useState<CustomAgentDraft>({ ...DEFAULT_DRAFT });
+  const [appearDraft, setAppearDraft] = useState({
+    headwear: 'scarf' as AgentHeadwear,
+    hatStyle: 'beanie' as HatStyleId,
+    color: APPEARANCE_PRESETS.colors[0],
+  });
 
   const shopUnlocks = useGameStore(s => s.shopUnlocks);
   const shopCatalog = useGameStore(s => s.shopCatalog);
   const customMeta = loadCustomAgentMeta(getStoredAccount()?.id);
   const limits = countCustomByType(customMeta);
 
-  const agentList = Object.values(agents) as CharState[];
   const current = editId ? agents[editId] : null;
   const d = current?.data;
   const custom = editId ? isCustomAgent(editId) : false;
@@ -72,9 +83,18 @@ export function AgentWorkshop() {
   }, [workshopMode]);
 
   useEffect(() => {
-    const fallback = selectedAgentId || Object.keys(agents)[0];
+    const fallback = (selectedAgentId && canOperateAgent(selectedAgentId) ? selectedAgentId : myAgents[0]?.agentId) ?? '';
     if (fallback && fallback !== editId && mode === 'list') setEditId(fallback);
-  }, [selectedAgentId, agents, editId, mode]);
+  }, [selectedAgentId, myAgents, editId, mode, canOperateAgent]);
+
+  useEffect(() => {
+    if (!d || !custom) return;
+    setAppearDraft({
+      headwear: d.headwear ?? 'scarf',
+      hatStyle: d.hatStyle ?? 'beanie',
+      color: d.color ?? APPEARANCE_PRESETS.colors[0],
+    });
+  }, [editId, custom, d?.headwear, d?.hatStyle, d?.color]);
 
   useEffect(() => {
     if (!editId || mode !== 'list' || custom) {
@@ -185,6 +205,7 @@ export function AgentWorkshop() {
             {draft.headwear === 'hat' && (
               <Field label="帽子款式">
                 <HatStylePicker value={draft.hatStyle} color={draft.color}
+                  allowedStyles={hatOptions}
                   onChange={hatStyle => setDraft({ ...draft, hatStyle })} />
               </Field>
             )}
@@ -254,7 +275,9 @@ export function AgentWorkshop() {
     );
   }
 
-  const tabs = (['info', 'soul'] as const).concat(showConfigTab ? (['config'] as const) : []);
+  const tabs: WorkshopTab[] = custom
+    ? ['info', 'appearance', 'soul']
+    : showConfigTab ? ['info', 'config', 'soul'] : ['info', 'soul'];
 
   return (
     <div className="workshop-grid-list" style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 16, minHeight: 360, color: '#3d3530' }}>
@@ -266,8 +289,11 @@ export function AgentWorkshop() {
           <AppIcon icon={PlusIcon} size="mini" color="profit" />
           创建 Agent
         </button>
-        <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>我的 Agent ({agentList.length})</div>
-        {agentList.map(a => (
+        <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>我的 Agent ({myAgents.length})</div>
+        {myAgents.length === 0 && (
+          <p style={{ fontSize: 11, color: '#9a8b7a', lineHeight: 1.5 }}>还没有自己的 Agent，点击上方创建</p>
+        )}
+        {myAgents.map(a => (
           <div
             key={a.agentId}
             onClick={() => pickAgent(a.agentId)}
@@ -315,7 +341,7 @@ export function AgentWorkshop() {
             <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
               {tabs.map(t => (
                 <button key={t} className={`panel-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                  {t === 'info' ? '基本信息' : t === 'config' ? '策略参数' : 'SOUL 文档'}
+                  {t === 'info' ? '基本信息' : t === 'appearance' ? '装扮' : t === 'config' ? '策略参数' : 'SOUL 文档'}
                 </button>
               ))}
             </div>
@@ -342,6 +368,58 @@ export function AgentWorkshop() {
                 <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                   <button className="ui-btn" style={{ flex: 1 }} onClick={() => { setFollowAgent(editId); closeModal(); }}>跟随镜头</button>
                   <button className="ui-btn" style={{ flex: 1 }} onClick={closeModal}>返回场景</button>
+                </div>
+              </div>
+            )}
+
+            {tab === 'appearance' && custom && (
+              <div className="workshop-grid-create" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 16, alignItems: 'start' }}>
+                <div>
+                  <p style={{ fontSize: 12, color: '#8a7e72', marginBottom: 12, lineHeight: 1.5 }}>
+                    在积分商城解锁的颜色与帽子款式可在此更换。保存后立即在场景中生效。
+                  </p>
+                  <Field label="配饰类型">
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {(['scarf', 'hat'] as AgentHeadwear[]).map(hw => (
+                        <button key={hw} type="button" className={`ui-btn ${appearDraft.headwear === hw ? 'active' : ''}`}
+                          style={{ flex: 1, padding: '8px 0' }}
+                          onClick={() => setAppearDraft({ ...appearDraft, headwear: hw })}>
+                          {hw === 'scarf' ? '围巾' : '帽子'}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                  {appearDraft.headwear === 'hat' && (
+                    <Field label="帽子款式">
+                      <HatStylePicker value={appearDraft.hatStyle} color={appearDraft.color}
+                        allowedStyles={hatOptions}
+                        onChange={hatStyle => setAppearDraft({ ...appearDraft, hatStyle })} />
+                    </Field>
+                  )}
+                  <Field label={appearDraft.headwear === 'scarf' ? '围巾颜色' : '帽子颜色'}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {colorOptions.map(c => (
+                        <button key={c} type="button" onClick={() => setAppearDraft({ ...appearDraft, color: c })}
+                          style={{
+                            width: 28, height: 28, borderRadius: 6,
+                            border: appearDraft.color === c ? '2px solid #d4af37' : '1px solid #ddd',
+                            background: c, cursor: 'pointer',
+                          }} />
+                      ))}
+                    </div>
+                  </Field>
+                  <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={async () => {
+                    const ok = await saveCustomAgentAppearance(editId, appearDraft);
+                    setMsg(ok ? '装扮已保存' : '保存失败，请检查是否已解锁对应款式');
+                  }}>保存装扮</button>
+                </div>
+                <div style={{ position: 'sticky', top: 0 }}>
+                  <AgentScenePreview
+                    color={appearDraft.color}
+                    headwear={appearDraft.headwear}
+                    hatStyle={appearDraft.hatStyle}
+                    name={d?.name ?? ''}
+                  />
                 </div>
               </div>
             )}

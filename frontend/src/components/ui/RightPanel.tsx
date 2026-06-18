@@ -81,7 +81,7 @@ export function RightPanel() {
 
   const agent = selectedAgentId ? agents[selectedAgentId] : null;
   const d = agent?.data;
-  const agentList = Object.values(agents) as CharState[];
+  const agentList = (Object.values(agents) as CharState[]).filter(a => canOperateAgent(a.agentId));
 
   return (
     <aside className="right-panel">
@@ -139,7 +139,7 @@ export function RightPanel() {
           <Row k="总盈亏" v={(overview.total_pnl != null ? (overview.total_pnl >= 0 ? '+' : '') + '$' + Math.round(overview.total_pnl).toLocaleString() : '--')} className={(overview.total_pnl || 0) >= 0 ? 'profit' : 'loss'} icon={(overview.total_pnl || 0) >= 0 ? <ProfitIcon /> : <LossIcon />} />
         </div>
         <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>
-          点击场景工位可派遣 Agent 入座（免费）；系统 Agent 仅供观摩
+          以下为您的 Agent；大厅中的系统 Agent 仅供背景观摩
         </div>
         {agentList.map(a => (
           <AgentCard

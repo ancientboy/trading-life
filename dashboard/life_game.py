@@ -110,6 +110,39 @@ def _count_agents(custom: dict) -> tuple[int, int]:
     return ent, trading
 
 
+FREE_APPEARANCE_COLORS = {
+    "#FFD700", "#3B82F6", "#F59E0B", "#A855F7", "#EF4444",
+    "#10B981", "#EC4899", "#06B6D4", "#6366F1", "#E67E22",
+}
+FREE_HAT_STYLES = {"beanie", "cap"}
+HAT_UNLOCK_MAP = {
+    "beret": "hat_beret_unlock",
+    "top": "hat_top_unlock",
+    "bobble": "hat_bobble_unlock",
+}
+
+
+def _appearance_allowed(user: dict, headwear: str, hat_style: str, color: str) -> tuple[bool, str]:
+    if headwear not in ("scarf", "hat"):
+        return False, "无效的配饰类型"
+    if hat_style not in ("beanie", "cap", "top", "bobble", "beret"):
+        return False, "无效的帽子款式"
+    if headwear == "scarf" and hat_style not in FREE_HAT_STYLES:
+        hat_style = "beanie"
+    if hat_style not in FREE_HAT_STYLES:
+        unlock_id = HAT_UNLOCK_MAP.get(hat_style)
+        if unlock_id and unlock_id not in user.get("shop_unlocks", []):
+            return False, "该帽子款式尚未解锁，请先在积分商城购买"
+    if color not in FREE_APPEARANCE_COLORS:
+        ok = any(
+            i.get("type") == "color" and i.get("value") == color and i.get("id") in user.get("shop_unlocks", [])
+            for i in SHOP_CATALOG
+        )
+        if not ok:
+            return False, "该颜色尚未解锁，请先在积分商城购买"
+    return True, ""
+
+
 def _permissions_for(account_id: str, user: dict) -> dict:
     acc = life_db.get_account_by_id(account_id) if account_id else None
     is_admin = bool(acc and str(acc.get("username", "")).lower() == ADMIN_USERNAME)
@@ -204,6 +237,12 @@ class CustomAgentBody(BaseModel):
 
 class AgentSoulBody(BaseModel):
     content: str
+
+
+class AgentAppearanceBody(BaseModel):
+    headwear: str = "scarf"
+    hatStyle: str = "beanie"
+    color: str = "#FFD700"
 
 
 class AgentSpeakBody(BaseModel):
@@ -457,6 +496,25 @@ async def life_update_soul(agent_id: str, body: AgentSoulBody, account_id: str =
     custom[agent_id]["soulMd"] = content
     save_user(uid, user)
     return {"ok": True, "message": "SOUL 已保存"}
+
+
+@router.put("/agents/{agent_id}/appearance")
+async def life_update_appearance(agent_id: str, body: AgentAppearanceBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    custom = user.get("custom_agents", {})
+    if agent_id not in custom:
+        raise HTTPException(404, "Agent not found")
+    ok, err = _appearance_allowed(user, body.headwear, body.hatStyle, body.color)
+    if not ok:
+        return {"ok": False, "error": err}
+    meta = custom[agent_id]
+    meta["headwear"] = body.headwear
+    meta["hatStyle"] = body.hatStyle if body.headwear == "hat" else meta.get("hatStyle", "beanie")
+    meta["color"] = body.color
+    custom[agent_id] = meta
+    save_user(uid, user)
+    return {"ok": True, "message": "外形已保存", "agent": meta}
 
 
 @router.post("/agent-speak")

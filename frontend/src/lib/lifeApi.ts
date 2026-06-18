@@ -203,6 +203,16 @@ export async function lifeSaveAgentSoul(agentId: string, content: string) {
   return parse<{ ok: boolean; message?: string }>(r);
 }
 
+export async function lifeSaveAgentAppearance(
+  agentId: string,
+  appearance: { headwear: string; hatStyle: string; color: string },
+) {
+  const r = await fetch(`${API}/agents/${agentId}/appearance`, {
+    method: 'PUT', headers: headers(), body: JSON.stringify(appearance),
+  });
+  return parse<{ ok: boolean; message?: string; agent?: AgentMeta; error?: string }>(r);
+}
+
 export async function lifeAgentSpeak(opts: {
   agent_id: string;
   agent_name: string;

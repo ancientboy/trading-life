@@ -2,15 +2,17 @@ import { useEffect, useRef } from 'react';
 import { drawAgentHat2d, HAT_STYLES, type HatStyleId } from '../../lib/agentAppearance';
 
 export function HatStylePicker({
-  value, color, onChange,
+  value, color, onChange, allowedStyles,
 }: {
   value: HatStyleId;
   color: string;
   onChange: (id: HatStyleId) => void;
+  allowedStyles?: HatStyleId[];
 }) {
+  const styles = allowedStyles ?? (Object.keys(HAT_STYLES) as HatStyleId[]);
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-      {(Object.keys(HAT_STYLES) as HatStyleId[]).map(id => (
+      {styles.map(id => (
         <HatStyleButton
           key={id}
           id={id}
