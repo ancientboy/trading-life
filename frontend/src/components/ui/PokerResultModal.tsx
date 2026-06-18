@@ -83,6 +83,19 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
             </div>
           )}
 
+          {dealt && community.length === 5 && (
+            <div style={{
+              padding: '10px 12px', marginBottom: 12, background: '#f5f0e8',
+              borderRadius: 8, border: '1px solid #e8dcc8', textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 10, color: '#8a7e72', marginBottom: 6 }}>公共牌（5 张）</div>
+              <PokerCardRow cards={community} />
+              <div style={{ fontSize: 10, color: '#9a8b7a', marginTop: 8, lineHeight: 1.5 }}>
+                从 2 张手牌 + 5 张公共牌中选出最大 5 张组合 · 牌型大小：同花顺 &gt; 四条 &gt; 葫芦 &gt; 同花 &gt; 顺子 &gt; 三条 &gt; 两对 &gt; 一对 &gt; 高牌
+              </div>
+            </div>
+          )}
+
           <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>
             对局排名 · {isTie ? '平局平分奖池' : '胜者通吃奖池'}
           </div>

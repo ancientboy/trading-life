@@ -239,11 +239,19 @@ NPC_POKER_ROSTER = [
 NPC_DISPLAY = {uid: name for uid, name, _ in [(t[0], t[1], t[2]) for t in NPC_POKER_ROSTER]}
 
 
-def _poker_score(player: dict, room: dict, human_id: str) -> int:
-    if str(player["user_id"]).startswith("npc_"):
-        base = 45 + room.get("buy_in", 30) // 10
-        return random.randint(base, min(98, base + 40))
-    return random.randint(20, 100) + 12
+def _poker_seat_index(seat_id: str) -> int:
+    if seat_id and str(seat_id).startswith("poker_s"):
+        try:
+            return int(str(seat_id).replace("poker_s", ""))
+        except ValueError:
+            pass
+    return 999
+
+
+def _sort_poker_players(players: list) -> list[dict]:
+    """按座位号排序，保证手牌与玩家一一对应。"""
+    plist = [dict(p) if not isinstance(p, dict) else p for p in players]
+    return sorted(plist, key=lambda p: _poker_seat_index(p.get("seat_id", "")))
 
 
 def _charge_human_buy_ins(room_id: str, room: dict, players: list) -> tuple[bool, str]:
@@ -314,9 +322,9 @@ def _player_display_name(p: dict, account_id: str) -> str:
 
 def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str) -> dict:
     from life_game import load_user, save_user, _earn
-    from poker_hands import play_round, card_display
+    from poker_hands import play_round, card_display, compare_hands
 
-    plist = [dict(p) if not isinstance(p, dict) else p for p in players]
+    plist = _sort_poker_players(players)
     if not plist:
         return {"ok": False, "error": "无玩家，无法开牌"}
 
@@ -325,7 +333,7 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
     pot = room["pot"]
     buy_in = room["buy_in"]
 
-    # 按座位索引匹配手牌（play_round 返回顺序与发牌座位一致）
+    # 按座位顺序匹配手牌（play_round 的 seat 0..n-1 对应排序后的玩家）
     hands_by_seat = {h["seat"]: h for h in round_data["players"]}
     player_hands = []
     for i, p in enumerate(plist):
@@ -334,12 +342,14 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
 
     player_hands.sort(key=lambda x: x[1]["hand_score"], reverse=True)
 
-    # 竞争排名（并列同名次）
+    # 竞争排名（并列同名次）— 使用标准德州 tuple 比牌
     comp_ranks: list[int] = []
     i = 0
     while i < len(player_hands):
         j = i + 1
-        while j < len(player_hands) and player_hands[j][1]["hand_score"] == player_hands[i][1]["hand_score"]:
+        while j < len(player_hands) and compare_hands(
+            player_hands[j][1]["hand_score"], player_hands[i][1]["hand_score"]
+        ) == 0:
             j += 1
         rank = i + 1
         for _ in range(i, j):
@@ -347,7 +357,9 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
         i = j
 
     best_score = player_hands[0][1]["hand_score"]
-    winner_count = sum(1 for _, h in player_hands if h["hand_score"] == best_score)
+    winner_count = sum(
+        1 for _, h in player_hands if compare_hands(h["hand_score"], best_score) == 0
+    )
     split_win = pot // winner_count if winner_count else 0
     split_extra = pot - split_win * winner_count if winner_count else 0
     extra_left = split_extra
@@ -357,7 +369,7 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
         with life_db._conn() as c:
             for rank_idx, (p, hand) in enumerate(player_hands):
                 rank = comp_ranks[rank_idx]
-                is_winner = hand["hand_score"] == best_score
+                is_winner = compare_hands(hand["hand_score"], best_score) == 0
                 win = split_win if is_winner else 0
                 if is_winner and extra_left > 0:
                     win += 1
@@ -381,6 +393,7 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
                     "best_cards": hand["best_cards"],
                     "hand_name": hand["hand_name"],
                     "hand_combo": hand["hand_combo"],
+                    "hand_rank_key": hand.get("hand_rank_key"),
                     "hole_cards_display": [card_display(c) for c in hand["hole_cards"]],
                     "best_cards_display": [card_display(c) for c in hand["best_cards"]],
                 })

@@ -179,6 +179,20 @@ def score_to_display(score: tuple[int, ...]) -> int:
     return min(99, weights.get(score[0], 10) + (score[1] if len(score) > 1 else 0))
 
 
+def score_key(score: tuple[int, ...]) -> list[int]:
+    """可 JSON 序列化的比牌键，用于排序与前端展示。"""
+    return list(score)
+
+
+def compare_hands(a: tuple[int, ...], b: tuple[int, ...]) -> int:
+    """返回正数表示 a 更大，负数表示 b 更大，0 平局。"""
+    if a > b:
+        return 1
+    if a < b:
+        return -1
+    return 0
+
+
 def deal_holdem(num_players: int) -> tuple[list[str], list[list[str]]]:
     if num_players < 2 or num_players > 10:
         raise ValueError("invalid player count")
@@ -205,6 +219,7 @@ def play_round(num_players: int) -> dict:
             "hand_name": hand_name(score),
             "hand_combo": hand_combo(score, best_five),
             "hand_score": score,
+            "hand_rank_key": score_key(score),
             "score": score_to_display(score),
         })
     return {"community_cards": community, "players": entries}
