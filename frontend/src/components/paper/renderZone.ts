@@ -20,6 +20,7 @@ import {
   drawCantoneseBackdrop, drawCantoneseDecor, drawCantoneseAmbientLights,
   drawSpaZenBackdrop, drawSpaVipDecor, drawSpaAmbientLights, drawSpaMassageBed,
   drawTableDishes, drawWaiterServeMotion, drawMassageTherapistHands,
+  placeSettingAtChair,
   drawPokerTableDealing, drawReceptionInterior,
 } from './paperDraw';
 import { leisurePhase, tableIdForDineAgent, bedIdForMassageAgent, getLeisureRenderPaperPos, DINE_SERVE_MS } from '../../lib/leisureActivity';
@@ -205,7 +206,10 @@ function drawRestaurantScene(
     const tablePt = pt(cam, table.px, table.py);
     const phase = leisurePhase(char, now);
     if (phase === 'active') {
-      drawTableDishes(ctx, tablePt.x, tablePt.y, cam.scale, t, char.leisureTier === 'c' ? 4 : char.leisureTier === 'b' ? 3 : 2);
+      const chair = table.chairs.find(c => c.id === char.destNode) ?? table.chairs[0];
+      const chairPt = pt(cam, chair.px, chair.py);
+      const dishPt = placeSettingAtChair(tablePt.x, tablePt.y, chairPt.x, chairPt.y, cam.scale);
+      drawTableDishes(ctx, dishPt.x, dishPt.y, cam.scale, t, char.leisureTier === 'c' ? 4 : char.leisureTier === 'b' ? 3 : 2);
     } else if (phase === 'serve' && waiter) {
       const wPt = pt(cam, waiter.px, waiter.py);
       const elapsed = char.activityStartedAt ? now - char.activityStartedAt : 0;

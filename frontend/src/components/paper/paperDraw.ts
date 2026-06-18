@@ -862,6 +862,52 @@ export function drawMassageBed(ctx: CanvasRenderingContext2D, x: number, y: numb
   rrect(ctx, x + 28 * s, y + 2 * s, 3 * s, 8 * s, 1 * s); ctx.fill();
 }
 
+/** 餐桌四向座位前缘的餐具摆放（相对桌心，单位 × s） */
+const DINE_PLACE_OFFSETS: { dx: number; dy: number }[] = [
+  { dx: 0, dy: 14 },   // 南侧座位（c1，朝北）
+  { dx: -18, dy: 0 },  // 西侧（c2）
+  { dx: 18, dy: 0 },   // 东侧（c3）
+  { dx: 0, dy: -14 },  // 北侧（c4）
+];
+
+function drawPlaceSetting(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, s: number,
+  pal: ReturnType<typeof cantonesePalette>,
+  variant: number,
+) {
+  const rot = variant * 0.4;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.fillStyle = '#fffef8';
+  rrect(ctx, -5 * s, -4 * s, 10 * s, 8 * s, 1.5 * s); ctx.fill();
+  ctx.strokeStyle = 'rgba(196,184,168,0.8)'; ctx.lineWidth = 0.6 * s; ctx.stroke();
+  ctx.fillStyle = pal.jade;
+  ctx.beginPath(); ctx.ellipse(0, 0, 4.5 * s, 3.5 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = pal.gold;
+  ctx.beginPath(); ctx.ellipse(0, -1.5 * s, 3.5 * s, 1.8 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = pal.crimson;
+  ctx.beginPath(); ctx.arc(4 * s, -3 * s, 1.8 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+export function placeSettingAtChair(
+  tableX: number, tableY: number,
+  chairX: number, chairY: number,
+  s: number,
+): { x: number; y: number } {
+  const dx = chairX - tableX;
+  const dy = chairY - tableY;
+  const len = Math.hypot(dx, dy) || 1;
+  const rim = 14 * s;
+  const aspect = 0.78;
+  return {
+    x: tableX + (dx / len) * rim,
+    y: tableY + (dy / len) * rim * aspect,
+  };
+}
+
 export function drawDiningTable(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, skinKey = 'default') {
   const pal = cantonesePalette(skinKey);
   dropShadow(ctx, x, y, 110 * s, 85 * s, 0.12);
@@ -878,18 +924,12 @@ export function drawDiningTable(ctx: CanvasRenderingContext2D, x: number, y: num
   ctx.fillStyle = pal.goldDim;
   ctx.beginPath(); ctx.ellipse(x, y, 14 * s, 10 * s, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = '#fffef8';
-  rrect(ctx, x - 8 * s, y - 6 * s, 16 * s, 12 * s, 2 * s); ctx.fill();
+  rrect(ctx, x - 6 * s, y - 5 * s, 12 * s, 10 * s, 2 * s); ctx.fill();
   ctx.fillStyle = pal.crimson;
-  ctx.beginPath(); ctx.arc(x - 2 * s, y - 2 * s, 3 * s, 0, Math.PI * 2); ctx.fill();
-  for (let i = 0; i < 3; i++) {
-    const ang = -0.8 + i * 0.8;
-    const dx = Math.cos(ang) * 22 * s;
-    const dy = Math.sin(ang) * 16 * s;
-    ctx.fillStyle = pal.jade;
-    ctx.beginPath(); ctx.ellipse(x + dx, y + dy, 5 * s, 4 * s, ang, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = pal.gold;
-    ctx.beginPath(); ctx.ellipse(x + dx, y + dy - 2 * s, 4 * s, 2 * s, 0, 0, Math.PI * 2); ctx.fill();
-  }
+  ctx.beginPath(); ctx.arc(x, y, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+  DINE_PLACE_OFFSETS.forEach((off, i) => {
+    drawPlaceSetting(ctx, x + off.dx * s, y + off.dy * s, s, pal, i);
+  });
   if (skinKey === 'default' || skinKey === 'garden') {
     ctx.fillStyle = pal.crimson;
     ctx.font = `${Math.max(8, 10 * s)}px sans-serif`; ctx.textAlign = 'center';
@@ -1517,22 +1557,18 @@ function drawLazySusanHint(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.beginPath(); ctx.arc(x, y, r * s, t * 0.4, t * 0.4 + Math.PI * 1.2); ctx.stroke();
 }
 
-/** 餐桌上菜 — 多份菜品 */
+/** 餐桌上菜 — 在指定座位前缘摆放菜品 */
 export function drawTableDishes(
-  ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number, count = 3,
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, s: number, t: number, count = 3,
 ) {
   const dishes = ['🥟', '🦐', '🥬', '🍚', '🍵'].slice(0, count);
   dishes.forEach((emoji, i) => {
-    const ang = (i / dishes.length) * Math.PI * 2 + t * 0.3;
-    const dx = Math.cos(ang) * 14 * s;
-    const dy = Math.sin(ang) * 10 * s;
+    const spread = (i - (dishes.length - 1) / 2) * 5 * s;
     ctx.font = `${Math.max(9, 11 * s)}px sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(emoji, x + dx, y + dy + Math.sin(t * 3 + i) * 1.5);
+    ctx.fillText(emoji, x + spread, y + Math.sin(t * 3 + i) * 1.5);
   });
-  ctx.fillStyle = 'rgba(184,50,50,0.35)';
-  ctx.font = `600 ${Math.max(7, 8 * s)}px Inter,sans-serif`;
-  ctx.fillText('已上菜', x, y - 18 * s);
 }
 
 /** 服务员端盘动画 */
