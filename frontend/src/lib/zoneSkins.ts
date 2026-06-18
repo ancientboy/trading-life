@@ -1,15 +1,16 @@
 import type { ZoneId } from '../store/useGameStore';
 
-/** 可换肤区域（不含 reception） */
-export type SkinZone = 'hall' | 'restaurant' | 'spa' | 'casino';
+/** 可换肤区域（含前厅） */
+export type SkinZone = 'hall' | 'restaurant' | 'spa' | 'casino' | 'reception';
 
-export const SKIN_ZONES: SkinZone[] = ['hall', 'restaurant', 'spa', 'casino'];
+export const SKIN_ZONES: SkinZone[] = ['hall', 'restaurant', 'spa', 'casino', 'reception'];
 
 export const SKIN_ZONE_LABELS: Record<SkinZone, string> = {
   hall: '交易大厅',
   restaurant: '广式粤菜馆',
   spa: '禅意理疗馆',
   casino: 'VIP 德州厅',
+  reception: '前厅接待',
 };
 
 export interface ZoneSkinOption {
@@ -30,6 +31,10 @@ export const ZONE_SKIN_OPTIONS: Record<SkinZone, ZoneSkinOption[]> = {
       id: 'gold', label: '金色 lounge', desc: '丝绒沙发与金边装饰',
       preview: '✨', shopId: 'zone_skin_hall_gold', legacyShopIds: ['skin_sofa_gold'],
     },
+    {
+      id: 'bamboo', label: '竹韵商务', desc: '竹绿点缀与简约工位区',
+      preview: '🎋', shopId: 'zone_skin_hall_bamboo',
+    },
   ],
   restaurant: [
     { id: 'default', label: '广式经典', desc: '红灯笼、木屏与功夫茶台', preview: '🏮' },
@@ -38,14 +43,33 @@ export const ZONE_SKIN_OPTIONS: Record<SkinZone, ZoneSkinOption[]> = {
       preview: '🍽', shopId: 'zone_skin_restaurant_premium', legacyShopIds: ['skin_table_premium'],
     },
     { id: 'modern', label: '现代简约', desc: '浅灰墙面与青绿点缀', preview: '🌿', shopId: 'zone_skin_restaurant_modern' },
+    {
+      id: 'garden', label: '岭南茶室', desc: '竹篱、石景与清茶氛围',
+      preview: '🍵', shopId: 'zone_skin_restaurant_garden',
+    },
   ],
   spa: [
     { id: 'default', label: '禅意 lavender', desc: '竹屏、香薰与地垫', preview: '☯' },
     { id: 'tropical', label: '热带度假', desc: '棕榈绿与暖沙色调', preview: '🌴', shopId: 'zone_skin_spa_tropical' },
+    {
+      id: 'zen_ink', label: '水墨禅境', desc: '墨色山水与留白美学',
+      preview: '🖋', shopId: 'zone_skin_spa_zen_ink',
+    },
   ],
   casino: [
     { id: 'default', label: '经典 VIP', desc: '酒红丝绒与金色吊灯', preview: '🎰' },
     { id: 'neon', label: '霓虹之夜', desc: '紫粉霓虹与暗色墙面', preview: '💜', shopId: 'zone_skin_casino_neon' },
+    {
+      id: 'royal', label: '皇家金銮', desc: '深红绒面与皇家金饰',
+      preview: '👑', shopId: 'zone_skin_casino_royal',
+    },
+  ],
+  reception: [
+    { id: 'default', label: '经典前厅', desc: '米色大理石与接待台', preview: '🏨' },
+    {
+      id: 'luxury', label: '尊享接待', desc: '深色木饰与金色吊灯',
+      preview: '💎', shopId: 'zone_skin_reception_luxury',
+    },
   ],
 };
 
@@ -54,6 +78,7 @@ export const DEFAULT_ZONE_SKINS: Record<SkinZone, string> = {
   restaurant: 'default',
   spa: 'default',
   casino: 'default',
+  reception: 'default',
 };
 
 const LEGACY_UNLOCK_MAP: Record<string, { zone: SkinZone; skinId: string }> = {
@@ -199,6 +224,11 @@ const CANTONESE: Record<string, CantonesePalette> = {
     cream: '#f4f6f5', wood: '#6a7570', woodLight: '#8a9590', jade: '#5a9888',
     floorLight: '#f0f4f2', floorDark: '#e2eae6', tableTop: '#e8ecea', tableEdge: '#c8d4ce',
   },
+  garden: {
+    crimson: '#5a7868', crimsonDeep: '#3a5848', gold: '#c4a574', goldDim: '#a88858',
+    cream: '#f5f2ea', wood: '#6b5344', woodLight: '#8b7355', jade: '#4a8868',
+    floorLight: '#f0ebe0', floorDark: '#e4dcc8', tableTop: '#d8ccb8', tableEdge: '#c0b4a0',
+  },
 };
 
 const VIP: Record<string, VipPalette> = {
@@ -213,6 +243,12 @@ const VIP: Record<string, VipPalette> = {
     burgundy: '#4a148c', velvet: '#311b92', velvetDeep: '#1a0a30',
     rugBase: '#2a1848', rugPattern: '#00e5ff', cream: '#ede7f6',
     backdropCenter: '#2a1840', backdropEdge: '#120820',
+  },
+  royal: {
+    gold: '#ffd700', goldDim: '#b8860b', walnut: '#1a0a10', walnutLight: '#3a1828',
+    burgundy: '#6a1028', velvet: '#4a0820', velvetDeep: '#2a0410',
+    rugBase: '#4a1830', rugPattern: '#ffd700', cream: '#fff8f0',
+    backdropCenter: '#3a1828', backdropEdge: '#1a0818',
   },
 };
 
@@ -229,6 +265,12 @@ const SPA: Record<string, SpaPalette> = {
     teal: '#48a898', glow: 'rgba(255,200,120,0.25)',
     floorLight: '#f5f0e4', floorDark: '#ebe0cc', mat: '#f0e8d8',
   },
+  zen_ink: {
+    lavender: '#6a6a72', lavenderDeep: '#4a4a52', sage: '#5a5a62', sageDeep: '#3a3a42',
+    bamboo: '#8a8278', bambooDark: '#5a5248', cream: '#f4f2ee', stone: '#d8d4cc',
+    teal: '#6a6870', glow: 'rgba(80,80,88,0.22)',
+    floorLight: '#eceae6', floorDark: '#dcd8d0', mat: '#e8e4dc',
+  },
 };
 
 const HALL_REST: Record<string, HallRestPalette> = {
@@ -239,6 +281,10 @@ const HALL_REST: Record<string, HallRestPalette> = {
   gold: {
     sofa: '#c9a227', sofaArm: '#a88828', cushion: '#fff8e8',
     floorLight: '#f8f0e0', floorDark: '#ebe0c8', accent: '#d4af37',
+  },
+  bamboo: {
+    sofa: '#c8d4c0', sofaArm: '#8aa878', cushion: '#f4f8f0',
+    floorLight: '#f0f4ec', floorDark: '#e2eae0', accent: '#5a8868',
   },
 };
 
@@ -258,7 +304,28 @@ export function hallRestPalette(skinKey: string): HallRestPalette {
   return HALL_REST[skinKey] ?? HALL_REST.default;
 }
 
+export interface ReceptionPalette {
+  floorLight: string; floorDark: string; wall: string; desk: string; deskTop: string;
+  accent: string; wood: string; seat: string; plant: string;
+}
+
+const RECEPTION: Record<string, ReceptionPalette> = {
+  default: {
+    floorLight: '#faf6ef', floorDark: '#ebe4d8', wall: '#f5f0e8', desk: '#8b7355',
+    deskTop: '#d4c8b8', accent: '#d4af37', wood: '#6b5344', seat: '#c8baa8', plant: '#5a8868',
+  },
+  luxury: {
+    floorLight: '#2a2420', floorDark: '#1a1816', wall: '#3d3530', desk: '#4a3020',
+    deskTop: '#6b4423', accent: '#ffd700', wood: '#3d2818', seat: '#5c4030', plant: '#4a6858',
+  },
+};
+
+export function receptionPalette(skinKey: string): ReceptionPalette {
+  return RECEPTION[skinKey] ?? RECEPTION.default;
+}
+
 export function skinZoneFromGameZone(zone: ZoneId): SkinZone | null {
-  if (zone === 'reception') return null;
-  return zone;
+  if (zone === 'reception') return 'reception';
+  if (zone === 'hall' || zone === 'restaurant' || zone === 'spa' || zone === 'casino') return zone;
+  return null;
 }

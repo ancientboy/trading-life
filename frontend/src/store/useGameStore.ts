@@ -119,7 +119,6 @@ interface GameStore {
   soulMd: string;
   messages: { text: string; time: string }[];
   npcBubble: { npcId: string; text: string; until: number } | null;
-  pokerGlbReady: boolean;
   /** 用户积分 — 后端持久化 */
   points: number;
   dailyTasks: LifeState['daily_tasks'];
@@ -197,7 +196,6 @@ interface GameStore {
   patchChar: (id: string, patch: Partial<CharState>) => void;
   addMessage: (text: string) => void;
   setNpcBubble: (npcId: string | null, text: string, until: number) => void;
-  setPokerGlbReady: (v: boolean) => void;
   earnPoints: (amount: number, reason?: string) => void;
   trySpendPoints: (amount: number) => { ok: boolean; balance: number };
   saveCustomAgentSoul: (agentId: string, content: string) => Promise<boolean>;
@@ -251,7 +249,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   soulMd: '',
   messages: [],
   npcBubble: null,
-  pokerGlbReady: false,
   points: 200,
   dailyTasks: {},
   dailyTaskDefs: [],
@@ -831,7 +828,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setNpcBubble: (npcId, text, until) => set({
     npcBubble: npcId && text ? { npcId, text, until } : null,
   }),
-  setPokerGlbReady: (v) => set({ pokerGlbReady: v }),
 
   earnPoints: (amount, reason) => {
     if (amount <= 0) return;
