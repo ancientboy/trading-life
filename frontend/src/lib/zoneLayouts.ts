@@ -75,13 +75,11 @@ export const ZONE_LAYOUTS: Record<ZoneId, ZoneLayout> = {
     ],
   },
   casino: {
-    floorColor: '#f5efe6',
-    accent: 'rgba(26,21,32,0.06)',
+    floorColor: '#2a2220',
+    accent: 'rgba(212,175,55,0.14)',
     navArrows: [{ x: 22, y: 320, dir: 'w', label: '大厅', target: 'hall' }],
     facilities: [
-      { id: 'poker_1', nodeId: 'poker_1', r: 44, label: '牌桌 A', action: 'poker' },
-      { id: 'poker_2', nodeId: 'poker_2', r: 44, label: '牌桌 B', action: 'poker' },
-      { id: 'poker_3', nodeId: 'poker_3', r: 44, label: '牌桌 C', action: 'poker' },
+      { id: 'poker_table', nodeId: 'poker_table', r: 118, label: 'VIP 牌桌', action: 'poker' },
     ],
   },
 };

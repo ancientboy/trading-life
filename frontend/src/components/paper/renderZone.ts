@@ -16,6 +16,7 @@ import {
   drawDiningTable, drawMassageBed, drawFacilityLabel,
   drawMarketBigScreen, drawCoffeeZone, drawChair, drawRestBooth,
   drawPokerTable8, drawNpc, drawSpeechBubble,
+  drawCasinoVipBackdrop, drawCasinoVipDecor, drawCasinoAmbientLights, drawVipChair,
 } from './paperDraw';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
 import { getRestSofaSprite } from '../../lib/restSofaSprite';
@@ -151,19 +152,23 @@ function drawCasinoScene(
   ctx: CanvasRenderingContext2D, cam: PaperCamera, t: number, hoverId: string | null,
   pokerGlbReady: boolean,
 ) {
+  drawCasinoVipDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t);
+  drawCasinoAmbientLights(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v));
+
   const s = pt(cam, CASINO_TABLE.px, CASINO_TABLE.py);
   if (!pokerGlbReady) {
     drawPokerTable8(ctx, s.x, s.y, cam.scale, t);
   }
   CASINO_SEATS.forEach(seat => {
     const cs = pt(cam, seat.px, seat.py);
-    drawChair(ctx, cs.x, cs.y, cam.scale * 0.85, seat.facing);
+    drawVipChair(ctx, cs.x, cs.y, cam.scale * 0.85, seat.facing);
   });
   if (hoverId === 'poker_table') {
-    ctx.strokeStyle = 'rgba(212,175,55,0.5)'; ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(212,175,55,0.65)'; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.ellipse(s.x, s.y, ws(cam, CASINO_TABLE.r), ws(cam, CASINO_TABLE.r * 0.7), 0, 0, Math.PI * 2);
     ctx.stroke();
   }
+  drawFacilityLabel(ctx, s.x, s.y - ws(cam, 88), 'VIP 德州牌桌', cam.scale, hoverId === 'poker_table');
 }
 
 function drawNpcs(
@@ -213,8 +218,12 @@ export function renderZone(
   },
 ) {
   const layout = ZONE_LAYOUTS[zone];
-  ctx.fillStyle = opts.dayMode === 'day' ? layout.floorColor : '#2a2838';
-  ctx.fillRect(0, 0, cam.cw, cam.ch);
+  if (zone === 'casino') {
+    drawCasinoVipBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode);
+  } else {
+    ctx.fillStyle = opts.dayMode === 'day' ? layout.floorColor : '#2a2838';
+    ctx.fillRect(0, 0, cam.cw, cam.ch);
+  }
   if (zone === 'casino' && opts.pokerGlbReady) punchCasinoTableHole(ctx, cam);
 
   switch (zone) {

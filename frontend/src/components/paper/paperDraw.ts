@@ -630,10 +630,12 @@ export function drawPokerTable8(
     return;
   }
 
-  dropShadow(ctx, x, y, 240 * s, 180 * s, 0.1);
+  dropShadow(ctx, x, y, 240 * s, 180 * s, 0.14);
+  ctx.fillStyle = '#8b6914';
+  ctx.beginPath(); ctx.ellipse(x, y, 118 * s, 80 * s, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#2d5a3d';
   ctx.beginPath(); ctx.ellipse(x, y, 110 * s, 75 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#8b6914'; ctx.lineWidth = 3 * s; ctx.stroke();
+  ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3 * s; ctx.stroke();
   ctx.fillStyle = '#1a4030';
   ctx.beginPath(); ctx.ellipse(x, y, 95 * s, 62 * s, 0, 0, Math.PI * 2); ctx.fill();
   for (let i = 1; i <= 8; i++) {
@@ -745,4 +747,292 @@ export function drawSpeechBubble(ctx: CanvasRenderingContext2D, x: number, y: nu
   ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#3d3530'; ctx.textAlign = 'center';
   ctx.fillText(text.length > 18 ? text.slice(0, 17) + '…' : text, x, y - th + 6 * s);
+}
+
+/* ─── Casino VIP lounge decor ─── */
+
+const VIP = {
+  gold: '#d4af37',
+  goldDim: '#8b6914',
+  walnut: '#2a2220',
+  walnutLight: '#3d322c',
+  burgundy: '#5c2438',
+  velvet: '#4a1e32',
+  velvetDeep: '#321428',
+  rugBase: '#5a2838',
+  rugPattern: '#c9a227',
+  lampGlow: 'rgba(255,196,120,0.35)',
+  cream: '#f5efe6',
+};
+
+function drawOvalRug(
+  ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, s: number,
+) {
+  dropShadow(ctx, x, y + 4 * s, rx * 2 * s, ry * 2 * s, 0.12);
+  ctx.fillStyle = VIP.rugBase;
+  ctx.beginPath(); ctx.ellipse(x, y, rx * s, ry * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = VIP.goldDim; ctx.lineWidth = 2 * s;
+  ctx.beginPath(); ctx.ellipse(x, y, rx * s, ry * s, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = VIP.rugPattern; ctx.lineWidth = 1 * s;
+  for (let ring = 0.75; ring > 0.2; ring -= 0.18) {
+    ctx.beginPath(); ctx.ellipse(x, y, rx * ring * s, ry * ring * s, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.fillStyle = VIP.gold;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * rx * 0.82 * s, y + Math.sin(a) * ry * 0.82 * s, 3 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawRunnerRug(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], s: number) {
+  ctx.strokeStyle = VIP.rugBase;
+  ctx.lineWidth = 28 * s;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  pts.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+  ctx.stroke();
+  ctx.strokeStyle = VIP.goldDim;
+  ctx.lineWidth = 2 * s;
+  ctx.stroke();
+  ctx.strokeStyle = VIP.rugPattern;
+  ctx.lineWidth = 1 * s;
+  ctx.setLineDash([6 * s, 8 * s]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+export function drawCasinoVipBackdrop(
+  ctx: CanvasRenderingContext2D, cam: { cw: number; ch: number; scale: number },
+  toScreen: (px: number, py: number) => { x: number; y: number },
+  ws: (v: number) => number,
+  dayMode: 'day' | 'night',
+) {
+  const w = cam.cw, h = cam.ch;
+  const grd = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.65);
+  if (dayMode === 'night') {
+    grd.addColorStop(0, '#3d322c');
+    grd.addColorStop(1, '#1a1412');
+  } else {
+    grd.addColorStop(0, '#3d322c');
+    grd.addColorStop(1, '#221a18');
+  }
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, w, h);
+
+  // 墙面与 VIP 隔断
+  const wallTop = toScreen(360, 40);
+  ctx.fillStyle = VIP.velvetDeep;
+  rrect(ctx, wallTop.x - ws(340), wallTop.y - ws(8), ws(680), ws(90), ws(4)); ctx.fill();
+  ctx.strokeStyle = VIP.gold; ctx.lineWidth = ws(2);
+  ctx.beginPath();
+  ctx.moveTo(wallTop.x - ws(320), wallTop.y + ws(78));
+  ctx.lineTo(wallTop.x + ws(320), wallTop.y + ws(78));
+  ctx.stroke();
+
+  // VIP 招牌
+  ctx.fillStyle = VIP.gold;
+  ctx.font = `700 ${Math.max(11, ws(14))}px Georgia,serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('◆  VIP 德州厅  ◆', wallTop.x, wallTop.y + ws(42));
+  ctx.font = `400 ${Math.max(8, ws(9))}px Inter,sans-serif`;
+  ctx.fillStyle = 'rgba(245,239,230,0.55)';
+  ctx.fillText('PRIVATE POKER LOUNGE', wallTop.x, wallTop.y + ws(58));
+
+  // 侧墙窗帘
+  [[90, 320], [630, 320]].forEach(([px, py]) => {
+    const p = toScreen(px, py);
+    ctx.fillStyle = VIP.velvet;
+    rrect(ctx, p.x - ws(18), p.y - ws(120), ws(36), ws(240), ws(4)); ctx.fill();
+    ctx.strokeStyle = VIP.goldDim; ctx.lineWidth = ws(1);
+    for (let i = 0; i < 5; i++) {
+      const ly = p.y - ws(100) + i * ws(48);
+      ctx.beginPath(); ctx.moveTo(p.x - ws(14), ly); ctx.lineTo(p.x + ws(14), ly); ctx.stroke();
+    }
+  });
+}
+
+export function drawCasinoVipDecor(
+  ctx: CanvasRenderingContext2D,
+  toScreen: (px: number, py: number) => { x: number; y: number },
+  ws: (v: number) => number,
+  s: number,
+  t: number,
+) {
+  // 入口红毯
+  const runner = [
+    toScreen(22, 320), toScreen(120, 300), toScreen(220, 260),
+    toScreen(320, 220), toScreen(360, 200),
+  ];
+  drawRunnerRug(ctx, runner, s);
+
+  // 主牌桌地毯
+  const rug = toScreen(360, 340);
+  drawOvalRug(ctx, rug.x, rug.y, 210, 155, s);
+
+  // 角落 VIP 沙发区
+  [
+    { px: 118, py: 530, flip: false },
+    { px: 602, py: 530, flip: true },
+    { px: 118, py: 155, flip: false },
+    { px: 602, py: 155, flip: true },
+  ].forEach(({ px, py, flip }) => {
+    const p = toScreen(px, py);
+    drawVipSofa(ctx, p.x, p.y, s, flip);
+    const tbl = toScreen(px + (flip ? -55 : 55), py + 20);
+    drawSideTable(ctx, tbl.x, tbl.y, s);
+    drawChipStack(ctx, tbl.x, tbl.y - ws(14), s);
+  });
+
+  // 荷官两侧落地灯 + 绿植
+  [
+    { px: 255, py: 145, kind: 'lamp' as const },
+    { px: 465, py: 145, kind: 'lamp' as const },
+    { px: 75, py: 420, kind: 'plant' as const },
+    { px: 645, py: 420, kind: 'plant' as const },
+  ].forEach(({ px, py, kind }) => {
+    const p = toScreen(px, py);
+    if (kind === 'lamp') drawFloorLamp(ctx, p.x, p.y, s, t);
+    else drawDecorPlant(ctx, p.x, p.y, s);
+  });
+
+  // 吊灯
+  const ch = toScreen(360, 195);
+  drawChandelier(ctx, ch.x, ch.y, s, t);
+
+  // 吧台摆件（筹码柜）
+  const bar = toScreen(360, 580);
+  drawChipCabinet(ctx, bar.x, bar.y, s);
+}
+
+export function drawVipSofa(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, flip = false) {
+  dropShadow(ctx, x, y, 130 * s, 70 * s, 0.14);
+  ctx.save();
+  ctx.translate(x, y);
+  if (flip) ctx.scale(-1, 1);
+  ctx.fillStyle = VIP.burgundy;
+  rrect(ctx, -58 * s, -22 * s, 116 * s, 44 * s, 10 * s); ctx.fill();
+  ctx.fillStyle = VIP.velvetDeep;
+  rrect(ctx, -62 * s, -30 * s, 28 * s, 58 * s, 8 * s); ctx.fill();
+  rrect(ctx, 34 * s, -30 * s, 28 * s, 58 * s, 8 * s); ctx.fill();
+  ctx.fillStyle = VIP.gold;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath(); ctx.arc(i * 22 * s, -18 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = VIP.cream;
+  ctx.beginPath(); ctx.ellipse(0, 6 * s, 20 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+export function drawSideTable(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  dropShadow(ctx, x, y + 2 * s, 36 * s, 28 * s, 0.1);
+  ctx.fillStyle = VIP.walnutLight;
+  ctx.beginPath(); ctx.ellipse(x, y, 18 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = VIP.gold; ctx.lineWidth = 1.5 * s; ctx.stroke();
+  ctx.fillStyle = VIP.walnut;
+  ctx.fillRect(x - 2 * s, y, 4 * s, 14 * s);
+}
+
+export function drawChipStack(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const colors = ['#d4af37', '#c0392b', '#2d5a3d', '#1a1a1a'];
+  colors.forEach((c, i) => {
+    ctx.fillStyle = c;
+    ctx.beginPath(); ctx.ellipse(x, y - i * 3 * s, 8 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 0.5; ctx.stroke();
+  });
+}
+
+export function drawFloorLamp(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
+  const glow = 0.85 + Math.sin(t * 3) * 0.15;
+  ctx.fillStyle = `rgba(255,190,100,${0.12 * glow})`;
+  ctx.beginPath(); ctx.ellipse(x, y + 20 * s, 45 * s, 35 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = VIP.walnutLight;
+  ctx.fillRect(x - 2 * s, y, 4 * s, 38 * s);
+  ctx.fillStyle = VIP.gold;
+  ctx.beginPath();
+  ctx.moveTo(x - 14 * s, y - 2 * s);
+  ctx.lineTo(x + 14 * s, y - 2 * s);
+  ctx.lineTo(x + 10 * s, y - 18 * s);
+  ctx.lineTo(x - 10 * s, y - 18 * s);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = `rgba(255,220,160,${0.9 * glow})`;
+  ctx.beginPath(); ctx.ellipse(x, y - 20 * s, 8 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+export function drawDecorPlant(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  dropShadow(ctx, x, y + 8 * s, 28 * s, 20 * s, 0.08);
+  ctx.fillStyle = '#6b4423';
+  ctx.beginPath();
+  ctx.moveTo(x - 12 * s, y + 10 * s);
+  ctx.lineTo(x + 12 * s, y + 10 * s);
+  ctx.lineTo(x + 10 * s, y + 28 * s);
+  ctx.lineTo(x - 10 * s, y + 28 * s);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = VIP.goldDim; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#2d6a3e';
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i - 2) * 0.45;
+    ctx.beginPath();
+    ctx.ellipse(x + Math.cos(a) * 16 * s, y - 8 * s + Math.sin(a) * 10 * s, 14 * s, 8 * s, a, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#3d8a50';
+  ctx.beginPath(); ctx.ellipse(x, y - 18 * s, 10 * s, 14 * s, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+export function drawChandelier(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
+  ctx.strokeStyle = VIP.gold; ctx.lineWidth = 1.5 * s;
+  ctx.beginPath(); ctx.moveTo(x, y - 30 * s); ctx.lineTo(x, y); ctx.stroke();
+  ctx.fillStyle = VIP.gold;
+  ctx.beginPath(); ctx.ellipse(x, y - 32 * s, 6 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
+  for (let i = -2; i <= 2; i++) {
+    const cx = x + i * 14 * s;
+    const spark = 0.6 + Math.sin(t * 4 + i) * 0.4;
+    ctx.fillStyle = `rgba(255,230,160,${spark})`;
+    ctx.beginPath(); ctx.arc(cx, y + 4 * s, 4 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = VIP.gold; ctx.lineWidth = 1 * s;
+    ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, y + 4 * s); ctx.stroke();
+  }
+}
+
+export function drawChipCabinet(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  dropShadow(ctx, x, y, 100 * s, 40 * s, 0.1);
+  ctx.fillStyle = VIP.walnutLight;
+  rrect(ctx, x - 50 * s, y - 18 * s, 100 * s, 36 * s, 6 * s); ctx.fill();
+  ctx.strokeStyle = VIP.gold; ctx.lineWidth = 1.5 * s; ctx.stroke();
+  for (let i = -2; i <= 2; i++) {
+    drawChipStack(ctx, x + i * 18 * s, y - 6 * s, s * 0.85);
+  }
+  ctx.fillStyle = VIP.cream;
+  ctx.font = `600 ${Math.max(7, 8 * s)}px Inter,sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('筹码柜', x, y + 14 * s);
+}
+
+export function drawVipChair(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, facing: 'n' | 's' | 'e' | 'w' = 's') {
+  dropShadow(ctx, x, y + 4 * s, 26 * s, 22 * s, 0.1);
+  ctx.fillStyle = VIP.velvetDeep;
+  rrect(ctx, x - 11 * s, y - 5 * s, 22 * s, 15 * s, 4 * s); ctx.fill();
+  ctx.strokeStyle = VIP.goldDim; ctx.lineWidth = 0.8 * s; ctx.stroke();
+  const back = facing === 'n' ? -9 : facing === 's' ? 9 : 0;
+  ctx.fillStyle = VIP.burgundy;
+  rrect(ctx, x - 11 * s, y + back * s - 5 * s, 22 * s, 7 * s, 3 * s); ctx.fill();
+  ctx.fillStyle = VIP.gold;
+  ctx.beginPath(); ctx.arc(x, y + back * s - 2 * s, 2 * s, 0, Math.PI * 2); ctx.fill();
+}
+
+export function drawCasinoAmbientLights(
+  ctx: CanvasRenderingContext2D, cam: { cw: number; ch: number },
+  toScreen: (px: number, py: number) => { x: number; y: number },
+  ws: (v: number) => number,
+) {
+  const table = toScreen(360, 330);
+  const grd = ctx.createRadialGradient(table.x, table.y, 0, table.x, table.y, ws(280));
+  grd.addColorStop(0, 'rgba(255,200,120,0.18)');
+  grd.addColorStop(0.5, 'rgba(212,175,55,0.06)');
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, cam.cw, cam.ch);
 }
