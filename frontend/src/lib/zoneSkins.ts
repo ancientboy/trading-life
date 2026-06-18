@@ -67,7 +67,7 @@ export const ZONE_SKIN_OPTIONS: Record<SkinZone, ZoneSkinOption[]> = {
   reception: [
     { id: 'default', label: '经典前厅', desc: '米色大理石与接待台', preview: '🏨' },
     {
-      id: 'luxury', label: '尊享接待', desc: '深色木饰与金色吊灯',
+      id: 'luxury', label: '尊享接待', desc: '香槟大理石与酒红绒面',
       preview: '💎', shopId: 'zone_skin_reception_luxury',
     },
   ],
@@ -306,17 +306,22 @@ export function hallRestPalette(skinKey: string): HallRestPalette {
 
 export interface ReceptionPalette {
   floorLight: string; floorDark: string; wall: string; desk: string; deskTop: string;
-  accent: string; wood: string; seat: string; plant: string;
+  accent: string; accentDim: string; wood: string; seat: string; plant: string;
+  velvet: string; marble: string; planter: string; rugBase: string; rugPattern: string;
 }
 
 const RECEPTION: Record<string, ReceptionPalette> = {
   default: {
     floorLight: '#faf6ef', floorDark: '#ebe4d8', wall: '#f5f0e8', desk: '#8b7355',
-    deskTop: '#d4c8b8', accent: '#d4af37', wood: '#6b5344', seat: '#c8baa8', plant: '#5a8868',
+    deskTop: '#d4c8b8', accent: '#d4af37', accentDim: '#a88828', wood: '#6b5344',
+    seat: '#c8baa8', plant: '#5a8868', velvet: '#8b7355', marble: '#faf6ef',
+    planter: '#6b5344', rugBase: '#ebe4d8', rugPattern: '#d4c8b8',
   },
   luxury: {
-    floorLight: '#2a2420', floorDark: '#1a1816', wall: '#3d3530', desk: '#4a3020',
-    deskTop: '#6b4423', accent: '#ffd700', wood: '#3d2818', seat: '#5c4030', plant: '#4a6858',
+    floorLight: '#f8f0e4', floorDark: '#e8dcc8', wall: '#3a1828', desk: '#3d2818',
+    deskTop: '#fff8f0', accent: '#d4af37', accentDim: '#a88828', wood: '#6b4423',
+    seat: '#5c2438', plant: '#4a8868', velvet: '#4a1e32', marble: '#fff8f0',
+    planter: '#8b6914', rugBase: '#5a2838', rugPattern: '#c9a227',
   },
 };
 
