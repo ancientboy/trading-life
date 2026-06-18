@@ -396,6 +396,11 @@ def _human_count_in_room(c, room_id: str) -> int:
     ).fetchone()[0]
 
 
+def _is_legacy_poker_room_id(room_id: str) -> bool:
+    """旧版 room_<uuid> 格式房间（已废弃，改用 5 位数字编号）。"""
+    return str(room_id or "").startswith("room_")
+
+
 def _close_poker_room(c, room_id: str) -> None:
     """关闭等待中的空房间（删除玩家记录并标记 closed）。"""
     c.execute("DELETE FROM poker_room_players WHERE room_id=?", (room_id,))
@@ -403,6 +408,26 @@ def _close_poker_room(c, room_id: str) -> None:
         "UPDATE poker_rooms SET status='closed', settled_at=? WHERE id=? AND status='waiting'",
         (life_db.now_ms(), room_id),
     )
+
+
+def _cleanup_legacy_poker_rooms(c) -> None:
+    """关闭旧格式 room_<uuid> 遗留房间。"""
+    rows = c.execute("SELECT id FROM poker_rooms WHERE id LIKE 'room_%'").fetchall()
+    if not rows:
+        return
+    ts = life_db.now_ms()
+    for r in rows:
+        rid = r["id"]
+        c.execute("DELETE FROM poker_room_players WHERE room_id=?", (rid,))
+        c.execute(
+            "UPDATE poker_rooms SET status='closed', settled_at=? WHERE id=?",
+            (ts, rid),
+        )
+
+
+def _run_poker_room_maintenance(c) -> None:
+    _cleanup_legacy_poker_rooms(c)
+    _cleanup_empty_waiting_rooms(c)
 
 
 def _cleanup_empty_waiting_rooms(c) -> None:
@@ -608,8 +633,10 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
     """快速加入等待房（入座免费）；无公开房则单人 vs NPC（开局扣买入）。"""
     with life_db._lock:
         with life_db._conn() as c:
+            _run_poker_room_maintenance(c)
             rows = c.execute(
                 """SELECT * FROM poker_rooms WHERE status='waiting' AND id NOT LIKE 'solo_%'
+                   AND id NOT LIKE 'room_%'
                    AND EXISTS (
                      SELECT 1 FROM poker_room_players p
                      WHERE p.room_id=poker_rooms.id AND p.user_id NOT LIKE 'npc_%'
@@ -677,9 +704,9 @@ class TradingPkBody(BaseModel):
 async def list_poker_rooms(account_id: str = Depends(resolve_account_id)):
     with life_db._lock:
         with life_db._conn() as c:
-            _cleanup_empty_waiting_rooms(c)
+            _run_poker_room_maintenance(c)
             rooms = c.execute(
-                """SELECT * FROM poker_rooms WHERE status='waiting'
+                """SELECT * FROM poker_rooms WHERE status='waiting' AND id NOT LIKE 'room_%'
                    AND EXISTS (
                      SELECT 1 FROM poker_room_players p
                      WHERE p.room_id=poker_rooms.id AND p.user_id NOT LIKE 'npc_%'
@@ -695,7 +722,7 @@ async def get_my_poker_room(account_id: str = Depends(resolve_account_id)):
     """返回当前用户所在的等待中房间（用于刷新后恢复状态）。"""
     with life_db._lock:
         with life_db._conn() as c:
-            _cleanup_empty_waiting_rooms(c)
+            _run_poker_room_maintenance(c)
             row = c.execute(
                 """SELECT r.* FROM poker_rooms r
                    INNER JOIN poker_room_players p ON p.room_id = r.id
@@ -713,10 +740,12 @@ async def get_my_poker_room(account_id: str = Depends(resolve_account_id)):
 async def get_poker_room(room_id: str, account_id: str = Depends(resolve_account_id)):
     with life_db._lock:
         with life_db._conn() as c:
-            _cleanup_empty_waiting_rooms(c)
+            _run_poker_room_maintenance(c)
             rid = _resolve_room_id(c, room_id)
             if not rid:
                 return {"ok": False, "error": "房间不存在"}
+            if _is_legacy_poker_room_id(rid):
+                return {"ok": False, "error": "房间已关闭（旧版房间）"}
             room = c.execute("SELECT * FROM poker_rooms WHERE id=?", (rid,)).fetchone()
             if not room:
                 return {"ok": False, "error": "房间不存在"}
@@ -762,9 +791,12 @@ async def join_poker_room(room_id: str, body: PokerJoinBody, account_id: str = D
     """入座加入房间（免费，开局时才扣买入积分）。"""
     with life_db._lock:
         with life_db._conn() as c:
+            _run_poker_room_maintenance(c)
             rid = _resolve_room_id(c, room_id)
             if not rid:
                 return {"ok": False, "error": "房间不存在"}
+            if _is_legacy_poker_room_id(rid):
+                return {"ok": False, "error": "房间已关闭（旧版房间）"}
             room = c.execute("SELECT * FROM poker_rooms WHERE id=? AND status='waiting'", (rid,)).fetchone()
             if not room:
                 return {"ok": False, "error": "房间不可用"}
