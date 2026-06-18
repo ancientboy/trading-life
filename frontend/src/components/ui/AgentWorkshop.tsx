@@ -15,7 +15,7 @@ import { PenguinAvatar } from './PenguinAvatar';
 import { AgentScenePreview } from './AgentScenePreview';
 import { HatStylePicker } from './HatStylePicker';
 import type { AgentHeadwear, HatStyleId } from '../../lib/agentAppearance';
-import type { AgentType, CharState } from '../../lib/constants';
+import { StrategyEditor } from './StrategyEditor';
 
 type WorkshopTab = 'info' | 'appearance' | 'config' | 'strategy' | 'soul';
 
@@ -469,56 +469,8 @@ export function AgentWorkshop() {
               </div>
             )}
 
-            {tab === 'strategy' && custom && aType === 'trading' && (
-              <>
-                <p style={{ fontSize: 12, color: '#8a7e72', marginBottom: 10, lineHeight: 1.5 }}>
-                  可复用系统 Agent 同款策略预设，或切换为自定义后自行填写参数。模拟交易读取 Binance 实时行情。
-                </p>
-                <Field label="策略预设">
-                  <select
-                    value={strategyDraft.strategyPreset}
-                    onChange={e => setStrategyDraft({ ...strategyDraft, ...applyStrategyPreset(e.target.value) })}
-                    style={inputStyle}
-                  >
-                    {STRATEGY_PRESET_OPTIONS.map(p => (
-                      <option key={p.id} value={p.id}>{p.label}</option>
-                    ))}
-                  </select>
-                </Field>
-                {strategyDraft.strategyPreset === 'custom' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <Field label="策略">
-                      <input value={strategyDraft.strategy} onChange={e => setStrategyDraft({ ...strategyDraft, strategy: e.target.value })} style={inputStyle} />
-                    </Field>
-                    <Field label="市场">
-                      <input value={strategyDraft.market} onChange={e => setStrategyDraft({ ...strategyDraft, market: e.target.value })} style={inputStyle} />
-                    </Field>
-                    <Field label="周期">
-                      <input value={strategyDraft.interval} onChange={e => setStrategyDraft({ ...strategyDraft, interval: e.target.value })} style={inputStyle} />
-                    </Field>
-                    <Field label="风险">
-                      <select value={strategyDraft.risk} onChange={e => setStrategyDraft({ ...strategyDraft, risk: e.target.value })} style={inputStyle}>
-                        {['低', '中', '中高', '高'].map(r => <option key={r}>{r}</option>)}
-                      </select>
-                    </Field>
-                  </div>
-                )}
-                <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={async () => {
-                  const ok = await updateTradingStrategy(editId, {
-                    strategy_preset: strategyDraft.strategyPreset,
-                    strategy: strategyDraft.strategy,
-                    market: strategyDraft.market,
-                    interval: strategyDraft.interval,
-                    risk: strategyDraft.risk,
-                  });
-                  setMsg(ok ? '策略已保存' : '保存失败');
-                }}>保存策略</button>
-                <button className="ui-btn" style={{ width: '100%', marginTop: 8, background: '#fff5f5', borderColor: '#e8b4b4' }} onClick={async () => {
-                  if (!window.confirm('重置该 Agent 模拟盘？将清空持仓与成交，资金重新分配。')) return;
-                  const ok = await resetAgentSim(editId);
-                  setMsg(ok ? '已重置模拟盘' : '重置失败');
-                }}>重置该 Agent 模拟盘</button>
-              </>
+            {tab === 'strategy' && custom && aType === 'trading' && editId && (
+              <StrategyEditor agentId={editId} compact onSaved={() => setMsg('策略已保存')} />
             )}
 
             {tab === 'config' && showConfigTab && (

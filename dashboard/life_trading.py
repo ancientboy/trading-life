@@ -333,9 +333,10 @@ def _maybe_open(
 ) -> tuple[dict, float]:
     if any(p.get("symbol") == symbol for p in state["positions"]):
         return state, capital
-    if len(state["positions"]) >= 2:
+    max_pos = int(preset.get("max_positions") or meta.get("max_positions") or 2)
+    if len(state["positions"]) >= max_pos:
         return state, capital
-    lev = int(preset.get("leverage", 5))
+    lev = int(preset.get("leverage") or meta.get("leverage") or 5)
     qty = _position_size(capital, meta.get("risk", preset["risk"]), lev) / price
     margin = qty * price / lev
     if margin > capital * 0.4:
@@ -477,6 +478,7 @@ def agent_trading_view(row: dict, meta: dict) -> dict:
     trades = st.get("trades_history") or []
     wins = int(st.get("wins") or 0)
     preset = preset_for(row.get("strategy_preset") or "major")
+    eff = effective_preset(row.get("strategy_preset") or meta.get("strategyPreset") or "major", meta)
     return {
         "id": row["agent_id"],
         "name": meta.get("name") or row["agent_id"],
@@ -485,6 +487,10 @@ def agent_trading_view(row: dict, meta: dict) -> dict:
         "market": meta.get("market") or preset["market"],
         "interval": meta.get("interval") or preset["interval"],
         "risk": meta.get("risk") or preset["risk"],
+        "leverage": eff.get("leverage"),
+        "threshold_pct": eff.get("threshold_pct"),
+        "max_positions": eff.get("max_positions", 2),
+        "strategy_snapshot": meta.get("strategySnapshot"),
         "capital": round(capital, 2),
         "initial_capital": round(initial, 2),
         "pnl": round(capital - initial, 2),
@@ -526,7 +532,9 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
     rows = life_db.list_agent_trading(user_id)
     for row in rows:
         preset = preset_for(row.get("strategy_preset") or "major")
-        all_symbols.update(preset.get("symbols") or [])
+        meta_ref = trading_agents.get(row["agent_id"], {})
+        eff = effective_preset(row.get("strategy_preset") or "major", meta_ref)
+        all_symbols.update(eff.get("symbols") or [])
 
     prices = await fetch_prices(sorted(all_symbols)) if should_tick and all_symbols else {}
 
@@ -537,12 +545,10 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
             if aid not in trading_agents:
                 continue
             meta = trading_agents[aid]
-            preset = preset_for(row.get("strategy_preset") or "major")
-            if meta.get("strategyPreset") == "custom" or row.get("strategy_preset") == "custom":
-                preset = dict(preset)
-                preset["symbols"] = _custom_symbols(meta)
-            entry_iv, filter_iv = parse_kline_intervals(meta.get("interval", ""), preset)
-            for sym in preset.get("symbols") or []:
+            preset_id = row.get("strategy_preset") or meta.get("strategyPreset") or "major"
+            eff = effective_preset(preset_id, meta)
+            entry_iv, filter_iv = parse_kline_intervals(meta.get("interval", ""), eff)
+            for sym in eff.get("symbols") or []:
                 kline_requests.add((sym, entry_iv))
                 kline_requests.add((sym, filter_iv))
     klines = await fetch_kline_map(kline_requests) if kline_requests else {}
@@ -558,14 +564,12 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
         if aid not in trading_agents:
             continue
         meta = trading_agents[aid]
+        preset_id = row.get("strategy_preset") or meta.get("strategyPreset") or "major"
+        eff = effective_preset(preset_id, meta)
         capital = float(row.get("capital") or 0)
         if should_tick and prices:
-            preset = preset_for(row.get("strategy_preset") or "major")
-            if meta.get("strategyPreset") == "custom" or row.get("strategy_preset") == "custom":
-                preset = dict(preset)
-                preset["symbols"] = _custom_symbols(meta)
             st = _parse_state(row.get("state_json") or "{}")
-            st, capital = run_sim_tick(st, capital, preset, meta, prices, klines)
+            st, capital = run_sim_tick(st, capital, eff, meta, prices, klines)
             life_db.save_agent_trading(
                 user_id, aid,
                 strategy_preset=row.get("strategy_preset") or "major",
@@ -637,12 +641,185 @@ def reset_user_portfolio(user_id: str) -> None:
     save_user(user_id, user)
 
 
+def effective_preset(preset_id: str, meta: dict) -> dict:
+    """合并预设与用户微调参数 — 模拟盘实际执行用。"""
+    p = dict(preset_for(preset_id))
+    pid = meta.get("strategyPreset") or preset_id
+    if pid == "custom" or preset_id == "custom":
+        p["symbols"] = _custom_symbols(meta)
+    if meta.get("leverage") is not None:
+        p["leverage"] = max(1, min(20, int(meta["leverage"])))
+    if meta.get("threshold_pct") is not None:
+        p["threshold_pct"] = max(0.1, min(2.0, float(meta["threshold_pct"])))
+    if meta.get("max_positions") is not None:
+        p["max_positions"] = max(1, min(5, int(meta["max_positions"])))
+    return p
+
+
+def _record_strategy_snapshot(meta: dict, row: dict) -> None:
+    st = _parse_state(row.get("state_json") or "{}")
+    capital = float(row.get("capital") or 0)
+    initial = float(row.get("initial_capital") or 0)
+    trades = st.get("trades_history") or []
+    meta["strategySnapshot"] = {
+        "applied_at": _now_iso(),
+        "pnl": round(capital - initial, 2),
+        "trades": len(trades),
+        "wins": int(st.get("wins") or 0),
+        "capital": round(capital, 2),
+    }
+
+
+def _parse_preference_rules(text: str) -> dict:
+    """无 LLM 时的关键词兜底解析。"""
+    t = text.lower()
+    preset = "major"
+    if any(k in text for k in ("黄金", "XAU", "xau")):
+        preset = "xau"
+    elif any(k in text for k in ("山寨", "Alt", "altcoin")):
+        preset = "altcoin"
+    elif any(k in text for k in ("新币", "打新", "newcoin")):
+        preset = "newcoin"
+    elif any(k in text for k in ("动量", "快打", "momentum")):
+        preset = "momentum"
+    elif any(k in text for k in ("主流", "btc", "eth", "major")):
+        preset = "major"
+
+    risk = "中"
+    if any(k in text for k in ("保守", "低风险", "稳健")):
+        risk = "低"
+    elif any(k in text for k in ("激进", "高风险", "冒险")):
+        risk = "高"
+    elif "中高" in text:
+        risk = "中高"
+
+    leverage = 5
+    import re
+    m = re.search(r"(\d+)\s*[xX倍]?\s*杠杆|杠杆\s*(\d+)", text)
+    if m:
+        leverage = int(m.group(1) or m.group(2))
+
+    threshold = None
+    if any(k in text for k in ("灵敏", "敏感", "频繁")):
+        threshold = 0.22
+    elif any(k in text for k in ("稳健信号", "少交易", "低频")):
+        threshold = 0.45
+
+    market = ""
+    if "eth" in t and "btc" not in t:
+        market = "ETH"
+    elif "btc" in t:
+        market = "BTC"
+    elif "sol" in t:
+        market = "SOL"
+    elif preset == "xau":
+        market = "XAU"
+
+    interval = ""
+    if "5m" in t or "5分钟" in text:
+        interval = "5m/15m"
+    elif "1h" in t or "1小时" in text or "小时" in text:
+        interval = "1h/4h"
+    elif "15m" in t or "15分钟" in text:
+        interval = "15m/1h"
+
+    p = preset_for(preset)
+    out = {
+        "strategy_preset": preset,
+        "strategy": p["strategy"],
+        "market": market or p["market"],
+        "interval": interval or p["interval"],
+        "risk": risk,
+        "leverage": leverage,
+        "max_positions": 2,
+    }
+    if threshold is not None:
+        out["threshold_pct"] = threshold
+    if preset == "custom" or any(k in text for k in ("自定义", "自选")):
+        out["strategy_preset"] = "custom"
+        out["strategy"] = "自定义"
+        out["market"] = market or "BTC"
+    return out
+
+
+async def parse_strategy_preference(text: str) -> dict:
+    from life_game import _zhipu_key
+
+    cleaned = (text or "").strip()
+    if len(cleaned) < 4:
+        return {"ok": False, "error": "请至少输入 4 个字描述你的偏好"}
+
+    preset_ids = list(STRATEGY_PRESETS.keys())
+    if not _zhipu_key:
+        parsed = _parse_preference_rules(cleaned)
+        return {"ok": True, "config": parsed, "source": "rules", "message": "已按关键词解析（未配置 LLM 时使用规则引擎）"}
+
+    prompt = (
+        "你是加密货币交易策略助手。用户用自然语言描述投资偏好，请输出唯一 JSON 对象，不要 markdown。\n"
+        f"可选 strategy_preset: {preset_ids}\n"
+        "字段: strategy_preset, strategy, market, interval, risk(低/中/中高/高), "
+        "leverage(1-20整数), threshold_pct(0.15-0.8信号灵敏度,越小越灵敏), max_positions(1-3), "
+        "soul_summary(可选,20字内交易人格描述)\n"
+        f"用户: {cleaned}"
+    )
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions",
+                headers={"Authorization": f"Bearer {_zhipu_key}"},
+                json={
+                    "model": "glm-4-flash",
+                    "messages": [
+                        {"role": "system", "content": "只输出合法 JSON 对象，无其它文字。"},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "max_tokens": 400,
+                },
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as resp:
+                data = await resp.json()
+                raw = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                if raw.startswith("```"):
+                    raw = raw.split("```")[1]
+                    if raw.startswith("json"):
+                        raw = raw[4:]
+                parsed = json.loads(raw)
+                pid = parsed.get("strategy_preset", "major")
+                if pid not in STRATEGY_PRESETS:
+                    pid = "custom"
+                parsed["strategy_preset"] = pid
+                if pid != "custom":
+                    base = preset_for(pid)
+                    parsed.setdefault("strategy", base["strategy"])
+                    parsed.setdefault("market", base["market"])
+                    parsed.setdefault("interval", base["interval"])
+                    parsed.setdefault("risk", base["risk"])
+                parsed["leverage"] = max(1, min(20, int(parsed.get("leverage") or preset_for(pid).get("leverage", 5))))
+                if parsed.get("threshold_pct") is not None:
+                    parsed["threshold_pct"] = max(0.1, min(2.0, float(parsed["threshold_pct"])))
+                if parsed.get("max_positions") is not None:
+                    parsed["max_positions"] = max(1, min(5, int(parsed["max_positions"])))
+                return {"ok": True, "config": parsed, "source": "llm"}
+    except Exception:
+        pass
+    parsed = _parse_preference_rules(cleaned)
+    return {"ok": True, "config": parsed, "source": "rules", "message": "LLM 解析失败，已使用规则兜底"}
+
+
 class StrategyBody(BaseModel):
     strategy_preset: str = "major"
     strategy: str = ""
     market: str = ""
     interval: str = ""
     risk: str = "中"
+    leverage: Optional[int] = Field(None, ge=1, le=20)
+    threshold_pct: Optional[float] = Field(None, ge=0.1, le=2.0)
+    max_positions: Optional[int] = Field(None, ge=1, le=5)
+    soul_md: Optional[str] = None
+
+
+class PreferenceParseBody(BaseModel):
+    preference_text: str = Field(..., min_length=4, max_length=500)
 
 
 @router.get("")
@@ -719,9 +896,21 @@ async def update_strategy(agent_id: str, body: StrategyBody, account_id: str = D
             meta["interval"] = body.interval
         if body.risk:
             meta["risk"] = body.risk
+    if body.risk and preset_id != "custom":
+        meta["risk"] = body.risk
+    if body.leverage is not None:
+        meta["leverage"] = body.leverage
+    if body.threshold_pct is not None:
+        meta["threshold_pct"] = round(body.threshold_pct, 3)
+    if body.max_positions is not None:
+        meta["max_positions"] = body.max_positions
+    if body.soul_md is not None:
+        meta["soulMd"] = body.soul_md.strip()
+    row = life_db.get_agent_trading(uid, agent_id)
+    if row:
+        _record_strategy_snapshot(meta, row)
     custom[agent_id] = meta
     save_user(uid, user)
-    row = life_db.get_agent_trading(uid, agent_id)
     if row:
         life_db.save_agent_trading(
             uid, agent_id,
@@ -731,3 +920,14 @@ async def update_strategy(agent_id: str, body: StrategyBody, account_id: str = D
             state_json=row.get("state_json") or "{}",
         )
     return {"ok": True, "agent": meta, "portfolio": await build_portfolio(uid, run_tick=False)}
+
+
+@router.post("/agents/{agent_id}/strategy/parse-preference")
+async def parse_preference(agent_id: str, body: PreferenceParseBody, account_id: str = Depends(resolve_account_id)):
+    from life_game import load_user, _validate_user_id
+
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    if agent_id not in (user.get("custom_agents") or {}):
+        return {"ok": False, "error": "Agent 不存在"}
+    return await parse_strategy_preference(body.preference_text)

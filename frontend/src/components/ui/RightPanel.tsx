@@ -3,7 +3,7 @@ import { PlayCircleIcon, DocumentDuplicateIcon } from '@heroicons/react/24/solid
 import { useGameStore, type RightTab } from '../../store/useGameStore';
 import { fetchAgentProfile, saveAgentConfig, saveAgentSoul } from '../../lib/api';
 import type { CharState, Position, TradeRecord } from '../../lib/constants';
-import { AppIcon } from '../icons/AppIcon';
+import { StrategyEditor } from './StrategyEditor';
 import { ProfitIcon, LossIcon, PieAssetIcon } from '../icons/phosphorIcons';
 import { PenguinAvatar } from './PenguinAvatar';
 import { DailyTasksPanel } from './DailyTasksPanel';
@@ -118,7 +118,7 @@ export function RightPanel() {
 
       <div className="panel-footer">
         <button className="ui-btn panel-action" onClick={() => openModal('strategy')}>
-          <AppIcon icon={PlayCircleIcon} size="modal" color="gold" /> 回测
+          <AppIcon icon={PlayCircleIcon} size="modal" color="gold" /> 策略编辑
         </button>
         <button className="ui-btn panel-action" onClick={() => openModal('workshop')}>
           <AppIcon icon={DocumentDuplicateIcon} size="modal" color="muted" /> 工坊
@@ -320,32 +320,7 @@ export function RightPanel() {
   }
 
   function renderStrategyPanel() {
-    if (!d) {
-      return (
-        <>
-          <p style={{ color: '#9a8b7a', marginBottom: 8 }}>选择 Agent 查看策略</p>
-          {agentList.map(a => (
-            <AgentCard key={a.agentId} char={a} selected={false} operable={canOperateAgent(a.agentId)} onSelect={() => selectAgent(a.agentId)} />
-          ))}
-        </>
-      );
-    }
-    return (
-      <>
-        <div style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={32} />
-          {d.name}
-        </div>
-        <Row k="策略类型" v={d.strategy || '--'} />
-        <Row k="交易市场" v={d.market || '--'} />
-        <Row k="周期" v={d.interval || '--'} />
-        <Row k="风险等级" v={d.risk || '--'} />
-        <div style={{ marginTop: 12, padding: 10, background: '#faf6ef', borderRadius: 8, fontSize: 12, lineHeight: 1.6, whiteSpace: 'pre-wrap', maxHeight: 160, overflow: 'auto' }}>
-          {soulMd || '加载 SOUL 文档中…'}
-        </div>
-        <button className="ui-btn" style={{ width: '100%', marginTop: 10 }} onClick={() => openModal('strategy')}>打开策略编辑器</button>
-      </>
-    );
+    return <StrategyEditor agentId={selectedAgentId} compact />;
   }
 
   function renderMessagesPanel() {

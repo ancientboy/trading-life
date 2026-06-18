@@ -12,7 +12,7 @@ import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
 import { DINE_TIERS, MASSAGE_TIERS } from '../../lib/leisureTiers';
 import { isZoneSkinShopItem } from '../../lib/zoneSkins';
-import { SceneSkinsPanel } from './SceneSkinsPanel';
+import { StrategyEditor } from './StrategyEditor';
 
 const TITLES: Record<Exclude<ModalId, null>, string> = {
   workshop: 'Agent 工坊',
@@ -71,20 +71,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
     case 'workshop':
       return <AgentWorkshop />;
     case 'strategy':
-      return d ? (
-        <div style={{ color: '#3d3530' }}>
-          <div style={{ marginBottom: 12, padding: 10, background: '#faf6ef', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={40} />
-            <div>
-              <div style={{ fontWeight: 700 }}>{d.name}</div>
-              <div style={{ fontSize: 12, color: '#8a7e72' }}>{d.strategy} · {d.market} · {d.interval}</div>
-            </div>
-          </div>
-          <pre style={{ padding: 10, background: '#faf6ef', borderRadius: 8, fontSize: 11, lineHeight: 1.5, maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
-            {soulMd || '加载中…'}
-          </pre>
-        </div>
-      ) : <p style={{ color: '#8a7e72' }}>请先选择一个 Agent</p>;
+      return <StrategyEditor agentId={selectedAgentId} />;
     case 'market':
       return (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

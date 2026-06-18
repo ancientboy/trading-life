@@ -27,6 +27,9 @@ export interface AgentMeta {
   soulMd?: string;
   /** 策略预设：xau/major/altcoin/newcoin/momentum/custom */
   strategyPreset?: string;
+  leverage?: number;
+  thresholdPct?: number;
+  maxPositions?: number;
 }
 
 export interface Position {

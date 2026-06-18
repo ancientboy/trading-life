@@ -200,6 +200,7 @@ interface GameStore {
   resetAgentSim: (agentId: string) => Promise<boolean>;
   updateTradingStrategy: (agentId: string, body: {
     strategy_preset: string; strategy?: string; market?: string; interval?: string; risk?: string;
+    leverage?: number; threshold_pct?: number; max_positions?: number; soul_md?: string;
   }) => Promise<boolean>;
   setTicker: (t: Record<string, number>) => void;
   setProfile: (schema: GameStore['profileSchema'], config: Record<string, unknown>, soul: string) => void;
@@ -841,6 +842,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         interval: a.interval,
         risk: a.risk,
         strategyPreset: a.strategy_preset,
+        leverage: a.leverage,
+        thresholdPct: a.threshold_pct,
+        maxPositions: a.max_positions,
       };
       const stress = Math.min(100, Math.max(0, -(a.pnl || 0) / 20 + (a.is_circuit_break ? 40 : 0)));
       let state: CharState['state'] = 'idle';

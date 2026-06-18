@@ -272,6 +272,10 @@ export interface PortfolioAgentView {
   market: string;
   interval: string;
   risk: string;
+  leverage?: number;
+  threshold_pct?: number;
+  max_positions?: number;
+  strategy_snapshot?: { applied_at?: string; pnl?: number; trades?: number; wins?: number; capital?: number };
   capital: number;
   initial_capital: number;
   pnl: number;
@@ -329,9 +333,38 @@ export async function updateAgentStrategy(agentId: string, body: {
   market?: string;
   interval?: string;
   risk?: string;
+  leverage?: number;
+  threshold_pct?: number;
+  max_positions?: number;
+  soul_md?: string;
 }) {
   const r = await fetch(`${API}/portfolio/agents/${agentId}/strategy`, {
     method: 'PUT', headers: headers(), body: JSON.stringify(body),
   });
   return parse<{ ok: boolean; agent?: AgentMeta; portfolio?: UserPortfolio; error?: string }>(r);
+}
+
+export interface ParsedStrategyConfig {
+  strategy_preset: string;
+  strategy?: string;
+  market?: string;
+  interval?: string;
+  risk?: string;
+  leverage?: number;
+  threshold_pct?: number;
+  max_positions?: number;
+  soul_summary?: string;
+}
+
+export async function parseStrategyPreference(agentId: string, preferenceText: string) {
+  const r = await fetch(`${API}/portfolio/agents/${agentId}/strategy/parse-preference`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ preference_text: preferenceText }),
+  });
+  return parse<{
+    ok: boolean;
+    config?: ParsedStrategyConfig;
+    source?: string;
+    message?: string;
+    error?: string;
+  }>(r);
 }
