@@ -40,8 +40,11 @@ export function PokerDealingCards({
           <div style={{ display: 'flex', gap: 6 }}>
             {cards.map((_, i) => (
               <div key={i} style={{
-                width: 38, height: 52, borderRadius: 6, background: '#d4c8b8', border: '1px solid #c4b8a8',
-                opacity: 0.55, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+                width: 38, height: 52, borderRadius: 6,
+                background: 'linear-gradient(135deg,#8b6914,#6b4f10)',
+                border: '1px solid #5a4010',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+                color: '#f5efe6', boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
               }}>🂠</div>
             ))}
           </div>

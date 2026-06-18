@@ -1012,6 +1012,33 @@ function drawPokerChips(ctx: CanvasRenderingContext2D, x: number, y: number, s: 
   }
 }
 
+/** 绘制扑克牌背面（以当前变换原点为中心） */
+function drawPokerCardBack(
+  ctx: CanvasRenderingContext2D, w: number, h: number, radius: number, s: number,
+) {
+  const hw = w / 2;
+  const hh = h / 2;
+  const grd = ctx.createLinearGradient(-hw, -hh, hw, hh);
+  grd.addColorStop(0, '#9a7420');
+  grd.addColorStop(0.45, '#6b4f10');
+  grd.addColorStop(1, '#8b6914');
+  ctx.fillStyle = grd;
+  rrect(ctx, -hw, -hh, w, h, radius);
+  ctx.fill();
+  ctx.strokeStyle = '#5a4010';
+  ctx.lineWidth = Math.max(0.6, 0.8 * s);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(245,239,230,0.38)';
+  ctx.lineWidth = Math.max(0.4, 0.55 * s);
+  rrect(ctx, -hw + 2 * s, -hh + 2 * s, w - 4 * s, h - 4 * s, Math.max(1, radius - s));
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(245,239,230,0.88)';
+  ctx.font = `${Math.max(8, 11 * s)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🂠', 0, 0);
+}
+
 export function drawPokerTable8(
   ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number,
   skinKey = 'default',
@@ -1044,23 +1071,21 @@ export function drawPokerTable8(
   ctx.fillStyle = pal.gold;
   rrect(ctx, x - 14 * s, y - 54 * s, 28 * s, 6 * s, 2 * s); ctx.fill();
   for (let i = 0; i < 3; i++) {
-    ctx.fillStyle = '#fffef8';
-    rrect(ctx, x - 10 * s + i * 8 * s, y - 46 * s, 6 * s, 9 * s, 1 * s); ctx.fill();
+    ctx.save();
+    ctx.translate(x - 10 * s + i * 8 * s, y - 41 * s);
+    drawPokerCardBack(ctx, 6 * s, 9 * s, 1 * s, s);
+    ctx.restore();
   }
 
-  const cards = ['🂡', '🂱', '🃁', '🃑', '🂮'];
+  const cardCount = 5;
   const cardGap = 13 * s;
-  const cardStart = x - (cards.length - 1) * cardGap / 2;
-  cards.forEach((c, i) => {
+  const cardStart = x - (cardCount - 1) * cardGap / 2;
+  for (let i = 0; i < cardCount; i++) {
     ctx.save();
     ctx.translate(cardStart + i * cardGap, y + Math.sin(t * 2 + i) * 1.5 * s);
-    ctx.fillStyle = '#fffef8';
-    rrect(ctx, -6.5 * s, -9 * s, 13 * s, 18 * s, 2 * s); ctx.fill();
-    ctx.strokeStyle = '#c4b8a8'; ctx.lineWidth = 0.8 * s; ctx.stroke();
-    ctx.font = `${Math.max(8, 11 * s)}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(c, 0, 3.5 * s);
+    drawPokerCardBack(ctx, 13 * s, 18 * s, 2 * s, s);
     ctx.restore();
-  });
+  }
 
   drawPokerSeatNumbers(ctx, x, y, s, chipColors);
 
@@ -1101,11 +1126,10 @@ function drawPokerSeatNumbers(
   }
 }
 
-/** 牌桌发牌动画 — 逐张落向桌面中心 */
+/** 牌桌发牌动画 — 逐张落向桌面中心（牌背朝上） */
 export function drawPokerTableDealing(
   ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number,
 ) {
-  const faces = ['🂡', '🂱', '🃁', '🃑', '🂮'];
   for (let i = 0; i < 5; i++) {
     const progress = Math.min(1, Math.max(0, t * 2.2 - i * 0.28));
     if (progress <= 0) continue;
@@ -1116,15 +1140,7 @@ export function drawPokerTableDealing(
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(ang * 0.5);
-    ctx.fillStyle = progress >= 0.95 ? '#fffef8' : '#d4c8b8';
-    rrect(ctx, -11 * s, -15 * s, 22 * s, 30 * s, 3 * s);
-    ctx.fill();
-    ctx.strokeStyle = '#c4b8a8'; ctx.lineWidth = 1 * s; ctx.stroke();
-    if (progress >= 0.95) {
-      ctx.font = `${Math.max(10, 14 * s)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(faces[i], 0, 4 * s);
-    }
+    drawPokerCardBack(ctx, 22 * s, 30 * s, 3 * s, s);
     ctx.restore();
   }
   ctx.fillStyle = 'rgba(212,175,55,0.9)';
