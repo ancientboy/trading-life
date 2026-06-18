@@ -22,6 +22,7 @@ export function PenguinAvatar({
   headwear = 'scarf',
   hatStyle = 'beanie',
   speciesId,
+  hairStyle,
   outfitId,
   scarfEnabled,
   hatEnabled,
