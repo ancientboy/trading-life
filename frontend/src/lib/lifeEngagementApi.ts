@@ -155,6 +155,7 @@ export type PokerApiPlayerResult = {
   hole_cards?: string[];
   best_cards?: string[];
   hand_name?: string;
+  hand_combo?: string;
 };
 
 /** 单人练习：1 真人 + 3 NPC，立即开牌 */

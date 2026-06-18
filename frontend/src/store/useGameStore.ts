@@ -57,6 +57,7 @@ export type PokerPlayerResult = {
   hole_cards?: string[];
   best_cards?: string[];
   hand_name?: string;
+  hand_combo?: string;
   hole_cards_display?: string[];
   best_cards_display?: string[];
 };

@@ -1,7 +1,14 @@
 import { useState } from 'react';
-import { useGameStore, type PokerHandResult } from '../../store/useGameStore';
+import { useGameStore, type PokerHandResult, type PokerPlayerResult } from '../../store/useGameStore';
 import { PokerDealingCards } from './PokerDealingCards';
 import { PokerCardRow } from './PokerCard';
+
+function formatHandLabel(r: PokerPlayerResult): string {
+  if (r.hand_combo && r.hand_name) return `${r.hand_name} · ${r.hand_combo}`;
+  if (r.hand_combo) return r.hand_combo;
+  if (r.hand_name) return r.hand_name;
+  return `牌力 ${r.score}`;
+}
 
 export function PokerResultModal({ data }: { data: PokerHandResult }) {
   const closeModal = useGameStore(s => s.closeModal);
@@ -45,7 +52,7 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
                 </div>
               )}
               <div style={{ fontSize: 13, marginTop: 8, fontWeight: 600, color: '#5c4a32' }}>
-                第 {me.rank} 名 · {me.hand_name ?? `牌力 ${me.score}`}
+                第 {me.rank} 名 · {formatHandLabel(me)}
               </div>
               {me.best_cards && me.best_cards.length > 0 && (
                 <div style={{ marginTop: 8 }}>
@@ -82,7 +89,7 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
                   {r.rank}. {r.name}{r.is_npc ? ' 🤖' : ''}{r.rank === 1 ? ' 👑' : ''}
                 </span>
                 <span style={{ color: '#5c4a32', fontWeight: 600 }}>
-                  {r.hand_name ?? `${r.score} 牌力`}
+                  {formatHandLabel(r)}
                   {r.won ? <span style={{ color: '#48d093', marginLeft: 6 }}>+{r.won}</span> : ''}
                 </span>
               </div>

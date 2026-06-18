@@ -110,6 +110,50 @@ def evaluate_best(cards7: list[str]) -> tuple[tuple[int, ...], list[str]]:
     return best_score, best_five
 
 
+def rank_char(idx: int) -> str:
+    return RANKS[idx]
+
+
+def hand_combo(score: tuple[int, ...], best_five: list[str]) -> str:
+    """最佳五张的紧凑记法，如两对 JJ77A、一对 77JA8。"""
+    cat = score[0]
+    ranks = [rank_index(c) for c in best_five]
+    rc = rank_char
+
+    if cat == 9:
+        return "AKQJT"
+    if cat == 8:
+        high = score[1]
+        if high == 3:
+            return "5432A"
+        return "".join(rc(high - i) for i in range(5))
+    if cat == 7:
+        quad, kicker = score[1], score[2]
+        return rc(quad) * 4 + rc(kicker)
+    if cat == 6:
+        trip, pair = score[1], score[2]
+        return rc(trip) * 3 + rc(pair) * 2
+    if cat == 5:
+        return "".join(rc(r) for r in sorted(ranks, reverse=True))
+    if cat == 4:
+        high = score[1]
+        if high == 3:
+            return "5432A"
+        return "".join(rc(high - i) for i in range(5))
+    if cat == 3:
+        trip = score[1]
+        kickers = sorted((r for r in ranks if r != trip), reverse=True)
+        return rc(trip) * 3 + "".join(rc(r) for r in kickers)
+    if cat == 2:
+        p1, p2, kicker = score[1], score[2], score[3]
+        return rc(p1) * 2 + rc(p2) * 2 + rc(kicker)
+    if cat == 1:
+        pair = score[1]
+        kickers = sorted((r for r in ranks if r != pair), reverse=True)
+        return rc(pair) * 2 + "".join(rc(r) for r in kickers)
+    return "".join(rc(r) for r in sorted(ranks, reverse=True))
+
+
 def hand_name(score: tuple[int, ...]) -> str:
     cat = score[0]
     base = HAND_NAMES.get(cat, "高牌")
@@ -159,10 +203,8 @@ def play_round(num_players: int) -> dict:
             "hole_cards": hole,
             "best_cards": best_five,
             "hand_name": hand_name(score),
+            "hand_combo": hand_combo(score, best_five),
             "hand_score": score,
             "score": score_to_display(score),
         })
-    entries.sort(key=lambda e: e["hand_score"], reverse=True)
-    for rank, e in enumerate(entries, start=1):
-        e["rank"] = rank
     return {"community_cards": community, "players": entries}

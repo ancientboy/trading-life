@@ -326,12 +326,11 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
     pot = room["pot"]
     buy_in = room["buy_in"]
 
-    # 按座位顺序发牌，再按牌力排序
-    seat_order = {p["user_id"]: i for i, p in enumerate(plist)}
+    # 按座位索引匹配手牌（play_round 返回顺序与发牌座位一致）
+    hands_by_seat = {h["seat"]: h for h in round_data["players"]}
     player_hands = []
-    for p in plist:
-        i = seat_order[p["user_id"]]
-        hand = round_data["players"][i]
+    for i, p in enumerate(plist):
+        hand = hands_by_seat[i]
         player_hands.append((p, hand))
 
     player_hands.sort(key=lambda x: x[1]["hand_score"], reverse=True)
@@ -360,6 +359,7 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
                     "hole_cards": hand["hole_cards"],
                     "best_cards": hand["best_cards"],
                     "hand_name": hand["hand_name"],
+                    "hand_combo": hand["hand_combo"],
                     "hole_cards_display": [card_display(c) for c in hand["hole_cards"]],
                     "best_cards_display": [card_display(c) for c in hand["best_cards"]],
                 })
