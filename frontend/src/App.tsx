@@ -49,6 +49,12 @@ export default function App() {
       }));
       if (agents.length) syncMood(agents).catch(() => {});
     }, 30000);
+    const pokerPoll = setInterval(() => {
+      const st = useGameStore.getState();
+      if (st.activeZone === 'casino' && st.pokerRoom?.id && st.pokerRoom.status === 'waiting') {
+        st.syncPokerRoom().catch(() => {});
+      }
+    }, 4000);
     const onVis = () => {
       if (document.visibilityState === 'visible') {
         lifeSessionStart().catch(() => {});
@@ -57,7 +63,7 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', onVis);
     return () => {
-      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f);
+      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f); clearInterval(pokerPoll);
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [loggedIn, initAgents, syncLifeState, syncSeats, syncEngagement, updateFromOverview, syncUserPortfolio, setTicker, addMessage]);

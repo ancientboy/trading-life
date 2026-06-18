@@ -8,6 +8,8 @@ import {
 } from '../../lib/zoneFurniture';
 import type { ZoneId } from '../../store/useGameStore';
 import type { CharState } from '../../lib/constants';
+import type { PokerRoomPlayer } from '../../lib/lifeEngagementApi';
+import type { HatStyleId } from '../../lib/agentAppearance';
 import { OfficePath } from '../../lib/pathfinding';
 import { ZONE_LAYOUTS } from '../../lib/zoneLayouts';
 import { PAPER, worldToPaper } from '../../lib/zoneProjection';
@@ -429,6 +431,44 @@ export function renderAgents(
     if (opts.agentBubble && opts.agentBubble.agentId === char.agentId && now < opts.agentBubble.until) {
       drawSpeechBubble(ctx, s.x, s.y - ws(cam, 42), opts.agentBubble.text, ws(cam, 1));
     }
+  });
+}
+
+/** 绘制多人房间中其他玩家的 Agent（本地已渲染的跳过） */
+export function renderPokerRoomGuests(
+  ctx: CanvasRenderingContext2D,
+  zone: ZoneId,
+  cam: PaperCamera,
+  members: PokerRoomPlayer[],
+  agents: Record<string, CharState>,
+  myUserId: string | undefined,
+  t: number,
+) {
+  if (zone !== 'casino' || !members.length) return;
+  members.forEach(member => {
+    if (myUserId && member.user_id === myUserId) {
+      const local = member.agent_id ? agents[member.agent_id] : null;
+      if (local?.activity === 'poker') return;
+    }
+    const seat = CASINO_SEATS.find(s => s.id === member.seat_id);
+    if (!seat) return;
+    const s = pt(cam, seat.px, seat.py);
+    drawAgent(ctx, s.x, s.y, member.color || '#6a8aad', {
+      selected: false,
+      trading: false,
+      walking: false,
+      activity: 'poker',
+      headwear: (member.headwear || undefined) as import('../../lib/agentAppearance').AgentHeadwear | undefined,
+      hatStyle: (member.hat_style || undefined) as HatStyleId | undefined,
+      facing: seat.facing,
+      pose: 'sit',
+      t,
+    });
+    const label = (member.agent_name || member.display_name || '玩家').split(' ')[0];
+    ctx.fillStyle = '#3d3530';
+    ctx.font = `600 ${Math.max(9, ws(cam, 10))}px Inter,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(label, s.x, s.y - ws(cam, 30));
   });
 }
 

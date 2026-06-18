@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import {
   fetchSeasonLeaderboard, buySeasonCosmetic,
-  listPokerRooms, createPokerRoom, joinPokerRoom, startPokerRoom,
-  pokerSolo, pokerQuickJoin,
   listSeatAuctions, bidSeat, fetchDispatchQueue, processDispatchQueue,
-  type LeaderboardEntry, type SeasonCosmetic, type PokerRoom, type SeatAuction,
+  type LeaderboardEntry, type SeasonCosmetic, type SeatAuction,
 } from '../../lib/lifeEngagementApi';
 
 export function SeasonPanel() {
@@ -15,71 +13,27 @@ export function SeasonPanel() {
   const seasonCosmetics = useGameStore(s => s.seasonCosmetics);
   const syncEngagement = useGameStore(s => s.syncEngagement);
   const addMessage = useGameStore(s => s.addMessage);
-  const selectedAgentId = useGameStore(s => s.selectedAgentId);
-  const agents = useGameStore(s => s.agents);
+  const flyToZone = useGameStore(s => s.flyToZone);
 
   const [tab, setTab] = useState<'rank' | 'season' | 'pvp' | 'auction'>('rank');
   const [metric, setMetric] = useState('points');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [rooms, setRooms] = useState<PokerRoom[]>([]);
   const [auctions, setAuctions] = useState<SeatAuction[]>([]);
   const [queueLen, setQueueLen] = useState(0);
   const [bidSeatId, setBidSeatId] = useState('poker_s1');
   const [bidAmount, setBidAmount] = useState(20);
-  const [lastPokerResults, setLastPokerResults] = useState<
-    Array<{ name: string; score: number; rank: number; won: number; is_npc?: boolean }>
-  >([]);
-
-  const selectedAgent = () => {
-    const aid = selectedAgentId || Object.keys(agents)[0] || '';
-    if (aid && useGameStore.getState().canOperateAgent(aid)) return aid;
-    const operable = Object.keys(agents).filter(id => useGameStore.getState().canOperateAgent(id));
-    return operable[0] || aid;
-  };
-
-  const showPokerResults = (
-    results?: Array<{
-      name: string; score: number; rank: number; won: number; is_npc?: boolean;
-      hole_cards?: string[]; best_cards?: string[]; hand_name?: string; hand_combo?: string;
-    }>,
-    won?: number,
-    buyIn = 30,
-    pot?: number,
-    net?: number,
-    balance?: number,
-    communityCards?: string[],
-    tie?: boolean,
-    winnersCount?: number,
-  ) => {
-    if (!results?.length) return;
-    setLastPokerResults(results);
-    if (balance != null) useGameStore.setState({ points: balance });
-    useGameStore.getState().showPokerResult({
-      results,
-      community_cards: communityCards,
-      won: won ?? 0,
-      net: net ?? ((won ?? 0) - buyIn),
-      buyIn,
-      pot,
-      balance,
-      tie,
-      winners_count: winnersCount,
-    });
-    syncEngagement();
-  };
 
   useEffect(() => { syncEngagement(); }, [syncEngagement]);
 
   useEffect(() => {
     fetchSeasonLeaderboard(metric).then(r => { if (r.ok) setEntries(r.entries); });
-    listPokerRooms().then(r => { if (r.ok) setRooms(r.rooms); });
     listSeatAuctions().then(r => { if (r.ok) setAuctions(r.auctions); });
     fetchDispatchQueue().then(r => { if (r.ok) setQueueLen(r.queue.length); });
   }, [metric, tab]);
 
   const daysLeft = season ? Math.max(0, Math.ceil((season.ends_at - Date.now()) / 86400000)) : 0;
   const metricLabel: Record<string, string> = { points: '积分', social: '社交', pvp: 'PvP', pnl: 'PnL' };
-  const tabLabel: Record<string, string> = { rank: '排行榜', season: '赛季', pvp: '德州局', auction: '座位拍卖' };
+  const tabLabel: Record<string, string> = { rank: '排行榜', season: '赛季', pvp: '德州说明', auction: '座位拍卖' };
 
   return (
     <div style={{ color: '#3d3530' }}>
@@ -141,79 +95,17 @@ export function SeasonPanel() {
 
       {tab === 'pvp' && (
         <>
-          <div style={{ fontSize: 11, color: '#8a7e72', marginBottom: 8, lineHeight: 1.5, padding: '8px 10px', background: '#fff8e8', borderRadius: 8 }}>
-            <b>入座免费</b>，点「开始牌局」时才扣买入积分。单人可直接开局；多人需先加入房间再开始。
+          <div style={{ fontSize: 12, lineHeight: 1.6, padding: '10px 12px', background: '#fff8e8', borderRadius: 8, marginBottom: 10 }}>
+            <b>德州扑克房间已移至德州区</b><br />
+            请前往左侧「德州」分区，在牌桌旁面板中：<br />
+            · 创建房间（获得 5 位数字编号）<br />
+            · 输入编号加入好友房间<br />
+            · 入座后在牌桌看到所有玩家<br />
+            · 点「开始牌局」才扣买入积分
           </div>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <button className="ui-btn" style={{ flex: 1 }} onClick={async () => {
-              const aid = selectedAgent();
-              if (!aid) { addMessage('请先选择 Agent'); return; }
-              const r = await pokerQuickJoin(aid, 30);
-              if (!r.ok) {
-                addMessage(r.error || '暂无公开房间，可点「开始牌局」单人开局');
-                return;
-              }
-              addMessage(r.message || '已入座（免费），等待其他玩家…');
-              listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
-            }}>快速入座（免费）</button>
-            <button className="ui-btn" style={{ flex: 1, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#48d093,#2ea872)' }} onClick={async () => {
-              const aid = selectedAgent();
-              if (!aid) { addMessage('请先选择 Agent'); return; }
-              const r = await pokerSolo(aid, 30);
-              if (!r.ok) { addMessage(r.error || '单人模式失败'); return; }
-              if (r.balance != null) useGameStore.setState({ points: r.balance });
-              addMessage('牌局开始 · 买入 -30 · vs NPC');
-              showPokerResults(r.results, r.won, 30, r.pot, r.net, r.balance, r.community_cards);
-              listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
-            }}>开始牌局 · -30</button>
-          </div>
-          <button className="ui-btn" style={{ width: '100%', marginBottom: 8 }} onClick={async () => {
-            const r = await createPokerRoom(30);
-            if (r.ok) { addMessage(`房间已创建（入座免费，开局扣 30）`); listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); }); }
-          }}>创建德州房间（入座免费）</button>
-          {lastPokerResults.length > 0 && (
-            <div style={{ padding: 8, background: '#faf6ef', borderRadius: 8, marginBottom: 8, fontSize: 11 }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>上次开牌</div>
-              {lastPokerResults.map(r => (
-                <div key={r.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-                  <span>{r.rank}. {r.name}{r.is_npc ? ' 🤖' : ''}</span>
-                  <span>{r.score} 分{r.won ? ` · +${r.won}` : ''}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {rooms.map(room => {
-            const humanCount = room.players.filter(p => !p.user_id.startsWith('npc_')).length;
-            const statusLabel = room.status === 'waiting' ? `等待中 · ${humanCount} 人` : room.status;
-            return (
-            <div key={room.id} className="leisure-option" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <b>{room.id.slice(-8)}</b>
-                <span style={{ fontSize: 11 }}>{statusLabel} · 买入 {room.buy_in}</span>
-              </div>
-              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                <button className="ui-btn" style={{ flex: 1, fontSize: 11 }} disabled={room.status !== 'waiting'}
-                  onClick={async () => {
-                    const aid = selectedAgent();
-                    if (!aid) return;
-                    const r = await joinPokerRoom(room.id, aid);
-                    if (r.ok) addMessage(r.message || '已入座（免费）');
-                    else addMessage(r.error || '失败');
-                    listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
-                  }}>入座（免费）</button>
-                <button className="ui-btn" style={{ flex: 1, fontSize: 11, fontWeight: 700 }} disabled={room.status !== 'waiting'}
-                  onClick={async () => {
-                    const r = await startPokerRoom(room.id);
-                    if (r.ok) {
-                      if (r.balance != null) useGameStore.setState({ points: r.balance });
-                      addMessage(`牌局开始 · 买入 -${room.buy_in}`);
-                      showPokerResults(r.results, r.won, room.buy_in, r.pot, r.net, r.balance, r.community_cards);
-                    } else addMessage(r.error || '开局失败');
-                    listPokerRooms().then(x => { if (x.ok) setRooms(x.rooms); });
-                  }}>开始牌局 · -{room.buy_in}</button>
-              </div>
-            </div>
-          );})}
+          <button className="ui-btn" style={{ width: '100%' }} onClick={() => flyToZone('casino')}>
+            前往德州区
+          </button>
           {queueLen > 0 && (
             <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={async () => {
               const r = await processDispatchQueue();

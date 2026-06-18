@@ -30,7 +30,8 @@ import { homeNodeForAgent } from '../lib/agentHome';
 import { isLoggedIn, getStoredAccount } from '../lib/lifeAuth';
 import {
   fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
-  chatChannelForZone, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
+  chatChannelForZone, fetchPokerRoom, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
+  type PokerRoom,
 } from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
 import { isCrossZoneTravel, zoneForNode, zoneForIntent } from '../lib/zoneTransit';
@@ -146,6 +147,8 @@ interface GameStore {
   pokerHandResult: PokerHandResult | null;
   /** 牌桌发牌动画截止时间戳 */
   pokerTableDealingUntil: number;
+  /** 当前多人德州房间（等待/进行中） */
+  pokerRoom: PokerRoom | null;
   /** 上次客户端挂机 tick 时间（performance.now） */
   lastIdleClientTick: number;
   /** 当前用户可操作（派遣/编辑）的 Agent */
@@ -220,6 +223,10 @@ interface GameStore {
   applyLifeState: (state: Partial<LifeState>) => void;
   syncSeats: () => Promise<void>;
   syncEngagement: () => Promise<void>;
+  applyPokerRoom: (room: PokerRoom | null) => void;
+  syncPokerRoom: () => Promise<void>;
+  clearPokerRoom: () => void;
+  seatAgentAtPoker: (agentId: string, seatId?: string) => Promise<boolean>;
   setChatMessages: (msgs: ChatMessage[]) => void;
   setNpcEvents: (ev: NpcEvent[]) => void;
   releaseAgentSeat: (agentId: string, seatId: string | null | undefined) => void;
@@ -281,6 +288,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   activeNpcBuffs: {},
   pokerHandResult: null,
   pokerTableDealingUntil: 0,
+  pokerRoom: null,
   lastIdleClientTick: 0,
   operableAgentIds: [],
   isAdmin: false,
@@ -742,6 +750,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const mentorRes = await import('../lib/lifeEngagementApi').then(m => m.fetchMentorPairs());
       if (mentorRes.ok) set({ mentorPairs: mentorRes.pairs });
     } catch { /* ignore */ }
+  },
+
+  applyPokerRoom: (room) => set({ pokerRoom: room }),
+
+  syncPokerRoom: async () => {
+    const rid = get().pokerRoom?.id;
+    if (!rid) return;
+    try {
+      const r = await fetchPokerRoom(rid);
+      if (!r.ok || !r.room) {
+        if (r.error?.includes('不存在')) set({ pokerRoom: null });
+        return;
+      }
+      if (r.room.status === 'settled') set({ pokerRoom: null });
+      else set({ pokerRoom: r.room });
+    } catch { /* ignore */ }
+  },
+
+  clearPokerRoom: () => set({ pokerRoom: null }),
+
+  seatAgentAtPoker: async (agentId, seatId) => {
+    const ok = await get().sendAgentToFacility('poker', {
+      agentId, nodeId: seatId, skipCost: true,
+    });
+    if (ok && get().activeZone !== 'casino') get().flyToZone('casino');
+    return ok;
   },
 
   setChatMessages: (msgs) => set({ chatMessages: msgs }),

@@ -6,8 +6,9 @@ import { hitTestPaperFacilities, getAgentPaperPos, ZONE_NPCS } from '../../lib/z
 import { ZONE_LAYOUTS } from '../../lib/zoneLayouts';
 import { PAPER, agentVisibleInZone } from '../../lib/zoneProjection';
 import {
-  makePaperCamera, camToScreen, screenToPaper, renderZone, renderAgents,
+  makePaperCamera, camToScreen, screenToPaper, renderZone, renderAgents, renderPokerRoomGuests,
 } from './renderZone';
+import { getStoredAccount } from '../../lib/lifeAuth';
 
 export function PaperZoneCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -30,6 +31,7 @@ export function PaperZoneCanvas() {
   const npcBubble = useGameStore(s => s.npcBubble);
   const agentBubble = useGameStore(s => s.agentBubble);
   const pokerTableDealingUntil = useGameStore(s => s.pokerTableDealingUntil);
+  const pokerRoom = useGameStore(s => s.pokerRoom);
   const zoneSkins = useGameStore(s => s.zoneSkins);
 
   const flyToZone = useGameStore(s => s.flyToZone);
@@ -86,7 +88,14 @@ export function PaperZoneCanvas() {
       t,
       agentBubble,
     });
-  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerTableDealingUntil, zoneSkins]);
+
+    if (activeZone === 'casino' && pokerRoom?.players?.length) {
+      renderPokerRoomGuests(
+        ctx, activeZone, cam, pokerRoom.players, agents,
+        getStoredAccount()?.id, t,
+      );
+    }
+  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerTableDealingUntil, pokerRoom, zoneSkins]);
 
   useEffect(() => {
     let last = performance.now();
