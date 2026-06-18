@@ -41,8 +41,8 @@ function isSeatFree(seatId: string, agentId: string, occupied: SeatMap, nowMs: n
   return false;
 }
 
-/** 座位被占时自动选备选位 */
-export function resolveAvailableSeat(
+/** 仅分配指定工位/座位，被占则返回 null（不自动换座） */
+export function resolvePreferredSeat(
   activity: string,
   preferredNodeId: string | null,
   agentId: string,
@@ -50,7 +50,20 @@ export function resolveAvailableSeat(
   nowMs = Date.now(),
 ): string | null {
   const slot = resolveActivitySlot(activity, preferredNodeId, agentId);
-  if (slot && isSeatFree(slot.slotId, agentId, occupied, nowMs)) return slot.slotId;
+  if (!slot) return null;
+  return isSeatFree(slot.slotId, agentId, occupied, nowMs) ? slot.slotId : null;
+}
+
+/** 座位被占时自动选备选位（休闲设施等场景） */
+export function resolveAvailableSeat(
+  activity: string,
+  preferredNodeId: string | null,
+  agentId: string,
+  occupied: SeatMap,
+  nowMs = Date.now(),
+): string | null {
+  const preferred = resolvePreferredSeat(activity, preferredNodeId, agentId, occupied, nowMs);
+  if (preferred) return preferred;
 
   const candidates = seatsForActivity(activity);
   const start = agentId.length % Math.max(candidates.length, 1);

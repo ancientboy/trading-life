@@ -145,119 +145,49 @@ export function RightPanel() {
           以下为您的 Agent；大厅中的系统 Agent 仅供背景观摩
         </div>
         {agentList.map(a => (
-          <AgentCard
+          <AgentAccordionItem
             key={a.agentId}
             char={a}
-            selected={selectedAgentId === a.agentId}
+            expanded={selectedAgentId === a.agentId}
             operable={canOperateAgent(a.agentId)}
-            onSelect={() => { focusAgent(a.agentId); flyToZone('hall'); }}
+            compact
+            onToggle={() => { selectAgent(a.agentId); focusAgent(a.agentId); flyToZone('hall'); }}
           />
         ))}
-        {selectedAgentId && agents[selectedAgentId] && (
-          <div style={{ marginTop: 12, padding: 10, background: '#eef8f0', borderRadius: 8, border: '1px solid #48D093' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{agents[selectedAgentId].data.name} · 已选中</div>
-            <div style={{ fontSize: 11, color: '#8A92A0', marginBottom: 8 }}>
-              压力 {Math.round(agents[selectedAgentId].stress)}% · {STATE_LABEL[agents[selectedAgentId].state]}
-            </div>
-            <button className="ui-btn" style={{ width: '100%', fontSize: 11 }} onClick={() => selectAgent(selectedAgentId)}>
-              查看完整 Agent 详情 →
-            </button>
-          </div>
-        )}
       </>
     );
   }
 
   function renderAgentPanel() {
-    if (!d || !agent) {
+    if (agentList.length === 0) {
       return (
-        <>
-          <p style={{ color: '#9a8b7a', marginBottom: 12 }}>从下方选择 Agent，或点击场景中的 Gugugaga</p>
-          {agentList.map(a => (
-            <AgentCard key={a.agentId} char={a} selected={false} operable={canOperateAgent(a.agentId)} onSelect={() => selectAgent(a.agentId)} />
-          ))}
-        </>
+        <p style={{ color: '#9a8b7a' }}>
+          暂无你的 Agent，请前往工坊创建
+        </p>
       );
     }
-    const pnl = d.pnl || 0;
-    const operable = canOperateAgent(agent.agentId);
     return (
       <>
-        {!operable && (
-          <div style={{ padding: 8, marginBottom: 10, background: '#fff8e8', borderRadius: 8, fontSize: 11, color: '#8a6e3a', border: '1px solid #f0e0b8' }}>
-            系统 Agent（admin 专属）— 仅供观摩交易状态，无法派遣或修改
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
-          <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={44} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700 }}>{d.name}</div>
-            <div style={{ fontSize: 11, color: '#8a7e72' }}>{d.desc}</div>
-          </div>
-          <button className="ui-btn" style={{ fontSize: 10 }} onClick={() => setFollowAgent(agent.agentId)}>跟随</button>
-        </div>
-
-        <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
-          {(['overview', 'config', 'soul'] as const).map(t => (
-            <button key={t} className={`panel-tab ${panelTab === t ? 'active' : ''}`} onClick={() => setPanelTab(t)}>
-              {t === 'overview' ? '概览' : t === 'config' ? '参数' : 'SOUL'}
-            </button>
-          ))}
-        </div>
-
-        {panelTab === 'overview' && (
-          <>
-            <Row k="状态" v={d.running ? '🟢 运行中' : '⚪ 已停止'} />
-            <Row k="压力值" v={`${Math.round(agent.stress)}%`} />
-            <Row k="活动" v={agent.activity || STATE_LABEL[agent.state] || agent.state} />
-            <Row k="策略" v={d.strategy || '--'} />
-            <Row k="市场" v={d.market || '--'} />
-            <Row k="资金" v={d.capital != null ? '$' + d.capital.toLocaleString() : '--'} />
-            <Row k="盈亏" v={(pnl >= 0 ? '+' : '') + '$' + pnl.toLocaleString()} className={pnl >= 0 ? 'profit' : 'loss'} />
-            <Row k="胜率" v={d.win_rate != null ? d.win_rate.toFixed(1) + '%' : '--'} />
-            <Row k="成交笔数" v={String(d.trades ?? 0)} />
-            <Row k="持仓" v={(d.positions?.length || 0) + ' 个'} />
-            {(d.positions?.length || 0) > 0 && (
-              <div style={{ marginTop: 8 }}>
-                {d.positions!.map((p, i) => <PositionRow key={i} pos={p} compact />)}
-              </div>
-            )}
-          </>
-        )}
-
-        {panelTab === 'config' && (
-          <>
-            {!operable && <p style={{ color: '#9a8b7a', fontSize: 12 }}>系统 Agent 参数不可修改</p>}
-            {operable && schema.length === 0 && <p style={{ color: '#999', fontSize: 12 }}>加载参数中…</p>}
-            {operable && schema.map(f => (
-              <div key={f.key} style={{ marginBottom: 8 }}>
-                <label style={{ fontSize: 11, color: '#7a6e62' }}>{f.label}</label>
-                <input type="number" defaultValue={String(config[f.key] ?? '')} id={'cfg-' + f.key}
-                  style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #d4c8b8', marginTop: 3 }} />
-              </div>
-            ))}
-            {operable && <button className="ui-btn" style={{ width: '100%', marginTop: 6 }} onClick={async () => {
-              if (!selectedAgentId) return;
-              const body: Record<string, unknown> = {};
-              schema.forEach(f => { const el = document.getElementById('cfg-' + f.key) as HTMLInputElement; if (el?.value) body[f.key] = el.value; });
-              const r = await saveAgentConfig(selectedAgentId, body);
-              setMsg(r.message || (r.ok ? '已保存' : '保存失败'));
-            }}>保存参数</button>}
-          </>
-        )}
-
-        {panelTab === 'soul' && (
-          <>
-            {!operable && <p style={{ color: '#9a8b7a', fontSize: 12, marginBottom: 8 }}>系统 Agent 的 SOUL 由 admin 管理</p>}
-            <textarea defaultValue={soulMd} id="soul-ed" readOnly={!operable} style={{ width: '100%', minHeight: 140, padding: 8, borderRadius: 6, border: '1px solid #d4c8b8', fontFamily: 'monospace', fontSize: 12, opacity: operable ? 1 : 0.7 }} />
-            {operable && <button className="ui-btn" style={{ width: '100%', marginTop: 6 }} onClick={async () => {
-              if (!selectedAgentId) return;
-              const r = await saveAgentSoul(selectedAgentId, (document.getElementById('soul-ed') as HTMLTextAreaElement).value);
-              setMsg(r.message || (r.ok ? '已保存' : '保存失败'));
-            }}>保存 SOUL</button>}
-          </>
-        )}
-        {msg && <div style={{ marginTop: 6, fontSize: 11, color: '#48d093' }}>{msg}</div>}
+        <p style={{ color: '#9a8b7a', marginBottom: 10, fontSize: 12 }}>
+          点击 Agent 展开详情；点击工位时将派遣当前选中的 Agent
+        </p>
+        {agentList.map(a => (
+          <AgentAccordionItem
+            key={a.agentId}
+            char={a}
+            expanded={selectedAgentId === a.agentId}
+            operable={canOperateAgent(a.agentId)}
+            panelTab={panelTab}
+            setPanelTab={setPanelTab}
+            schema={selectedAgentId === a.agentId ? schema : []}
+            config={selectedAgentId === a.agentId ? config : {}}
+            soulMd={selectedAgentId === a.agentId ? soulMd : ''}
+            msg={selectedAgentId === a.agentId ? msg : ''}
+            setMsg={setMsg}
+            onToggle={() => selectAgent(a.agentId)}
+            onFollow={() => setFollowAgent(a.agentId)}
+          />
+        ))}
       </>
     );
   }
@@ -437,7 +367,160 @@ export function RightPanel() {
   }
 }
 
-function AgentCard({ char, selected, operable, onSelect }: { char: CharState; selected: boolean; operable?: boolean; onSelect: () => void }) {
+function AgentAccordionItem({
+  char,
+  expanded,
+  operable,
+  compact,
+  panelTab,
+  setPanelTab,
+  schema,
+  config,
+  soulMd,
+  msg,
+  setMsg,
+  onToggle,
+  onFollow,
+}: {
+  char: CharState;
+  expanded: boolean;
+  operable?: boolean;
+  compact?: boolean;
+  panelTab?: 'overview' | 'config' | 'soul';
+  setPanelTab?: (t: 'overview' | 'config' | 'soul') => void;
+  schema?: { key: string; label: string }[];
+  config?: Record<string, unknown>;
+  soulMd?: string;
+  msg?: string;
+  setMsg?: (m: string) => void;
+  onToggle: () => void;
+  onFollow?: () => void;
+}) {
+  const d = char.data;
+  const pnl = d.pnl || 0;
+  const agentId = char.agentId;
+
+  return (
+    <div
+      className={`agent-accordion ${expanded ? 'expanded' : ''}`}
+      style={{
+        marginBottom: 8,
+        borderRadius: 8,
+        border: `1px solid ${expanded ? '#48d093' : '#e8e0d4'}`,
+        background: expanded ? '#eef8f0' : '#faf6ef',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        className="agent-accordion-header"
+        onClick={onToggle}
+        style={{ cursor: 'pointer' }}
+      >
+        <AgentCard char={char} selected={expanded} operable={operable} onSelect={onToggle} embedded />
+      </div>
+      {expanded && (
+        <div className="agent-accordion-body" style={{ padding: '0 10px 10px', borderTop: '1px dashed #d4e8dc' }}>
+          {compact ? (
+            <>
+              <Row k="压力值" v={`${Math.round(char.stress)}%`} />
+              <Row k="活动" v={char.activity || STATE_LABEL[char.state] || char.state} />
+              <Row k="盈亏" v={(pnl >= 0 ? '+' : '') + '$' + Math.round(pnl).toLocaleString()} className={pnl >= 0 ? 'profit' : 'loss'} />
+              {onFollow && (
+                <button className="ui-btn" style={{ width: '100%', marginTop: 8, fontSize: 11 }} onClick={(e) => { e.stopPropagation(); onFollow(); }}>
+                  跟随视角
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: 8, margin: '10px 0', alignItems: 'center' }}>
+                <div style={{ flex: 1, fontSize: 11, color: '#8a7e72' }}>{d.desc}</div>
+                {onFollow && (
+                  <button className="ui-btn" style={{ fontSize: 10 }} onClick={(e) => { e.stopPropagation(); onFollow(); }}>跟随</button>
+                )}
+              </div>
+              {panelTab && setPanelTab && (
+                <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+                  {(['overview', 'config', 'soul'] as const).map(t => (
+                    <button key={t} className={`panel-tab ${panelTab === t ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setPanelTab(t); }}>
+                      {t === 'overview' ? '概览' : t === 'config' ? '参数' : 'SOUL'}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {panelTab === 'overview' && (
+                <>
+                  <Row k="状态" v={d.running ? '🟢 运行中' : '⚪ 已停止'} />
+                  <Row k="压力值" v={`${Math.round(char.stress)}%`} />
+                  <Row k="活动" v={char.activity || STATE_LABEL[char.state] || char.state} />
+                  <Row k="策略" v={d.strategy || '--'} />
+                  <Row k="市场" v={d.market || '--'} />
+                  <Row k="资金" v={d.capital != null ? '$' + d.capital.toLocaleString() : '--'} />
+                  <Row k="盈亏" v={(pnl >= 0 ? '+' : '') + '$' + pnl.toLocaleString()} className={pnl >= 0 ? 'profit' : 'loss'} />
+                  <Row k="胜率" v={d.win_rate != null ? d.win_rate.toFixed(1) + '%' : '--'} />
+                  <Row k="成交笔数" v={String(d.trades ?? 0)} />
+                  <Row k="持仓" v={(d.positions?.length || 0) + ' 个'} />
+                  {(d.positions?.length || 0) > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      {d.positions!.map((p, i) => <PositionRow key={i} pos={p} compact />)}
+                    </div>
+                  )}
+                </>
+              )}
+              {panelTab === 'config' && schema && config && setMsg && (
+                <>
+                  {operable && schema.length === 0 && <p style={{ color: '#999', fontSize: 12 }}>加载参数中…</p>}
+                  {operable && schema.map(f => (
+                    <div key={f.key} style={{ marginBottom: 8 }}>
+                      <label style={{ fontSize: 11, color: '#7a6e62' }}>{f.label}</label>
+                      <input
+                        type="number"
+                        defaultValue={String(config[f.key] ?? '')}
+                        id={`cfg-${agentId}-${f.key}`}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #d4c8b8', marginTop: 3 }}
+                      />
+                    </div>
+                  ))}
+                  {operable && (
+                    <button className="ui-btn" style={{ width: '100%', marginTop: 6 }} onClick={async () => {
+                      const body: Record<string, unknown> = {};
+                      schema.forEach(f => {
+                        const el = document.getElementById(`cfg-${agentId}-${f.key}`) as HTMLInputElement;
+                        if (el?.value) body[f.key] = el.value;
+                      });
+                      const r = await saveAgentConfig(agentId, body);
+                      setMsg(r.message || (r.ok ? '已保存' : '保存失败'));
+                    }}>保存参数</button>
+                  )}
+                </>
+              )}
+              {panelTab === 'soul' && soulMd !== undefined && setMsg && (
+                <>
+                  <textarea
+                    key={agentId}
+                    defaultValue={soulMd}
+                    id={`soul-ed-${agentId}`}
+                    readOnly={!operable}
+                    style={{ width: '100%', minHeight: 120, padding: 8, borderRadius: 6, border: '1px solid #d4c8b8', fontFamily: 'monospace', fontSize: 12, opacity: operable ? 1 : 0.7 }}
+                  />
+                  {operable && (
+                    <button className="ui-btn" style={{ width: '100%', marginTop: 6 }} onClick={async () => {
+                      const r = await saveAgentSoul(agentId, (document.getElementById(`soul-ed-${agentId}`) as HTMLTextAreaElement).value);
+                      setMsg(r.message || (r.ok ? '已保存' : '保存失败'));
+                    }}>保存 SOUL</button>
+                  )}
+                </>
+              )}
+              {msg && <div style={{ marginTop: 6, fontSize: 11, color: '#48d093' }}>{msg}</div>}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AgentCard({ char, selected, operable, onSelect, embedded }: { char: CharState; selected: boolean; operable?: boolean; onSelect: () => void; embedded?: boolean }) {
   const d = char.data;
   const pnl = d.pnl || 0;
   const posCount = d.positions?.length || 0;
@@ -445,11 +528,11 @@ function AgentCard({ char, selected, operable, onSelect }: { char: CharState; se
   return (
     <div
       className={`agent-card ${selected ? 'selected' : ''}`}
-      onClick={onSelect}
+      onClick={embedded ? undefined : onSelect}
       style={{
-        padding: 10, marginBottom: 6, borderRadius: 8, cursor: 'pointer',
-        background: selected ? '#eef8f0' : '#faf6ef',
-        border: `1px solid ${selected ? '#48d093' : '#e8e0d4'}`,
+        padding: 10, marginBottom: embedded ? 0 : 6, borderRadius: embedded ? 0 : 8, cursor: embedded ? 'inherit' : 'pointer',
+        background: embedded ? 'transparent' : (selected ? '#eef8f0' : '#faf6ef'),
+        border: embedded ? 'none' : `1px solid ${selected ? '#48d093' : '#e8e0d4'}`,
         opacity: operable === false ? 0.72 : 1,
       }}
     >

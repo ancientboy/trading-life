@@ -46,6 +46,24 @@ export function deskById(id: string) {
   return HALL_DESKS_8.find(d => d.id === id);
 }
 
+const DESK_DISPLAY_LABELS: Record<string, string> = {
+  desk_xau: 'XAU',
+  desk_maj: 'Major',
+  desk_alt: 'Altcoin',
+  desk_new: 'Newcoin',
+  desk_mom: 'Momentum',
+  desk_6: '工位 6',
+  desk_7: '工位 7',
+  desk_8: '工位 8',
+};
+
+/** 工位 seatId / deskId → 展示名 */
+export function deskDisplayLabel(seatOrDeskId: string): string {
+  const desk = HALL_DESKS_8.find(d => d.seatId === seatOrDeskId || d.id === seatOrDeskId);
+  if (!desk) return seatOrDeskId;
+  return DESK_DISPLAY_LABELS[desk.id] ?? desk.id.replace('desk_', '工位 ');
+}
+
 /** 同步工位/站立点到寻路（角色站在椅子前，不在桌面） */
 export function syncHallDesksToPathfinding(
   nodes: Record<string, { x: number; z: number }>,

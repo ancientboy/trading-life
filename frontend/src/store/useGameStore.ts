@@ -6,7 +6,7 @@ import type { AgentMeta } from '../lib/constants';
 import { OfficePath } from '../lib/pathfinding';
 import { WORLD_MAP, ZONE_CAMERA } from '../lib/worldMap';
 import { SIDEBAR_TO_ZONE, ZONE_TO_RIGHT_TAB } from '../lib/zones';
-import { HALL_DESKS_8, ensureHallPathGraph } from '../lib/hallLayout';
+import { ensureHallPathGraph, deskDisplayLabel } from '../lib/hallLayout';
 import { rebuildNavGraph, assignAgentSeatSlots } from '../lib/navGraph';
 import { paperToWorld } from '../lib/zoneProjection';
 import { syncFurnitureToPathfinding, getActivitySeatPaper, greetingForActivity, npcForZone, resolveActivitySlot } from '../lib/zoneFurniture';
@@ -21,7 +21,7 @@ import {
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
-import { resolveAvailableSeat, hasFreeSeat, mergeLocalSeatOccupancy, type SeatMap } from '../lib/seatRegistry';
+import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, type SeatMap } from '../lib/seatRegistry';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
 import type { LeisureTierId } from '../lib/leisureTiers';
@@ -426,9 +426,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   sendAgentToDesk: async (agentId, seatNodeId) => {
     const s = get();
-    const id = agentId || s.selectedAgentId
-      || Object.values(s.agents).filter(a => get().canOperateAgent(a.agentId)).sort((a, b) => b.stress - a.stress)[0]?.agentId;
-    if (!id || !s.agents[id]) return false;
+    const operableAgents = Object.values(s.agents).filter(a => get().canOperateAgent(a.agentId));
+    let id = agentId || s.selectedAgentId;
+    if (!id) {
+      if (operableAgents.length === 1) id = operableAgents[0].agentId;
+      else {
+        get().addMessage('请先在侧边栏选择要派遣的 Agent');
+        set({ rightTab: 'agent', rightPanelCollapsed: false });
+        return false;
+      }
+    }
+    if (!s.agents[id]) return false;
     if (!get().canOperateAgent(id)) {
       get().addMessage(`${s.agents[id].data.name} 是系统 Agent，请前往工坊创建你自己的 Agent`);
       return false;
@@ -451,9 +459,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       inTransit: false,
     };
     const mergedSeats = mergeLocalSeatOccupancy(s.seatOccupancy, s.agents, now);
-    const seatId = resolveAvailableSeat('desk', node, id, mergedSeats, now);
+    const seatId = resolvePreferredSeat('desk', node, id, mergedSeats, now);
     if (!seatId) {
-      get().addMessage('该工位已被占用');
+      const label = deskDisplayLabel(node);
+      get().addMessage(`${label} 已被占用，请选择其他工位`);
       return false;
     }
     const pos = OfficePath.nodes[seatId];
@@ -471,8 +480,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       facing: 'n',
       userDispatched: false,
     };
-    const deskDef = HALL_DESKS_8.find(d => d.seatId === seatId);
-    const deskLabel = deskDef?.id.replace('desk_', '').toUpperCase() ?? '工位';
+    const deskLabel = deskDisplayLabel(seatId);
 
     set({
       agents: { ...s.agents, [id]: char },
@@ -487,7 +495,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cameraZoom: WORLD_MAP.zoneZoom,
       mapOverview: false,
     });
-    get().addMessage(`${char.data.name} 已派遣至 ${deskLabel} 工位（免费）`);
+    get().addMessage(`${char.data.name} 已派遣至 ${deskLabel}（免费）`);
     return true;
   },
 
@@ -1171,7 +1179,8 @@ export function assignPath(char: CharState, nodeId: string): CharState {
 }
 
 export function pickWanderTarget(char: CharState): string {
-  const desk = OfficePath.deskByAgent[char.agentId];
+  const homeDesk = OfficePath.deskByAgent[char.agentId];
+  const desk = char.destNode?.startsWith('seat_') ? char.destNode : homeDesk;
   const booth = OfficePath.boothByAgent[char.agentId];
   const entertainment = char.data.agentType === 'entertainment';
 
@@ -1232,9 +1241,10 @@ export function onPathComplete(char: CharState, now: number): CharState {
   if (node?.startsWith('seat_')) {
     const store = useGameStore.getState();
     const mergedSeats = mergeLocalSeatOccupancy(store.seatOccupancy, store.agents, now);
-    const seatId = resolveAvailableSeat('desk', node, char.agentId, mergedSeats, now);
+    const seatId = resolvePreferredSeat('desk', node, char.agentId, mergedSeats, now);
     if (!seatId) {
-      store.addMessage(`${char.data.name} 工位已被占用`);
+      const label = deskDisplayLabel(node);
+      store.addMessage(`${char.data.name}：${label} 已被占用`);
       return { ...char, destNode: null, isWalking: false, pathQueue: [] };
     }
     claimSeat(seatId, char.agentId, 'desk', 0).then(() => store.syncSeats()).catch(() => {});
