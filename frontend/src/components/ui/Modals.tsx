@@ -225,11 +225,13 @@ function ShopPanel() {
   const shopCatalog = useGameStore(s => s.shopCatalog);
   const shopUnlocks = useGameStore(s => s.shopUnlocks);
   const buyShopItem = useGameStore(s => s.buyShopItem);
-  const openModal = useGameStore(s => s.openModal);
+  const hasZoneSkins = shopUnlocks.some(id => id.startsWith('zone_skin_') || id.startsWith('skin_'));
+  const [tab, setTab] = useState<'buy' | 'scene'>(hasZoneSkins ? 'scene' : 'buy');
 
   const agentItems = shopCatalog.filter(i => i.type === 'color' || i.type === 'hat');
   const zoneItems = shopCatalog.filter(i => isZoneSkinShopItem(i) && !i.legacy);
-  const hasZoneSkins = shopUnlocks.some(id => id.startsWith('zone_skin_') || id.startsWith('skin_'));
+  // 旧版皮肤包仍在 catalog 中时也展示
+  const legacyZoneItems = shopCatalog.filter(i => i.type === 'zone_skin' && i.legacy);
 
   const shopTypeLabel = (type: string) => {
     if (type === 'color') return '解锁围巾/帽子颜色';
@@ -256,35 +258,42 @@ function ShopPanel() {
 
   return (
     <div style={{ color: '#3d3530', maxHeight: 520, overflowY: 'auto' }}>
-      <div style={{ fontSize: 12, color: '#d4af37', marginBottom: 12 }}>当前积分：{points}</div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        <button type="button" className={`ui-btn ${tab === 'buy' ? 'active' : ''}`} style={{ flex: 1, fontSize: 12, fontWeight: tab === 'buy' ? 700 : 500 }}
+          onClick={() => setTab('buy')}>购买商品</button>
+        <button type="button" className={`ui-btn ${tab === 'scene' ? 'active' : ''}`} style={{
+          flex: 1, fontSize: 12, fontWeight: tab === 'scene' ? 700 : 500,
+          background: tab === 'scene' ? 'linear-gradient(135deg,#48d093,#2ea872)' : undefined,
+          color: tab === 'scene' ? '#fff' : undefined,
+        }}
+          onClick={() => setTab('scene')}>
+          🎨 场景装扮{hasZoneSkins ? ' ✓' : ''}
+        </button>
+      </div>
 
-      {hasZoneSkins && (
-        <div style={{ padding: 12, background: '#eef8f0', borderRadius: 8, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 12, color: '#3d6a52' }}>已拥有场景皮肤，可在此切换各区域风格</span>
-          <button type="button" className="ui-btn" style={{ fontSize: 11, padding: '6px 12px', whiteSpace: 'nowrap' }}
-            onClick={() => openModal('scene')}>
-            打开场景装扮
+      {tab === 'scene' ? (
+        <SceneSkinsPanel compact />
+      ) : (
+        <>
+          <div style={{ fontSize: 12, color: '#d4af37', marginBottom: 12 }}>当前积分：{points}</div>
+
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Agent 装扮</div>
+          {agentItems.map(renderShopRow)}
+
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>区域皮肤包</div>
+          <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
+            购买后点上方 <b>「🎨 场景装扮」</b> 标签切换大厅、餐厅、理疗馆、德州厅风格
+          </p>
+          {[...zoneItems, ...legacyZoneItems].map(renderShopRow)}
+
+          <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10 }}>
+            Agent 帽子/颜色 → Agent 工坊 →「装扮」标签页
+          </p>
+          <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={() => useGameStore.getState().openWorkshop('list')}>
+            打开 Agent 工坊装扮
           </button>
-        </div>
+        </>
       )}
-
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Agent 装扮</div>
-      {agentItems.map(renderShopRow)}
-
-      <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>区域皮肤包</div>
-      <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
-        购买后前往顶部导航「场景装扮」切换大厅、餐厅、理疗馆、德州厅风格
-      </p>
-      {zoneItems.length ? zoneItems.map(renderShopRow) : (
-        <p style={{ fontSize: 11, color: '#9a8b7a' }}>暂无皮肤包</p>
-      )}
-
-      <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10 }}>
-        Agent 帽子/颜色购买后前往 Agent 工坊 →「装扮」标签页应用
-      </p>
-      <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={() => useGameStore.getState().openWorkshop('list')}>
-        打开 Agent 工坊装扮
-      </button>
     </div>
   );
 }

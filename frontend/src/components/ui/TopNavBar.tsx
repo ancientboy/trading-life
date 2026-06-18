@@ -17,7 +17,7 @@ const NAV_BTNS = [
   { id: 'market', label: '行情', outline: ChartBarIcon, solid: ChartBarSolid, modal: 'market' as const },
   { id: 'tasks', label: '任务', outline: GiftIcon, solid: GiftSolid, modal: 'tasks' as const },
   { id: 'shop', label: '商城', outline: GiftIcon, solid: GiftSolid, modal: 'shop' as const },
-  { id: 'scene', label: '场景装扮', outline: PaintBrushIcon, solid: PaintBrushSolid, modal: 'scene' as const },
+  { id: 'scene', label: '🎨场景', outline: PaintBrushIcon, solid: PaintBrushSolid, modal: 'scene' as const },
   { id: 'rank', label: '排行', outline: TrophyIcon, solid: TrophySolid, modal: 'rank' as const },
   { id: 'settings', label: '设置', outline: Cog6ToothIcon, solid: CogSolid, modal: 'settings' as const },
   { id: 'help', label: '帮助', outline: QuestionMarkCircleIcon, solid: HelpSolid, modal: 'help' as const },

@@ -32,10 +32,7 @@ export function SceneSkinsPanel({ compact = false }: { compact?: boolean }) {
           </p>
           {ownedPackCount === 0 && (
             <div style={{ padding: 12, background: '#fff8e8', borderRadius: 8, marginBottom: 12, fontSize: 12, color: '#8a6a28' }}>
-              你还没有购买区域皮肤包。请先到
-              <button type="button" className="ui-btn" style={{ margin: '0 4px', padding: '2px 8px', fontSize: 11 }}
-                onClick={() => openModal('shop')}>积分商城</button>
-              购买「区域皮肤包」。
+              你还没有购买区域皮肤包。请切换到商城「购买商品」标签购买「区域皮肤包」。
             </div>
           )}
         </>
