@@ -11,6 +11,10 @@ import { PenguinAvatar } from './PenguinAvatar';
 import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
 import { DINE_TIERS, MASSAGE_TIERS } from '../../lib/leisureTiers';
+import {
+  SKIN_ZONES, SKIN_ZONE_LABELS, ZONE_SKIN_OPTIONS, isZoneSkinOwned, isZoneSkinShopItem,
+  type SkinZone,
+} from '../../lib/zoneSkins';
 
 const TITLES: Record<Exclude<ModalId, null>, string> = {
   workshop: 'Agent 工坊',
@@ -217,30 +221,98 @@ function ShopPanel() {
   const points = useGameStore(s => s.points);
   const shopCatalog = useGameStore(s => s.shopCatalog);
   const shopUnlocks = useGameStore(s => s.shopUnlocks);
+  const zoneSkins = useGameStore(s => s.zoneSkins);
+  const activeZone = useGameStore(s => s.activeZone);
   const buyShopItem = useGameStore(s => s.buyShopItem);
+  const setZoneSkin = useGameStore(s => s.setZoneSkin);
+  const [skinBusy, setSkinBusy] = useState<string | null>(null);
+
+  const agentItems = shopCatalog.filter(i => i.type === 'color' || i.type === 'hat');
+  const zoneItems = shopCatalog.filter(i => isZoneSkinShopItem(i) && !i.legacy);
+
+  const shopTypeLabel = (type: string) => {
+    if (type === 'color') return '解锁围巾/帽子颜色';
+    if (type === 'hat') return '解锁帽子款式';
+    if (type === 'zone_skin') return '区域场景皮肤包';
+    return '场景装饰';
+  };
+
+  const renderShopRow = (item: typeof shopCatalog[0]) => {
+    const owned = shopUnlocks.includes(item.id);
+    return (
+      <button key={item.id} className="leisure-option" disabled={owned}
+        onClick={() => buyShopItem(item.id)} style={{ opacity: owned ? 0.55 : 1 }}>
+        <div style={{ flex: 1, textAlign: 'left' }}>
+          <div style={{ fontWeight: 600 }}>{item.label}</div>
+          <div style={{ fontSize: 11, color: '#8a7e72' }}>{shopTypeLabel(item.type)}</div>
+        </div>
+        <span style={{ color: owned ? '#48d093' : '#d4af37', fontWeight: 600, fontSize: 12 }}>
+          {owned ? '已拥有' : `${item.cost} 积分`}
+        </span>
+      </button>
+    );
+  };
+
+  const applySkin = async (zone: SkinZone, skinId: string) => {
+    const key = `${zone}:${skinId}`;
+    if (skinBusy === key || zoneSkins[zone] === skinId) return;
+    setSkinBusy(key);
+    await setZoneSkin(zone, skinId);
+    setSkinBusy(null);
+  };
 
   return (
-    <div style={{ color: '#3d3530' }}>
+    <div style={{ color: '#3d3530', maxHeight: 520, overflowY: 'auto' }}>
       <div style={{ fontSize: 12, color: '#d4af37', marginBottom: 12 }}>当前积分：{points}</div>
-      {shopCatalog.map(item => {
-        const owned = shopUnlocks.includes(item.id);
-        return (
-          <button key={item.id} className="leisure-option" disabled={owned}
-            onClick={() => buyShopItem(item.id)} style={{ opacity: owned ? 0.55 : 1 }}>
-            <div style={{ flex: 1, textAlign: 'left' }}>
-              <div style={{ fontWeight: 600 }}>{item.label}</div>
-              <div style={{ fontSize: 11, color: '#8a7e72' }}>
-                {item.type === 'color' ? '解锁围巾/帽子颜色' : item.type === 'hat' ? '解锁帽子款式' : '场景装饰皮肤'}
-              </div>
-            </div>
-            <span style={{ color: owned ? '#48d093' : '#d4af37', fontWeight: 600, fontSize: 12 }}>
-              {owned ? '已拥有' : `${item.cost} 积分`}
-            </span>
-          </button>
-        );
-      })}
+
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Agent 装扮</div>
+      {agentItems.map(renderShopRow)}
+
+      <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>区域皮肤包</div>
+      <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
+        购买后可更换大厅、餐厅、理疗馆、德州厅的整体装饰风格
+      </p>
+      {zoneItems.length ? zoneItems.map(renderShopRow) : (
+        <p style={{ fontSize: 11, color: '#9a8b7a' }}>暂无皮肤包</p>
+      )}
+
+      <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>场景装扮</div>
+      <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 10px' }}>
+        选择已解锁的皮肤应用到各区域 · 当前所在：{SKIN_ZONE_LABELS[activeZone as SkinZone] ?? activeZone}
+      </p>
+      {SKIN_ZONES.map(zone => (
+        <div key={zone} style={{ marginBottom: 14, padding: 10, background: '#faf6ef', borderRadius: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>{SKIN_ZONE_LABELS[zone]}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {ZONE_SKIN_OPTIONS[zone].filter(opt => isZoneSkinOwned(zone, opt.id, shopUnlocks)).map(opt => {
+              const active = zoneSkins[zone] === opt.id;
+              const busy = skinBusy === `${zone}:${opt.id}`;
+              return (
+                <button
+                  key={opt.id}
+                  className="ui-btn"
+                  disabled={active || !!skinBusy}
+                  onClick={() => applySkin(zone, opt.id)}
+                  style={{
+                    fontSize: 11,
+                    padding: '6px 10px',
+                    background: active ? '#d4af37' : '#fff',
+                    color: active ? '#fff' : '#3d3530',
+                    border: active ? 'none' : '1px solid #e0d8cc',
+                    opacity: busy ? 0.6 : 1,
+                  }}
+                  title={opt.desc}
+                >
+                  {opt.preview} {opt.label}{active ? ' · 使用中' : ''}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
       <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10 }}>
-        购买后前往 Agent 工坊 → 选择 Agent →「装扮」标签页应用
+        Agent 帽子/颜色购买后前往 Agent 工坊 →「装扮」标签页应用
       </p>
       <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={() => useGameStore.getState().openWorkshop('list')}>
         打开 Agent 工坊装扮

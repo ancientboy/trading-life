@@ -33,6 +33,11 @@ export function unlockedHatStyles(shopUnlocks: string[]): HatStyleId[] {
   return all.filter(h => isHatUnlocked(h, shopUnlocks));
 }
 
+export function ownedZoneSkinPacks(shopUnlocks: string[]) {
+  return shopUnlocks.filter(id => id.startsWith('zone_skin_') || id.startsWith('skin_'));
+}
+
+/** @deprecated 使用 ownedZoneSkinPacks */
 export function ownedCosmetics(shopUnlocks: string[]) {
-  return shopUnlocks.filter(id => id.startsWith('skin_'));
+  return ownedZoneSkinPacks(shopUnlocks);
 }

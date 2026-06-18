@@ -43,9 +43,37 @@ SHOP_CATALOG = [
     {"id": "hat_beret_unlock", "type": "hat", "value": "beret", "cost": 120, "label": "贝雷帽款式"},
     {"id": "hat_top_unlock", "type": "hat", "value": "top", "cost": 150, "label": "礼帽款式"},
     {"id": "hat_bobble_unlock", "type": "hat", "value": "bobble", "cost": 100, "label": "毛球帽款式"},
-    {"id": "skin_sofa_gold", "type": "cosmetic", "value": "sofa_gold", "cost": 200, "label": "金色沙发皮肤"},
-    {"id": "skin_table_premium", "type": "cosmetic", "value": "table_premium", "cost": 180, "label": "尊享餐桌皮肤"},
+    {"id": "zone_skin_hall_gold", "type": "zone_skin", "value": "hall:gold", "cost": 200, "label": "大厅 · 金色 lounge 皮肤包"},
+    {"id": "zone_skin_restaurant_premium", "type": "zone_skin", "value": "restaurant:premium", "cost": 180, "label": "粤菜馆 · 尊享宴席皮肤包"},
+    {"id": "zone_skin_restaurant_modern", "type": "zone_skin", "value": "restaurant:modern", "cost": 220, "label": "粤菜馆 · 现代简约皮肤包"},
+    {"id": "zone_skin_spa_tropical", "type": "zone_skin", "value": "spa:tropical", "cost": 200, "label": "理疗馆 · 热带度假皮肤包"},
+    {"id": "zone_skin_casino_neon", "type": "zone_skin", "value": "casino:neon", "cost": 250, "label": "德州厅 · 霓虹之夜皮肤包"},
+    # 旧版 id 兼容 — 与新版皮肤包等价
+    {"id": "skin_sofa_gold", "type": "zone_skin", "value": "hall:gold", "cost": 200, "label": "大厅 · 金色 lounge（旧版）", "legacy": True},
+    {"id": "skin_table_premium", "type": "zone_skin", "value": "restaurant:premium", "cost": 180, "label": "粤菜馆 · 尊享宴席（旧版）", "legacy": True},
 ]
+
+ZONE_SKIN_ZONES = ("hall", "restaurant", "spa", "casino")
+ZONE_SKIN_DEFAULTS = {z: "default" for z in ZONE_SKIN_ZONES}
+ZONE_SKIN_OPTIONS: dict[str, list[dict[str, Any]]] = {
+    "hall": [
+        {"id": "default", "label": "经典大厅", "free": True},
+        {"id": "gold", "label": "金色 lounge", "shop_ids": ["zone_skin_hall_gold", "skin_sofa_gold"]},
+    ],
+    "restaurant": [
+        {"id": "default", "label": "广式经典", "free": True},
+        {"id": "premium", "label": "尊享宴席", "shop_ids": ["zone_skin_restaurant_premium", "skin_table_premium"]},
+        {"id": "modern", "label": "现代简约", "shop_ids": ["zone_skin_restaurant_modern"]},
+    ],
+    "spa": [
+        {"id": "default", "label": "禅意 lavender", "free": True},
+        {"id": "tropical", "label": "热带度假", "shop_ids": ["zone_skin_spa_tropical"]},
+    ],
+    "casino": [
+        {"id": "default", "label": "经典 VIP", "free": True},
+        {"id": "neon", "label": "霓虹之夜", "shop_ids": ["zone_skin_casino_neon"]},
+    ],
+}
 
 DEFAULT_FREE_UNLOCKS = life_db.DEFAULT_FREE_UNLOCKS
 
@@ -122,6 +150,46 @@ HAT_UNLOCK_MAP = {
 }
 
 
+def _parse_zone_skin_value(value: str) -> tuple[str, str] | None:
+    if not value or ":" not in value:
+        return None
+    zone, skin_id = value.split(":", 1)
+    if zone not in ZONE_SKIN_ZONES:
+        return None
+    if not any(o["id"] == skin_id for o in ZONE_SKIN_OPTIONS.get(zone, [])):
+        return None
+    return zone, skin_id
+
+
+def _zone_skin_owned(user: dict, zone: str, skin_id: str) -> bool:
+    opts = ZONE_SKIN_OPTIONS.get(zone, [])
+    opt = next((o for o in opts if o["id"] == skin_id), None)
+    if not opt:
+        return False
+    if opt.get("free"):
+        return True
+    unlocks = set(user.get("shop_unlocks", []))
+    return any(sid in unlocks for sid in opt.get("shop_ids", []))
+
+
+def _normalize_zone_skins(user: dict) -> dict[str, str]:
+    stats = user.get("stats") or {}
+    raw = stats.get("zone_skins") or {}
+    out = dict(ZONE_SKIN_DEFAULTS)
+    unlocks = user.get("shop_unlocks", [])
+    for item in SHOP_CATALOG:
+        if item.get("type") != "zone_skin" or item["id"] not in unlocks:
+            continue
+        parsed = _parse_zone_skin_value(item.get("value", ""))
+        if parsed:
+            out[parsed[0]] = parsed[1]
+    for zone in ZONE_SKIN_ZONES:
+        picked = raw.get(zone)
+        if picked and _zone_skin_owned(user, zone, picked):
+            out[zone] = picked
+    return out
+
+
 def _appearance_allowed(user: dict, headwear: str, hat_style: str, color: str) -> tuple[bool, str]:
     if headwear not in ("scarf", "hat"):
         return False, "无效的配饰类型"
@@ -184,6 +252,8 @@ def _public_state(user: dict, account_id: str = "") -> dict:
             "max_agents": IDLE_MAX_AGENTS,
         },
         "stats": user.get("stats", {}),
+        "zone_skins": _normalize_zone_skins(user),
+        "zone_skin_catalog": ZONE_SKIN_OPTIONS,
         "permissions": _permissions_for(account_id, user),
     }
 
@@ -215,6 +285,13 @@ class DispatchBody(BaseModel):
 
 class ShopBuyBody(BaseModel):
     item_id: str
+
+
+class ZoneSkinBody(BaseModel):
+    zone: str
+    skin_id: str = Field(alias="skinId")
+
+    model_config = {"populate_by_name": True}
 
 
 class TaskClaimBody(BaseModel):
@@ -440,8 +517,36 @@ async def life_shop_buy(body: ShopBuyBody, account_id: str = Depends(resolve_acc
         save_user(uid, user)
         return {"ok": False, "balance": user["points"], "error": "insufficient"}
     user["shop_unlocks"].append(body.item_id)
+    if item.get("type") == "zone_skin":
+        parsed = _parse_zone_skin_value(item.get("value", ""))
+        if parsed:
+            zone, skin_id = parsed
+            stats = user.setdefault("stats", {})
+            zone_skins = stats.setdefault("zone_skins", {})
+            zone_skins[zone] = skin_id
+            stats["zone_skins"] = zone_skins
     save_user(uid, user)
-    return {"ok": True, "balance": user["points"], "item": item}
+    return {"ok": True, "balance": user["points"], "item": item, "state": _public_state(user, uid)}
+
+
+@router.put("/zone-skins")
+async def life_set_zone_skin(body: ZoneSkinBody, account_id: str = Depends(resolve_account_id)):
+    uid = _validate_user_id(account_id)
+    zone = (body.zone or "").strip()
+    skin_id = (body.skin_id or "").strip()
+    if zone not in ZONE_SKIN_ZONES:
+        raise HTTPException(400, "无效的区域")
+    if not any(o["id"] == skin_id for o in ZONE_SKIN_OPTIONS.get(zone, [])):
+        raise HTTPException(400, "无效的皮肤")
+    user = load_user(uid)
+    if not _zone_skin_owned(user, zone, skin_id):
+        return {"ok": False, "error": "该皮肤尚未解锁，请先在积分商城购买"}
+    stats = user.setdefault("stats", {})
+    zone_skins = stats.setdefault("zone_skins", {})
+    zone_skins[zone] = skin_id
+    stats["zone_skins"] = zone_skins
+    save_user(uid, user)
+    return {"ok": True, "zone_skins": _normalize_zone_skins(user), "state": _public_state(user, uid)}
 
 
 @router.post("/agents")

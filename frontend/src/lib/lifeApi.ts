@@ -18,7 +18,7 @@ export interface LifeState {
   daily_tasks: Record<string, { progress: number; claimed: boolean }>;
   daily_task_defs: { id: string; label: string; target: number; reward: number; kind: string; activity?: string; icon?: string }[];
   shop_unlocks: string[];
-  shop_catalog: { id: string; type: string; value: string; cost: number; label: string }[];
+  shop_catalog: { id: string; type: string; value: string; cost: number; label: string; legacy?: boolean }[];
   custom_agents: Record<string, AgentMeta>;
   activity_rewards: Record<string, number>;
   facility_costs: Record<string, number>;
@@ -31,6 +31,8 @@ export interface LifeState {
     system_agent_ids: string[];
   };
   stats: Record<string, unknown>;
+  zone_skins?: Record<string, string>;
+  zone_skin_catalog?: Record<string, { id: string; label: string; free?: boolean; shop_ids?: string[] }[]>;
 }
 
 async function parse<T>(r: Response): Promise<T> {
@@ -173,7 +175,14 @@ export async function lifeShopBuy(itemId: string) {
   const r = await fetch(`${API}/shop/buy`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ item_id: itemId }),
   });
-  return parse<{ ok: boolean; balance: number; item?: LifeState['shop_catalog'][0]; error?: string }>(r);
+  return parse<{ ok: boolean; balance: number; item?: LifeState['shop_catalog'][0]; error?: string; state?: LifeState }>(r);
+}
+
+export async function lifeSetZoneSkin(zone: string, skinId: string) {
+  const r = await fetch(`${API}/zone-skins`, {
+    method: 'PUT', headers: headers(), body: JSON.stringify({ zone, skinId }),
+  });
+  return parse<{ ok: boolean; zone_skins?: Record<string, string>; state?: LifeState; error?: string }>(r);
 }
 
 export async function lifeCreateAgent(draft: CustomAgentDraft) {

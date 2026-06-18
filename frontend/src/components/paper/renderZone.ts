@@ -25,6 +25,8 @@ import {
 import { leisurePhase, tableIdForDineAgent, bedIdForMassageAgent, getLeisureRenderPaperPos, DINE_SERVE_MS } from '../../lib/leisureActivity';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
 import { getRestSofaSprite } from '../../lib/restSofaSprite';
+import type { SkinZone } from '../../lib/zoneSkins';
+import { hallRestPalette } from '../../lib/zoneSkins';
 
 export interface PaperCamera {
   cw: number;
@@ -120,11 +122,11 @@ function drawHallDesks(
   });
 }
 
-function drawHallRest(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null) {
+function drawHallRest(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null, skinKey: string) {
   const sofaSprite = getRestSofaSprite();
   HALL_REST_BOOTHS.forEach((b, i) => {
     const s = pt(cam, b.px, b.py);
-    drawRestBooth(ctx, s.x, s.y, cam.scale, i === 1);
+    drawRestBooth(ctx, s.x, s.y, cam.scale, i === 1, skinKey);
     if (!sofaSprite) {
       b.seats.forEach(ch => {
         const cs = pt(cam, ch.px, ch.py);
@@ -137,9 +139,9 @@ function drawHallRest(ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: 
 
 function drawSpaScene(
   ctx: CanvasRenderingContext2D, cam: PaperCamera, t: number, hoverId: string | null,
-  agents: Record<string, CharState>,
+  agents: Record<string, CharState>, skinKey: string,
 ) {
-  drawSpaVipDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t);
+  drawSpaVipDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t, skinKey);
   drawSpaAmbientLights(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v));
   SPA_BEDS.forEach(b => {
     const s = pt(cam, b.px, b.py);
@@ -174,9 +176,9 @@ function drawSpaScene(
 
 function drawRestaurantScene(
   ctx: CanvasRenderingContext2D, cam: PaperCamera, hoverId: string | null, t: number,
-  agents: Record<string, CharState>,
+  agents: Record<string, CharState>, skinKey: string,
 ) {
-  drawCantoneseDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t);
+  drawCantoneseDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t, skinKey);
   drawCantoneseAmbientLights(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v));
   const diningSprite = getDiningTableSprite();
   const now = performance.now();
@@ -184,7 +186,7 @@ function drawRestaurantScene(
 
   RESTAURANT_TABLES.forEach(tbl => {
     const s = pt(cam, tbl.px, tbl.py);
-    drawDiningTable(ctx, s.x, s.y, cam.scale);
+    drawDiningTable(ctx, s.x, s.y, cam.scale, skinKey);
     if (!diningSprite) {
       tbl.chairs.forEach(ch => {
         const cs = pt(cam, ch.px, ch.py);
@@ -223,9 +225,9 @@ function punchCasinoTableHole(ctx: CanvasRenderingContext2D, cam: PaperCamera) {
 
 function drawCasinoScene(
   ctx: CanvasRenderingContext2D, cam: PaperCamera, t: number, hoverId: string | null,
-  pokerGlbReady: boolean, pokerDealing: boolean,
+  pokerGlbReady: boolean, pokerDealing: boolean, skinKey: string,
 ) {
-  drawCasinoVipDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t);
+  drawCasinoVipDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t, skinKey);
   drawCasinoAmbientLights(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v));
 
   const s = pt(cam, CASINO_TABLE.px, CASINO_TABLE.py);
@@ -263,12 +265,12 @@ function drawNpcs(
 function drawHallScene(
   ctx: CanvasRenderingContext2D, cam: PaperCamera, zone: ZoneId,
   agents: Record<string, CharState>, ticker: Record<string, number>, t: number,
-  hoverId: string | null,
+  hoverId: string | null, skinKey: string,
 ) {
   drawBigTicker(ctx, cam, zone, ticker, t);
   drawCoffeeZone(ctx, pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).x, pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).y, cam.scale, t);
   drawHallDesks(ctx, cam, agents, t, hoverId);
-  drawHallRest(ctx, cam, hoverId);
+  drawHallRest(ctx, cam, hoverId, skinKey);
 }
 
 function countInZone(agents: Record<string, CharState>, zone: ZoneId) {
@@ -292,15 +294,29 @@ export function renderZone(
     npcBubble: { npcId: string; text: string; until: number } | null;
     pokerGlbReady?: boolean;
     pokerTableDealing?: boolean;
+    zoneSkins?: Record<SkinZone, string>;
   },
 ) {
   const layout = ZONE_LAYOUTS[zone];
+  const skinKey = (zone !== 'reception' ? opts.zoneSkins?.[zone as SkinZone] : undefined) ?? 'default';
   if (zone === 'casino') {
-    drawCasinoVipBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode);
+    drawCasinoVipBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode, skinKey);
   } else if (zone === 'spa') {
-    drawSpaZenBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode);
+    drawSpaZenBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode, skinKey);
   } else if (zone === 'restaurant') {
-    drawCantoneseBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode);
+    drawCantoneseBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode, skinKey);
+  } else if (zone === 'hall') {
+    const hallPal = hallRestPalette(skinKey);
+    const grd = ctx.createRadialGradient(cam.cw / 2, cam.ch * 0.45, 0, cam.cw / 2, cam.ch * 0.45, Math.max(cam.cw, cam.ch) * 0.72);
+    if (opts.dayMode === 'night') {
+      grd.addColorStop(0, hallPal.floorDark);
+      grd.addColorStop(1, '#2a2838');
+    } else {
+      grd.addColorStop(0, hallPal.floorLight);
+      grd.addColorStop(1, hallPal.floorDark);
+    }
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, cam.cw, cam.ch);
   } else {
     ctx.fillStyle = opts.dayMode === 'day' ? layout.floorColor : '#2a2838';
     ctx.fillRect(0, 0, cam.cw, cam.ch);
@@ -309,18 +325,18 @@ export function renderZone(
 
   switch (zone) {
     case 'hall':
-      drawHallScene(ctx, cam, zone, agents, opts.ticker, opts.t, opts.hoverFacilityId);
+      drawHallScene(ctx, cam, zone, agents, opts.ticker, opts.t, opts.hoverFacilityId, skinKey);
       break;
     case 'spa':
-      drawSpaScene(ctx, cam, opts.t, opts.hoverFacilityId, agents);
+      drawSpaScene(ctx, cam, opts.t, opts.hoverFacilityId, agents, skinKey);
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
     case 'restaurant':
-      drawRestaurantScene(ctx, cam, opts.hoverFacilityId, opts.t, agents);
+      drawRestaurantScene(ctx, cam, opts.hoverFacilityId, opts.t, agents, skinKey);
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
     case 'casino':
-      drawCasinoScene(ctx, cam, opts.t, opts.hoverFacilityId, !!opts.pokerGlbReady, !!opts.pokerTableDealing);
+      drawCasinoScene(ctx, cam, opts.t, opts.hoverFacilityId, !!opts.pokerGlbReady, !!opts.pokerTableDealing, skinKey);
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
     case 'reception':

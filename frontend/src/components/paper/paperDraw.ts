@@ -10,6 +10,10 @@ import {
   drawAgentHat2d, drawAgentScarf2d,
   type AgentHeadwear, type HatStyleId,
 } from '../../lib/agentAppearance';
+import {
+  cantonesePalette, hallRestPalette, spaPalette, vipPalette,
+  type CantonesePalette, type SpaPalette, type VipPalette,
+} from '../../lib/zoneSkins';
 
 export function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -583,9 +587,10 @@ export function drawMassageBed(ctx: CanvasRenderingContext2D, x: number, y: numb
   rrect(ctx, x - 40 * s, y - 9 * s, 80 * s, 18 * s, 4 * s); ctx.fill();
 }
 
-export function drawDiningTable(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+export function drawDiningTable(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, skinKey = 'default') {
+  const pal = cantonesePalette(skinKey);
   const sprite = getDiningTableSprite();
-  if (sprite) {
+  if (sprite && skinKey === 'default') {
     const w = 132 * s;
     const h = w * (sprite.naturalHeight / sprite.naturalWidth);
     dropShadow(ctx, x, y, w, h * 0.9, 0.1);
@@ -594,9 +599,13 @@ export function drawDiningTable(ctx: CanvasRenderingContext2D, x: number, y: num
   }
 
   dropShadow(ctx, x, y, 70 * s, 70 * s);
-  ctx.fillStyle = '#d4c8b8';
+  ctx.fillStyle = pal.tableTop;
   ctx.beginPath(); ctx.ellipse(x, y, 32 * s, 32 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#c0b4a4'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = pal.tableEdge; ctx.lineWidth = 1.5 * s; ctx.stroke();
+  if (skinKey === 'premium') {
+    ctx.strokeStyle = pal.gold; ctx.lineWidth = 2 * s;
+    ctx.beginPath(); ctx.ellipse(x, y, 28 * s, 28 * s, 0, 0, Math.PI * 2); ctx.stroke();
+  }
 }
 
 export function drawChair(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, facing: 'n' | 's' | 'e' | 'w' = 's') {
@@ -608,9 +617,10 @@ export function drawChair(ctx: CanvasRenderingContext2D, x: number, y: number, s
   rrect(ctx, x - 10 * s, y + back * s - 4 * s, 20 * s, 6 * s, 2 * s); ctx.fill();
 }
 
-export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, flip = false) {
+export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, flip = false, skinKey = 'default') {
+  const pal = hallRestPalette(skinKey);
   const sprite = getRestSofaSprite();
-  if (sprite) {
+  if (sprite && skinKey === 'default') {
     const w = 168 * s;
     const h = w * (sprite.naturalHeight / sprite.naturalWidth);
     ctx.save();
@@ -622,13 +632,17 @@ export function drawRestBooth(ctx: CanvasRenderingContext2D, x: number, y: numbe
   }
 
   dropShadow(ctx, x, y, 160 * s, 90 * s, 0.08);
-  ctx.fillStyle = '#d4c8b8';
+  ctx.fillStyle = pal.sofa;
   rrect(ctx, x - 70 * s, y - 20 * s, 140 * s, 40 * s, 8 * s); ctx.fill();
-  ctx.fillStyle = '#c8baa8';
+  ctx.fillStyle = pal.sofaArm;
   rrect(ctx, x - 75 * s, y - 28 * s, 30 * s, 56 * s, 6 * s); ctx.fill();
   rrect(ctx, x + 45 * s, y - 28 * s, 30 * s, 56 * s, 6 * s); ctx.fill();
-  ctx.fillStyle = '#faf6ef';
+  ctx.fillStyle = pal.cushion;
   ctx.beginPath(); ctx.ellipse(x, y + 8 * s, 22 * s, 14 * s, 0, 0, Math.PI * 2); ctx.fill();
+  if (skinKey === 'gold') {
+    ctx.strokeStyle = pal.accent; ctx.lineWidth = 1.5 * s;
+    rrect(ctx, x - 70 * s, y - 20 * s, 140 * s, 40 * s, 8 * s); ctx.stroke();
+  }
 }
 
 export function drawPokerTable8(
@@ -817,17 +831,18 @@ const VIP = {
 
 function drawOvalRug(
   ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, s: number,
+  pal: VipPalette = vipPalette('default'),
 ) {
   dropShadow(ctx, x, y + 4 * s, rx * 2 * s, ry * 2 * s, 0.12);
-  ctx.fillStyle = VIP.rugBase;
+  ctx.fillStyle = pal.rugBase;
   ctx.beginPath(); ctx.ellipse(x, y, rx * s, ry * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = VIP.goldDim; ctx.lineWidth = 2 * s;
+  ctx.strokeStyle = pal.goldDim; ctx.lineWidth = 2 * s;
   ctx.beginPath(); ctx.ellipse(x, y, rx * s, ry * s, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = VIP.rugPattern; ctx.lineWidth = 1 * s;
+  ctx.strokeStyle = pal.rugPattern; ctx.lineWidth = 1 * s;
   for (let ring = 0.75; ring > 0.2; ring -= 0.18) {
     ctx.beginPath(); ctx.ellipse(x, y, rx * ring * s, ry * ring * s, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  ctx.fillStyle = VIP.gold;
+  ctx.fillStyle = pal.gold;
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
     ctx.beginPath();
@@ -836,18 +851,18 @@ function drawOvalRug(
   }
 }
 
-function drawRunnerRug(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], s: number) {
-  ctx.strokeStyle = VIP.rugBase;
+function drawRunnerRug(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[], s: number, pal: VipPalette = vipPalette('default')) {
+  ctx.strokeStyle = pal.rugBase;
   ctx.lineWidth = 28 * s;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.beginPath();
   pts.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
   ctx.stroke();
-  ctx.strokeStyle = VIP.goldDim;
+  ctx.strokeStyle = pal.goldDim;
   ctx.lineWidth = 2 * s;
   ctx.stroke();
-  ctx.strokeStyle = VIP.rugPattern;
+  ctx.strokeStyle = pal.rugPattern;
   ctx.lineWidth = 1 * s;
   ctx.setLineDash([6 * s, 8 * s]);
   ctx.stroke();
@@ -859,44 +874,43 @@ export function drawCasinoVipBackdrop(
   toScreen: (px: number, py: number) => { x: number; y: number },
   ws: (v: number) => number,
   dayMode: 'day' | 'night',
+  skinKey = 'default',
 ) {
+  const P = vipPalette(skinKey);
   const w = cam.cw, h = cam.ch;
   const grd = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.65);
   if (dayMode === 'night') {
-    grd.addColorStop(0, '#3d322c');
+    grd.addColorStop(0, P.backdropCenter);
     grd.addColorStop(1, '#1a1412');
   } else {
-    grd.addColorStop(0, '#3d322c');
-    grd.addColorStop(1, '#221a18');
+    grd.addColorStop(0, P.backdropCenter);
+    grd.addColorStop(1, P.backdropEdge);
   }
   ctx.fillStyle = grd;
   ctx.fillRect(0, 0, w, h);
 
-  // 墙面与 VIP 隔断
   const wallTop = toScreen(360, 40);
-  ctx.fillStyle = VIP.velvetDeep;
+  ctx.fillStyle = P.velvetDeep;
   rrect(ctx, wallTop.x - ws(340), wallTop.y - ws(8), ws(680), ws(90), ws(4)); ctx.fill();
-  ctx.strokeStyle = VIP.gold; ctx.lineWidth = ws(2);
+  ctx.strokeStyle = P.gold; ctx.lineWidth = ws(2);
   ctx.beginPath();
   ctx.moveTo(wallTop.x - ws(320), wallTop.y + ws(78));
   ctx.lineTo(wallTop.x + ws(320), wallTop.y + ws(78));
   ctx.stroke();
 
-  // VIP 招牌
-  ctx.fillStyle = VIP.gold;
+  ctx.fillStyle = P.gold;
   ctx.font = `700 ${Math.max(11, ws(14))}px Georgia,serif`;
   ctx.textAlign = 'center';
-  ctx.fillText('◆  VIP 德州厅  ◆', wallTop.x, wallTop.y + ws(42));
+  ctx.fillText(skinKey === 'neon' ? '◆  NEON POKER  ◆' : '◆  VIP 德州厅  ◆', wallTop.x, wallTop.y + ws(42));
   ctx.font = `400 ${Math.max(8, ws(9))}px Inter,sans-serif`;
   ctx.fillStyle = 'rgba(245,239,230,0.55)';
-  ctx.fillText('PRIVATE POKER LOUNGE', wallTop.x, wallTop.y + ws(58));
+  ctx.fillText(skinKey === 'neon' ? 'NEON NIGHT LOUNGE' : 'PRIVATE POKER LOUNGE', wallTop.x, wallTop.y + ws(58));
 
-  // 侧墙窗帘
   [[90, 320], [630, 320]].forEach(([px, py]) => {
     const p = toScreen(px, py);
-    ctx.fillStyle = VIP.velvet;
+    ctx.fillStyle = P.velvet;
     rrect(ctx, p.x - ws(18), p.y - ws(120), ws(36), ws(240), ws(4)); ctx.fill();
-    ctx.strokeStyle = VIP.goldDim; ctx.lineWidth = ws(1);
+    ctx.strokeStyle = P.goldDim; ctx.lineWidth = ws(1);
     for (let i = 0; i < 5; i++) {
       const ly = p.y - ws(100) + i * ws(48);
       ctx.beginPath(); ctx.moveTo(p.x - ws(14), ly); ctx.lineTo(p.x + ws(14), ly); ctx.stroke();
@@ -910,19 +924,18 @@ export function drawCasinoVipDecor(
   ws: (v: number) => number,
   s: number,
   t: number,
+  skinKey = 'default',
 ) {
-  // 入口红毯
+  const P = vipPalette(skinKey);
   const runner = [
     toScreen(22, 320), toScreen(120, 300), toScreen(220, 260),
     toScreen(320, 220), toScreen(360, 200),
   ];
-  drawRunnerRug(ctx, runner, s);
+  drawRunnerRug(ctx, runner, s, P);
 
-  // 主牌桌地毯
   const rug = toScreen(360, 340);
-  drawOvalRug(ctx, rug.x, rug.y, 210, 155, s);
+  drawOvalRug(ctx, rug.x, rug.y, 210, 155, s, P);
 
-  // 角落 VIP 沙发区
   [
     { px: 118, py: 530, flip: false },
     { px: 602, py: 530, flip: true },
@@ -930,13 +943,12 @@ export function drawCasinoVipDecor(
     { px: 602, py: 155, flip: true },
   ].forEach(({ px, py, flip }) => {
     const p = toScreen(px, py);
-    drawVipSofa(ctx, p.x, p.y, s, flip);
+    drawVipSofa(ctx, p.x, p.y, s, flip, P);
     const tbl = toScreen(px + (flip ? -55 : 55), py + 20);
-    drawSideTable(ctx, tbl.x, tbl.y, s);
+    drawSideTable(ctx, tbl.x, tbl.y, s, P);
     drawChipStack(ctx, tbl.x, tbl.y - ws(14), s);
   });
 
-  // 荷官两侧落地灯 + 绿植
   [
     { px: 255, py: 145, kind: 'lamp' as const },
     { px: 465, py: 145, kind: 'lamp' as const },
@@ -944,44 +956,42 @@ export function drawCasinoVipDecor(
     { px: 645, py: 420, kind: 'plant' as const },
   ].forEach(({ px, py, kind }) => {
     const p = toScreen(px, py);
-    if (kind === 'lamp') drawFloorLamp(ctx, p.x, p.y, s, t);
-    else drawDecorPlant(ctx, p.x, p.y, s);
+    if (kind === 'lamp') drawFloorLamp(ctx, p.x, p.y, s, t, P);
+    else drawDecorPlant(ctx, p.x, p.y, s, P);
   });
 
-  // 吊灯
   const ch = toScreen(360, 195);
-  drawChandelier(ctx, ch.x, ch.y, s, t);
+  drawChandelier(ctx, ch.x, ch.y, s, t, P);
 
-  // 吧台摆件（筹码柜）
   const bar = toScreen(360, 580);
-  drawChipCabinet(ctx, bar.x, bar.y, s);
+  drawChipCabinet(ctx, bar.x, bar.y, s, P);
 }
 
-export function drawVipSofa(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, flip = false) {
+export function drawVipSofa(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, flip = false, pal: VipPalette = vipPalette('default')) {
   dropShadow(ctx, x, y, 130 * s, 70 * s, 0.14);
   ctx.save();
   ctx.translate(x, y);
   if (flip) ctx.scale(-1, 1);
-  ctx.fillStyle = VIP.burgundy;
+  ctx.fillStyle = pal.burgundy;
   rrect(ctx, -58 * s, -22 * s, 116 * s, 44 * s, 10 * s); ctx.fill();
-  ctx.fillStyle = VIP.velvetDeep;
+  ctx.fillStyle = pal.velvetDeep;
   rrect(ctx, -62 * s, -30 * s, 28 * s, 58 * s, 8 * s); ctx.fill();
   rrect(ctx, 34 * s, -30 * s, 28 * s, 58 * s, 8 * s); ctx.fill();
-  ctx.fillStyle = VIP.gold;
+  ctx.fillStyle = pal.gold;
   for (let i = -2; i <= 2; i++) {
     ctx.beginPath(); ctx.arc(i * 22 * s, -18 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.fillStyle = VIP.cream;
+  ctx.fillStyle = pal.cream;
   ctx.beginPath(); ctx.ellipse(0, 6 * s, 20 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
-export function drawSideTable(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+export function drawSideTable(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, pal: VipPalette = vipPalette('default')) {
   dropShadow(ctx, x, y + 2 * s, 36 * s, 28 * s, 0.1);
-  ctx.fillStyle = VIP.walnutLight;
+  ctx.fillStyle = pal.walnutLight;
   ctx.beginPath(); ctx.ellipse(x, y, 18 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = VIP.gold; ctx.lineWidth = 1.5 * s; ctx.stroke();
-  ctx.fillStyle = VIP.walnut;
+  ctx.strokeStyle = pal.gold; ctx.lineWidth = 1.5 * s; ctx.stroke();
+  ctx.fillStyle = pal.walnut;
   ctx.fillRect(x - 2 * s, y, 4 * s, 14 * s);
 }
 
@@ -994,13 +1004,13 @@ export function drawChipStack(ctx: CanvasRenderingContext2D, x: number, y: numbe
   });
 }
 
-export function drawFloorLamp(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
+export function drawFloorLamp(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number, pal: VipPalette = vipPalette('default')) {
   const glow = 0.85 + Math.sin(t * 3) * 0.15;
   ctx.fillStyle = `rgba(255,190,100,${0.12 * glow})`;
   ctx.beginPath(); ctx.ellipse(x, y + 20 * s, 45 * s, 35 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = VIP.walnutLight;
+  ctx.fillStyle = pal.walnutLight;
   ctx.fillRect(x - 2 * s, y, 4 * s, 38 * s);
-  ctx.fillStyle = VIP.gold;
+  ctx.fillStyle = pal.gold;
   ctx.beginPath();
   ctx.moveTo(x - 14 * s, y - 2 * s);
   ctx.lineTo(x + 14 * s, y - 2 * s);
@@ -1011,7 +1021,7 @@ export function drawFloorLamp(ctx: CanvasRenderingContext2D, x: number, y: numbe
   ctx.beginPath(); ctx.ellipse(x, y - 20 * s, 8 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-export function drawDecorPlant(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+export function drawDecorPlant(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, pal: VipPalette = vipPalette('default')) {
   dropShadow(ctx, x, y + 8 * s, 28 * s, 20 * s, 0.08);
   ctx.fillStyle = '#6b4423';
   ctx.beginPath();
@@ -1020,7 +1030,7 @@ export function drawDecorPlant(ctx: CanvasRenderingContext2D, x: number, y: numb
   ctx.lineTo(x + 10 * s, y + 28 * s);
   ctx.lineTo(x - 10 * s, y + 28 * s);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = VIP.goldDim; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = pal.goldDim; ctx.lineWidth = 1; ctx.stroke();
   ctx.fillStyle = '#2d6a3e';
   for (let i = 0; i < 5; i++) {
     const a = -Math.PI / 2 + (i - 2) * 0.45;
@@ -1032,30 +1042,30 @@ export function drawDecorPlant(ctx: CanvasRenderingContext2D, x: number, y: numb
   ctx.beginPath(); ctx.ellipse(x, y - 18 * s, 10 * s, 14 * s, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-export function drawChandelier(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
-  ctx.strokeStyle = VIP.gold; ctx.lineWidth = 1.5 * s;
+export function drawChandelier(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number, pal: VipPalette = vipPalette('default')) {
+  ctx.strokeStyle = pal.gold; ctx.lineWidth = 1.5 * s;
   ctx.beginPath(); ctx.moveTo(x, y - 30 * s); ctx.lineTo(x, y); ctx.stroke();
-  ctx.fillStyle = VIP.gold;
+  ctx.fillStyle = pal.gold;
   ctx.beginPath(); ctx.ellipse(x, y - 32 * s, 6 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
   for (let i = -2; i <= 2; i++) {
     const cx = x + i * 14 * s;
     const spark = 0.6 + Math.sin(t * 4 + i) * 0.4;
     ctx.fillStyle = `rgba(255,230,160,${spark})`;
     ctx.beginPath(); ctx.arc(cx, y + 4 * s, 4 * s, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = VIP.gold; ctx.lineWidth = 1 * s;
+    ctx.strokeStyle = pal.gold; ctx.lineWidth = 1 * s;
     ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, y + 4 * s); ctx.stroke();
   }
 }
 
-export function drawChipCabinet(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+export function drawChipCabinet(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, pal: VipPalette = vipPalette('default')) {
   dropShadow(ctx, x, y, 100 * s, 40 * s, 0.1);
-  ctx.fillStyle = VIP.walnutLight;
+  ctx.fillStyle = pal.walnutLight;
   rrect(ctx, x - 50 * s, y - 18 * s, 100 * s, 36 * s, 6 * s); ctx.fill();
-  ctx.strokeStyle = VIP.gold; ctx.lineWidth = 1.5 * s; ctx.stroke();
+  ctx.strokeStyle = pal.gold; ctx.lineWidth = 1.5 * s; ctx.stroke();
   for (let i = -2; i <= 2; i++) {
     drawChipStack(ctx, x + i * 18 * s, y - 6 * s, s * 0.85);
   }
-  ctx.fillStyle = VIP.cream;
+  ctx.fillStyle = pal.cream;
   ctx.font = `600 ${Math.max(7, 8 * s)}px Inter,sans-serif`;
   ctx.textAlign = 'center';
   ctx.fillText('筹码柜', x, y + 14 * s);
@@ -1100,33 +1110,33 @@ const YUE = {
   jade: '#3d7a62',
 };
 
-function drawChineseLantern(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
+function drawChineseLantern(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number, pal: CantonesePalette) {
   const sway = Math.sin(t * 2 + x * 0.02) * 3 * s;
-  ctx.strokeStyle = YUE.gold; ctx.lineWidth = 1.2 * s;
+  ctx.strokeStyle = pal.gold; ctx.lineWidth = 1.2 * s;
   ctx.beginPath(); ctx.moveTo(x, y - 18 * s); ctx.lineTo(x + sway, y - 6 * s); ctx.stroke();
   dropShadow(ctx, x + sway, y, 16 * s, 22 * s, 0.1);
-  ctx.fillStyle = YUE.crimson;
+  ctx.fillStyle = pal.crimson;
   ctx.beginPath(); ctx.ellipse(x + sway, y, 14 * s, 18 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = YUE.gold; ctx.lineWidth = 1.5 * s; ctx.stroke();
-  ctx.fillStyle = YUE.gold;
+  ctx.strokeStyle = pal.gold; ctx.lineWidth = 1.5 * s; ctx.stroke();
+  ctx.fillStyle = pal.gold;
   ctx.beginPath(); ctx.ellipse(x + sway, y - 16 * s, 5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(x + sway, y + 16 * s, 4 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = YUE.goldDim;
+  ctx.fillStyle = pal.goldDim;
   ctx.font = `700 ${Math.max(7, 8 * s)}px serif`; ctx.textAlign = 'center';
   ctx.fillText('福', x + sway, y + 3 * s);
 }
 
-function drawTeaStation(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+function drawTeaStation(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, pal: CantonesePalette) {
   dropShadow(ctx, x, y, 70 * s, 40 * s, 0.08);
-  ctx.fillStyle = YUE.wood;
+  ctx.fillStyle = pal.wood;
   rrect(ctx, x - 35 * s, y - 8 * s, 70 * s, 16 * s, 4 * s); ctx.fill();
-  ctx.fillStyle = YUE.woodLight;
+  ctx.fillStyle = pal.woodLight;
   rrect(ctx, x - 30 * s, y - 22 * s, 24 * s, 14 * s, 3 * s); ctx.fill();
   ctx.fillStyle = '#fff8f0';
   for (let i = 0; i < 3; i++) {
     ctx.beginPath(); ctx.ellipse(x + 8 * s + i * 16 * s, y - 2 * s, 6 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.fillStyle = YUE.goldDim;
+  ctx.fillStyle = pal.goldDim;
   ctx.font = `600 ${Math.max(7, 8 * s)}px Inter,sans-serif`; ctx.textAlign = 'center';
   ctx.fillText('功夫茶', x, y + 14 * s);
 }
@@ -1195,25 +1205,28 @@ export function drawCantoneseBackdrop(
   toScreen: (px: number, py: number) => { x: number; y: number },
   ws: (v: number) => number,
   dayMode: 'day' | 'night',
+  skinKey = 'default',
 ) {
+  const pal = cantonesePalette(skinKey);
   const w = cam.cw, h = cam.ch;
   const grd = ctx.createRadialGradient(w / 2, h * 0.4, 0, w / 2, h * 0.4, Math.max(w, h) * 0.72);
-  grd.addColorStop(0, dayMode === 'night' ? '#3a2820' : '#faf3e8');
-  grd.addColorStop(1, dayMode === 'night' ? '#241810' : '#f0e4d4');
+  grd.addColorStop(0, dayMode === 'night' ? pal.crimsonDeep : pal.floorLight);
+  grd.addColorStop(1, dayMode === 'night' ? '#241810' : pal.floorDark);
   ctx.fillStyle = grd; ctx.fillRect(0, 0, w, h);
 
   const header = toScreen(360, 48);
-  ctx.fillStyle = YUE.crimsonDeep;
+  ctx.fillStyle = pal.crimsonDeep;
   rrect(ctx, header.x - ws(300), header.y - ws(8), ws(600), ws(68), ws(6)); ctx.fill();
-  ctx.strokeStyle = YUE.gold; ctx.lineWidth = ws(2);
+  ctx.strokeStyle = pal.gold; ctx.lineWidth = ws(2);
   ctx.strokeRect(header.x - ws(290), header.y - ws(4), ws(580), ws(58));
 
-  ctx.fillStyle = YUE.gold;
+  ctx.fillStyle = pal.gold;
   ctx.font = `700 ${Math.max(12, ws(15))}px Georgia,serif`; ctx.textAlign = 'center';
-  ctx.fillText('◆  广式粤菜馆  ◆', header.x, header.y + ws(28));
+  const title = skinKey === 'modern' ? '◆  现代粤菜馆  ◆' : '◆  广式粤菜馆  ◆';
+  ctx.fillText(title, header.x, header.y + ws(28));
   ctx.font = `400 ${Math.max(8, ws(9))}px Inter,sans-serif`;
   ctx.fillStyle = 'rgba(250,243,232,0.75)';
-  ctx.fillText('CANTONESE CUISINE · 老火靓汤 · 烧味双拼', header.x, header.y + ws(46));
+  ctx.fillText(skinKey === 'modern' ? 'MODERN CANTONESE · 轻食 · 茶点' : 'CANTONESE CUISINE · 老火靓汤 · 烧味双拼', header.x, header.y + ws(46));
 }
 
 export function drawCantoneseDecor(
@@ -1222,31 +1235,41 @@ export function drawCantoneseDecor(
   ws: (v: number) => number,
   s: number,
   t: number,
+  skinKey = 'default',
 ) {
-  [[120, 120], [360, 110], [600, 120]].forEach(([px, py]) => {
-    const p = toScreen(px, py);
-    drawChineseLantern(ctx, p.x, p.y, s, t);
-  });
+  const pal = cantonesePalette(skinKey);
+  if (skinKey !== 'modern') {
+    [[120, 120], [360, 110], [600, 120]].forEach(([px, py]) => {
+      const p = toScreen(px, py);
+      drawChineseLantern(ctx, p.x, p.y, s, t, pal);
+    });
+  } else {
+    [[120, 120], [600, 120]].forEach(([px, py]) => {
+      const p = toScreen(px, py);
+      ctx.fillStyle = pal.jade;
+      rrect(ctx, p.x - ws(10), p.y - ws(40), ws(20), ws(80), ws(4)); ctx.fill();
+    });
+  }
 
   [[85, 380], [635, 380]].forEach(([px, py]) => {
     const p = toScreen(px, py);
-    ctx.fillStyle = YUE.wood;
+    ctx.fillStyle = pal.wood;
     rrect(ctx, p.x - ws(14), p.y - ws(90), ws(28), ws(180), ws(3)); ctx.fill();
-    ctx.strokeStyle = YUE.goldDim; ctx.lineWidth = 1 * s;
+    ctx.strokeStyle = pal.goldDim; ctx.lineWidth = 1 * s;
     for (let i = 0; i < 6; i++) {
       ctx.strokeRect(p.x - ws(10), p.y - ws(80) + i * ws(28), ws(20), ws(22));
     }
   });
 
   const tea = toScreen(120, 555);
-  drawTeaStation(ctx, tea.x, tea.y, s);
+  drawTeaStation(ctx, tea.x, tea.y, s, pal);
 
   [[200, 280], [360, 280], [520, 280], [200, 470], [360, 470], [520, 470]].forEach(([px, py]) => {
     const p = toScreen(px, py);
     drawLazySusanHint(ctx, p.x, p.y, 22, s, t);
   });
 
-  ctx.fillStyle = 'rgba(184,50,50,0.06)';
+  ctx.fillStyle = skinKey === 'modern' ? 'rgba(90,152,136,0.08)' : 'rgba(184,50,50,0.06)';
   const aisle = toScreen(360, 340);
   ctx.beginPath(); ctx.ellipse(aisle.x, aisle.y, ws(280), ws(180), 0, 0, Math.PI * 2); ctx.fill();
 }
@@ -1358,13 +1381,13 @@ function drawZenPlant(ctx: CanvasRenderingContext2D, x: number, y: number, s: nu
   ctx.beginPath(); ctx.ellipse(x, y - 14 * s, 6 * s, 10 * s, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-function drawSpaFloorMat(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, s: number) {
+function drawSpaFloorMat(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, s: number, pal: SpaPalette) {
   dropShadow(ctx, x, y, w * s, h * s, 0.06);
-  ctx.fillStyle = '#e8e0d4';
+  ctx.fillStyle = pal.mat;
   rrect(ctx, x - (w / 2) * s, y - (h / 2) * s, w * s, h * s, 6 * s); ctx.fill();
-  ctx.strokeStyle = SPA.bamboo; ctx.lineWidth = 1 * s;
+  ctx.strokeStyle = pal.bamboo; ctx.lineWidth = 1 * s;
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(155,135,196,0.25)'; ctx.lineWidth = 0.8 * s;
+  ctx.strokeStyle = pal.glow; ctx.lineWidth = 0.8 * s;
   for (let i = -2; i <= 2; i++) {
     ctx.beginPath();
     ctx.moveTo(x - (w / 2 - 8) * s, y + i * 10 * s);
@@ -1378,15 +1401,17 @@ export function drawSpaZenBackdrop(
   toScreen: (px: number, py: number) => { x: number; y: number },
   ws: (v: number) => number,
   dayMode: 'day' | 'night',
+  skinKey = 'default',
 ) {
+  const pal = spaPalette(skinKey);
   const w = cam.cw, h = cam.ch;
   const grd = ctx.createRadialGradient(w / 2, h * 0.42, 0, w / 2, h * 0.42, Math.max(w, h) * 0.7);
   if (dayMode === 'night') {
     grd.addColorStop(0, '#3a3548');
     grd.addColorStop(1, '#252030');
   } else {
-    grd.addColorStop(0, '#ebe8f2');
-    grd.addColorStop(1, '#ddd6e8');
+    grd.addColorStop(0, pal.floorLight);
+    grd.addColorStop(1, pal.floorDark);
   }
   ctx.fillStyle = grd;
   ctx.fillRect(0, 0, w, h);
@@ -1394,19 +1419,19 @@ export function drawSpaZenBackdrop(
   const header = toScreen(310, 42);
   ctx.fillStyle = dayMode === 'night' ? '#2a2438' : '#f0ebe6';
   rrect(ctx, header.x - ws(280), header.y - ws(6), ws(560), ws(72), ws(6)); ctx.fill();
-  ctx.strokeStyle = SPA.lavender; ctx.lineWidth = ws(1.5);
+  ctx.strokeStyle = pal.lavender; ctx.lineWidth = ws(1.5);
   ctx.beginPath();
   ctx.moveTo(header.x - ws(250), header.y + ws(58));
   ctx.lineTo(header.x + ws(250), header.y + ws(58));
   ctx.stroke();
 
-  ctx.fillStyle = SPA.lavenderDeep;
+  ctx.fillStyle = pal.lavenderDeep;
   ctx.font = `700 ${Math.max(11, ws(14))}px Georgia,serif`;
   ctx.textAlign = 'center';
-  ctx.fillText('☯  禅意理疗馆  ☯', header.x, header.y + ws(32));
+  ctx.fillText(skinKey === 'tropical' ? '🌴  热带理疗馆  🌴' : '☯  禅意理疗馆  ☯', header.x, header.y + ws(32));
   ctx.font = `400 ${Math.max(8, ws(9))}px Inter,sans-serif`;
   ctx.fillStyle = 'rgba(107,91,138,0.65)';
-  ctx.fillText('ZEN SPA & WELLNESS LOUNGE', header.x, header.y + ws(48));
+  ctx.fillText(skinKey === 'tropical' ? 'TROPICAL SPA RETREAT' : 'ZEN SPA & WELLNESS LOUNGE', header.x, header.y + ws(48));
 
   [[55, 300, false], [565, 300, true]].forEach(([px, py, flip]) => {
     const p = toScreen(px, py);
@@ -1420,13 +1445,15 @@ export function drawSpaVipDecor(
   ws: (v: number) => number,
   s: number,
   t: number,
+  skinKey = 'default',
 ) {
+  const pal = spaPalette(skinKey);
   [
     { px: 310, py: 340, w: 340, h: 48 },
     { px: 310, py: 200, w: 280, h: 36 },
   ].forEach(({ px, py, w, h }) => {
     const p = toScreen(px, py);
-    drawSpaFloorMat(ctx, p.x, p.y, w, h, s);
+    drawSpaFloorMat(ctx, p.x, p.y, w, h, s, pal);
   });
 
   [
@@ -1434,9 +1461,9 @@ export function drawSpaVipDecor(
     { px: 130, py: 420 }, { px: 310, py: 420 }, { px: 490, py: 420 },
   ].forEach(({ px, py }) => {
     const p = toScreen(px, py);
-    ctx.fillStyle = 'rgba(155,135,196,0.12)';
+    ctx.fillStyle = pal.glow.replace('0.28', '0.12').replace('0.25', '0.12');
     ctx.beginPath(); ctx.ellipse(p.x, p.y, ws(58), ws(38), 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(155,135,196,0.28)'; ctx.lineWidth = 1 * s;
+    ctx.strokeStyle = pal.glow; ctx.lineWidth = 1 * s;
     ctx.stroke();
   });
 
@@ -1460,7 +1487,7 @@ export function drawSpaVipDecor(
     const p = toScreen(px, py);
     const lg = ctx.createLinearGradient(p.x, p.y - ws(100), p.x, p.y + ws(100));
     lg.addColorStop(0, 'rgba(155,135,196,0)');
-    lg.addColorStop(0.5, 'rgba(155,135,196,0.18)');
+    lg.addColorStop(0.5, pal.glow);
     lg.addColorStop(1, 'rgba(155,135,196,0)');
     ctx.fillStyle = lg;
     ctx.fillRect(p.x - ws(8), p.y - ws(110), ws(16), ws(220));

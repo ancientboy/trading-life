@@ -16,7 +16,7 @@ import {
 } from '../lib/customAgents';
 import {
   fetchLifeState, migrateLifeState, lifeIdleTick, lifeSessionStart,
-  lifeActivityComplete, lifeDispatch, lifeClaimTask, lifeShopBuy,
+  lifeActivityComplete, lifeDispatch, lifeClaimTask, lifeShopBuy, lifeSetZoneSkin,
   lifeCreateAgent, lifeSaveAgentSoul, lifeSaveAgentAppearance, lifeAgentSpeak,
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
 } from '../lib/lifeApi';
@@ -33,6 +33,10 @@ import {
 } from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
 import { isCrossZoneTravel, zoneForNode, zoneForIntent } from '../lib/zoneTransit';
+import {
+  DEFAULT_ZONE_SKINS, effectiveZoneSkin, normalizeZoneSkins,
+  type SkinZone,
+} from '../lib/zoneSkins';
 
 let seatSyncTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleSeatSync(fn: () => Promise<void>) {
@@ -106,6 +110,8 @@ interface GameStore {
   seatOccupancy: SeatMap;
   shopUnlocks: string[];
   shopCatalog: LifeState['shop_catalog'];
+  /** 各区域当前选用的场景皮肤 */
+  zoneSkins: Record<SkinZone, string>;
   facilityCosts: Record<string, number>;
   dailyAllowanceClaimed: boolean;
   dailyAllowanceAmount: number;
@@ -182,6 +188,7 @@ interface GameStore {
   claimDailyTask: (taskId: string) => Promise<boolean>;
   claimDailyAllowance: () => Promise<boolean>;
   buyShopItem: (itemId: string) => Promise<boolean>;
+  setZoneSkin: (zone: SkinZone, skinId: string) => Promise<boolean>;
   speakForAgent: (agentId: string, context?: string, activity?: string | null) => Promise<void>;
   setAgentBubble: (agentId: string | null, text: string, until: number) => void;
   applyLifeState: (state: Partial<LifeState>) => void;
@@ -234,6 +241,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   seatOccupancy: {},
   shopUnlocks: [],
   shopCatalog: [],
+  zoneSkins: { ...DEFAULT_ZONE_SKINS },
   facilityCosts: { ...FACILITY_BASE_COST },
   dailyAllowanceClaimed: false,
   dailyAllowanceAmount: DAILY_ALLOWANCE_AMOUNT,
@@ -702,13 +710,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   applyLifeState: (state) => {
     const perms = state.permissions;
     const operable = perms?.operable_agent_ids ?? [];
+    const shopUnlocks = state.shop_unlocks ?? get().shopUnlocks;
+    const rawSkins = state.zone_skins ?? (state.stats?.zone_skins as Record<string, string> | undefined);
+    const normalized = normalizeZoneSkins(rawSkins);
+    const zoneSkins = { ...DEFAULT_ZONE_SKINS };
+    for (const z of Object.keys(zoneSkins) as SkinZone[]) {
+      zoneSkins[z] = effectiveZoneSkin(z, normalized, shopUnlocks);
+    }
     const patch: Partial<GameStore> = {
       points: state.points ?? get().points,
       dailyTasks: state.daily_tasks ?? get().dailyTasks,
       dailyTaskDefs: state.daily_task_defs ?? get().dailyTaskDefs,
       dailyDate: state.daily_date ?? get().dailyDate,
-      shopUnlocks: state.shop_unlocks ?? get().shopUnlocks,
+      shopUnlocks,
       shopCatalog: state.shop_catalog ?? get().shopCatalog,
+      zoneSkins,
       facilityCosts: state.facility_costs ?? get().facilityCosts,
       dailyAllowanceClaimed: state.daily_allowance?.claimed_today ?? get().dailyAllowanceClaimed,
       dailyAllowanceAmount: state.daily_allowance?.amount ?? DAILY_ALLOWANCE_AMOUNT,
@@ -893,9 +909,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return false;
     }
     set({ points: res.balance });
-    const state = await fetchLifeState();
-    get().applyLifeState(state);
+    if (res.state) get().applyLifeState(res.state);
+    else {
+      const state = await fetchLifeState();
+      get().applyLifeState(state);
+    }
     get().addMessage(`已解锁：${res.item?.label ?? itemId}`);
+    return true;
+  },
+
+  setZoneSkin: async (zone, skinId) => {
+    const res = await lifeSetZoneSkin(zone, skinId);
+    if (!res.ok) {
+      get().addMessage(res.error ?? '切换皮肤失败');
+      return false;
+    }
+    if (res.state) get().applyLifeState(res.state);
+    else if (res.zone_skins) {
+      const shopUnlocks = get().shopUnlocks;
+      const normalized = normalizeZoneSkins(res.zone_skins);
+      const zoneSkins = { ...DEFAULT_ZONE_SKINS };
+      for (const z of Object.keys(zoneSkins) as SkinZone[]) {
+        zoneSkins[z] = effectiveZoneSkin(z, normalized, shopUnlocks);
+      }
+      set({ zoneSkins });
+    }
     return true;
   },
 
