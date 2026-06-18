@@ -225,7 +225,7 @@ function drawNiumaBodySphere(ctx: CanvasRenderingContext2D, py: number, view: 'f
   }
 }
 
-/** 漂浮圆手 — 始终绘制在角色两侧 */
+/** 漂浮圆手 — 绘制在身体两侧外侧 */
 export function drawNiumaHands2d(
   ctx: CanvasRenderingContext2D,
   py: number,
@@ -239,14 +239,15 @@ export function drawNiumaHands2d(
   ctx.strokeStyle = outline;
   ctx.lineWidth = 1;
   const r = 5.8;
+  const yHand = py + 10 - bounce;
   if (view === 'front') {
-    ctx.beginPath(); ctx.arc(-15 - swing * 0.25, py + 3 - bounce, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(15 + swing * 0.25, py + 3 - bounce, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-22 - swing * 0.25, yHand, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(22 + swing * 0.25, yHand, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   } else if (view === 'back') {
-    ctx.beginPath(); ctx.arc(-13 - swing * 0.2, py + 3 - bounce, r - 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(13 + swing * 0.2, py + 3 - bounce, r - 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-20 - swing * 0.2, yHand, r - 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(20 + swing * 0.2, yHand, r - 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   } else {
-    ctx.beginPath(); ctx.arc(15 + swing * 0.25, py + 3 - bounce, r - 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(26 + swing * 0.25, yHand, r - 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
 }
 

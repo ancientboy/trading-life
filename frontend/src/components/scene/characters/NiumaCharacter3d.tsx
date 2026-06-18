@@ -127,11 +127,11 @@ function NiumaBody({ skinId, hairStyle, hairColor }: { skinId: NiumaSkinId; hair
       <mesh position={[0, 0.5, 0.2]} scale={[0.06, skinId === 'casual' ? 0.14 : 0.2, 0.04]} material={flat(tieColor)}>
         <boxGeometry args={[1, 1, 1]} />
       </mesh>
-      {/* 漂浮圆手 — 置于身体前方 */}
-      <mesh position={[-0.52, 0.44, 0.22]} renderOrder={8} material={flat('#faf8f4')}>
+      {/* 漂浮圆手 — 身体两侧 */}
+      <mesh position={[-0.56, 0.38, 0.04]} renderOrder={8} material={flat('#faf8f4')}>
         <sphereGeometry args={[0.11, 10, 10]} />
       </mesh>
-      <mesh position={[0.52, 0.44, 0.22]} renderOrder={8} material={flat('#faf8f4')}>
+      <mesh position={[0.56, 0.38, 0.04]} renderOrder={8} material={flat('#faf8f4')}>
         <sphereGeometry args={[0.11, 10, 10]} />
       </mesh>
       <BillboardFace={(ctx) => {
