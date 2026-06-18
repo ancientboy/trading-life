@@ -70,18 +70,29 @@ export const RESTAURANT_TABLES: DiningTableDef[] = [
 
 export const CASINO_TABLE = { px: 360, py: 330, r: 118 };
 
-export const CASINO_SEATS: PokerSeatDef[] = Array.from({ length: 8 }, (_, i) => {
-  const ang = -Math.PI / 2 + (i / 8) * Math.PI * 2;
-  const dist = 155;
-  const px = CASINO_TABLE.px + Math.cos(ang) * dist;
-  const py = CASINO_TABLE.py + Math.sin(ang) * dist;
-  const facing = (['s', 'sw', 'w', 'nw', 'n', 'ne', 'e', 'se'] as const)[i];
+/** 8 等分圆环，0 号位为正北荷官位（不放玩家椅） */
+export const CASINO_SEAT_RING = 8;
+export const CASINO_PLAYER_SEATS = 7;
+export const CASINO_SEAT_DIST = 155;
+
+export function casinoSeatSlotAngle(slotIndex: number): number {
+  return -Math.PI / 2 + (slotIndex / CASINO_SEAT_RING) * Math.PI * 2;
+}
+
+/** 7 玩家位：顺时针 1–7，跳过北侧荷官位（slot 0） */
+export const CASINO_SEATS: PokerSeatDef[] = Array.from({ length: CASINO_PLAYER_SEATS }, (_, idx) => {
+  const num = idx + 1;
+  const slot = num; // slot 1..7，跳过 0（荷官正后方）
+  const ang = casinoSeatSlotAngle(slot);
+  const px = CASINO_TABLE.px + Math.cos(ang) * CASINO_SEAT_DIST;
+  const py = CASINO_TABLE.py + Math.sin(ang) * CASINO_SEAT_DIST;
+  const compass = (['s', 'sw', 'w', 'nw', 'n', 'ne', 'e'] as const)[idx];
   const fMap: Record<string, 'n' | 's' | 'e' | 'w'> = {
-    s: 's', sw: 's', w: 'w', nw: 'n', n: 'n', ne: 'n', e: 'e', se: 's',
+    s: 's', sw: 's', w: 'w', nw: 'n', n: 'n', ne: 'n', e: 'e',
   };
   return {
-    id: `poker_s${i + 1}`, num: i + 1, px, py,
-    facing: fMap[facing] ?? 's',
+    id: `poker_s${num}`, num, px, py,
+    facing: fMap[compass] ?? 's',
   };
 });
 

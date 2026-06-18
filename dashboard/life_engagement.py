@@ -230,9 +230,8 @@ class PokerSoloBody(BaseModel):
     buy_in: int = 30
 
 
-# 系统 NPC 牌友（单人模式自动补位）
+# 系统 NPC 牌友（单人模式自动补位；荷官 Jack 仅作 NPC 发牌，不占玩家位）
 NPC_POKER_ROSTER = [
-    ("npc_jack", "荷官 Jack", "poker_s1"),
     ("npc_lily", "服务员 Lily", "poker_s3"),
     ("npc_gaga", "技师 Gaga", "poker_s5"),
 ]
@@ -421,7 +420,7 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
 
 @pvp_router.post("/pvp/poker/solo")
 def poker_solo(body: PokerSoloBody, account_id: str = Depends(resolve_account_id)):
-    """单人 vs 系统 NPC（荷官 Jack + 2 位 NPC），立即开局"""
+    """单人 vs 系统 NPC（2 位 NPC 牌友 + 荷官 Jack 发牌），立即开局"""
     from life_game import load_user, save_user, _spend
 
     buy_in = max(10, min(body.buy_in, 500))
@@ -496,7 +495,7 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
     with life_db._lock:
         with life_db._conn() as c:
             count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (target["id"],)).fetchone()[0]
-            seat = body.seat_id or f"poker_s{(count % 8) + 1}"
+            seat = body.seat_id or f"poker_s{(count % 7) + 1}"
             c.execute(
                 "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
                 (target["id"], account_id, body.agent_id, seat, 0),
@@ -573,7 +572,7 @@ async def join_poker_room(room_id: str, body: PokerJoinBody, account_id: str = D
             count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (room_id,)).fetchone()[0]
             if count >= 8:
                 return {"ok": False, "error": "房间已满"}
-            seat = body.seat_id or f"poker_s{(count % 8) + 1}"
+            seat = body.seat_id or f"poker_s{(count % 7) + 1}"
             c.execute(
                 "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
                 (room_id, account_id, body.agent_id, seat, 0),

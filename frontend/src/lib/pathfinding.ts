@@ -46,7 +46,7 @@ export const OfficePath = {
       ['rest_c','dine_4'],['rest_c','dine_5'],['rest_c','dine_6'],
       ['door_sc','cas_d'],['cas_d','cas_c'],['cas_c','poker_table'],
       ['poker_table','poker_s1'],['poker_table','poker_s2'],['poker_table','poker_s3'],['poker_table','poker_s4'],
-      ['poker_table','poker_s5'],['poker_table','poker_s6'],['poker_table','poker_s7'],['poker_table','poker_s8'],
+      ['poker_table','poker_s5'],['poker_table','poker_s6'],['poker_table','poker_s7'],
       ['d_xau','recv_ctr'],['recv_ctr','a_xau'],
     ];
     const adj: Record<string, string[]> = {};

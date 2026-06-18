@@ -5,6 +5,7 @@ import { getMassageBedSprite } from '../../lib/massageBedSprite';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
 import { getRestSofaSprite } from '../../lib/restSofaSprite';
 import { PAPER } from '../../lib/zoneProjection';
+import { casinoSeatSlotAngle, CASINO_PLAYER_SEATS } from '../../lib/zoneFurniture';
 import { outfitForRole, type NpcRole } from '../../lib/npcOutfits';
 import { DEFAULT_SCARF, scarfColorsFromAccent, type ScarfPalette } from '../../lib/scarfColors';
 import {
@@ -868,6 +869,7 @@ export function drawPokerTable8(
     ctx.rotate(Math.PI);
     ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
     ctx.restore();
+    drawPokerSeatNumbers(ctx, x, y, s);
     return;
   }
 
@@ -879,16 +881,7 @@ export function drawPokerTable8(
   ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3 * s; ctx.stroke();
   ctx.fillStyle = '#1a4030';
   ctx.beginPath(); ctx.ellipse(x, y, 95 * s, 62 * s, 0, 0, Math.PI * 2); ctx.fill();
-  for (let i = 1; i <= 8; i++) {
-    const ang = -Math.PI / 2 + ((i - 1) / 8) * Math.PI * 2;
-    const lx = x + Math.cos(ang) * 62 * s;
-    const ly = y + Math.sin(ang) * 42 * s;
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.beginPath(); ctx.arc(lx, ly, 9 * s, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#3d3530';
-    ctx.font = `700 ${Math.max(8, 10 * s)}px Inter,sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(String(i), lx, ly + 3 * s);
-  }
+  drawPokerSeatNumbers(ctx, x, y, s);
   const cards = ['🂡', '🂱', '🃁', '🃑'];
   cards.forEach((c, i) => {
     ctx.font = `${14 * s}px sans-serif`;
@@ -897,6 +890,21 @@ export function drawPokerTable8(
   ctx.fillStyle = 'rgba(212,175,55,0.85)';
   ctx.font = `600 ${Math.max(9, 11 * s)}px Inter,sans-serif`;
   ctx.fillText('TEXAS HOLD\'EM', x, y + 4 * s);
+}
+
+/** 桌面顺时针 1–7 号位（跳过荷官正北） */
+function drawPokerSeatNumbers(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  for (let seatNum = 1; seatNum <= CASINO_PLAYER_SEATS; seatNum++) {
+    const ang = casinoSeatSlotAngle(seatNum);
+    const lx = x + Math.cos(ang) * 62 * s;
+    const ly = y + Math.sin(ang) * 42 * s;
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.beginPath(); ctx.arc(lx, ly, 9 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(212,175,55,0.55)'; ctx.lineWidth = 0.8 * s; ctx.stroke();
+    ctx.fillStyle = '#3d3530';
+    ctx.font = `700 ${Math.max(8, 10 * s)}px Inter,sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText(String(seatNum), lx, ly + 3 * s);
+  }
 }
 
 /** 牌桌发牌动画 — 逐张落向桌面中心 */
