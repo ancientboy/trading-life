@@ -14,6 +14,7 @@ import { DINE_TIERS, MASSAGE_TIERS } from '../../lib/leisureTiers';
 import { isZoneSkinShopItem } from '../../lib/zoneSkins';
 import { isOutfitShopItem } from '../../lib/lifeShop';
 import { StrategyEditor } from './StrategyEditor';
+import { SceneSkinsPanel } from './SceneSkinsPanel';
 
 const TITLES: Record<Exclude<ModalId, null>, string> = {
   workshop: 'Agent 工坊',
