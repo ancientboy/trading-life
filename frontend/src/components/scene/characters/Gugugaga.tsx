@@ -10,6 +10,7 @@ import { DEFAULT_SCARF, scarfColorsFromAccent, scarfPaletteForCharacter, type Sc
 import type { AgentHeadwear, HatStyleId } from '../../../lib/agentAppearance';
 import { resolveAppearance } from '../../../lib/agentAppearance';
 import type { OutfitId } from '../../../lib/agentOutfits';
+import { outfitReplacesBaseCharacter } from '../../../lib/agentOutfits';
 
 export interface GugugagaProps {
   accentColor?: string;
@@ -153,12 +154,15 @@ export function Gugugaga({
     [outfitId, scarfEnabled, hatEnabled, headwear, hatStyle, accentColor],
   );
   const isNpc = role !== 'agent';
+  const useFullOutfit = !isNpc && outfitReplacesBaseCharacter(appearance.outfitId);
   const scarfPalette = useMemo(
     () => (isNpc ? scarfPaletteForCharacter(accentColor, true) : scarfColorsFromAccent(accentColor)),
     [accentColor, isNpc],
   );
-  const showScarf = isNpc || appearance.scarfEnabled;
-  const showHat = !isNpc && appearance.hatEnabled;
+  const showScarf = !useFullOutfit && (isNpc || appearance.scarfEnabled);
+  const showHat = !useFullOutfit && !isNpc && appearance.hatEnabled;
+  const showScarfOnOutfit = useFullOutfit && !isNpc && appearance.scarfEnabled;
+  const showHatOnOutfit = useFullOutfit && !isNpc && appearance.hatEnabled;
 
   return (
     <group ref={g} scale={scale} onClick={(e) => { e.stopPropagation(); onClick?.(); }}>
@@ -174,30 +178,36 @@ export function Gugugaga({
           <meshBasicMaterial color="#888888" transparent opacity={0.06 + stress * 0.0008} depthWrite={false} />
         </mesh>
       )}
-      <mesh position={[0, 0.48, 0]} scale={[1, 0.75, 0.85]} material={flat('#f2f2f2')}>
-        <sphereGeometry args={[0.42, 12, 12]} />
-      </mesh>
-      <mesh position={[0, 0.52, -0.08]} scale={[1.05, 0.7, 0.9]} material={flat('#1a1a1a')}>
-        <sphereGeometry args={[0.4, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
-      </mesh>
-      <PenguinFace />
-      {!isNpc && appearance.outfitId !== 'default' && (
+      {!useFullOutfit && (
+        <>
+          <mesh position={[0, 0.48, 0]} scale={[1, 0.75, 0.85]} material={flat('#f2f2f2')}>
+            <sphereGeometry args={[0.42, 12, 12]} />
+          </mesh>
+          <mesh position={[0, 0.52, -0.08]} scale={[1.05, 0.7, 0.9]} material={flat('#1a1a1a')}>
+            <sphereGeometry args={[0.4, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
+          </mesh>
+          <PenguinFace />
+          <group ref={wingL} position={[-0.44, 0.52, 0.02]}>
+            <mesh rotation={[0, 0, 0.55]} material={flat('#1a1a1a')}><boxGeometry args={[0.12, 0.28, 0.04]} /></mesh>
+          </group>
+          <group ref={wingR} position={[0.44, 0.52, 0.02]}>
+            <mesh rotation={[0, 0, -0.55]} material={flat('#1a1a1a')}><boxGeometry args={[0.12, 0.28, 0.04]} /></mesh>
+          </group>
+          <mesh position={[-0.14, 0.06, 0.08]} scale={[1.3, 0.35, 1.5]} material={flat('#f5a623')}>
+            <sphereGeometry args={[0.1, 8, 8]} />
+          </mesh>
+          <mesh position={[0.14, 0.06, 0.08]} scale={[1.3, 0.35, 1.5]} material={flat('#f5a623')}>
+            <sphereGeometry args={[0.1, 8, 8]} />
+          </mesh>
+        </>
+      )}
+      {useFullOutfit && (
         <AgentOutfit3d outfitId={appearance.outfitId} accentColor={accentColor} />
       )}
       {showScarf && <PenguinScarf palette={isNpc ? DEFAULT_SCARF : scarfPalette} />}
       {showHat && <AgentHat3d style={appearance.hatStyle} color={accentColor} />}
-      <group ref={wingL} position={[-0.44, 0.52, 0.02]}>
-        <mesh rotation={[0, 0, 0.55]} material={flat('#1a1a1a')}><boxGeometry args={[0.12, 0.28, 0.04]} /></mesh>
-      </group>
-      <group ref={wingR} position={[0.44, 0.52, 0.02]}>
-        <mesh rotation={[0, 0, -0.55]} material={flat('#1a1a1a')}><boxGeometry args={[0.12, 0.28, 0.04]} /></mesh>
-      </group>
-      <mesh position={[-0.14, 0.06, 0.08]} scale={[1.3, 0.35, 1.5]} material={flat('#f5a623')}>
-        <sphereGeometry args={[0.1, 8, 8]} />
-      </mesh>
-      <mesh position={[0.14, 0.06, 0.08]} scale={[1.3, 0.35, 1.5]} material={flat('#f5a623')}>
-        <sphereGeometry args={[0.1, 8, 8]} />
-      </mesh>
+      {showScarfOnOutfit && <PenguinScarf palette={scarfPalette} />}
+      {showHatOnOutfit && <AgentHat3d style={appearance.hatStyle} color={accentColor} />}
       {charState === 'trading' && !activity && (
         <mesh position={[0.35, 0.62, 0.25]} material={flat('#2a2a2a')}><boxGeometry args={[0.22, 0.14, 0.03]} /></mesh>
       )}
