@@ -6,7 +6,9 @@ import {
   pokerSolo, pokerQuickJoin, createPokerRoom, joinPokerRoomByCode, joinPokerRoom,
   startPokerRoom, listPokerRooms, type PokerRoom,
 } from '../../lib/lifeEngagementApi';
-import { isLoggedIn } from '../../lib/lifeAuth';
+import { isLoggedIn, getStoredAccount } from '../../lib/lifeAuth';
+
+const POKER_SEAT_NUMS = [1, 2, 3, 4, 5, 6, 7] as const;
 
 const BUY_IN_TIERS = [
   { id: 'casual', buyIn: 30, label: '休闲局', desc: '底注 30 · 适合新手' },
@@ -36,12 +38,13 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const applyPokerRoom = useGameStore(s => s.applyPokerRoom);
   const clearPokerRoom = useGameStore(s => s.clearPokerRoom);
   const leavePokerRoom = useGameStore(s => s.leavePokerRoom);
+  const changePokerRoomSeat = useGameStore(s => s.changePokerRoomSeat);
   const seatAgentAtPoker = useGameStore(s => s.seatAgentAtPoker);
   const syncPokerRoom = useGameStore(s => s.syncPokerRoom);
 
   const [tierId, setTierId] = useState<string>('casual');
   const [phase, setPhase] = useState<'idle' | 'dealing'>('idle');
-  const [busy, setBusy] = useState<'sit' | 'quick' | 'create' | 'join' | 'start' | null>(null);
+  const [busy, setBusy] = useState<'sit' | 'quick' | 'create' | 'join' | 'start' | 'seat' | null>(null);
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [publicRooms, setPublicRooms] = useState<PokerRoom[]>([]);
 
@@ -73,6 +76,12 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   };
 
   const humanCount = pokerRoom?.human_count ?? pokerRoom?.players.filter(p => !p.is_npc && !p.user_id.startsWith('npc_')).length ?? 0;
+  const myUserId = getStoredAccount()?.id;
+  const myPlayer = pokerRoom?.players.find(p => p.user_id === myUserId);
+  const humanPlayers = pokerRoom?.players.filter(p => !p.is_npc && !p.user_id.startsWith('npc_')) ?? [];
+
+  const seatOccupant = (seatId: string) =>
+    humanPlayers.find(p => p.seat_id === seatId);
 
   const revealResults = (
     results: Array<{
@@ -219,9 +228,39 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
             <span style={{ fontSize: 11, color: '#6a8aad' }}>{humanCount} 人在座 · 买入 {roomBuyIn}</span>
           </div>
           <div style={{ fontSize: 11, color: '#5a7a9a', marginBottom: 8 }}>
-            把编号告诉好友，对方在下方输入即可加入
+            把编号告诉好友，对方在下方输入即可加入 · 可点击空位换座
           </div>
-          {pokerRoom.players.filter(p => !p.is_npc && !p.user_id.startsWith('npc_')).map(p => (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+            {POKER_SEAT_NUMS.map(n => {
+              const seatId = `poker_s${n}`;
+              const occ = seatOccupant(seatId);
+              const isMine = occ?.user_id === myUserId;
+              const taken = !!occ && !isMine;
+              const isCurrent = myPlayer?.seat_id === seatId;
+              return (
+                <button
+                  key={seatId}
+                  type="button"
+                  className={`ui-btn ${isCurrent ? 'active' : ''}`}
+                  style={{
+                    flex: '1 1 28%', fontSize: 10, padding: '6px 4px', minWidth: 52,
+                    opacity: taken ? 0.45 : 1,
+                    border: isCurrent ? '2px solid #3a6bb5' : undefined,
+                  }}
+                  disabled={taken || busy !== null}
+                  title={taken ? `${occ?.user_name || occ?.agent_name || '玩家'} 已占` : `换到座位 ${n}`}
+                  onClick={async () => {
+                    if (isCurrent || taken) return;
+                    setBusy('seat');
+                    await changePokerRoomSeat(seatId);
+                    setBusy(null);
+                  }}>
+                  座{n}{isMine ? '·我' : taken ? '·占' : ''}
+                </button>
+              );
+            })}
+          </div>
+          {humanPlayers.map(p => (
             <div key={`${p.user_id}-${p.seat_id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 11 }}>
               <span style={{ width: 52, color: '#8a7e72' }}>{p.seat_id?.replace('poker_s', '座位 ')}</span>
               <span style={{ flex: 1, fontWeight: 600 }}>{playerLabel(p)}</span>

@@ -30,7 +30,7 @@ import { homeNodeForAgent } from '../lib/agentHome';
 import { isLoggedIn, getStoredAccount } from '../lib/lifeAuth';
 import {
   fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
-  chatChannelForZone, fetchPokerRoom, leavePokerRoom as apiLeavePokerRoom, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
+  chatChannelForZone, fetchPokerRoom, leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
   type PokerRoom,
 } from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
@@ -227,6 +227,7 @@ interface GameStore {
   syncPokerRoom: () => Promise<void>;
   clearPokerRoom: () => void;
   leavePokerRoom: () => Promise<void>;
+  changePokerRoomSeat: (seatId: string) => Promise<boolean>;
   seatAgentAtPoker: (agentId: string, seatId?: string) => Promise<boolean>;
   setChatMessages: (msgs: ChatMessage[]) => void;
   setNpcEvents: (ev: NpcEvent[]) => void;
@@ -781,6 +782,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } catch { /* ignore */ }
   },
 
+  changePokerRoomSeat: async (seatId) => {
+    const rid = get().pokerRoom?.id;
+    if (!rid) return false;
+    try {
+      const r = await apiChangePokerSeat(rid, seatId);
+      if (!r.ok) {
+        if (r.error) get().addMessage(r.error);
+        return false;
+      }
+      if (r.room) set({ pokerRoom: r.room });
+      const accountId = getStoredAccount()?.id;
+      const me = r.room?.players.find(p => p.user_id === accountId);
+      const agentId = me?.agent_id
+        || get().operableAgentIds.find(id => get().agents[id]?.activity === 'poker')
+        || get().operableAgentIds[0];
+      if (agentId) await get().seatAgentAtPoker(agentId, seatId);
+      if (r.message) get().addMessage(r.message);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   seatAgentAtPoker: async (agentId, seatId) => {
     const ok = await get().sendAgentToFacility('poker', {
       agentId, nodeId: seatId, skipCost: true,
@@ -1058,17 +1082,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   tickIdlePoints: (now) => {
-    const { paused, agents, lastIdleClientTick } = get();
+    const { paused, lastIdleClientTick, operableAgentIds, agents } = get();
     if (paused) return;
     if (document.visibilityState === 'hidden') return;
     if (now - lastIdleClientTick < 55_000) return;
     set({ lastIdleClientTick: now });
-    const count = Object.keys(agents).length;
-    if (count <= 0) return;
-    lifeIdleTick(count).then(res => {
+    const ownedCount = operableAgentIds.filter(id => agents[id]).length;
+    if (ownedCount <= 0) return;
+    lifeIdleTick(ownedCount).then(res => {
       if (res.earned > 0) {
         set({ points: res.balance });
-        get().addMessage(`+${res.earned} 积分 · 挂机奖励（${Math.min(count, 5)} 位 Agent 在线）`);
+        const n = res.agent_count ?? ownedCount;
+        get().addMessage(`+${res.earned} 积分 · 挂机奖励（${n} 位 Agent 在线）`);
         fetchLifeState().then(s => get().applyLifeState(s)).catch(() => {});
       }
     }).catch(() => {});

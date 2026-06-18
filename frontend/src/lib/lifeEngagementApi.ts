@@ -156,6 +156,15 @@ export async function leavePokerRoom(roomId: string) {
   return parse<{ ok: boolean; closed?: boolean; message?: string; error?: string }>(r);
 }
 
+export async function changePokerSeat(roomId: string, seatId: string) {
+  const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/seat`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ seat_id: seatId }),
+  });
+  return parse<{
+    ok: boolean; error?: string; seat_id?: string; room?: PokerRoom; message?: string;
+  }>(r);
+}
+
 export async function startPokerRoom(roomId: string) {
   const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/start`, { method: 'POST', headers: headers() });
   return parse<{

@@ -232,6 +232,10 @@ class PokerJoinByCodeBody(BaseModel):
     seat_id: str = ""
 
 
+class PokerChangeSeatBody(BaseModel):
+    seat_id: str
+
+
 class PokerSoloBody(BaseModel):
     agent_id: str
     buy_in: int = 30
@@ -784,6 +788,54 @@ async def join_poker_room_by_code(body: PokerJoinByCodeBody, account_id: str = D
     return await join_poker_room(code.zfill(5) if len(code) < 5 else code, PokerJoinBody(
         agent_id=body.agent_id, seat_id=body.seat_id,
     ), account_id)
+
+
+@pvp_router.post("/pvp/poker/rooms/{room_id}/seat")
+async def change_poker_seat(room_id: str, body: PokerChangeSeatBody, account_id: str = Depends(resolve_account_id)):
+    """在房间内更换座位（仅等待中可换）。"""
+    seat_req = (body.seat_id or "").strip()
+    if not seat_req.startswith("poker_s"):
+        return {"ok": False, "error": "无效座位"}
+    try:
+        num = int(seat_req.replace("poker_s", ""))
+        if not 1 <= num <= 7:
+            return {"ok": False, "error": "无效座位"}
+    except ValueError:
+        return {"ok": False, "error": "无效座位"}
+
+    with life_db._lock:
+        with life_db._conn() as c:
+            rid = _resolve_room_id(c, room_id)
+            if not rid:
+                return {"ok": False, "error": "房间不存在"}
+            room = c.execute("SELECT * FROM poker_rooms WHERE id=? AND status='waiting'", (rid,)).fetchone()
+            if not room:
+                return {"ok": False, "error": "牌局已开始，无法换座"}
+            row = c.execute(
+                "SELECT * FROM poker_room_players WHERE room_id=? AND user_id=?",
+                (rid, account_id),
+            ).fetchone()
+            if not row:
+                return {"ok": False, "error": "你不在该房间中"}
+            player = dict(row)
+            if player.get("seat_id") == seat_req:
+                payload = _room_payload(c, dict(room), account_id)
+                return {"ok": True, "seat_id": seat_req, "room": payload, "message": "已在该座位"}
+            taken = c.execute(
+                "SELECT user_id FROM poker_room_players WHERE room_id=? AND seat_id=? AND user_id!=?",
+                (rid, seat_req, account_id),
+            ).fetchone()
+            if taken:
+                return {"ok": False, "error": "该座位已被占用"}
+            c.execute(
+                "UPDATE poker_room_players SET seat_id=? WHERE room_id=? AND user_id=?",
+                (seat_req, rid, account_id),
+            )
+            payload = _room_payload(c, dict(room), account_id)
+    return {
+        "ok": True, "room_id": rid, "seat_id": seat_req, "room": payload,
+        "message": f"已换到座位 {num}",
+    }
 
 
 @pvp_router.post("/pvp/poker/rooms/{room_id}/leave")

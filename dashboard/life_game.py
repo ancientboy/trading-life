@@ -439,7 +439,8 @@ async def life_idle(body: IdleBody, account_id: str = Depends(resolve_account_id
         save_user(uid, user)
         return {"ok": True, "balance": user["points"], "earned": 0, "daily_cap": True}
     minutes = min(minutes, remaining)
-    agents = min(max(0, body.agent_count), IDLE_MAX_AGENTS)
+    owned_count = len(user.get("custom_agents") or {})
+    agents = min(max(0, owned_count), IDLE_MAX_AGENTS)
     earned = minutes * agents * IDLE_POINTS_PER_AGENT_PER_MIN
     balance = _earn(user, earned, account_id=uid)
     user["last_idle_tick"] = now_ms
@@ -450,7 +451,11 @@ async def life_idle(body: IdleBody, account_id: str = Depends(resolve_account_id
     idle_task["progress"] = min(30, idle_task.get("progress", 0) + minutes)
     dt["idle_30"] = idle_task
     save_user(uid, user)
-    return {"ok": True, "balance": balance, "earned": earned, "idle_minutes_today": stats["idle_minutes_today"]}
+    return {
+        "ok": True, "balance": balance, "earned": earned,
+        "idle_minutes_today": stats["idle_minutes_today"],
+        "agent_count": agents, "owned_agent_count": owned_count,
+    }
 
 
 @router.post("/session/start")
