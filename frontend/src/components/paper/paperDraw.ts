@@ -991,33 +991,70 @@ export function drawMassageBed(ctx: CanvasRenderingContext2D, x: number, y: numb
   rrect(ctx, x + 28 * s, y + 2 * s, 3 * s, 8 * s, 1 * s); ctx.fill();
 }
 
-/** 餐桌四向座位前缘的餐具摆放（相对桌心，单位 × s） */
-const DINE_PLACE_OFFSETS: { dx: number; dy: number }[] = [
-  { dx: 0, dy: 14 },   // 南侧座位（c1，朝北）
-  { dx: -18, dy: 0 },  // 西侧（c2）
-  { dx: 18, dy: 0 },   // 东侧（c3）
-  { dx: 0, dy: -14 },  // 北侧（c4）
-];
+/** 餐桌椭圆桌面半径（× s） */
+const DINE_TABLE_RX = 42;
+const DINE_TABLE_RY = 32;
+const DINE_RIM_INSET = 0.86;
 
-function drawPlaceSetting(
+/** 沿桌心→椅方向，落在椭圆桌缘上的点 */
+function ellipseRimPoint(
+  cx: number, cy: number,
+  towardX: number, towardY: number,
+  rx: number, ry: number,
+  inset = DINE_RIM_INSET,
+): { x: number; y: number; angle: number } {
+  const dx = towardX - cx;
+  const dy = towardY - cy;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const t = inset / Math.sqrt((ux / rx) ** 2 + (uy / ry) ** 2);
+  return { x: cx + ux * t, y: cy + uy * t, angle: Math.atan2(dy, dx) };
+}
+
+/** 绘制融入桌面的餐具（画在桌布层，非浮贴） */
+function drawPlaceSettingEmbedded(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, s: number,
   pal: ReturnType<typeof cantonesePalette>,
   variant: number,
+  facingAngle: number,
 ) {
-  const rot = variant * 0.4;
+  const ps = s * 0.68;
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(rot);
-  ctx.fillStyle = '#fffef8';
-  rrect(ctx, -5 * s, -4 * s, 10 * s, 8 * s, 1.5 * s); ctx.fill();
-  ctx.strokeStyle = 'rgba(196,184,168,0.8)'; ctx.lineWidth = 0.6 * s; ctx.stroke();
+  ctx.rotate(facingAngle + Math.PI / 2);
+
+  // 桌布上的浅影 — 让餐具「压」在桌面
+  ctx.fillStyle = 'rgba(0,0,0,0.06)';
+  ctx.beginPath(); ctx.ellipse(1 * ps, 2 * ps, 6 * ps, 4.5 * ps, 0, 0, Math.PI * 2); ctx.fill();
+
+  // 餐垫 — 与桌布同色阶，非纯白贴片
+  ctx.fillStyle = pal.cream;
+  ctx.globalAlpha = 0.92;
+  rrect(ctx, -5.5 * ps, -4 * ps, 11 * ps, 8 * ps, 1.8 * ps); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = 'rgba(139,105,20,0.22)'; ctx.lineWidth = 0.5 * ps;
+  rrect(ctx, -5.5 * ps, -4 * ps, 11 * ps, 8 * ps, 1.8 * ps); ctx.stroke();
+
+  // 碗 — 略压进桌布
   ctx.fillStyle = pal.jade;
-  ctx.beginPath(); ctx.ellipse(0, 0, 4.5 * s, 3.5 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = pal.gold;
-  ctx.beginPath(); ctx.ellipse(0, -1.5 * s, 3.5 * s, 1.8 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0.5 * ps, 4 * ps, 3 * ps, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(45,106,82,0.35)'; ctx.lineWidth = 0.4 * ps;
+  ctx.stroke();
+
+  // 金边碟沿
+  ctx.strokeStyle = pal.goldDim;
+  ctx.lineWidth = 0.5 * ps;
+  ctx.beginPath(); ctx.ellipse(0, 0.5 * ps, 3.2 * ps, 2.2 * ps, 0, 0, Math.PI * 2); ctx.stroke();
+
+  // 茶杯 — 按 variant 微偏移，四席略有差异
+  const cupOff = (variant % 2 === 0 ? 1 : -1) * 3.2 * ps;
   ctx.fillStyle = pal.crimson;
-  ctx.beginPath(); ctx.arc(4 * s, -3 * s, 1.8 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cupOff, -2.5 * ps, 1.5 * ps, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = pal.gold;
+  ctx.beginPath(); ctx.arc(cupOff, -2.5 * ps, 0.8 * ps, 0, Math.PI * 2); ctx.fill();
+
   ctx.restore();
 }
 
@@ -1026,28 +1063,41 @@ export function placeSettingAtChair(
   chairX: number, chairY: number,
   s: number,
 ): { x: number; y: number } {
-  const dx = chairX - tableX;
-  const dy = chairY - tableY;
-  const len = Math.hypot(dx, dy) || 1;
-  const rim = 14 * s;
-  const aspect = 0.78;
-  return {
-    x: tableX + (dx / len) * rim,
-    y: tableY + (dy / len) * rim * aspect,
-  };
+  const rim = ellipseRimPoint(
+    tableX, tableY, chairX, chairY,
+    DINE_TABLE_RX * s, DINE_TABLE_RY * s,
+  );
+  return { x: rim.x, y: rim.y };
 }
 
-export function drawDiningTable(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, skinKey = 'default') {
+export function drawDiningTable(
+  ctx: CanvasRenderingContext2D, x: number, y: number, s: number,
+  skinKey = 'default',
+  chairPts?: { x: number; y: number }[],
+) {
   const pal = cantonesePalette(skinKey);
+  const rx = DINE_TABLE_RX * s;
+  const ry = DINE_TABLE_RY * s;
   dropShadow(ctx, x, y, 110 * s, 85 * s, 0.12);
   ctx.fillStyle = pal.wood;
   ctx.fillRect(x - 5 * s, y + 12 * s, 10 * s, 18 * s);
   ctx.fillStyle = pal.woodLight;
   ctx.beginPath(); ctx.ellipse(x, y + 6 * s, 48 * s, 36 * s, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = pal.tableTop;
-  ctx.beginPath(); ctx.ellipse(x, y, 42 * s, 32 * s, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = pal.gold; ctx.lineWidth = skinKey === 'premium' ? 2.5 * s : 1.8 * s;
-  ctx.beginPath(); ctx.ellipse(x, y, 40 * s, 30 * s, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+
+  // 餐具画在桌布层、中心装饰与金边之前 — 融入桌面
+  const chairs = chairPts ?? [
+    { x, y: y + 50 * s },
+    { x: x - 54 * s, y },
+    { x: x + 54 * s, y },
+    { x, y: y - 50 * s },
+  ];
+  chairs.forEach((ch, i) => {
+    const rim = ellipseRimPoint(x, y, ch.x, ch.y, rx, ry);
+    drawPlaceSettingEmbedded(ctx, rim.x, rim.y, s, pal, i, rim.angle);
+  });
+
   ctx.fillStyle = pal.crimsonDeep;
   ctx.beginPath(); ctx.ellipse(x, y, 18 * s, 13 * s, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = pal.goldDim;
@@ -1056,9 +1106,8 @@ export function drawDiningTable(ctx: CanvasRenderingContext2D, x: number, y: num
   rrect(ctx, x - 6 * s, y - 5 * s, 12 * s, 10 * s, 2 * s); ctx.fill();
   ctx.fillStyle = pal.crimson;
   ctx.beginPath(); ctx.arc(x, y, 2.5 * s, 0, Math.PI * 2); ctx.fill();
-  DINE_PLACE_OFFSETS.forEach((off, i) => {
-    drawPlaceSetting(ctx, x + off.dx * s, y + off.dy * s, s, pal, i);
-  });
+  ctx.strokeStyle = pal.gold; ctx.lineWidth = skinKey === 'premium' ? 2.5 * s : 1.8 * s;
+  ctx.beginPath(); ctx.ellipse(x, y, 40 * s, 30 * s, 0, 0, Math.PI * 2); ctx.stroke();
   if (skinKey === 'default' || skinKey === 'garden') {
     ctx.fillStyle = pal.crimson;
     ctx.font = `${Math.max(8, 10 * s)}px sans-serif`; ctx.textAlign = 'center';

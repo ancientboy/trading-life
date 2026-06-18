@@ -190,7 +190,8 @@ function drawRestaurantScene(
 
   RESTAURANT_TABLES.forEach(tbl => {
     const s = pt(cam, tbl.px, tbl.py);
-    drawDiningTable(ctx, s.x, s.y, cam.scale, skinKey);
+    const chairScreen = tbl.chairs.map(ch => pt(cam, ch.px, ch.py));
+    drawDiningTable(ctx, s.x, s.y, cam.scale, skinKey, chairScreen);
     tbl.chairs.forEach(ch => {
       const cs = pt(cam, ch.px, ch.py);
       drawChair(ctx, cs.x, cs.y, cam.scale, ch.facing, skinKey);
