@@ -50,7 +50,11 @@ SHOP_CATALOG = [
     {"id": "outfit_chef", "type": "outfit", "value": "chef", "cost": 160, "label": "星级厨师服"},
     {"id": "outfit_knight", "type": "outfit", "value": "knight", "cost": 260, "label": "皇家骑士甲"},
     {"id": "outfit_street", "type": "outfit", "value": "street", "cost": 150, "label": "潮牌卫衣"},
-    {"id": "outfit_maniu", "type": "outfit", "value": "maniu", "cost": 200, "label": "马牛西装"},
+    {"id": "species_maniu", "type": "species", "value": "maniu", "cost": 200, "label": "马牛角色"},
+    {"id": "outfit_maniu_casual", "type": "maniu_outfit", "value": "casual", "cost": 150, "label": "马牛 · 休闲 Polo"},
+    {"id": "outfit_maniu_executive", "type": "maniu_outfit", "value": "executive", "cost": 180, "label": "马牛 · 总裁黑金"},
+    # 旧版 id 兼容 — 等价于 species_maniu
+    {"id": "outfit_maniu", "type": "species", "value": "maniu", "cost": 200, "label": "马牛角色（旧版）", "legacy": True},
     {"id": "zone_skin_hall_gold", "type": "zone_skin", "value": "hall:gold", "cost": 200, "label": "大厅 · 金色 lounge 皮肤包"},
     {"id": "zone_skin_restaurant_premium", "type": "zone_skin", "value": "restaurant:premium", "cost": 180, "label": "粤菜馆 · 尊享宴席皮肤包"},
     {"id": "zone_skin_restaurant_modern", "type": "zone_skin", "value": "restaurant:modern", "cost": 220, "label": "粤菜馆 · 现代简约皮肤包"},
@@ -169,15 +173,34 @@ HAT_UNLOCK_MAP = {
     "top": "hat_top_unlock",
     "bobble": "hat_bobble_unlock",
 }
-OUTFIT_IDS = {"default", "panda", "astronaut", "chef", "knight", "street", "maniu"}
+OUTFIT_IDS = {"default", "panda", "astronaut", "chef", "knight", "street"}
 OUTFIT_UNLOCK_MAP = {
     "panda": "outfit_panda",
     "astronaut": "outfit_astronaut",
     "chef": "outfit_chef",
     "knight": "outfit_knight",
     "street": "outfit_street",
-    "maniu": "outfit_maniu",
 }
+SPECIES_IDS = {"penguin", "maniu"}
+SPECIES_UNLOCK_MAP = {"maniu": "species_maniu"}
+MANIU_OUTFIT_IDS = {"default", "casual", "executive"}
+MANIU_OUTFIT_UNLOCK_MAP = {
+    "casual": "outfit_maniu_casual",
+    "executive": "outfit_maniu_executive",
+}
+
+
+def _species_unlocked(user: dict, species_id: str) -> bool:
+    if species_id == "penguin":
+        return True
+    unlocks = set(user.get("shop_unlocks", []))
+    key = SPECIES_UNLOCK_MAP.get(species_id)
+    if key and key in unlocks:
+        return True
+    # 旧版 outfit_maniu 购买记录兼容
+    if species_id == "maniu" and "outfit_maniu" in unlocks:
+        return True
+    return False
 
 
 def _parse_zone_skin_value(value: str) -> tuple[str, str] | None:
@@ -222,18 +245,31 @@ def _normalize_zone_skins(user: dict) -> dict[str, str]:
 
 def _appearance_allowed(
     user: dict,
+    species_id: str,
     outfit_id: str,
     scarf_enabled: bool,
     hat_enabled: bool,
     hat_style: str,
     color: str,
 ) -> tuple[bool, str]:
-    if outfit_id not in OUTFIT_IDS:
-        return False, "无效的服装款式"
-    if outfit_id != "default":
-        unlock_id = OUTFIT_UNLOCK_MAP.get(outfit_id)
-        if unlock_id and unlock_id not in user.get("shop_unlocks", []):
-            return False, "该服装尚未解锁，请先在积分商城购买"
+    if species_id not in SPECIES_IDS:
+        return False, "无效的角色类型"
+    if species_id == "maniu":
+        if not _species_unlocked(user, "maniu"):
+            return False, "马牛角色尚未解锁，请先在积分商城购买"
+        if outfit_id not in MANIU_OUTFIT_IDS:
+            return False, "无效的马牛皮肤"
+        if outfit_id != "default":
+            unlock_id = MANIU_OUTFIT_UNLOCK_MAP.get(outfit_id)
+            if unlock_id and unlock_id not in user.get("shop_unlocks", []):
+                return False, "该马牛皮肤尚未解锁，请先在积分商城购买"
+    else:
+        if outfit_id not in OUTFIT_IDS:
+            return False, "无效的服装款式"
+        if outfit_id != "default":
+            unlock_id = OUTFIT_UNLOCK_MAP.get(outfit_id)
+            if unlock_id and unlock_id not in user.get("shop_unlocks", []):
+                return False, "该服装尚未解锁，请先在积分商城购买"
     if hat_style not in ("beanie", "cap", "top", "bobble", "beret"):
         return False, "无效的帽子款式"
     if hat_enabled and hat_style not in FREE_HAT_STYLES:
@@ -250,8 +286,8 @@ def _appearance_allowed(
     return True, ""
 
 
-def _resolve_appearance_body(body: "AgentAppearanceBody") -> tuple[str, bool, bool, str, str]:
-    """解析外观请求（兼容旧 headwear 字段）。"""
+def _resolve_appearance_body(body: "AgentAppearanceBody") -> tuple[str, str, bool, bool, str, str]:
+    """解析外观请求（兼容旧 headwear / outfitId=maniu）。"""
     scarf = body.scarfEnabled
     hat = body.hatEnabled
     if scarf is None and hat is None:
@@ -261,8 +297,19 @@ def _resolve_appearance_body(body: "AgentAppearanceBody") -> tuple[str, bool, bo
             scarf, hat = True, False
     scarf = True if scarf is None else bool(scarf)
     hat = False if hat is None else bool(hat)
+    species_id = (body.speciesId or "penguin").strip()
     outfit_id = (body.outfitId or "default").strip()
-    return outfit_id, scarf, hat, body.hatStyle, body.color
+    # 旧版：outfitId=maniu 表示马牛物种
+    if outfit_id == "maniu" and species_id == "penguin":
+        species_id = "maniu"
+        outfit_id = "default"
+    if species_id not in SPECIES_IDS:
+        species_id = "penguin"
+    if species_id == "maniu" and outfit_id not in MANIU_OUTFIT_IDS:
+        outfit_id = "default"
+    if species_id == "penguin" and outfit_id not in OUTFIT_IDS:
+        outfit_id = "default"
+    return species_id, outfit_id, scarf, hat, body.hatStyle, body.color
 
 
 def _permissions_for(account_id: str, user: dict) -> dict:
@@ -372,6 +419,7 @@ class AgentSoulBody(BaseModel):
 
 
 class AgentAppearanceBody(BaseModel):
+    speciesId: str = "penguin"
     outfitId: str = "default"
     scarfEnabled: Optional[bool] = None
     hatEnabled: Optional[bool] = None
@@ -681,11 +729,12 @@ async def life_update_appearance(agent_id: str, body: AgentAppearanceBody, accou
     custom = user.get("custom_agents", {})
     if agent_id not in custom:
         raise HTTPException(404, "Agent not found")
-    outfit_id, scarf, hat, hat_style, color = _resolve_appearance_body(body)
-    ok, err = _appearance_allowed(user, outfit_id, scarf, hat, hat_style, color)
+    species_id, outfit_id, scarf, hat, hat_style, color = _resolve_appearance_body(body)
+    ok, err = _appearance_allowed(user, species_id, outfit_id, scarf, hat, hat_style, color)
     if not ok:
         return {"ok": False, "error": err}
     meta = custom[agent_id]
+    meta["speciesId"] = species_id
     meta["outfitId"] = outfit_id
     meta["scarfEnabled"] = scarf
     meta["hatEnabled"] = hat

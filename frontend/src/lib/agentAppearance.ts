@@ -2,6 +2,10 @@ import { scarfColorsFromAccent, type ScarfPalette } from './scarfColors';
 import type { AgentMeta } from './constants';
 import type { OutfitId } from './agentOutfits';
 import { OUTFIT_CATALOG } from './agentOutfits';
+import {
+  type SpeciesId, type ManiuSkinId, SPECIES_CATALOG, MANIU_SKIN_CATALOG,
+  migrateLegacyAppearance,
+} from './agentSpecies';
 
 export type AgentHeadwear = 'scarf' | 'hat';
 
@@ -17,7 +21,8 @@ export const HAT_STYLES: Record<HatStyleId, { label: string }> = {
 };
 
 export interface AgentAppearanceState {
-  outfitId: OutfitId;
+  speciesId: SpeciesId;
+  outfitId: OutfitId | ManiuSkinId;
   scarfEnabled: boolean;
   hatEnabled: boolean;
   hatStyle: HatStyleId;
@@ -41,8 +46,10 @@ export function resolveAppearance(meta: Partial<AgentMeta>): AgentAppearanceStat
   scarfEnabled = scarfEnabled ?? true;
   hatEnabled = hatEnabled ?? false;
   const headwear: AgentHeadwear = hatEnabled && !scarfEnabled ? 'hat' : 'scarf';
+  const migrated = migrateLegacyAppearance(meta);
   return {
-    outfitId: (meta.outfitId as OutfitId) || 'default',
+    speciesId: migrated.speciesId,
+    outfitId: migrated.outfitId as OutfitId | ManiuSkinId,
     scarfEnabled,
     hatEnabled,
     hatStyle: meta.hatStyle ?? 'beanie',
@@ -60,7 +67,8 @@ export function normalizeAgentMeta(meta: Partial<AgentMeta> & { icon?: string })
     color: appearance.color,
     headwear: appearance.headwear,
     hatStyle: appearance.hatStyle,
-    outfitId: appearance.outfitId,
+    speciesId: appearance.speciesId,
+    outfitId: appearance.outfitId as string,
     scarfEnabled: appearance.scarfEnabled,
     hatEnabled: appearance.hatEnabled,
     desc: meta.desc ?? '',
@@ -76,10 +84,16 @@ export function normalizeAgentMeta(meta: Partial<AgentMeta> & { icon?: string })
 export function appearanceSummary(meta: Partial<AgentMeta>): string {
   const a = resolveAppearance(meta);
   const parts: string[] = [];
-  if (a.outfitId !== 'default') parts.push(OUTFIT_CATALOG[a.outfitId].label);
+  if (a.speciesId === 'maniu') {
+    parts.push(SPECIES_CATALOG.maniu.label);
+    if (a.outfitId !== 'default') parts.push(MANIU_SKIN_CATALOG[a.outfitId as ManiuSkinId]?.label ?? String(a.outfitId));
+  } else {
+    if (a.outfitId !== 'default') parts.push(OUTFIT_CATALOG[a.outfitId as OutfitId]?.label ?? String(a.outfitId));
+    else parts.push(SPECIES_CATALOG.penguin.label);
+  }
   if (a.scarfEnabled) parts.push('围巾');
   if (a.hatEnabled) parts.push(HAT_STYLES[a.hatStyle].label);
-  return parts.length ? parts.join(' · ') : '经典企鹅';
+  return parts.join(' · ');
 }
 
 /** @deprecated 使用 appearanceSummary */

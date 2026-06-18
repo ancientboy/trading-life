@@ -11,6 +11,8 @@ import type { AgentHeadwear, HatStyleId } from '../../../lib/agentAppearance';
 import { resolveAppearance } from '../../../lib/agentAppearance';
 import type { OutfitId } from '../../../lib/agentOutfits';
 import { outfitReplacesBaseCharacter } from '../../../lib/agentOutfits';
+import type { SpeciesId, ManiuSkinId } from '../../../lib/agentSpecies';
+import { ManiuCharacter3d } from './ManiuCharacter3d';
 
 export interface GugugagaProps {
   accentColor?: string;
@@ -25,7 +27,8 @@ export interface GugugagaProps {
   isWalking?: boolean;
   headwear?: AgentHeadwear;
   hatStyle?: HatStyleId;
-  outfitId?: OutfitId;
+  outfitId?: OutfitId | ManiuSkinId;
+  speciesId?: SpeciesId | string;
   scarfEnabled?: boolean;
   hatEnabled?: boolean;
   onClick?: () => void;
@@ -122,6 +125,7 @@ export function Gugugaga({
   headwear = 'scarf',
   hatStyle = 'beanie',
   outfitId,
+  speciesId,
   scarfEnabled,
   hatEnabled,
   onClick,
@@ -150,19 +154,21 @@ export function Gugugaga({
   });
 
   const appearance = useMemo(
-    () => resolveAppearance({ outfitId, scarfEnabled, hatEnabled, headwear, hatStyle, color: accentColor }),
-    [outfitId, scarfEnabled, hatEnabled, headwear, hatStyle, accentColor],
+    () => resolveAppearance({ speciesId, outfitId, scarfEnabled, hatEnabled, headwear, hatStyle, color: accentColor }),
+    [speciesId, outfitId, scarfEnabled, hatEnabled, headwear, hatStyle, accentColor],
   );
   const isNpc = role !== 'agent';
-  const useFullOutfit = !isNpc && outfitReplacesBaseCharacter(appearance.outfitId);
+  const isManiu = !isNpc && appearance.speciesId === 'maniu';
+  const useFullOutfit = !isNpc && !isManiu && outfitReplacesBaseCharacter(appearance.outfitId as OutfitId);
+  const showBasePenguin = !isNpc && !isManiu && !useFullOutfit;
   const scarfPalette = useMemo(
     () => (isNpc ? scarfPaletteForCharacter(accentColor, true) : scarfColorsFromAccent(accentColor)),
     [accentColor, isNpc],
   );
-  const showScarf = !useFullOutfit && (isNpc || appearance.scarfEnabled);
-  const showHat = !useFullOutfit && !isNpc && appearance.hatEnabled;
-  const showScarfOnOutfit = useFullOutfit && !isNpc && appearance.scarfEnabled;
-  const showHatOnOutfit = useFullOutfit && !isNpc && appearance.hatEnabled;
+  const showScarf = showBasePenguin && (isNpc || appearance.scarfEnabled);
+  const showHat = showBasePenguin && !isNpc && appearance.hatEnabled;
+  const showScarfOnOutfit = (useFullOutfit || isManiu) && !isNpc && appearance.scarfEnabled;
+  const showHatOnOutfit = (useFullOutfit || isManiu) && !isNpc && appearance.hatEnabled;
 
   return (
     <group ref={g} scale={scale} onClick={(e) => { e.stopPropagation(); onClick?.(); }}>
@@ -178,7 +184,7 @@ export function Gugugaga({
           <meshBasicMaterial color="#888888" transparent opacity={0.06 + stress * 0.0008} depthWrite={false} />
         </mesh>
       )}
-      {!useFullOutfit && (
+      {showBasePenguin && (
         <>
           <mesh position={[0, 0.48, 0]} scale={[1, 0.75, 0.85]} material={flat('#f2f2f2')}>
             <sphereGeometry args={[0.42, 12, 12]} />
@@ -201,8 +207,11 @@ export function Gugugaga({
           </mesh>
         </>
       )}
+      {isManiu && (
+        <ManiuCharacter3d skinId={appearance.outfitId as ManiuSkinId} />
+      )}
       {useFullOutfit && (
-        <AgentOutfit3d outfitId={appearance.outfitId} accentColor={accentColor} />
+        <AgentOutfit3d outfitId={appearance.outfitId as OutfitId} accentColor={accentColor} />
       )}
       {showScarf && <PenguinScarf palette={isNpc ? DEFAULT_SCARF : scarfPalette} />}
       {showHat && <AgentHat3d style={appearance.hatStyle} color={accentColor} />}

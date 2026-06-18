@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { drawAgent } from '../paper/paperDraw';
 import { appearanceSummary, resolveAppearance, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
 import type { OutfitId } from '../../lib/agentOutfits';
+import type { SpeciesId, ManiuSkinId } from '../../lib/agentSpecies';
 
 const PREVIEW_W = 260;
 const PREVIEW_H = 210;
@@ -10,7 +11,8 @@ interface AgentScenePreviewProps {
   color: string;
   headwear: AgentHeadwear;
   hatStyle: HatStyleId;
-  outfitId?: OutfitId;
+  speciesId?: SpeciesId | string;
+  outfitId?: OutfitId | ManiuSkinId | string;
   scarfEnabled?: boolean;
   hatEnabled?: boolean;
   name?: string;
@@ -39,6 +41,7 @@ function paintPreview(
 
   ctx.save();
   drawAgent(ctx, PREVIEW_W / 2, PREVIEW_H * 0.54, ap.color, {
+    speciesId: ap.speciesId,
     outfitId: ap.outfitId,
     scarfEnabled: ap.scarfEnabled,
     hatEnabled: ap.hatEnabled,

@@ -1,6 +1,10 @@
 import { APPEARANCE_PRESETS } from './customAgents';
 import type { HatStyleId } from './agentAppearance';
 import { OUTFIT_CATALOG, OUTFIT_IDS, OUTFIT_UNLOCK_MAP, type OutfitId } from './agentOutfits';
+import {
+  SPECIES_CATALOG, SPECIES_IDS, isSpeciesUnlocked, isManiuSkinUnlocked,
+  unlockedManiuSkins, MANIU_SKIN_CATALOG, MANIU_SKIN_IDS, type SpeciesId, type ManiuSkinId,
+} from './agentSpecies';
 
 const FREE_COLORS = new Set(APPEARANCE_PRESETS.colors);
 const FREE_HATS = new Set<HatStyleId>(['beanie', 'cap']);
@@ -44,6 +48,15 @@ export function unlockedOutfits(shopUnlocks: string[]): OutfitId[] {
   return OUTFIT_IDS.filter(id => isOutfitUnlocked(id, shopUnlocks));
 }
 
+export function unlockedSkinsForSpecies(speciesId: SpeciesId, shopUnlocks: string[]): (OutfitId | ManiuSkinId)[] {
+  if (speciesId === 'maniu') return unlockedManiuSkins(shopUnlocks);
+  return unlockedOutfits(shopUnlocks);
+}
+
+export function unlockedSpecies(shopUnlocks: string[]): SpeciesId[] {
+  return SPECIES_IDS.filter(id => isSpeciesUnlocked(id, shopUnlocks));
+}
+
 export function ownedZoneSkinPacks(shopUnlocks: string[]) {
   return shopUnlocks.filter(id => id.startsWith('zone_skin_') || id.startsWith('skin_'));
 }
@@ -54,7 +67,15 @@ export function ownedCosmetics(shopUnlocks: string[]) {
 }
 
 export function isOutfitShopItem(item: { id: string; type: string }): boolean {
-  return item.type === 'outfit';
+  return item.type === 'outfit' || item.type === 'maniu_outfit';
 }
 
-export { OUTFIT_CATALOG, OUTFIT_IDS };
+export function isSpeciesShopItem(item: { id: string; type: string }): boolean {
+  return item.type === 'species';
+}
+
+export function skinCatalogForSpecies(speciesId: SpeciesId) {
+  return speciesId === 'maniu' ? MANIU_SKIN_CATALOG : OUTFIT_CATALOG;
+}
+
+export { OUTFIT_CATALOG, OUTFIT_IDS, SPECIES_CATALOG, MANIU_SKIN_CATALOG, MANIU_SKIN_IDS };

@@ -216,6 +216,7 @@ export async function lifeSaveAgentSoul(agentId: string, content: string) {
 export async function lifeSaveAgentAppearance(
   agentId: string,
   appearance: {
+    speciesId?: string;
     outfitId?: string;
     scarfEnabled?: boolean;
     hatEnabled?: boolean;

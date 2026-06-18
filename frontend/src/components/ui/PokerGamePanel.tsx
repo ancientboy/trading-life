@@ -382,7 +382,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
 
       {agent ? (
         <div style={{ marginBottom: 10, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} outfitId={agent.data.outfitId} scarfEnabled={agent.data.scarfEnabled} hatEnabled={agent.data.hatEnabled} size={28} />
+          <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} speciesId={agent.data.speciesId} outfitId={agent.data.outfitId} scarfEnabled={agent.data.scarfEnabled} hatEnabled={agent.data.hatEnabled} size={28} />
           <div>
             <b>{agent.data.name}</b>
             <div style={{ fontSize: 10, color: '#8a7e72' }}>压力 {Math.round(agent.stress)}%</div>

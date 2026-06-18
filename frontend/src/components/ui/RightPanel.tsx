@@ -234,7 +234,7 @@ export function RightPanel() {
             <div style={{ fontWeight: 600, marginBottom: 4 }}>当前在此的 Agent</div>
             {leisureAgents.map(a => (
               <div key={a.agentId} style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={22} />
+                <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} speciesId={a.data.speciesId} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={22} />
                 <span>{a.data.name}</span>
                 {activeZone === 'casino' && <span style={{ fontSize: 10, color: '#48d093' }}>已入座</span>}
               </div>
@@ -294,7 +294,7 @@ export function RightPanel() {
         {allPositions.map(({ agent: a, pos }, i) => (
           <div key={i} style={{ marginBottom: 8, padding: 8, background: '#faf6ef', borderRadius: 8, cursor: 'pointer' }} onClick={() => selectAgent(a.agentId)}>
             <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={20} />
+              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} speciesId={a.data.speciesId} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={20} />
               <span>{a.data.name}</span>
             </div>
             <PositionRow pos={pos} />
@@ -306,7 +306,7 @@ export function RightPanel() {
           <div key={a.agentId} style={{ marginBottom: 6, padding: 8, background: '#faf6ef', borderRadius: 8, cursor: 'pointer' }} onClick={() => selectAgent(a.agentId)}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={22} />
+                <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} speciesId={a.data.speciesId} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={22} />
                 {a.data.name}
               </span>
               <span className={(a.data.pnl || 0) >= 0 ? 'profit' : 'loss'} style={{ fontSize: 12 }}>
@@ -513,7 +513,7 @@ function AgentCard({ char, selected, operable, onSelect, embedded }: { char: Cha
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} outfitId={d.outfitId} scarfEnabled={d.scarfEnabled} hatEnabled={d.hatEnabled} size={36} />
+        <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} speciesId={d.speciesId} outfitId={d.outfitId} scarfEnabled={d.scarfEnabled} hatEnabled={d.hatEnabled} size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
             {d.name}

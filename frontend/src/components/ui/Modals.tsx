@@ -12,7 +12,7 @@ import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
 import { DINE_TIERS, MASSAGE_TIERS } from '../../lib/leisureTiers';
 import { isZoneSkinShopItem } from '../../lib/zoneSkins';
-import { isOutfitShopItem } from '../../lib/lifeShop';
+import { isOutfitShopItem, isSpeciesShopItem } from '../../lib/lifeShop';
 import { StrategyEditor } from './StrategyEditor';
 import { SceneSkinsPanel } from './SceneSkinsPanel';
 
@@ -167,7 +167,7 @@ function LeisureModal({ type, title, lucide, items }: {
           {agent ? (
             <div style={{ marginTop: 8, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>服务对象：</span>
-              <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} outfitId={agent.data.outfitId} scarfEnabled={agent.data.scarfEnabled} hatEnabled={agent.data.hatEnabled} size={24} />
+              <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} speciesId={agent.data.speciesId} outfitId={agent.data.outfitId} scarfEnabled={agent.data.scarfEnabled} hatEnabled={agent.data.hatEnabled} size={24} />
               <b>{agent.data.name}</b>
               <span>· 压力 {Math.round(agent.stress)}%</span>
             </div>
@@ -218,7 +218,9 @@ function ShopPanel() {
   const [tab, setTab] = useState<'buy' | 'scene'>(hasZoneSkins ? 'scene' : 'buy');
 
   const agentItems = shopCatalog.filter(i => i.type === 'color' || i.type === 'hat');
-  const outfitItems = shopCatalog.filter(i => isOutfitShopItem(i));
+  const speciesItems = shopCatalog.filter(i => isSpeciesShopItem(i) && !i.legacy);
+  const outfitItems = shopCatalog.filter(i => i.type === 'outfit');
+  const maniuOutfitItems = shopCatalog.filter(i => i.type === 'maniu_outfit');
   const zoneItems = shopCatalog.filter(i => isZoneSkinShopItem(i) && !i.legacy);
   // 旧版皮肤包仍在 catalog 中时也展示
   const legacyZoneItems = shopCatalog.filter(i => i.type === 'zone_skin' && i.legacy);
@@ -226,7 +228,9 @@ function ShopPanel() {
   const shopTypeLabel = (type: string) => {
     if (type === 'color') return '解锁围巾/帽子颜色';
     if (type === 'hat') return '解锁帽子款式';
-    if (type === 'outfit') return '解锁 Agent 服装皮肤';
+    if (type === 'outfit') return '解锁企鹅服装皮肤';
+    if (type === 'maniu_outfit') return '解锁马牛专属皮肤';
+    if (type === 'species') return '解锁独立角色类型';
     if (type === 'zone_skin') return '区域场景皮肤包';
     return '场景装饰';
   };
@@ -271,11 +275,20 @@ function ShopPanel() {
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Agent 装扮</div>
           {agentItems.map(renderShopRow)}
 
-          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>Agent 服装皮肤</div>
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>角色类型</div>
+          <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
+            马牛是与企鹅同级的独立角色，可在工坊切换
+          </p>
+          {speciesItems.map(renderShopRow)}
+
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>企鹅服装皮肤</div>
           <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
             购买后在 Agent 工坊 →「装扮」更换；可与围巾、帽子同时穿戴
           </p>
           {outfitItems.map(renderShopRow)}
+
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>马牛专属皮肤</div>
+          {maniuOutfitItems.map(renderShopRow)}
 
           <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>区域皮肤包</div>
           <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>

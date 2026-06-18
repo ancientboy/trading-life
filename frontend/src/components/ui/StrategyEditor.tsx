@@ -198,7 +198,7 @@ export function StrategyEditor({
           display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12,
           padding: compact ? 8 : 10, background: '#faf6ef', borderRadius: 8,
         }}>
-          <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} outfitId={agent.data.outfitId} scarfEnabled={agent.data.scarfEnabled} hatEnabled={agent.data.hatEnabled} size={compact ? 36 : 44} />
+          <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} speciesId={agent.data.speciesId} outfitId={agent.data.outfitId} scarfEnabled={agent.data.scarfEnabled} hatEnabled={agent.data.hatEnabled} size={compact ? 36 : 44} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700 }}>{agent.data.name}</div>
             <div style={{ fontSize: 11, color: '#8a7e72' }}>

@@ -9,6 +9,7 @@ import {
   type AgentHeadwear, type HatStyleId,
 } from '../../lib/agentAppearance';
 import { drawAgentOutfitFull2d, drawOutfitAccessories2d, drawOutfitLimbs2d, outfitReplacesBaseCharacter, type OutfitId } from '../../lib/agentOutfits';
+import { drawManiuAccessories2d, drawManiuCharacter2d, drawManiuLimbs2d, type ManiuSkinId } from '../../lib/agentSpecies';
 import {
   cantonesePalette, hallRestPalette, spaPalette, vipPalette, receptionPalette,
   type CantonesePalette, type SpaPalette, type VipPalette, type ReceptionPalette,
@@ -153,7 +154,8 @@ export function drawAgent(
     activity?: AgentActivity; facing?: AgentFacing; sitting?: boolean;
     pose?: 'stand' | 'sit' | 'lie' | 'desk';
     headwear?: AgentHeadwear; hatStyle?: HatStyleId;
-    outfitId?: OutfitId; scarfEnabled?: boolean; hatEnabled?: boolean;
+    outfitId?: OutfitId | ManiuSkinId; speciesId?: string;
+    scarfEnabled?: boolean; hatEnabled?: boolean;
     blanket?: boolean;
   },
 ) {
@@ -330,21 +332,29 @@ function drawPenguinBody(ctx: CanvasRenderingContext2D, py: number, profile = fa
   }
 }
 
-function resolveDrawAppearance(opts: { outfitId?: OutfitId; scarfEnabled?: boolean; hatEnabled?: boolean; headwear?: AgentHeadwear; hatStyle?: HatStyleId; color?: string }): AgentAppearanceState {
+function resolveDrawAppearance(opts: { speciesId?: string; outfitId?: OutfitId | ManiuSkinId; scarfEnabled?: boolean; hatEnabled?: boolean; headwear?: AgentHeadwear; hatStyle?: HatStyleId; color?: string }): AgentAppearanceState {
   return resolveAppearance(opts);
 }
 
 function drawAgentTorso(ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState, view: 'front' | 'back' | 'side', flip = 1) {
-  if (outfitReplacesBaseCharacter(ap.outfitId)) {
-    drawAgentOutfitFull2d(ctx, py, ap.outfitId, color, view, flip);
+  if (ap.speciesId === 'maniu') {
+    drawManiuCharacter2d(ctx, py, ap.outfitId as ManiuSkinId, view, flip);
+    return;
+  }
+  if (outfitReplacesBaseCharacter(ap.outfitId as OutfitId)) {
+    drawAgentOutfitFull2d(ctx, py, ap.outfitId as OutfitId, color, view, flip);
   } else {
     drawPenguinBody(ctx, py, view === 'side', view !== 'back');
   }
 }
 
 function drawAgentHeadLayer(ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState, view: 'front' | 'back' | 'side', flip = 1) {
-  if (outfitReplacesBaseCharacter(ap.outfitId)) {
-    drawOutfitAccessories2d(ctx, py, ap.outfitId, color, ap.scarfEnabled, ap.hatEnabled, ap.hatStyle, view, flip);
+  if (ap.speciesId === 'maniu') {
+    drawManiuAccessories2d(ctx, py, ap.outfitId as ManiuSkinId, color, ap.scarfEnabled, ap.hatEnabled, ap.hatStyle, view, flip);
+    return;
+  }
+  if (outfitReplacesBaseCharacter(ap.outfitId as OutfitId)) {
+    drawOutfitAccessories2d(ctx, py, ap.outfitId as OutfitId, color, ap.scarfEnabled, ap.hatEnabled, ap.hatStyle, view, flip);
     return;
   }
   if (view === 'front') {
@@ -364,12 +374,16 @@ function drawAgentHeadLayer(ctx: CanvasRenderingContext2D, py: number, color: st
 /** 手脚摆动 — 参考 144 office-engine */
 function drawWalkLimbs(
   ctx: CanvasRenderingContext2D, py: number, facing: AgentFacing,
-  walking: boolean, t: number, color: string, outfitId: OutfitId = 'default',
+  walking: boolean, t: number, color: string, ap: AgentAppearanceState,
 ) {
   const phase = walkPhase(t, walking);
   const swing = walking ? Math.sin(phase) * 5 : 0;
   const bounce = walking ? Math.abs(Math.sin(phase)) * 2 : 0;
-  if (drawOutfitLimbs2d(ctx, py, outfitId, color, facing, walking, t, swing, bounce)) return;
+  if (ap.speciesId === 'maniu') {
+    drawManiuLimbs2d(ctx, py, facing, swing, bounce);
+    return;
+  }
+  if (drawOutfitLimbs2d(ctx, py, ap.outfitId as OutfitId, color, facing, walking, t, swing, bounce)) return;
 
   ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = PENGUIN.black;
   ctx.fillStyle = PENGUIN.foot;
@@ -407,7 +421,7 @@ function drawAgentBack(
   }
   dropShadow(ctx, x, py + 6, 32, 36, 0.12);
   ctx.save(); ctx.translate(x, 0);
-  drawWalkLimbs(ctx, py, 'n', walking, t, color, ap.outfitId);
+  drawWalkLimbs(ctx, py, 'n', walking, t, color, ap);
   drawAgentTorso(ctx, py, color, ap, 'back');
   drawAgentHeadLayer(ctx, py, color, ap, 'back');
   ctx.restore();
@@ -420,7 +434,8 @@ function drawAgentFront(
   opts: {
     selected?: boolean; trading?: boolean; walking?: boolean; t?: number;
     activity?: AgentActivity; headwear?: AgentHeadwear; hatStyle?: HatStyleId;
-    outfitId?: OutfitId; scarfEnabled?: boolean; hatEnabled?: boolean;
+    outfitId?: OutfitId | ManiuSkinId; speciesId?: string;
+    scarfEnabled?: boolean; hatEnabled?: boolean;
   },
 ) {
   const t = opts.t ?? 0;
@@ -438,7 +453,7 @@ function drawAgentFront(
   }
   dropShadow(ctx, x, py + 6, 32, 36, 0.12);
   ctx.save(); ctx.translate(x, 0);
-  drawWalkLimbs(ctx, py, 's', walking, t, color, ap.outfitId);
+  drawWalkLimbs(ctx, py, 's', walking, t, color, ap);
   drawAgentTorso(ctx, py, color, ap, 'front');
   drawAgentHeadLayer(ctx, py, color, ap, 'front');
   ctx.restore();
@@ -470,7 +485,7 @@ function drawAgentSide(
   }
   dropShadow(ctx, x, py + 6, 28, 34, 0.12);
   ctx.save(); ctx.translate(x, 0);
-  drawWalkLimbs(ctx, py, facing, walking, t, color, ap.outfitId);
+  drawWalkLimbs(ctx, py, facing, walking, t, color, ap);
   drawAgentTorso(ctx, py, color, ap, 'side', flip);
   drawAgentHeadLayer(ctx, py, color, ap, 'side', flip);
   ctx.restore();

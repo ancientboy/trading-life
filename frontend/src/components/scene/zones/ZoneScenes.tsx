@@ -143,6 +143,7 @@ function ZoneAgents({ zone }: { zone: ZoneId }) {
               headwear={meta.headwear}
               hatStyle={meta.hatStyle}
               outfitId={meta.outfitId}
+              speciesId={meta.speciesId}
               scarfEnabled={meta.scarfEnabled}
               hatEnabled={meta.hatEnabled}
               label={meta.name}

@@ -7,6 +7,7 @@ export interface PenguinAvatarProps {
   color: string;
   headwear?: AgentHeadwear;
   hatStyle?: HatStyleId;
+  speciesId?: string;
   outfitId?: OutfitId | string;
   scarfEnabled?: boolean;
   hatEnabled?: boolean;
@@ -19,6 +20,7 @@ export function PenguinAvatar({
   color,
   headwear = 'scarf',
   hatStyle = 'beanie',
+  speciesId,
   outfitId,
   scarfEnabled,
   hatEnabled,
@@ -26,7 +28,7 @@ export function PenguinAvatar({
   selected,
 }: PenguinAvatarProps) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const ap = resolveAppearance({ color, headwear, hatStyle, outfitId, scarfEnabled, hatEnabled });
+  const ap = resolveAppearance({ color, headwear, hatStyle, speciesId, outfitId, scarfEnabled, hatEnabled });
 
   useEffect(() => {
     const canvas = ref.current;
@@ -51,6 +53,7 @@ export function PenguinAvatar({
     ctx.translate(size / 2, size * 0.58);
     ctx.scale(scale, scale);
     drawAgent(ctx, 0, 0, ap.color, {
+      speciesId: ap.speciesId,
       outfitId: ap.outfitId,
       scarfEnabled: ap.scarfEnabled,
       hatEnabled: ap.hatEnabled,
@@ -61,7 +64,7 @@ export function PenguinAvatar({
       t: 0,
     });
     ctx.restore();
-  }, [ap.color, ap.outfitId, ap.scarfEnabled, ap.hatEnabled, ap.headwear, ap.hatStyle, size]);
+  }, [ap.color, ap.speciesId, ap.outfitId, ap.scarfEnabled, ap.hatEnabled, ap.headwear, ap.hatStyle, size]);
 
   return (
     <canvas

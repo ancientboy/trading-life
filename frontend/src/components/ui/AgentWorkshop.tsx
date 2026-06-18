@@ -10,10 +10,11 @@ import {
   countCustomByType, canCreateAgentType, loadCustomAgentMeta, type CustomAgentDraft,
   STRATEGY_PRESET_OPTIONS, applyStrategyPreset,
 } from '../../lib/customAgents';
-import { unlockedColors, unlockedHatStyles, unlockedOutfits, OUTFIT_CATALOG } from '../../lib/lifeShop';
+import { unlockedColors, unlockedHatStyles, unlockedSkinsForSpecies, unlockedSpecies, skinCatalogForSpecies, SPECIES_CATALOG } from '../../lib/lifeShop';
 import { PenguinAvatar } from './PenguinAvatar';
 import { AgentScenePreview } from './AgentScenePreview';
 import { HatStylePicker } from './HatStylePicker';
+import type { SpeciesId, ManiuSkinId } from '../../lib/agentSpecies';
 import type { OutfitId } from '../../lib/agentOutfits';
 import { resolveAppearance, appearanceSummary, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
 import { StrategyEditor } from './StrategyEditor';
@@ -94,7 +95,8 @@ export function AgentWorkshop() {
   }, [selectedAgentId, myAgents, editId, mode, canOperateAgent]);
 
   const [appearDraft, setAppearDraft] = useState({
-    outfitId: 'default' as OutfitId,
+    speciesId: 'penguin' as SpeciesId,
+    outfitId: 'default' as OutfitId | ManiuSkinId,
     scarfEnabled: true,
     hatEnabled: false,
     headwear: 'scarf' as AgentHeadwear,
@@ -128,14 +130,15 @@ export function AgentWorkshop() {
   useEffect(() => {
     if (!d || !custom) return;
     setAppearDraft({
-      outfitId: d.outfitId ?? 'default',
+      speciesId: (d.speciesId as SpeciesId) ?? (d.outfitId === 'maniu' ? 'maniu' : 'penguin'),
+      outfitId: d.outfitId === 'maniu' ? 'default' : (d.outfitId ?? 'default') as OutfitId | ManiuSkinId,
       scarfEnabled: d.scarfEnabled ?? (d.headwear !== 'hat'),
       hatEnabled: d.hatEnabled ?? (d.headwear === 'hat'),
       headwear: d.headwear ?? 'scarf',
       hatStyle: d.hatStyle ?? 'beanie',
       color: d.color ?? APPEARANCE_PRESETS.colors[0],
     });
-  }, [editId, custom, d?.outfitId, d?.scarfEnabled, d?.hatEnabled, d?.headwear, d?.hatStyle, d?.color]);
+  }, [editId, custom, d?.speciesId, d?.outfitId, d?.scarfEnabled, d?.hatEnabled, d?.headwear, d?.hatStyle, d?.color]);
 
   const pickAgent = (id: string) => {
     setMode('list');
@@ -183,7 +186,9 @@ export function AgentWorkshop() {
 
   const colorOptions = unlockedColors(shopCatalog, shopUnlocks);
   const hatOptions = unlockedHatStyles(shopUnlocks);
-  const outfitOptions = unlockedOutfits(shopUnlocks);
+  const speciesOptions = unlockedSpecies(shopUnlocks);
+  const skinOptions = unlockedSkinsForSpecies(appearDraft.speciesId, shopUnlocks);
+  const skinCatalog = skinCatalogForSpecies(appearDraft.speciesId);
 
   if (mode === 'create') {
     const entertainment = draft.agentType === 'entertainment';
@@ -357,7 +362,7 @@ export function AgentWorkshop() {
             }}
           >
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={36} selected={editId === a.agentId} />
+              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} speciesId={a.data.speciesId} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={36} selected={editId === a.agentId} />
               <div>
                 <div style={{ fontWeight: 600, fontSize: 12 }}>{a.data.name}</div>
                 <div style={{ fontSize: 10, color: '#8a7e72' }}>
@@ -375,7 +380,7 @@ export function AgentWorkshop() {
         ) : (
           <>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-              <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} outfitId={d.outfitId} scarfEnabled={d.scarfEnabled} hatEnabled={d.hatEnabled} size={64} />
+              <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} speciesId={d.speciesId} outfitId={d.outfitId} scarfEnabled={d.scarfEnabled} hatEnabled={d.hatEnabled} size={64} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 16 }}>{d.name}</div>
                 <div style={{ fontSize: 12, color: '#8a7e72' }}>{d.desc}</div>
@@ -429,15 +434,32 @@ export function AgentWorkshop() {
               <div className="workshop-grid-create" style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 16, alignItems: 'start' }}>
                 <div>
                   <p style={{ fontSize: 12, color: '#8a7e72', marginBottom: 12, lineHeight: 1.5 }}>
-                    服装、围巾、帽子可<strong>同时穿戴</strong>（类似蛋仔派对）。在积分商城购买服装后在此更换。
+                    先选<strong>角色类型</strong>（企鹅 / 马牛），再换该角色专属皮肤；围巾、帽子可叠加穿戴。
                   </p>
-                  <Field label="服装皮肤">
+                  <Field label="角色类型">
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {outfitOptions.map(oid => (
+                      {(['penguin', 'maniu'] as SpeciesId[]).map(sid => {
+                        const unlocked = speciesOptions.includes(sid);
+                        return (
+                          <button key={sid} type="button"
+                            className={`ui-btn ${appearDraft.speciesId === sid ? 'active' : ''}`}
+                            style={{ fontSize: 11, padding: '6px 10px', opacity: unlocked ? 1 : 0.45 }}
+                            disabled={!unlocked}
+                            onClick={() => setAppearDraft({ ...appearDraft, speciesId: sid, outfitId: 'default' })}>
+                            {SPECIES_CATALOG[sid].preview} {SPECIES_CATALOG[sid].label}
+                            {!unlocked ? ' 🔒' : ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Field>
+                  <Field label={appearDraft.speciesId === 'maniu' ? '马牛专属皮肤' : '企鹅服装皮肤'}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {skinOptions.map(oid => (
                         <button key={oid} type="button" className={`ui-btn ${appearDraft.outfitId === oid ? 'active' : ''}`}
                           style={{ fontSize: 11, padding: '6px 10px' }}
-                          onClick={() => setAppearDraft({ ...appearDraft, outfitId: oid })}>
-                          {OUTFIT_CATALOG[oid].preview} {OUTFIT_CATALOG[oid].label}
+                          onClick={() => setAppearDraft({ ...appearDraft, outfitId: oid as OutfitId | ManiuSkinId })}>
+                          {(skinCatalog as Record<string, { preview: string; label: string }>)[oid]?.preview ?? '✨'} {(skinCatalog as Record<string, { label: string }>)[oid]?.label ?? oid}
                         </button>
                       ))}
                     </div>
@@ -478,7 +500,8 @@ export function AgentWorkshop() {
                   <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={async () => {
                     const payload = resolveAppearance(appearDraft);
                     const ok = await saveCustomAgentAppearance(editId, {
-                      outfitId: payload.outfitId,
+                      speciesId: payload.speciesId,
+                      outfitId: payload.outfitId as string,
                       scarfEnabled: payload.scarfEnabled,
                       hatEnabled: payload.hatEnabled,
                       headwear: payload.headwear,
@@ -491,6 +514,7 @@ export function AgentWorkshop() {
                 <div style={{ position: 'sticky', top: 0 }}>
                   <AgentScenePreview
                     color={appearDraft.color}
+                    speciesId={appearDraft.speciesId}
                     outfitId={appearDraft.outfitId}
                     scarfEnabled={appearDraft.scarfEnabled}
                     hatEnabled={appearDraft.hatEnabled}
