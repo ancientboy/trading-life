@@ -130,7 +130,7 @@ export const ZONE_NPCS: Record<ZoneId, ZoneNpcDef[]> = {
   hall: [],
   reception: [{
     id: 'reception', name: '迎宾 Gugu', role: '前厅接待', npcRole: 'reception',
-    px: 360, py: 400, color: '#d4af37',
+    px: 360, py: 362, color: '#d4af37',
     greetings: ['欢迎来到交易人生！', '需要创建新 Agent 吗？', '今日任务已更新～'],
   }],
   restaurant: [{

@@ -21,7 +21,7 @@ import {
   drawSpaZenBackdrop, drawSpaVipDecor, drawSpaAmbientLights, drawSpaMassageBed,
   drawTableDishes, drawWaiterServeMotion, drawMassageTherapistHands,
   placeSettingAtChair,
-  drawPokerTableDealing, drawReceptionInterior,
+  drawPokerTableDealing, drawReceptionInterior, drawReceptionDesk,
 } from './paperDraw';
 import { leisurePhase, tableIdForDineAgent, bedIdForMassageAgent, getLeisureRenderPaperPos, DINE_SERVE_MS } from '../../lib/leisureActivity';
 import type { SkinZone } from '../../lib/zoneSkins';
@@ -335,7 +335,17 @@ export function renderZone(
       break;
     case 'reception':
       drawReceptionInterior(ctx, cam, skinKey, opts.t, opts.hoverFacilityId);
-      drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
+      (ZONE_NPCS.reception ?? []).forEach((npc: ZoneNpcDef) => {
+        const s = pt(cam, npc.px, npc.py);
+        drawNpc(ctx, s.x, s.y, { npcRole: npc.npcRole, color: npc.color, name: npc.name, wave: opts.t });
+      });
+      drawReceptionDesk(ctx, cam, skinKey, opts.hoverFacilityId);
+      (ZONE_NPCS.reception ?? []).forEach((npc: ZoneNpcDef) => {
+        const s = pt(cam, npc.px, npc.py);
+        if (opts.npcBubble && opts.npcBubble.npcId === npc.id && performance.now() < opts.npcBubble.until) {
+          drawSpeechBubble(ctx, s.x, s.y - ws(cam, 28), opts.npcBubble.text, cam.scale);
+        }
+      });
       break;
   }
 

@@ -803,22 +803,6 @@ export function drawReceptionInterior(
   ctx.font = `700 ${Math.max(14, ws(18))}px Inter,sans-serif`; ctx.textAlign = 'center';
   ctx.fillText('交易人生', wall.x, wall.y + ws(6));
 
-  const desk = pt(360, 400);
-  dropShadow(ctx, desk.x, desk.y, ws(220), ws(70), 0.12);
-  ctx.fillStyle = pal.desk;
-  rrect(ctx, desk.x - ws(110), desk.y - ws(22), ws(220), ws(44), ws(10)); ctx.fill();
-  ctx.fillStyle = pal.deskTop;
-  rrect(ctx, desk.x - ws(104), desk.y - ws(18), ws(208), ws(36), ws(8)); ctx.fill();
-  ctx.strokeStyle = pal.accent; ctx.lineWidth = ws(skinKey === 'luxury' ? 2 : 1);
-  rrect(ctx, desk.x - ws(104), desk.y - ws(18), ws(208), ws(36), ws(8)); ctx.stroke();
-  ctx.fillStyle = pal.accent;
-  ctx.font = `600 ${Math.max(10, ws(12))}px Inter,sans-serif`;
-  ctx.fillText('接待台', desk.x, desk.y + ws(5));
-  if (hoverId === 'recv_ctr') {
-    ctx.strokeStyle = 'rgba(212,175,55,0.65)'; ctx.lineWidth = 2.5;
-    rrect(ctx, desk.x - ws(112), desk.y - ws(24), ws(224), ws(48), ws(10)); ctx.stroke();
-  }
-
   [[240, 480], [480, 480]].forEach(([px, py], i) => {
     const p = pt(px, py);
     ctx.fillStyle = pal.seat;
@@ -833,6 +817,37 @@ export function drawReceptionInterior(
   ctx.beginPath(); ctx.arc(lamp.x, lamp.y, ws(8), 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = pal.accent; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(lamp.x, lamp.y - ws(28)); ctx.lineTo(lamp.x, lamp.y - ws(8)); ctx.stroke();
+}
+
+/** 接待台台面 — 在迎宾 NPC 之后绘制，形成「站在台后」效果 */
+export function drawReceptionDesk(
+  ctx: CanvasRenderingContext2D,
+  cam: { cw: number; ch: number; scale: number; panX: number; panY: number },
+  skinKey: string,
+  hoverId: string | null,
+) {
+  const pal = receptionPalette(skinKey);
+  const ws = (v: number) => v * cam.scale;
+  const pt = (px: number, py: number) => {
+    const cx = PAPER.zoneW / 2 + cam.panX;
+    const cy = PAPER.zoneH / 2 + cam.panY;
+    return { x: cam.cw / 2 + (px - cx) * cam.scale, y: cam.ch / 2 + (py - cy) * cam.scale };
+  };
+  const desk = pt(360, 400);
+  dropShadow(ctx, desk.x, desk.y, ws(220), ws(70), 0.12);
+  ctx.fillStyle = pal.desk;
+  rrect(ctx, desk.x - ws(110), desk.y - ws(22), ws(220), ws(44), ws(10)); ctx.fill();
+  ctx.fillStyle = pal.deskTop;
+  rrect(ctx, desk.x - ws(104), desk.y - ws(18), ws(208), ws(36), ws(8)); ctx.fill();
+  ctx.strokeStyle = pal.accent; ctx.lineWidth = ws(skinKey === 'luxury' ? 2 : 1);
+  rrect(ctx, desk.x - ws(104), desk.y - ws(18), ws(208), ws(36), ws(8)); ctx.stroke();
+  ctx.fillStyle = pal.accent;
+  ctx.font = `600 ${Math.max(10, ws(12))}px Inter,sans-serif`; ctx.textAlign = 'center';
+  ctx.fillText('接待台', desk.x, desk.y + ws(5));
+  if (hoverId === 'recv_ctr') {
+    ctx.strokeStyle = 'rgba(212,175,55,0.65)'; ctx.lineWidth = 2.5;
+    rrect(ctx, desk.x - ws(112), desk.y - ws(24), ws(224), ws(48), ws(10)); ctx.stroke();
+  }
 }
 
 export function drawRoundTable(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
