@@ -16,10 +16,11 @@ import {
   drawDiningTable, drawFacilityLabel,
   drawMarketBigScreen, drawCoffeeZone, drawChair, drawRestBooth,
   drawPokerTable8, drawNpc, drawSpeechBubble,
-  drawCasinoVipBackdrop, drawCasinoVipDecor, drawCasinoAmbientLights, drawVipChair,
+  drawCasinoVipBackdrop,   drawCasinoVipDecor, drawCasinoAmbientLights, drawVipChair,
   drawCantoneseBackdrop, drawCantoneseDecor, drawCantoneseAmbientLights,
   drawSpaZenBackdrop, drawSpaVipDecor, drawSpaAmbientLights, drawSpaMassageBed,
   drawTableDishes, drawWaiterServeMotion, drawMassageTherapistHands,
+  drawPokerTableDealing,
 } from './paperDraw';
 import { leisurePhase, tableIdForDineAgent, bedIdForMassageAgent, getLeisureRenderPaperPos, DINE_SERVE_MS } from '../../lib/leisureActivity';
 import { getDiningTableSprite } from '../../lib/diningTableSprite';
@@ -222,7 +223,7 @@ function punchCasinoTableHole(ctx: CanvasRenderingContext2D, cam: PaperCamera) {
 
 function drawCasinoScene(
   ctx: CanvasRenderingContext2D, cam: PaperCamera, t: number, hoverId: string | null,
-  pokerGlbReady: boolean,
+  pokerGlbReady: boolean, pokerDealing: boolean,
 ) {
   drawCasinoVipDecor(ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), cam.scale, t);
   drawCasinoAmbientLights(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v));
@@ -230,6 +231,9 @@ function drawCasinoScene(
   const s = pt(cam, CASINO_TABLE.px, CASINO_TABLE.py);
   if (!pokerGlbReady) {
     drawPokerTable8(ctx, s.x, s.y, cam.scale, t);
+  }
+  if (pokerDealing) {
+    drawPokerTableDealing(ctx, s.x, s.y, cam.scale, t);
   }
   CASINO_SEATS.forEach(seat => {
     const cs = pt(cam, seat.px, seat.py);
@@ -287,6 +291,7 @@ export function renderZone(
     ticker: Record<string, number>; t: number;
     npcBubble: { npcId: string; text: string; until: number } | null;
     pokerGlbReady?: boolean;
+    pokerTableDealing?: boolean;
   },
 ) {
   const layout = ZONE_LAYOUTS[zone];
@@ -315,7 +320,7 @@ export function renderZone(
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
     case 'casino':
-      drawCasinoScene(ctx, cam, opts.t, opts.hoverFacilityId, !!opts.pokerGlbReady);
+      drawCasinoScene(ctx, cam, opts.t, opts.hoverFacilityId, !!opts.pokerGlbReady, !!opts.pokerTableDealing);
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
     case 'reception':

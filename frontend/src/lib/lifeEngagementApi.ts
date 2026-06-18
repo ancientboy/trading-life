@@ -12,7 +12,15 @@ function headers(): HeadersInit {
 async function parse<T>(r: Response): Promise<T> {
   const text = await r.text();
   try {
-    return JSON.parse(text) as T;
+    const data = JSON.parse(text) as T & { detail?: unknown; ok?: boolean };
+    if (!r.ok) {
+      const detail = data.detail;
+      const msg = typeof detail === 'string' ? detail
+        : Array.isArray(detail) ? detail.map(d => (d as { msg?: string }).msg).filter(Boolean).join('；')
+        : `请求失败 (${r.status})`;
+      return { ...data, ok: false, error: msg } as T;
+    }
+    return data as T;
   } catch {
     return { ok: false, error: r.ok ? '响应解析失败' : `请求失败 (${r.status})` } as T;
   }

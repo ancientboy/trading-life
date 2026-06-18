@@ -359,7 +359,7 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
 
 
 @pvp_router.post("/pvp/poker/solo")
-async def poker_solo(body: PokerSoloBody, account_id: str = Depends(resolve_account_id)):
+def poker_solo(body: PokerSoloBody, account_id: str = Depends(resolve_account_id)):
     """单人 vs 系统 NPC（荷官 Jack + 2 位 NPC），立即开局"""
     from life_game import load_user, save_user, _spend
 

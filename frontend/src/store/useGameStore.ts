@@ -118,6 +118,8 @@ interface GameStore {
   mentorPairs: { mentor_agent_id: string; mentee_agent_id: string }[];
   activeNpcBuffs: Record<string, number>;
   pokerHandResult: PokerHandResult | null;
+  /** 牌桌发牌动画截止时间戳 */
+  pokerTableDealingUntil: number;
   /** 上次客户端挂机 tick 时间（performance.now） */
   lastIdleClientTick: number;
   /** 当前用户可操作（派遣/编辑）的 Agent */
@@ -151,6 +153,7 @@ interface GameStore {
   openWorkshop: (mode?: 'list' | 'create') => void;
   closeModal: () => void;
   showPokerResult: (result: PokerHandResult) => void;
+  setPokerTableDealingUntil: (until: number) => void;
   flyToZone: (zone: ZoneId) => void;
   resetCamera: () => void;
   setFollowAgent: (id: string | null) => void;
@@ -243,6 +246,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   mentorPairs: [],
   activeNpcBuffs: {},
   pokerHandResult: null,
+  pokerTableDealingUntil: 0,
   lastIdleClientTick: 0,
   operableAgentIds: [],
   isAdmin: false,
@@ -353,8 +357,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   openModal: (id) => set({ activeModal: id, rightPanelCollapsed: true }),
   openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: true }),
-  closeModal: () => set({ activeModal: null, workshopMode: 'list', pokerHandResult: null }),
-  showPokerResult: (result) => set({ pokerHandResult: result, activeModal: 'poker_result', rightPanelCollapsed: true }),
+  closeModal: () => set({ activeModal: null, workshopMode: 'list', pokerHandResult: null, pokerTableDealingUntil: 0 }),
+  showPokerResult: (result) => set({
+    pokerHandResult: result, activeModal: 'poker_result', rightPanelCollapsed: true, pokerTableDealingUntil: 0,
+  }),
+  setPokerTableDealingUntil: (until) => set({ pokerTableDealingUntil: until }),
   flyToZone: (zone) => {
     const cam = ZONE_CAMERA[zone];
     set({

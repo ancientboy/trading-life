@@ -30,6 +30,7 @@ export function PaperZoneCanvas() {
   const npcBubble = useGameStore(s => s.npcBubble);
   const agentBubble = useGameStore(s => s.agentBubble);
   const pokerGlbReady = useGameStore(s => s.pokerGlbReady);
+  const pokerTableDealingUntil = useGameStore(s => s.pokerTableDealingUntil);
 
   const flyToZone = useGameStore(s => s.flyToZone);
   const selectAgent = useGameStore(s => s.selectAgent);
@@ -77,6 +78,7 @@ export function PaperZoneCanvas() {
       t,
       npcBubble: performance.now() < (npcBubble?.until ?? 0) ? npcBubble : null,
       pokerGlbReady,
+      pokerTableDealing: performance.now() < pokerTableDealingUntil,
     });
 
     renderAgents(ctx, activeZone, cam, agents, c => agentVisibleInZone(c, activeZone), {
@@ -84,7 +86,7 @@ export function PaperZoneCanvas() {
       t,
       agentBubble,
     });
-  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerGlbReady]);
+  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerGlbReady, pokerTableDealingUntil]);
 
   useEffect(() => {
     let last = performance.now();

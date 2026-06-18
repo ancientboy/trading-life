@@ -676,6 +676,38 @@ export function drawPokerTable8(
   ctx.fillText('TEXAS HOLD\'EM', x, y + 4 * s);
 }
 
+/** 牌桌发牌动画 — 逐张落向桌面中心 */
+export function drawPokerTableDealing(
+  ctx: CanvasRenderingContext2D, x: number, y: number, s: number, t: number,
+) {
+  const faces = ['🂡', '🂱', '🃁', '🃑', '🂮'];
+  for (let i = 0; i < 5; i++) {
+    const progress = Math.min(1, Math.max(0, t * 2.2 - i * 0.28));
+    if (progress <= 0) continue;
+    const ang = -1.1 + i * 0.42;
+    const dist = 38 * s * progress;
+    const cx = x + Math.cos(ang) * dist;
+    const cy = y + Math.sin(ang) * dist * 0.55 - progress * 10 * s;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(ang * 0.5);
+    ctx.fillStyle = progress >= 0.95 ? '#fffef8' : '#d4c8b8';
+    rrect(ctx, -11 * s, -15 * s, 22 * s, 30 * s, 3 * s);
+    ctx.fill();
+    ctx.strokeStyle = '#c4b8a8'; ctx.lineWidth = 1 * s; ctx.stroke();
+    if (progress >= 0.95) {
+      ctx.font = `${Math.max(10, 14 * s)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(faces[i], 0, 4 * s);
+    }
+    ctx.restore();
+  }
+  ctx.fillStyle = 'rgba(212,175,55,0.9)';
+  ctx.font = `600 ${Math.max(10, 12 * s)}px Inter,sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('🃏 荷官发牌中…', x, y - 48 * s);
+}
+
 function drawNpcClothing2d(ctx: CanvasRenderingContext2D, py: number, role: NpcRole) {
   const o = outfitForRole(role);
   if (o.vestColor) {

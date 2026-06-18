@@ -12,7 +12,7 @@ from typing import Any, Optional
 
 CST = timezone(timedelta(hours=8))
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 _db_path: Optional[Path] = None
 
 DAILY_TASK_DEFS = [
@@ -230,7 +230,7 @@ def init_db(data_dir: Path) -> None:
 def _conn() -> sqlite3.Connection:
     if _db_path is None:
         raise RuntimeError("life_db not initialized")
-    conn = sqlite3.connect(str(_db_path), check_same_thread=False)
+    conn = sqlite3.connect(str(_db_path), check_same_thread=False, timeout=15.0)
     conn.row_factory = sqlite3.Row
     return conn
 

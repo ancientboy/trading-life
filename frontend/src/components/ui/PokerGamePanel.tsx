@@ -3,6 +3,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { PenguinAvatar } from './PenguinAvatar';
 import { PokerDealingCards } from './PokerDealingCards';
 import { pokerSolo, pokerQuickJoin } from '../../lib/lifeEngagementApi';
+import { isLoggedIn } from '../../lib/lifeAuth';
 
 const BUY_IN_TIERS = [
   { id: 'casual', buyIn: 30, label: '休闲局', desc: '底注 30 · 适合新手' },
@@ -10,7 +11,8 @@ const BUY_IN_TIERS = [
   { id: 'high', buyIn: 200, label: '高手局', desc: '底注 200 · 高风险高回报' },
 ] as const;
 
-const MIN_DEAL_MS = 1400;
+const MIN_DEAL_MS = 1600;
+const HARD_TIMEOUT_MS = 25000;
 
 type PokerGamePanelProps = {
   showSitButton?: boolean;
@@ -26,11 +28,12 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const addMessage = useGameStore(s => s.addMessage);
   const showPokerResult = useGameStore(s => s.showPokerResult);
   const setNpcBubble = useGameStore(s => s.setNpcBubble);
+  const setPokerTableDealingUntil = useGameStore(s => s.setPokerTableDealingUntil);
   const openModal = useGameStore(s => s.openModal);
 
   const [tierId, setTierId] = useState<string>('casual');
-  const [busy, setBusy] = useState<'sit' | 'solo' | 'quick' | null>(null);
-  const [dealing, setDealing] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'dealing'>('idle');
+  const [busy, setBusy] = useState<'sit' | 'quick' | null>(null);
 
   const tier = BUY_IN_TIERS.find(t => t.id === tierId) ?? BUY_IN_TIERS[0];
   const operableAgents = Object.values(agents).filter(a => canOperateAgent(a.agentId));
@@ -58,20 +61,30 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   };
 
   const startSolo = async () => {
-    if (!agent || busy) return;
-    setBusy('solo');
-    setDealing(true);
-    setNpcBubble('dealer', '发牌开始～', performance.now() + 5000);
+    if (!agent || phase === 'dealing') return;
+    if (!isLoggedIn()) {
+      addMessage('请先登录后再开局');
+      return;
+    }
+
+    setPhase('dealing');
+    setPokerTableDealingUntil(performance.now() + HARD_TIMEOUT_MS);
+    setNpcBubble('dealer', '发牌开始～', performance.now() + 6000);
     const dealStart = performance.now();
 
     try {
-      const r = await pokerSolo(agent.agentId, tier.buyIn);
+      const apiPromise = pokerSolo(agent.agentId, tier.buyIn);
+      const timeoutPromise = new Promise<{ ok: false; error: string }>(resolve => {
+        setTimeout(() => resolve({ ok: false, error: '发牌超时，请重试' }), HARD_TIMEOUT_MS);
+      });
+      const r = await Promise.race([apiPromise, timeoutPromise]);
+
       const wait = Math.max(0, MIN_DEAL_MS - (performance.now() - dealStart));
       if (wait > 0) await new Promise(res => setTimeout(res, wait));
 
       if (!r.ok) {
         addMessage(r.error || '开局失败');
-        if (r.balance != null) useGameStore.setState({ points: r.balance });
+        if ('balance' in r && r.balance != null) useGameStore.setState({ points: r.balance as number });
         return;
       }
       if (!r.results?.length) {
@@ -83,10 +96,24 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
     } catch {
       addMessage('发牌失败，请重试');
     } finally {
-      setBusy(null);
-      setDealing(false);
+      setPhase('idle');
+      setPokerTableDealingUntil(0);
     }
   };
+
+  if (phase === 'dealing') {
+    return (
+      <div style={{ color: '#3d3530', textAlign: 'center', padding: '16px 8px 24px' }}>
+        <PokerDealingCards active />
+        <div style={{ fontSize: 13, fontWeight: 600, marginTop: 12, color: '#2ea872' }}>
+          荷官 Jack 正在发牌…
+        </div>
+        <div style={{ fontSize: 11, color: '#8a7e72', marginTop: 8, lineHeight: 1.5 }}>
+          请稍候，牌桌同步动画中<br />完成后将自动展示开牌结果
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ color: '#3d3530' }}>
@@ -95,11 +122,9 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         <b>② 开始牌局</b>：荷官发牌并展示对局结果
       </div>
 
-      {dealing && <PokerDealingCards active />}
-
       <div style={{ fontSize: 11, color: '#d4af37', marginBottom: 8 }}>当前积分：{points}</div>
 
-      {isSeated && seatedAgent && !dealing && (
+      {isSeated && seatedAgent && (
         <div style={{ marginBottom: 10, padding: 10, background: '#e8f8ef', borderRadius: 8, fontSize: 12, border: '1px solid #48d093' }}>
           <div style={{ fontWeight: 700, color: '#2ea872', marginBottom: 4 }}>✓ {seatedAgent.data.name} 已在牌桌</div>
           <div style={{ fontSize: 11, color: '#5a8a6a' }}>点击下方绿色按钮，荷官 Jack 将发牌</div>
@@ -120,7 +145,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         </div>
       )}
 
-      {!compact && !dealing && BUY_IN_TIERS.map(t => (
+      {!compact && BUY_IN_TIERS.map(t => (
         <button key={t.id} className={`leisure-option ${tierId === t.id ? 'selected' : ''}`} onClick={() => setTierId(t.id)}>
           <div style={{ flex: 1, textAlign: 'left' }}>
             <div style={{ fontWeight: 600 }}>{t.label}</div>
@@ -130,7 +155,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         </button>
       ))}
 
-      {compact && !dealing && (
+      {compact && (
         <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
           {BUY_IN_TIERS.map(t => (
             <button key={t.id} className={`ui-btn ${tierId === t.id ? 'active' : ''}`} style={{ flex: 1, fontSize: 10 }}
@@ -139,7 +164,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         </div>
       )}
 
-      {showSitButton && !isSeated && !dealing && (
+      {showSitButton && !isSeated && (
         <button className="ui-btn" style={{ width: '100%', marginTop: compact ? 0 : 8, marginBottom: 8, padding: '9px 0' }}
           disabled={!agent || busy !== null}
           onClick={async () => {
@@ -153,40 +178,36 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         </button>
       )}
 
-      {!dealing && (
-        <button className="ui-btn" style={{
-          width: '100%', marginBottom: 8, padding: '12px 0',
-          background: canAfford ? 'linear-gradient(135deg,#48d093,#2ea872)' : undefined,
-          color: canAfford ? '#fff' : undefined,
-          fontWeight: 700,
-          fontSize: compact ? 12 : 14,
-        }}
-          disabled={!agent || busy !== null || !canAfford}
-          onClick={() => void startSolo()}>
-          {busy === 'solo' ? '🃏 荷官发牌中…' : !canAfford ? `积分不足（需 ${tier.buyIn}）` : `② 开始牌局 · 发牌（-${tier.buyIn} 积分）`}
-        </button>
-      )}
+      <button className="ui-btn" style={{
+        width: '100%', marginBottom: 8, padding: '12px 0',
+        background: canAfford ? 'linear-gradient(135deg,#48d093,#2ea872)' : undefined,
+        color: canAfford ? '#fff' : undefined,
+        fontWeight: 700,
+        fontSize: compact ? 12 : 14,
+      }}
+        disabled={!agent || !canAfford}
+        onClick={() => void startSolo()}>
+        {!canAfford ? `积分不足（需 ${tier.buyIn}）` : `② 开始牌局 · 发牌（-${tier.buyIn} 积分）`}
+      </button>
 
-      {!dealing && (
-        <button className="ui-btn" style={{ width: '100%', marginBottom: 8 }}
-          disabled={!agent || busy !== null}
-          onClick={async () => {
-            if (!agent) return;
-            setBusy('quick');
-            const r = await pokerQuickJoin(agent.agentId, tier.buyIn);
-            if (!r.ok) {
-              if (r.mode === 'no_room') addMessage('暂无公开房间 · 可直接点上方「开始牌局」');
-              else addMessage(r.error || '匹配失败');
-            } else {
-              addMessage(r.message || '已入座（免费），等待其他玩家…');
-            }
-            setBusy(null);
-          }}>
-          {busy === 'quick' ? '匹配中…' : '快速入座（免费，匹配公开房）'}
-        </button>
-      )}
+      <button className="ui-btn" style={{ width: '100%', marginBottom: 8 }}
+        disabled={!agent || busy !== null}
+        onClick={async () => {
+          if (!agent) return;
+          setBusy('quick');
+          const r = await pokerQuickJoin(agent.agentId, tier.buyIn);
+          if (!r.ok) {
+            if (r.mode === 'no_room') addMessage('暂无公开房间 · 可直接点上方「开始牌局」');
+            else addMessage(r.error || '匹配失败');
+          } else {
+            addMessage(r.message || '已入座（免费），等待其他玩家…');
+          }
+          setBusy(null);
+        }}>
+        {busy === 'quick' ? '匹配中…' : '快速入座（免费，匹配公开房）'}
+      </button>
 
-      {!compact && !dealing && (
+      {!compact && (
         <button className="ui-btn" style={{ width: '100%', fontSize: 11, opacity: 0.85 }}
           onClick={() => openModal('rank')}>
           多人房间 → 顶栏「排行」· 德州局
