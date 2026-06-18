@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useGameStore, type PokerHandResult, type PokerPlayerResult } from '../../store/useGameStore';
 import { PokerDealingCards } from './PokerDealingCards';
 import { PokerCardRow } from './PokerCard';
@@ -12,11 +12,49 @@ function formatHandLabel(r: PokerPlayerResult): string {
 function PlayerHandBlock({
   player,
   highlight = false,
+  layout = 'horizontal',
 }: {
   player: PokerPlayerResult;
   highlight?: boolean;
+  layout?: 'horizontal' | 'vertical';
 }) {
   const bestCards = player.best_cards?.length ? player.best_cards : undefined;
+  const boxStyle: CSSProperties = {
+    padding: highlight ? '8px 10px' : '6px 8px',
+    borderRadius: 8,
+    background: highlight ? 'linear-gradient(135deg,#fff8e8,#faf6ef)' : '#f5f0e8',
+    border: highlight ? '1px solid rgba(212,175,55,0.55)' : '1px solid #ebe4d8',
+    flex: 1,
+    minWidth: 0,
+  };
+
+  if (layout === 'horizontal') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, marginTop: 8 }}>
+        <div style={{ flex: '0 0 auto' }}>
+          <div style={{ fontSize: 10, color: '#9a8b7a', marginBottom: 4 }}>手牌</div>
+          {player.hole_cards && player.hole_cards.length > 0 ? (
+            <PokerCardRow cards={player.hole_cards} small />
+          ) : (
+            <span style={{ fontSize: 10, color: '#c8baa8' }}>—</span>
+          )}
+        </div>
+        {bestCards && (
+          <div style={boxStyle}>
+            <div style={{
+              fontSize: 10, color: '#8a7e72', marginBottom: 6,
+              fontWeight: highlight ? 700 : 500,
+            }}>
+              最佳五张 · {formatHandLabel(player)}
+              {player.hand_combo ? ` · ${player.hand_combo}` : ''}
+            </div>
+            <PokerCardRow cards={bestCards} small />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={{ marginTop: 8, textAlign: highlight ? 'center' : 'left' }}>
       {player.hole_cards && player.hole_cards.length > 0 && (
@@ -26,12 +64,7 @@ function PlayerHandBlock({
         </div>
       )}
       {bestCards && (
-        <div style={{
-          padding: highlight ? '8px 10px' : '6px 8px',
-          borderRadius: 8,
-          background: highlight ? 'linear-gradient(135deg,#fff8e8,#faf6ef)' : '#f5f0e8',
-          border: highlight ? '1px solid rgba(212,175,55,0.55)' : '1px solid #ebe4d8',
-        }}>
+        <div style={boxStyle}>
           <div style={{
             fontSize: 10, color: '#8a7e72', marginBottom: 6,
             fontWeight: highlight ? 700 : 500,
@@ -90,7 +123,7 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
               <div style={{ fontSize: 13, marginTop: 6, fontWeight: 600, color: '#5c4a32' }}>
                 第 {me.rank} 名
               </div>
-              <PlayerHandBlock player={me} highlight={won} />
+              <PlayerHandBlock player={me} highlight={won} layout="horizontal" />
               {won ? (
                 <div style={{ marginTop: 8, fontSize: 14, fontWeight: 700, color: '#2ea872' }}>
                   {isTie ? `平分奖池 +${data.won} 积分` : `赢得奖池 +${data.won} 积分`}
@@ -149,17 +182,17 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
               padding: '8px 10px', background: r.won > 0 ? '#fff8e8' : '#faf6ef',
               borderRadius: 8, marginBottom: 6, fontSize: 12,
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <span style={{ fontWeight: r.won > 0 ? 700 : 500 }}>
                   {r.rank}. {r.name}{r.is_npc ? ' 🤖' : ''}{r.won > 0 ? (isTie ? ' 🤝' : ' 👑') : ''}
                 </span>
-                <span style={{ color: '#5c4a32', fontWeight: 600 }}>
-                  {formatHandLabel(r)}
-                  {r.hand_combo ? ` · ${r.hand_combo}` : ''}
-                  {r.won ? <span style={{ color: '#48d093', marginLeft: 6 }}>+{r.won}</span> : ''}
-                </span>
+                {r.won ? (
+                  <span style={{ color: '#48d093', fontWeight: 700 }}>+{r.won}</span>
+                ) : (
+                  <span style={{ fontSize: 10, color: '#9a8b7a' }}>{formatHandLabel(r)}</span>
+                )}
               </div>
-              <PlayerHandBlock player={r} highlight={r.rank === 1} />
+              <PlayerHandBlock player={r} highlight={r.rank === 1} layout="horizontal" />
             </div>
           ))}
         </>
