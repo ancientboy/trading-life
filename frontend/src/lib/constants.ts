@@ -25,6 +25,8 @@ export interface AgentMeta {
   owner?: 'system' | 'user';
   /** 自定义 Agent 的 SOUL 文档（本地存储） */
   soulMd?: string;
+  /** 策略预设：xau/major/altcoin/newcoin/momentum/custom */
+  strategyPreset?: string;
 }
 
 export interface Position {

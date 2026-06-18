@@ -15,6 +15,7 @@ export default function App() {
   const syncSeats = useGameStore(s => s.syncSeats);
   const syncEngagement = useGameStore(s => s.syncEngagement);
   const updateFromOverview = useGameStore(s => s.updateFromOverview);
+  const syncUserPortfolio = useGameStore(s => s.syncUserPortfolio);
   const setTicker = useGameStore(s => s.setTicker);
   const addMessage = useGameStore(s => s.addMessage);
   const loggedIn = isLoggedIn();
@@ -24,13 +25,15 @@ export default function App() {
     initAgents();
     syncLifeState();
     preloadAllSprites().catch(() => {});
-    const poll = () => fetchOverview().then(data => {
+    const pollSystem = () => fetchOverview().then(data => {
       updateFromOverview(data);
     }).catch(() => {});
+    const pollPortfolio = () => syncUserPortfolio().catch(() => {});
     const tick = () => fetchTicker().then(setTicker).catch(() => {});
-    poll(); tick();
+    pollSystem(); pollPortfolio(); tick();
     addMessage('欢迎来到交易人生 · 登录后开始挂机与派遣');
-    const a = setInterval(poll, 5000);
+    const a = setInterval(pollSystem, 8000);
+    const g = setInterval(pollPortfolio, 45000);
     const b = setInterval(tick, 10000);
     const c = setInterval(() => syncSeats(), 15000);
     const d = setInterval(() => useGameStore.getState().tickIdlePoints(performance.now()), 60_000);
@@ -54,10 +57,10 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', onVis);
     return () => {
-      clearInterval(a); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f);
+      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f);
       document.removeEventListener('visibilitychange', onVis);
     };
-  }, [loggedIn, initAgents, syncLifeState, syncSeats, syncEngagement, updateFromOverview, setTicker, addMessage]);
+  }, [loggedIn, initAgents, syncLifeState, syncSeats, syncEngagement, updateFromOverview, syncUserPortfolio, setTicker, addMessage]);
 
   if (!loggedIn) return <LoginPanel />;
   return <AppShell />;

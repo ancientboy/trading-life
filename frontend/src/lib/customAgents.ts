@@ -28,6 +28,8 @@ export interface CustomAgentDraft {
   market: string;
   interval: string;
   risk: string;
+  /** 交易 Agent 策略预设，同系统 Agent */
+  strategyPreset?: string;
 }
 
 /** 娱乐 Agent 出生点 — 休息沙发，不占交易工位 */
@@ -136,6 +138,26 @@ export function nextCustomAgentId(existing: Record<string, unknown>): string {
   let n = 1;
   while (existing[`custom_${n}`]) n++;
   return `custom_${n}`;
+}
+
+export const STRATEGY_PRESET_OPTIONS = [
+  { id: 'xau', label: '黄金趋势（同 XAU Agent）', strategy: '趋势跟踪', market: 'XAUUSDT', interval: '15m/1h', risk: '中' },
+  { id: 'major', label: '主流币趋势（同 Major Agent）', strategy: '趋势+反转', market: 'BTC/ETH', interval: '1h/4h', risk: '中' },
+  { id: 'altcoin', label: '山寨波段（同 Altcoin Agent）', strategy: '波段动量', market: 'Alt', interval: '15m/1h', risk: '中高' },
+  { id: 'newcoin', label: '新币猎手（同 Newcoin Agent）', strategy: '趋势突破', market: '新币', interval: '5m/15m', risk: '高' },
+  { id: 'momentum', label: '动量快打（同 Momentum Agent）', strategy: '动量追踪', market: '高波动', interval: '5m/15m', risk: '高' },
+  { id: 'custom', label: '自定义策略', strategy: '自定义', market: 'BTC', interval: '自定义', risk: '中' },
+] as const;
+
+export function applyStrategyPreset(presetId: string): Pick<CustomAgentDraft, 'strategyPreset' | 'strategy' | 'market' | 'interval' | 'risk'> {
+  const p = STRATEGY_PRESET_OPTIONS.find(o => o.id === presetId) || STRATEGY_PRESET_OPTIONS[1];
+  return {
+    strategyPreset: p.id,
+    strategy: p.strategy,
+    market: p.market,
+    interval: p.interval,
+    risk: p.risk,
+  };
 }
 
 export const APPEARANCE_PRESETS = {

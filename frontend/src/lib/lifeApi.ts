@@ -200,6 +200,7 @@ export async function lifeCreateAgent(draft: CustomAgentDraft) {
       market: draft.market,
       interval: draft.interval,
       risk: draft.risk,
+      strategyPreset: draft.strategyPreset || (draft.agentType === 'trading' ? 'major' : ''),
     }),
   });
   return parse<{ ok: boolean; agent?: AgentMeta; state?: LifeState; error?: string }>(r);
@@ -261,4 +262,76 @@ export async function releaseSeat(seatId: string, agentId: string) {
     body: JSON.stringify({ seat_id: seatId, agent_id: agentId }),
   });
   return parse<{ ok: boolean; error?: string }>(r);
+}
+
+export interface PortfolioAgentView {
+  id: string;
+  name: string;
+  strategy_preset: string;
+  strategy: string;
+  market: string;
+  interval: string;
+  risk: string;
+  capital: number;
+  initial_capital: number;
+  pnl: number;
+  pnl_pct: number;
+  trades: number;
+  wins: number;
+  win_rate: number;
+  positions: import('./constants').Position[];
+  trades_history: import('./constants').TradeRecord[];
+  running: boolean;
+  is_circuit_break: boolean;
+  owner: string;
+}
+
+export interface UserPortfolio {
+  ok: boolean;
+  cash: number;
+  initial_balance: number;
+  total_capital: number;
+  total_pnl: number;
+  total_pnl_pct: number;
+  total_trades: number;
+  total_wins: number;
+  total_wr: number;
+  agents: PortfolioAgentView[];
+  strategy_presets?: { id: string; label: string; strategy: string; market: string; interval: string; risk: string }[];
+  source?: string;
+  system_agents_note?: string;
+  error?: string;
+}
+
+export async function fetchPortfolio(): Promise<UserPortfolio> {
+  const r = await fetch(`${API}/portfolio`, { headers: headers() });
+  return parse(r);
+}
+
+export async function fetchPortfolioPresets() {
+  const r = await fetch(`${API}/portfolio/presets`, { headers: headers() });
+  return parse<{ ok: boolean; presets: { id: string; label: string; strategy: string; market: string; interval: string; risk: string }[] }>(r);
+}
+
+export async function resetPortfolio(): Promise<UserPortfolio> {
+  const r = await fetch(`${API}/portfolio/reset`, { method: 'POST', headers: headers() });
+  return parse(r);
+}
+
+export async function resetAgentPortfolio(agentId: string) {
+  const r = await fetch(`${API}/portfolio/agents/${agentId}/reset`, { method: 'POST', headers: headers() });
+  return parse<{ ok: boolean; message?: string; portfolio?: UserPortfolio; error?: string }>(r);
+}
+
+export async function updateAgentStrategy(agentId: string, body: {
+  strategy_preset: string;
+  strategy?: string;
+  market?: string;
+  interval?: string;
+  risk?: string;
+}) {
+  const r = await fetch(`${API}/portfolio/agents/${agentId}/strategy`, {
+    method: 'PUT', headers: headers(), body: JSON.stringify(body),
+  });
+  return parse<{ ok: boolean; agent?: AgentMeta; portfolio?: UserPortfolio; error?: string }>(r);
 }

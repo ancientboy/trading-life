@@ -26,6 +26,7 @@ const NAV_BTNS = [
 export function TopNavBar() {
   const ticker = useGameStore(s => s.ticker);
   const overview = useGameStore(s => s.overview);
+  const userPortfolio = useGameStore(s => s.userPortfolio);
   const points = useGameStore(s => s.points);
   const dailyAllowanceClaimed = useGameStore(s => s.dailyAllowanceClaimed);
   const dailyAllowanceAmount = useGameStore(s => s.dailyAllowanceAmount);
@@ -36,7 +37,7 @@ export function TopNavBar() {
   const account = getStoredAccount();
   const pnl = overview.total_pnl || 0;
   const capital = overview.total_capital || 0;
-  const pnlPct = capital ? (pnl / capital * 100) : 0;
+  const pnlPct = overview.total_pnl_pct ?? (capital ? (pnl / capital * 100) : 0);
 
   const logout = async () => {
     await authLogout().catch(() => {});
@@ -56,12 +57,15 @@ export function TopNavBar() {
       <div className="top-nav-stats">
         <div className="stat-card">
           <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <AppIcon icon={WalletIcon} size="mini" color="gold" /> 总资产
+            <AppIcon icon={WalletIcon} size="mini" color="gold" /> 模拟总资产
           </div>
           <div className="value mono gold">${Math.round(capital).toLocaleString()}</div>
+          {userPortfolio && (
+            <div style={{ fontSize: 9, color: '#9a8b7a', marginTop: 2 }}>现金 ${Math.round(userPortfolio.cash).toLocaleString()}</div>
+          )}
         </div>
         <div className="stat-card">
-          <div className="label">当日盈亏</div>
+          <div className="label">累计盈亏</div>
           <div className={`value mono ${pnl >= 0 ? 'profit' : 'loss'}`}>
             {pnl >= 0 ? '+' : ''}${Math.round(pnl).toLocaleString()}
           </div>

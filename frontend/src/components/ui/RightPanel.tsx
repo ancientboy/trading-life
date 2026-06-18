@@ -45,6 +45,8 @@ export function RightPanel() {
   const selectedFacility = useGameStore(s => s.selectedFacility);
   const agents = useGameStore(s => s.agents);
   const overview = useGameStore(s => s.overview);
+  const userPortfolio = useGameStore(s => s.userPortfolio);
+  const resetUserPortfolio = useGameStore(s => s.resetUserPortfolio);
   const messages = useGameStore(s => s.messages);
   const tradeFeed = useGameStore(s => s.tradeFeed);
   const panelTab = useGameStore(s => s.panelTab);
@@ -61,6 +63,7 @@ export function RightPanel() {
   const sendAgentToLeisure = useGameStore(s => s.sendAgentToLeisure);
   const canOperateAgent = useGameStore(s => s.canOperateAgent);
   const [msg, setMsg] = useState('');
+  const [portfolioResetting, setPortfolioResetting] = useState(false);
 
   useEffect(() => {
     if (!selectedAgentId) return;
@@ -331,11 +334,28 @@ export function RightPanel() {
     return (
       <>
         <div style={{ marginBottom: 10, padding: 8, background: '#faf6ef', borderRadius: 8 }}>
+          <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 6, lineHeight: 1.45 }}>
+            你的模拟账户 · 默认 50,000 USDT。大厅系统 Agent 为全局示范盘，不计入此处。
+          </div>
           <Row k="总资产" v={'$' + Math.round(overview.total_capital || 0).toLocaleString()} className="gold" />
+          <Row k="可用现金" v={'$' + Math.round(userPortfolio?.cash ?? 0).toLocaleString()} />
           <Row k="总盈亏" v={(pnl >= 0 ? '+' : '') + '$' + Math.round(pnl).toLocaleString()} className={pnl >= 0 ? 'profit' : 'loss'} />
           <Row k="总收益率" v={overview.total_pnl_pct != null ? overview.total_pnl_pct.toFixed(2) + '%' : '--'} className={(overview.total_pnl_pct || 0) >= 0 ? 'profit' : 'loss'} />
           <Row k="胜率" v={overview.total_wr ? overview.total_wr.toFixed(1) + '%' : '--'} />
           <Row k="总成交" v={String(overview.total_trades ?? '--')} />
+          <button
+            className="ui-btn"
+            style={{ width: '100%', marginTop: 8, fontSize: 11 }}
+            disabled={portfolioResetting}
+            onClick={async () => {
+              if (!window.confirm('确定重置整个模拟盘？将恢复 5 万 USDT 并清空所有 Agent 持仓与成交记录。')) return;
+              setPortfolioResetting(true);
+              await resetUserPortfolio();
+              setPortfolioResetting(false);
+            }}
+          >
+            {portfolioResetting ? '重置中…' : '重置策略 / 初始化模拟盘'}
+          </button>
         </div>
 
         <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>当前持仓 ({allPositions.length})</div>

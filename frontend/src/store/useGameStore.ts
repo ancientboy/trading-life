@@ -19,6 +19,7 @@ import {
   lifeActivityComplete, lifeDispatch, lifeClaimTask, lifeShopBuy, lifeSetZoneSkin,
   lifeCreateAgent, lifeSaveAgentSoul, lifeSaveAgentAppearance, lifeAgentSpeak,
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
+  fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
 import { resolveAvailableSeat, hasFreeSeat, mergeLocalSeatOccupancy, type SeatMap } from '../lib/seatRegistry';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
@@ -113,6 +114,8 @@ interface GameStore {
     total_initial?: number; total_pnl_pct?: number; total_trades?: number;
     runner?: { running: boolean };
   };
+  /** 用户模拟盘资产仓库 */
+  userPortfolio: UserPortfolio | null;
   tradeFeed: { agentId: string; agentName: string; trade: TradeRecord }[];
   profileSchema: { key: string; label: string; type: string; min?: number; max?: number; step?: number }[];
   profileConfig: Record<string, unknown>;
@@ -192,6 +195,13 @@ interface GameStore {
     total_initial?: number; total_pnl_pct?: number; total_trades?: number;
     runner?: { running: boolean };
   }) => void;
+  applyUserPortfolio: (data: UserPortfolio) => void;
+  syncUserPortfolio: () => Promise<void>;
+  resetUserPortfolio: () => Promise<boolean>;
+  resetAgentSim: (agentId: string) => Promise<boolean>;
+  updateTradingStrategy: (agentId: string, body: {
+    strategy_preset: string; strategy?: string; market?: string; interval?: string; risk?: string;
+  }) => Promise<boolean>;
   setTicker: (t: Record<string, number>) => void;
   setProfile: (schema: GameStore['profileSchema'], config: Record<string, unknown>, soul: string) => void;
   patchChar: (id: string, patch: Partial<CharState>) => void;
@@ -245,6 +255,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   agents: {},
   ticker: {},
   overview: {},
+  userPortfolio: null,
   tradeFeed: [],
   profileSchema: [],
   profileConfig: {},
@@ -599,6 +610,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       activeModal: 'workshop',
     });
     get().speakForAgent(id, 'greeting');
+    await get().syncUserPortfolio();
     return true;
   },
   resetCamera: () => set({
@@ -702,6 +714,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
       get().initAgents();
       await get().syncSeats();
+      await get().syncUserPortfolio();
     } catch {
       /* 离线时沿用本地缓存 */
     }
@@ -779,10 +792,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().initAgents();
     }
     const agents = { ...get().agents };
-    const tradeFeed: GameStore['tradeFeed'] = [];
 
     (data.agents || []).forEach((a) => {
       if (!agents[a.id]) return;
+      if (get().canOperateAgent(a.id)) return;
       if (agents[a.id].data.agentType === 'entertainment') return;
       const stress = Math.min(100, Math.max(0, -(a.pnl || 0) / 20 + (a.is_circuit_break ? 40 : 0)));
       let state: CharState['state'] = 'idle';
@@ -790,6 +803,46 @@ export const useGameStore = create<GameStore>((set, get) => ({
       else if (a.positions?.length) state = 'trading';
       else if (a.running) state = 'scanning';
       agents[a.id] = { ...agents[a.id], data: { ...agents[a.id].data, ...a }, stress, state };
+    });
+
+    set({ agents });
+  },
+
+  applyUserPortfolio: (data) => {
+    if (!data?.ok) return;
+    const prev = get();
+    if (Object.keys(prev.agents).length === 0) {
+      get().initAgents();
+    }
+    const agents = { ...get().agents };
+    const tradeFeed: GameStore['tradeFeed'] = [];
+
+    (data.agents || []).forEach((a) => {
+      if (!agents[a.id]) return;
+      const patch: Partial<AgentData> = {
+        capital: a.capital,
+        initial_capital: a.initial_capital,
+        pnl: a.pnl,
+        pnl_pct: a.pnl_pct,
+        trades: a.trades,
+        wins: a.wins,
+        win_rate: a.win_rate,
+        positions: a.positions,
+        trades_history: a.trades_history,
+        running: a.running,
+        is_circuit_break: a.is_circuit_break,
+        strategy: a.strategy,
+        market: a.market,
+        interval: a.interval,
+        risk: a.risk,
+        strategyPreset: a.strategy_preset,
+      };
+      const stress = Math.min(100, Math.max(0, -(a.pnl || 0) / 20 + (a.is_circuit_break ? 40 : 0)));
+      let state: CharState['state'] = 'idle';
+      if (a.is_circuit_break) state = 'panic';
+      else if (a.positions?.length) state = 'trading';
+      else if (a.running) state = 'scanning';
+      agents[a.id] = { ...agents[a.id], data: { ...agents[a.id].data, ...patch }, stress, state };
       (a.trades_history || []).slice(0, 20).forEach(trade => {
         tradeFeed.push({ agentId: a.id, agentName: a.name || agents[a.id].data.name, trade });
       });
@@ -811,17 +864,86 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       agents,
       selectedAgentId,
+      userPortfolio: data,
       tradeFeed: tradeFeed.slice(0, 80),
       overview: {
         total_pnl: data.total_pnl,
         total_wr: data.total_wr,
         total_capital: data.total_capital,
-        total_initial: (data as { total_initial?: number }).total_initial,
-        total_pnl_pct: (data as { total_pnl_pct?: number }).total_pnl_pct,
-        total_trades: (data as { total_trades?: number }).total_trades,
-        runner: data.runner,
+        total_initial: data.initial_balance,
+        total_pnl_pct: data.total_pnl_pct,
+        total_trades: data.total_trades,
       },
     });
+  },
+
+  syncUserPortfolio: async () => {
+    if (!isLoggedIn()) return;
+    try {
+      const data = await fetchPortfolio();
+      if (data.ok) get().applyUserPortfolio(data);
+    } catch { /* ignore */ }
+  },
+
+  resetUserPortfolio: async () => {
+    try {
+      const data = await resetPortfolio();
+      if (!data.ok) {
+        get().addMessage(data.error || '重置失败');
+        return false;
+      }
+      get().applyUserPortfolio(data);
+      get().addMessage('已重置模拟盘：5万 USDT 已恢复，交易记录已清空');
+      return true;
+    } catch {
+      get().addMessage('重置失败，请稍后重试');
+      return false;
+    }
+  },
+
+  resetAgentSim: async (agentId) => {
+    try {
+      const res = await resetAgentPortfolio(agentId);
+      if (!res.ok || !res.portfolio) {
+        get().addMessage(res.error || '重置失败');
+        return false;
+      }
+      get().applyUserPortfolio(res.portfolio);
+      get().addMessage(res.message || '已重置该 Agent 模拟盘');
+      return true;
+    } catch {
+      get().addMessage('重置失败，请稍后重试');
+      return false;
+    }
+  },
+
+  updateTradingStrategy: async (agentId, body) => {
+    try {
+      const res = await updateAgentStrategy(agentId, body);
+      if (!res.ok || !res.portfolio) {
+        get().addMessage(res.error || '策略更新失败');
+        return false;
+      }
+      if (res.agent) {
+        const agents = { ...get().agents };
+        if (agents[agentId]) {
+          agents[agentId] = { ...agents[agentId], data: { ...agents[agentId].data, ...res.agent } };
+          set({ agents });
+        }
+        const accountId = getStoredAccount()?.id;
+        const customMeta = loadCustomAgentMeta(accountId);
+        if (customMeta[agentId]) {
+          customMeta[agentId] = { ...customMeta[agentId], ...res.agent };
+          saveCustomAgentMeta(customMeta, accountId);
+        }
+      }
+      get().applyUserPortfolio(res.portfolio);
+      get().addMessage('策略已更新');
+      return true;
+    } catch {
+      get().addMessage('策略更新失败');
+      return false;
+    }
   },
 
   setTicker: (t) => set({ ticker: t }),

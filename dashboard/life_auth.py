@@ -110,6 +110,7 @@ async def auth_register(body: RegisterBody):
     account_id = res["account_id"]
     token = life_db.create_session(account_id)
     life_db.reset_session_idle(account_id)
+    life_db.ensure_portfolio(account_id)
     from life_game import load_user, _public_state
 
     user = load_user(account_id)
@@ -134,6 +135,7 @@ async def auth_login(body: LoginBody):
         return {"ok": False, "error": "用户名或密码错误"}
     token = life_db.create_session(acc["id"])
     life_db.reset_session_idle(acc["id"])
+    life_db.ensure_portfolio(acc["id"])
     from life_game import load_user, _public_state
 
     user = load_user(acc["id"])

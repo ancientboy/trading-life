@@ -26,6 +26,8 @@ DAILY_TASK_DEFS = [
 
 DEFAULT_FREE_UNLOCKS = ["color_default", "hat_beanie", "hat_cap"]
 STARTING_POINTS = 200
+DEFAULT_PORTFOLIO_USDT = 50000.0
+DEFAULT_AGENT_ALLOC_USDT = 10000.0
 
 
 def init_db(data_dir: Path) -> None:
@@ -221,6 +223,23 @@ def init_db(data_dir: Path) -> None:
             item_value TEXT NOT NULL DEFAULT '',
             cost INTEGER NOT NULL DEFAULT 100,
             PRIMARY KEY (season_id, item_id)
+        );
+        CREATE TABLE IF NOT EXISTS user_portfolios (
+            user_id TEXT PRIMARY KEY,
+            cash REAL NOT NULL DEFAULT 50000,
+            initial_balance REAL NOT NULL DEFAULT 50000,
+            last_sim_tick INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS user_agent_trading (
+            user_id TEXT NOT NULL,
+            agent_id TEXT NOT NULL,
+            strategy_preset TEXT NOT NULL DEFAULT 'major',
+            capital REAL NOT NULL DEFAULT 10000,
+            initial_capital REAL NOT NULL DEFAULT 10000,
+            state_json TEXT NOT NULL DEFAULT '{}',
+            updated_at TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (user_id, agent_id)
         );
         """)
     _migrate_json_files(data_dir)
@@ -712,4 +731,114 @@ def get_user_guild(user_id: str, season_id: str) -> Optional[dict]:
                 (user_id, season_id),
             ).fetchone()
             return dict(row) if row else None
+
+
+# ── 用户模拟交易资产仓库 ──
+
+def ensure_portfolio(user_id: str) -> dict:
+    now = datetime.now(CST).isoformat()
+    with _lock:
+        with _conn() as c:
+            row = c.execute("SELECT * FROM user_portfolios WHERE user_id=?", (user_id,)).fetchone()
+            if row:
+                return dict(row)
+            c.execute(
+                "INSERT INTO user_portfolios (user_id, cash, initial_balance, last_sim_tick, updated_at) VALUES (?,?,?,0,?)",
+                (user_id, DEFAULT_PORTFOLIO_USDT, DEFAULT_PORTFOLIO_USDT, now),
+            )
+            return {
+                "user_id": user_id,
+                "cash": DEFAULT_PORTFOLIO_USDT,
+                "initial_balance": DEFAULT_PORTFOLIO_USDT,
+                "last_sim_tick": 0,
+                "updated_at": now,
+            }
+
+
+def update_portfolio_tick(user_id: str, ts_ms: int) -> None:
+    now = datetime.now(CST).isoformat()
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                "UPDATE user_portfolios SET last_sim_tick=?, updated_at=? WHERE user_id=?",
+                (ts_ms, now, user_id),
+            )
+
+
+def get_agent_trading(user_id: str, agent_id: str) -> Optional[dict]:
+    with _lock:
+        with _conn() as c:
+            row = c.execute(
+                "SELECT * FROM user_agent_trading WHERE user_id=? AND agent_id=?",
+                (user_id, agent_id),
+            ).fetchone()
+            return dict(row) if row else None
+
+
+def list_agent_trading(user_id: str) -> list[dict]:
+    with _lock:
+        with _conn() as c:
+            rows = c.execute(
+                "SELECT * FROM user_agent_trading WHERE user_id=? ORDER BY agent_id",
+                (user_id,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+
+def save_agent_trading(
+    user_id: str,
+    agent_id: str,
+    *,
+    strategy_preset: str,
+    capital: float,
+    initial_capital: float,
+    state_json: str,
+) -> None:
+    now = datetime.now(CST).isoformat()
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                """INSERT INTO user_agent_trading
+                   (user_id, agent_id, strategy_preset, capital, initial_capital, state_json, updated_at)
+                   VALUES (?,?,?,?,?,?,?)
+                   ON CONFLICT(user_id, agent_id) DO UPDATE SET
+                   strategy_preset=excluded.strategy_preset,
+                   capital=excluded.capital,
+                   initial_capital=excluded.initial_capital,
+                   state_json=excluded.state_json,
+                   updated_at=excluded.updated_at""",
+                (user_id, agent_id, strategy_preset, capital, initial_capital, state_json, now),
+            )
+
+
+def delete_agent_trading(user_id: str, agent_id: str) -> None:
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                "DELETE FROM user_agent_trading WHERE user_id=? AND agent_id=?",
+                (user_id, agent_id),
+            )
+
+
+def reset_portfolio(user_id: str) -> None:
+    now = datetime.now(CST).isoformat()
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                "UPDATE user_portfolios SET cash=?, initial_balance=?, last_sim_tick=0, updated_at=? WHERE user_id=?",
+                (DEFAULT_PORTFOLIO_USDT, DEFAULT_PORTFOLIO_USDT, now, user_id),
+            )
+            c.execute("DELETE FROM user_agent_trading WHERE user_id=?", (user_id,))
+
+
+def adjust_portfolio_cash(user_id: str, delta: float) -> float:
+    ensure_portfolio(user_id)
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                "UPDATE user_portfolios SET cash = cash + ?, updated_at=? WHERE user_id=?",
+                (delta, datetime.now(CST).isoformat(), user_id),
+            )
+            row = c.execute("SELECT cash FROM user_portfolios WHERE user_id=?", (user_id,)).fetchone()
+            return float(row["cash"]) if row else 0.0
 

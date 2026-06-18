@@ -8,6 +8,7 @@ import { fetchAgentProfile, saveAgentConfig, saveAgentSoul } from '../../lib/api
 import {
   APPEARANCE_PRESETS, DEFAULT_ENTERTAINMENT_SOUL, DEFAULT_TRADING_SOUL,
   countCustomByType, canCreateAgentType, loadCustomAgentMeta, type CustomAgentDraft,
+  STRATEGY_PRESET_OPTIONS, applyStrategyPreset,
 } from '../../lib/customAgents';
 import { unlockedColors, unlockedHatStyles } from '../../lib/lifeShop';
 import { PenguinAvatar } from './PenguinAvatar';
@@ -16,13 +17,13 @@ import { HatStylePicker } from './HatStylePicker';
 import type { AgentHeadwear, HatStyleId } from '../../lib/agentAppearance';
 import type { AgentType, CharState } from '../../lib/constants';
 
-type WorkshopTab = 'info' | 'appearance' | 'config' | 'soul';
+type WorkshopTab = 'info' | 'appearance' | 'config' | 'strategy' | 'soul';
 
 const DEFAULT_DRAFT: CustomAgentDraft = {
   agentType: 'entertainment',
   name: '', headwear: 'scarf', hatStyle: 'beanie', color: APPEARANCE_PRESETS.colors[0],
   desc: '', soul: DEFAULT_ENTERTAINMENT_SOUL(''),
-  strategy: '趋势跟踪', market: 'BTC/ETH', interval: '15m/1h', risk: '中',
+  strategy: '趋势+反转', market: 'BTC/ETH', interval: '1h/4h', risk: '中', strategyPreset: 'major',
 };
 
 function isCustomAgent(id: string) {
@@ -45,6 +46,8 @@ export function AgentWorkshop() {
   const soulMd = useGameStore(s => s.soulMd);
   const saveCustomAgentSoul = useGameStore(s => s.saveCustomAgentSoul);
   const saveCustomAgentAppearance = useGameStore(s => s.saveCustomAgentAppearance);
+  const resetAgentSim = useGameStore(s => s.resetAgentSim);
+  const updateTradingStrategy = useGameStore(s => s.updateTradingStrategy);
   const closeModal = useGameStore(s => s.closeModal);
   const setFollowAgent = useGameStore(s => s.setFollowAgent);
   const workshopMode = useGameStore(s => s.workshopMode);
@@ -59,10 +62,12 @@ export function AgentWorkshop() {
   const [loading, setLoading] = useState(false);
 
   const [draft, setDraft] = useState<CustomAgentDraft>({ ...DEFAULT_DRAFT });
-  const [appearDraft, setAppearDraft] = useState({
-    headwear: 'scarf' as AgentHeadwear,
-    hatStyle: 'beanie' as HatStyleId,
-    color: APPEARANCE_PRESETS.colors[0],
+  const [strategyDraft, setStrategyDraft] = useState({
+    strategyPreset: 'major',
+    strategy: '趋势+反转',
+    market: 'BTC/ETH',
+    interval: '1h/4h',
+    risk: '中',
   });
 
   const shopUnlocks = useGameStore(s => s.shopUnlocks);
@@ -87,14 +92,22 @@ export function AgentWorkshop() {
     if (fallback && fallback !== editId && mode === 'list') setEditId(fallback);
   }, [selectedAgentId, myAgents, editId, mode, canOperateAgent]);
 
+  const [appearDraft, setAppearDraft] = useState({
+    headwear: 'scarf' as AgentHeadwear,
+    hatStyle: 'beanie' as HatStyleId,
+    color: APPEARANCE_PRESETS.colors[0],
+  });
+
   useEffect(() => {
-    if (!d || !custom) return;
-    setAppearDraft({
-      headwear: d.headwear ?? 'scarf',
-      hatStyle: d.hatStyle ?? 'beanie',
-      color: d.color ?? APPEARANCE_PRESETS.colors[0],
+    if (!d || aType !== 'trading') return;
+    setStrategyDraft({
+      strategyPreset: d.strategyPreset || 'major',
+      strategy: d.strategy || '趋势+反转',
+      market: d.market || 'BTC/ETH',
+      interval: d.interval || '1h/4h',
+      risk: d.risk || '中',
     });
-  }, [editId, custom, d?.headwear, d?.hatStyle, d?.color]);
+  }, [editId, d?.strategyPreset, d?.strategy, d?.market, d?.interval, d?.risk, aType]);
 
   useEffect(() => {
     if (!editId || mode !== 'list' || custom) {
@@ -107,6 +120,15 @@ export function AgentWorkshop() {
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [editId, setProfile, mode, custom, d?.soulMd]);
+
+  useEffect(() => {
+    if (!d || !custom) return;
+    setAppearDraft({
+      headwear: d.headwear ?? 'scarf',
+      hatStyle: d.hatStyle ?? 'beanie',
+      color: d.color ?? APPEARANCE_PRESETS.colors[0],
+    });
+  }, [editId, custom, d?.headwear, d?.hatStyle, d?.color]);
 
   const pickAgent = (id: string) => {
     setMode('list');
@@ -144,7 +166,12 @@ export function AgentWorkshop() {
       soul: agentType === 'entertainment'
         ? DEFAULT_ENTERTAINMENT_SOUL(prev.name)
         : DEFAULT_TRADING_SOUL(prev.name),
+      ...(agentType === 'trading' ? applyStrategyPreset('major') : {}),
     }));
+  };
+
+  const setDraftPreset = (presetId: string) => {
+    setDraft(prev => ({ ...prev, ...applyStrategyPreset(presetId) }));
   };
 
   const colorOptions = unlockedColors(shopCatalog, shopUnlocks);
@@ -235,22 +262,40 @@ export function AgentWorkshop() {
             </Field>
 
             {!entertainment && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <Field label="策略">
-                  <input value={draft.strategy} onChange={e => setDraft({ ...draft, strategy: e.target.value })} style={inputStyle} />
-                </Field>
-                <Field label="市场">
-                  <input value={draft.market} onChange={e => setDraft({ ...draft, market: e.target.value })} style={inputStyle} />
-                </Field>
-                <Field label="周期">
-                  <input value={draft.interval} onChange={e => setDraft({ ...draft, interval: e.target.value })} style={inputStyle} />
-                </Field>
-                <Field label="风险">
-                  <select value={draft.risk} onChange={e => setDraft({ ...draft, risk: e.target.value })} style={inputStyle}>
-                    {['低', '中', '中高', '高'].map(r => <option key={r}>{r}</option>)}
+              <>
+                <Field label="策略预设（复用系统 Agent 策略）">
+                  <select
+                    value={draft.strategyPreset || 'major'}
+                    onChange={e => setDraftPreset(e.target.value)}
+                    style={inputStyle}
+                  >
+                    {STRATEGY_PRESET_OPTIONS.map(p => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
                   </select>
                 </Field>
-              </div>
+                {(draft.strategyPreset === 'custom' || !draft.strategyPreset) && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <Field label="策略">
+                      <input value={draft.strategy} onChange={e => setDraft({ ...draft, strategy: e.target.value })} style={inputStyle} />
+                    </Field>
+                    <Field label="市场">
+                      <input value={draft.market} onChange={e => setDraft({ ...draft, market: e.target.value })} style={inputStyle} />
+                    </Field>
+                    <Field label="周期">
+                      <input value={draft.interval} onChange={e => setDraft({ ...draft, interval: e.target.value })} style={inputStyle} />
+                    </Field>
+                    <Field label="风险">
+                      <select value={draft.risk} onChange={e => setDraft({ ...draft, risk: e.target.value })} style={inputStyle}>
+                        {['低', '中', '中高', '高'].map(r => <option key={r}>{r}</option>)}
+                      </select>
+                    </Field>
+                  </div>
+                )}
+                <p style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8, lineHeight: 1.45 }}>
+                  创建后从 5 万 USDT 模拟账户分配约 1 万运行；基于 Binance 行情自动模拟开平仓。
+                </p>
+              </>
             )}
 
             <button className="ui-btn" style={{ width: '100%', padding: '10px 0', marginTop: 4 }} onClick={handleCreate}>
@@ -276,7 +321,7 @@ export function AgentWorkshop() {
   }
 
   const tabs: WorkshopTab[] = custom
-    ? ['info', 'appearance', 'soul']
+    ? (aType === 'trading' ? ['info', 'appearance', 'strategy', 'soul'] : ['info', 'appearance', 'soul'])
     : showConfigTab ? ['info', 'config', 'soul'] : ['info', 'soul'];
 
   return (
@@ -341,7 +386,7 @@ export function AgentWorkshop() {
             <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
               {tabs.map(t => (
                 <button key={t} className={`panel-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                  {t === 'info' ? '基本信息' : t === 'appearance' ? '装扮' : t === 'config' ? '策略参数' : 'SOUL 文档'}
+                  {t === 'info' ? '基本信息' : t === 'appearance' ? '装扮' : t === 'strategy' ? '交易策略' : t === 'config' ? '策略参数' : 'SOUL 文档'}
                 </button>
               ))}
             </div>
@@ -422,6 +467,58 @@ export function AgentWorkshop() {
                   />
                 </div>
               </div>
+            )}
+
+            {tab === 'strategy' && custom && aType === 'trading' && (
+              <>
+                <p style={{ fontSize: 12, color: '#8a7e72', marginBottom: 10, lineHeight: 1.5 }}>
+                  可复用系统 Agent 同款策略预设，或切换为自定义后自行填写参数。模拟交易读取 Binance 实时行情。
+                </p>
+                <Field label="策略预设">
+                  <select
+                    value={strategyDraft.strategyPreset}
+                    onChange={e => setStrategyDraft({ ...strategyDraft, ...applyStrategyPreset(e.target.value) })}
+                    style={inputStyle}
+                  >
+                    {STRATEGY_PRESET_OPTIONS.map(p => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </select>
+                </Field>
+                {strategyDraft.strategyPreset === 'custom' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <Field label="策略">
+                      <input value={strategyDraft.strategy} onChange={e => setStrategyDraft({ ...strategyDraft, strategy: e.target.value })} style={inputStyle} />
+                    </Field>
+                    <Field label="市场">
+                      <input value={strategyDraft.market} onChange={e => setStrategyDraft({ ...strategyDraft, market: e.target.value })} style={inputStyle} />
+                    </Field>
+                    <Field label="周期">
+                      <input value={strategyDraft.interval} onChange={e => setStrategyDraft({ ...strategyDraft, interval: e.target.value })} style={inputStyle} />
+                    </Field>
+                    <Field label="风险">
+                      <select value={strategyDraft.risk} onChange={e => setStrategyDraft({ ...strategyDraft, risk: e.target.value })} style={inputStyle}>
+                        {['低', '中', '中高', '高'].map(r => <option key={r}>{r}</option>)}
+                      </select>
+                    </Field>
+                  </div>
+                )}
+                <button className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={async () => {
+                  const ok = await updateTradingStrategy(editId, {
+                    strategy_preset: strategyDraft.strategyPreset,
+                    strategy: strategyDraft.strategy,
+                    market: strategyDraft.market,
+                    interval: strategyDraft.interval,
+                    risk: strategyDraft.risk,
+                  });
+                  setMsg(ok ? '策略已保存' : '保存失败');
+                }}>保存策略</button>
+                <button className="ui-btn" style={{ width: '100%', marginTop: 8, background: '#fff5f5', borderColor: '#e8b4b4' }} onClick={async () => {
+                  if (!window.confirm('重置该 Agent 模拟盘？将清空持仓与成交，资金重新分配。')) return;
+                  const ok = await resetAgentSim(editId);
+                  setMsg(ok ? '已重置模拟盘' : '重置失败');
+                }}>重置该 Agent 模拟盘</button>
+              </>
             )}
 
             {tab === 'config' && showConfigTab && (

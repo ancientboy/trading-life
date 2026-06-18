@@ -17,6 +17,8 @@ import life_db
 from life_auth import router as auth_router, resolve_account_id, ensure_admin_account
 from life_engagement import social_router, pvp_router, season_router
 
+# life_trading 在模块末尾注册，避免循环导入
+
 CST = timezone(timedelta(hours=8))
 
 STARTING_POINTS = life_db.STARTING_POINTS
@@ -310,6 +312,7 @@ class CustomAgentBody(BaseModel):
     market: str = ""
     interval: str = ""
     risk: str = "中"
+    strategyPreset: str = "major"
 
 
 class AgentSoulBody(BaseModel):
@@ -580,9 +583,17 @@ async def life_create_agent(body: CustomAgentBody, account_id: str = Depends(res
         "market": body.market if agent_type == "trading" else "—",
         "interval": body.interval if agent_type == "trading" else "—",
         "risk": body.risk if agent_type == "trading" else "—",
+        "strategyPreset": body.strategyPreset if agent_type == "trading" else "",
     }
     custom[aid] = meta
     save_user(uid, user)
+    if agent_type == "trading":
+        from life_trading import init_agent_trading, apply_preset_to_meta
+        preset = body.strategyPreset if body.strategyPreset in ("xau", "major", "altcoin", "newcoin", "momentum", "custom") else "major"
+        apply_preset_to_meta(meta, preset)
+        custom[aid] = meta
+        save_user(uid, user)
+        init_agent_trading(uid, aid, meta, preset)
     return {"ok": True, "agent": meta, "state": _public_state(user, uid)}
 
 
@@ -697,3 +708,8 @@ async def _generate_speak_line(body: AgentSpeakBody) -> str:
     except Exception:
         pass
     return random.choice(pool)
+
+
+from life_trading import router as portfolio_router  # noqa: E402
+
+router.include_router(portfolio_router)
