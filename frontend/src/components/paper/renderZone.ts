@@ -185,7 +185,12 @@ function drawHallScene(
   hoverId: string | null,
 ) {
   drawBigTicker(ctx, cam, zone, ticker, t);
-  drawCoffeeZone(ctx, pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).x, pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).y, cam.scale, t);
+  drawCoffeeZone(
+    ctx,
+    pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).x,
+    pt(cam, HALL_COFFEE.px, HALL_COFFEE.py).y,
+    cam.scale, t, HALL_COFFEE.vertical,
+  );
   drawHallDesks(ctx, cam, agents, t);
   drawHallRest(ctx, cam, hoverId);
 }

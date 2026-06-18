@@ -71,7 +71,7 @@ export const HALL_BOOTHS: { id: string; x: number; z: number; label: string }[] 
   { id: 'rest_l_2', x: 5.8, z: 5.15, label: '休息包厢 B' },
 ];
 
-export const HALL_COFFEE = { x: 9, z: 1 };
+export const HALL_COFFEE = { x: 2.4, z: 5.6 };
 
 export function agentDisplayZone(char: { activity: string | null }): ZoneId {
   if (char.activity === 'dine') return 'restaurant';
