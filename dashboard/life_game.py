@@ -50,30 +50,43 @@ SHOP_CATALOG = [
     {"id": "zone_skin_restaurant_modern", "type": "zone_skin", "value": "restaurant:modern", "cost": 220, "label": "粤菜馆 · 现代简约皮肤包"},
     {"id": "zone_skin_spa_tropical", "type": "zone_skin", "value": "spa:tropical", "cost": 200, "label": "理疗馆 · 热带度假皮肤包"},
     {"id": "zone_skin_casino_neon", "type": "zone_skin", "value": "casino:neon", "cost": 250, "label": "德州厅 · 霓虹之夜皮肤包"},
+    {"id": "zone_skin_hall_bamboo", "type": "zone_skin", "value": "hall:bamboo", "cost": 180, "label": "大厅 · 竹韵商务皮肤包"},
+    {"id": "zone_skin_restaurant_garden", "type": "zone_skin", "value": "restaurant:garden", "cost": 200, "label": "粤菜馆 · 岭南茶室皮肤包"},
+    {"id": "zone_skin_spa_zen_ink", "type": "zone_skin", "value": "spa:zen_ink", "cost": 220, "label": "理疗馆 · 水墨禅境皮肤包"},
+    {"id": "zone_skin_casino_royal", "type": "zone_skin", "value": "casino:royal", "cost": 280, "label": "德州厅 · 皇家金銮皮肤包"},
+    {"id": "zone_skin_reception_luxury", "type": "zone_skin", "value": "reception:luxury", "cost": 160, "label": "前厅 · 尊享接待皮肤包"},
     # 旧版 id 兼容 — 与新版皮肤包等价
     {"id": "skin_sofa_gold", "type": "zone_skin", "value": "hall:gold", "cost": 200, "label": "大厅 · 金色 lounge（旧版）", "legacy": True},
     {"id": "skin_table_premium", "type": "zone_skin", "value": "restaurant:premium", "cost": 180, "label": "粤菜馆 · 尊享宴席（旧版）", "legacy": True},
 ]
 
-ZONE_SKIN_ZONES = ("hall", "restaurant", "spa", "casino")
+ZONE_SKIN_ZONES = ("hall", "restaurant", "spa", "casino", "reception")
 ZONE_SKIN_DEFAULTS = {z: "default" for z in ZONE_SKIN_ZONES}
 ZONE_SKIN_OPTIONS: dict[str, list[dict[str, Any]]] = {
     "hall": [
         {"id": "default", "label": "经典大厅", "free": True},
         {"id": "gold", "label": "金色 lounge", "shop_ids": ["zone_skin_hall_gold", "skin_sofa_gold"]},
+        {"id": "bamboo", "label": "竹韵商务", "shop_ids": ["zone_skin_hall_bamboo"]},
     ],
     "restaurant": [
         {"id": "default", "label": "广式经典", "free": True},
         {"id": "premium", "label": "尊享宴席", "shop_ids": ["zone_skin_restaurant_premium", "skin_table_premium"]},
         {"id": "modern", "label": "现代简约", "shop_ids": ["zone_skin_restaurant_modern"]},
+        {"id": "garden", "label": "岭南茶室", "shop_ids": ["zone_skin_restaurant_garden"]},
     ],
     "spa": [
         {"id": "default", "label": "禅意 lavender", "free": True},
         {"id": "tropical", "label": "热带度假", "shop_ids": ["zone_skin_spa_tropical"]},
+        {"id": "zen_ink", "label": "水墨禅境", "shop_ids": ["zone_skin_spa_zen_ink"]},
     ],
     "casino": [
         {"id": "default", "label": "经典 VIP", "free": True},
         {"id": "neon", "label": "霓虹之夜", "shop_ids": ["zone_skin_casino_neon"]},
+        {"id": "royal", "label": "皇家金銮", "shop_ids": ["zone_skin_casino_royal"]},
+    ],
+    "reception": [
+        {"id": "default", "label": "经典前厅", "free": True},
+        {"id": "luxury", "label": "尊享接待", "shop_ids": ["zone_skin_reception_luxury"]},
     ],
 }
 

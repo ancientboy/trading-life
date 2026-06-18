@@ -29,7 +29,6 @@ export function PaperZoneCanvas() {
   const ticker = useGameStore(s => s.ticker);
   const npcBubble = useGameStore(s => s.npcBubble);
   const agentBubble = useGameStore(s => s.agentBubble);
-  const pokerGlbReady = useGameStore(s => s.pokerGlbReady);
   const pokerTableDealingUntil = useGameStore(s => s.pokerTableDealingUntil);
   const zoneSkins = useGameStore(s => s.zoneSkins);
 
@@ -78,7 +77,6 @@ export function PaperZoneCanvas() {
       ticker,
       t,
       npcBubble: performance.now() < (npcBubble?.until ?? 0) ? npcBubble : null,
-      pokerGlbReady,
       pokerTableDealing: performance.now() < pokerTableDealingUntil,
       zoneSkins,
     });
@@ -88,7 +86,7 @@ export function PaperZoneCanvas() {
       t,
       agentBubble,
     });
-  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerGlbReady, pokerTableDealingUntil, zoneSkins]);
+  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerTableDealingUntil, zoneSkins]);
 
   useEffect(() => {
     let last = performance.now();

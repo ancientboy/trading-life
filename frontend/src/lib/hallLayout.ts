@@ -58,7 +58,8 @@ export function syncHallDesksToPathfinding(
   });
 }
 
-export const HALL_COFFEE = { px: 52, py: 310 };
+export const HALL_COFFEE = { px: 34, py: 268, vertical: true as const };
+export const HALL_COFFEE_SIZE = { w: 52, h: 118 };
 
 export function deskChartSeed(deskId: string, agentId?: string): number {
   let h = 0;
@@ -78,6 +79,13 @@ export function hallObstacleRects(): { x: number; y: number; w: number; h: numbe
   });
   // 行情大屏 — 缩小为屏幕本体，前方走道可通行
   rects.push({ x: 240, y: 68, w: 240, h: 48 });
+  // 咖啡区 — 左侧竖向
+  rects.push({
+    x: HALL_COFFEE.px - HALL_COFFEE_SIZE.w / 2,
+    y: HALL_COFFEE.py - HALL_COFFEE_SIZE.h / 2,
+    w: HALL_COFFEE_SIZE.w,
+    h: HALL_COFFEE_SIZE.h,
+  });
   return rects;
 }
 
