@@ -4,10 +4,47 @@ import { PokerDealingCards } from './PokerDealingCards';
 import { PokerCardRow } from './PokerCard';
 
 function formatHandLabel(r: PokerPlayerResult): string {
-  if (r.hand_combo && r.hand_name) return `${r.hand_name} · ${r.hand_combo}`;
-  if (r.hand_combo) return r.hand_combo;
   if (r.hand_name) return r.hand_name;
+  if (r.hand_combo) return r.hand_combo;
   return `牌力 ${r.score}`;
+}
+
+function PlayerHandBlock({
+  player,
+  highlight = false,
+}: {
+  player: PokerPlayerResult;
+  highlight?: boolean;
+}) {
+  const bestCards = player.best_cards?.length ? player.best_cards : undefined;
+  return (
+    <div style={{ marginTop: 8, textAlign: highlight ? 'center' : 'left' }}>
+      {player.hole_cards && player.hole_cards.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, justifyContent: highlight ? 'center' : 'flex-start' }}>
+          <span style={{ fontSize: 10, color: '#9a8b7a', minWidth: 52 }}>手牌</span>
+          <PokerCardRow cards={player.hole_cards} small />
+        </div>
+      )}
+      {bestCards && (
+        <div style={{
+          padding: highlight ? '8px 10px' : '6px 8px',
+          borderRadius: 8,
+          background: highlight ? 'linear-gradient(135deg,#fff8e8,#faf6ef)' : '#f5f0e8',
+          border: highlight ? '1px solid rgba(212,175,55,0.55)' : '1px solid #ebe4d8',
+        }}>
+          <div style={{
+            fontSize: 10, color: '#8a7e72', marginBottom: 6,
+            fontWeight: highlight ? 700 : 500,
+            textAlign: highlight ? 'center' : 'left',
+          }}>
+            最佳五张 · {formatHandLabel(player)}
+            {player.hand_combo ? ` · ${player.hand_combo}` : ''}
+          </div>
+          <PokerCardRow cards={bestCards} small={!highlight} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function PokerResultModal({ data }: { data: PokerHandResult }) {
@@ -50,21 +87,10 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
               border: won ? '1px solid #48d093' : '1px solid #eee8dc',
             }}>
               <div style={{ fontWeight: 700 }}>{me.name}</div>
-              {me.hole_cards && me.hole_cards.length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ fontSize: 10, color: '#8a7e72', marginBottom: 4 }}>你的手牌</div>
-                  <PokerCardRow cards={me.hole_cards} />
-                </div>
-              )}
-              <div style={{ fontSize: 13, marginTop: 8, fontWeight: 600, color: '#5c4a32' }}>
-                第 {me.rank} 名 · {formatHandLabel(me)}
+              <div style={{ fontSize: 13, marginTop: 6, fontWeight: 600, color: '#5c4a32' }}>
+                第 {me.rank} 名
               </div>
-              {me.best_cards && me.best_cards.length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ fontSize: 10, color: '#8a7e72', marginBottom: 4 }}>最佳五张</div>
-                  <PokerCardRow cards={me.best_cards} small />
-                </div>
-              )}
+              <PlayerHandBlock player={me} highlight={won} />
               {won ? (
                 <div style={{ marginTop: 8, fontSize: 14, fontWeight: 700, color: '#2ea872' }}>
                   {isTie ? `平分奖池 +${data.won} 积分` : `赢得奖池 +${data.won} 积分`}
@@ -96,6 +122,25 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
             </div>
           )}
 
+          {(() => {
+            const top = data.results.find(r => r.rank === 1);
+            if (!top?.best_cards?.length) return null;
+            return (
+              <div style={{
+                padding: '10px 12px', marginBottom: 12, background: '#fff8e8',
+                borderRadius: 8, border: '1px solid rgba(212,175,55,0.45)', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#5c4a32', marginBottom: 8 }}>
+                  {isTie ? '🤝 最大牌型（平局）' : '👑 本局最大牌型'} · {top.name}
+                </div>
+                <PokerCardRow cards={top.best_cards} />
+                <div style={{ fontSize: 11, color: '#8a7e72', marginTop: 8 }}>
+                  {formatHandLabel(top)}{top.hand_combo ? ` · ${top.hand_combo}` : ''}
+                </div>
+              </div>
+            );
+          })()}
+
           <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>
             对局排名 · {isTie ? '平局平分奖池' : '胜者通吃奖池'}
           </div>
@@ -104,21 +149,17 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
               padding: '8px 10px', background: r.won > 0 ? '#fff8e8' : '#faf6ef',
               borderRadius: 8, marginBottom: 6, fontSize: 12,
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: r.hole_cards?.length ? 6 : 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontWeight: r.won > 0 ? 700 : 500 }}>
                   {r.rank}. {r.name}{r.is_npc ? ' 🤖' : ''}{r.won > 0 ? (isTie ? ' 🤝' : ' 👑') : ''}
                 </span>
                 <span style={{ color: '#5c4a32', fontWeight: 600 }}>
                   {formatHandLabel(r)}
+                  {r.hand_combo ? ` · ${r.hand_combo}` : ''}
                   {r.won ? <span style={{ color: '#48d093', marginLeft: 6 }}>+{r.won}</span> : ''}
                 </span>
               </div>
-              {r.hole_cards && r.hole_cards.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 10, color: '#9a8b7a', minWidth: 36 }}>手牌</span>
-                  <PokerCardRow cards={r.hole_cards} small />
-                </div>
-              )}
+              <PlayerHandBlock player={r} highlight={r.rank === 1} />
             </div>
           ))}
         </>
