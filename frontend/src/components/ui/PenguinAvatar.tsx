@@ -1,97 +1,81 @@
 import { useEffect, useRef } from 'react';
-import { scarfColorsFromAccent } from '../../lib/scarfColors';
-import { drawAgentHat2d, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
+import { drawAgent } from '../paper/paperDraw';
+import { resolveAppearance, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
+import type { OutfitId } from '../../lib/agentOutfits';
 
 export interface PenguinAvatarProps {
   color: string;
   headwear?: AgentHeadwear;
   hatStyle?: HatStyleId;
+  outfitId?: OutfitId | string;
+  scarfEnabled?: boolean;
+  hatEnabled?: boolean;
   size?: number;
   selected?: boolean;
 }
 
-/** 迷你 Q 版企鹅 — UI 头像 */
+/** 迷你 Q 版头像 — 与游戏场景 2D 渲染一致，支持全身服装 */
 export function PenguinAvatar({
-  color, headwear = 'scarf', hatStyle = 'beanie', size = 48, selected,
+  color,
+  headwear = 'scarf',
+  hatStyle = 'beanie',
+  outfitId,
+  scarfEnabled,
+  hatEnabled,
+  size = 48,
+  selected,
 }: PenguinAvatarProps) {
-  const scarf = scarfColorsFromAccent(color);
-  const wrapBg = headwear === 'scarf'
-    ? `repeating-linear-gradient(180deg, ${scarf.wrap[0]} 0 3px, ${scarf.wrap[1]} 3px 6px)`
-    : undefined;
-  const tailBg = headwear === 'scarf'
-    ? `repeating-linear-gradient(180deg, ${scarf.tail[0]} 0 4px, ${scarf.tail[1]} 4px 8px)`
-    : undefined;
-
-  return (
-    <div style={{
-      width: size, height: size, position: 'relative', flexShrink: 0,
-      border: selected ? '2px solid #d4af37' : '2px solid transparent',
-      borderRadius: size * 0.22,
-      background: '#faf6ef',
-    }}>
-      <div style={{
-        position: 'absolute', left: '18%', top: '22%', width: '64%', height: '62%',
-        borderRadius: '50%', background: '#1a1a1a',
-      }} />
-      <div style={{
-        position: 'absolute', left: '28%', top: '38%', width: '44%', height: '36%',
-        borderRadius: '50%', background: '#f2f2f2',
-      }} />
-      {headwear === 'scarf' && wrapBg && (
-        <>
-          <div style={{
-            position: 'absolute', left: '14%', top: '48%', width: '72%', height: '14%',
-            borderRadius: 4, background: wrapBg,
-          }} />
-          <div style={{
-            position: 'absolute', left: '8%', top: '54%', width: '18%', height: '28%',
-            borderRadius: 2, background: tailBg,
-          }} />
-        </>
-      )}
-      <div style={{
-        position: 'absolute', left: '30%', top: '32%', width: '14%', height: '16%',
-        borderRadius: '50%', background: '#f7f7f7',
-      }} />
-      <div style={{
-        position: 'absolute', left: '56%', top: '32%', width: '14%', height: '16%',
-        borderRadius: '50%', background: '#f7f7f7',
-      }} />
-      <div style={{
-        position: 'absolute', left: '33%', top: '36%', width: '8%', height: '8%',
-        borderRadius: '50%', background: '#1a1a1a',
-      }} />
-      <div style={{
-        position: 'absolute', left: '59%', top: '36%', width: '8%', height: '8%',
-        borderRadius: '50%', background: '#1a1a1a',
-      }} />
-      <div style={{
-        position: 'absolute', left: '42%', top: '46%', width: 0, height: 0,
-        borderLeft: `${size * 0.06}px solid transparent`,
-        borderRight: `${size * 0.06}px solid transparent`,
-        borderTop: `${size * 0.07}px solid #f5a623`,
-      }} />
-      {headwear === 'hat' && <HatMiniOverlay style={hatStyle} color={color} size={size} />}
-    </div>
-  );
-}
-
-function HatMiniOverlay({ style, color, size }: { style: HatStyleId; color: string; size: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const ap = resolveAppearance({ color, headwear, hatStyle, outfitId, scarfEnabled, hatEnabled });
+
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawAgentHat2d(ctx, canvas.height * 0.36, style, color, 'front');
-  }, [style, color, size]);
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+
+    ctx.fillStyle = '#faf6ef';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, size, size, size * 0.22);
+    ctx.fill();
+
+    const scale = size / 52;
+    ctx.save();
+    ctx.translate(size / 2, size * 0.58);
+    ctx.scale(scale, scale);
+    drawAgent(ctx, 0, 0, ap.color, {
+      outfitId: ap.outfitId,
+      scarfEnabled: ap.scarfEnabled,
+      hatEnabled: ap.hatEnabled,
+      headwear: ap.headwear,
+      hatStyle: ap.hatStyle,
+      facing: 's',
+      walking: false,
+      t: 0,
+    });
+    ctx.restore();
+  }, [ap.color, ap.outfitId, ap.scarfEnabled, ap.hatEnabled, ap.headwear, ap.hatStyle, size]);
+
   return (
     <canvas
       ref={ref}
       width={size}
       height={size}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+      style={{
+        width: size,
+        height: size,
+        flexShrink: 0,
+        border: selected ? '2px solid #d4af37' : '2px solid transparent',
+        borderRadius: size * 0.22,
+        display: 'block',
+      }}
     />
   );
 }

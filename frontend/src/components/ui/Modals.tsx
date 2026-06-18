@@ -167,7 +167,7 @@ function LeisureModal({ type, title, lucide, items }: {
           {agent ? (
             <div style={{ marginTop: 8, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>服务对象：</span>
-              <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} size={24} />
+              <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} outfitId={agent.data.outfitId} scarfEnabled={agent.data.scarfEnabled} hatEnabled={agent.data.hatEnabled} size={24} />
               <b>{agent.data.name}</b>
               <span>· 压力 {Math.round(agent.stress)}%</span>
             </div>

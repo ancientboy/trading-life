@@ -2,7 +2,7 @@
 
 import { drawAgentHat2d, drawAgentScarf2d } from './agentAppearance';
 
-export const OUTFIT_IDS = ['default', 'panda', 'astronaut', 'chef', 'knight', 'street'] as const;
+export const OUTFIT_IDS = ['default', 'panda', 'astronaut', 'chef', 'knight', 'street', 'maniu'] as const;
 export type OutfitId = typeof OUTFIT_IDS[number];
 
 export const OUTFIT_CATALOG: Record<OutfitId, { label: string; desc: string; preview: string }> = {
@@ -12,6 +12,7 @@ export const OUTFIT_CATALOG: Record<OutfitId, { label: string; desc: string; pre
   chef: { label: '星级厨师服', desc: '厨师帽 + 白褂全身', preview: '👨‍🍳' },
   knight: { label: '皇家骑士甲', desc: '盔甲头盔 + 披风', preview: '🛡️' },
   street: { label: '潮牌卫衣', desc: '连帽卫衣包裹全身', preview: '🧥' },
+  maniu: { label: '马牛西装', desc: '商务蓝西装 + 飞机头', preview: '👔' },
 };
 
 export const OUTFIT_UNLOCK_MAP: Record<Exclude<OutfitId, 'default'>, string> = {
@@ -20,6 +21,7 @@ export const OUTFIT_UNLOCK_MAP: Record<Exclude<OutfitId, 'default'>, string> = {
   chef: 'outfit_chef',
   knight: 'outfit_knight',
   street: 'outfit_street',
+  maniu: 'outfit_maniu',
 };
 
 export function outfitReplacesBaseCharacter(outfitId: OutfitId): boolean {
@@ -62,6 +64,7 @@ export function drawAgentOutfitFull2d(
     case 'chef': drawChefFull(ctx, py, view); break;
     case 'knight': drawKnightFull(ctx, py, accent, view); break;
     case 'street': drawStreetFull(ctx, py, accent, view); break;
+    case 'maniu': drawManiuFull(ctx, py, view); break;
   }
   ctx.restore();
 }
@@ -90,6 +93,7 @@ function outfitNeckY(py: number, outfitId: OutfitId): number {
     case 'chef': return py + 4;
     case 'knight': return py + 3;
     case 'street': return py + 6;
+    case 'maniu': return py + 4;
     default: return py + 1;
   }
 }
@@ -101,6 +105,7 @@ function outfitHatY(py: number, outfitId: OutfitId): number {
     case 'chef': return py - 30;
     case 'knight': return py - 26;
     case 'street': return py - 22;
+    case 'maniu': return py - 24;
     default: return py - 2;
   }
 }
@@ -183,6 +188,17 @@ export function drawOutfitLimbs2d(
         ctx.beginPath(); ctx.ellipse(5, py + 19 - bounce - swing, 5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.moveTo(-11, py + 2); ctx.lineTo(-14 - swing * 0.5, py + 12); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(11, py + 2); ctx.lineTo(14 + swing * 0.5, py + 12); ctx.stroke();
+      }
+      return true;
+    }
+    case 'maniu': {
+      ctx.fillStyle = '#faf8f4';
+      if (vert) {
+        ctx.beginPath(); ctx.arc(-13 - swing * 0.3, py + 6 - bounce + swing * 0.2, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(13 + swing * 0.3, py + 6 - bounce - swing * 0.2, 4.5, 0, Math.PI * 2); ctx.fill();
+      } else {
+        const flip = facing === 'w' ? -1 : 1;
+        ctx.beginPath(); ctx.arc(flip * (12 + swing * 0.3), py + 6 - bounce, 4.2, 0, Math.PI * 2); ctx.fill();
       }
       return true;
     }
@@ -377,6 +393,87 @@ function drawKnightFull(ctx: CanvasRenderingContext2D, py: number, accent: strin
     ctx.beginPath(); ctx.ellipse(8, py - 12, 13, 12, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#3a4555';
     ctx.fillRect(6, py - 14, 8, 7);
+  }
+}
+
+// ─── 马牛：商务蓝西装 + 飞机头 ─────────────────────────────────
+
+function drawManiuFull(ctx: CanvasRenderingContext2D, py: number, view: 'front' | 'back' | 'side') {
+  const skin = '#f5efe6';
+  const hair = '#2a2018';
+  const suit = '#2b7fd4';
+  const lapel = '#1a4a8a';
+  const tie = '#f4a89a';
+  if (view === 'front') {
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(0, py + 2, 18, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = hair;
+    ctx.beginPath();
+    ctx.moveTo(-14, py - 10);
+    ctx.quadraticCurveTo(-8, py - 32, 6, py - 22);
+    ctx.quadraticCurveTo(12, py - 18, 10, py - 8);
+    ctx.quadraticCurveTo(2, py - 14, -14, py - 10);
+    ctx.fill();
+    ctx.fillStyle = '#2a2220';
+    ctx.fillRect(-9, py - 8, 7, 2.2);
+    ctx.fillRect(2, py - 8, 7, 2.2);
+    ctx.beginPath(); ctx.ellipse(-5, py - 2, 3.2, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5, py - 2, 3.2, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#2a2220'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(0, py + 4); ctx.quadraticCurveTo(-3, py + 6, -5, py + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, py + 4); ctx.quadraticCurveTo(3, py + 6, 5, py + 4); ctx.stroke();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0, py + 2, 18, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = suit;
+    ctx.fillRect(-18, py + 2, 36, 22);
+    ctx.fillStyle = lapel;
+    ctx.beginPath(); ctx.moveTo(-10, py + 2); ctx.lineTo(-2, py + 14); ctx.lineTo(-6, py + 14); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(10, py + 2); ctx.lineTo(2, py + 14); ctx.lineTo(6, py + 14); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.moveTo(-4, py + 4); ctx.lineTo(0, py + 16); ctx.lineTo(4, py + 4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = tie;
+    ctx.fillRect(-2, py + 6, 4, 12);
+    ctx.fillStyle = lapel;
+    ctx.fillRect(6, py + 10, 7, 6);
+    ctx.fillStyle = '#e8c547';
+    ctx.beginPath(); ctx.arc(9.5, py + 13, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(-12, py + 9, 10, 6);
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 0.6; ctx.strokeRect(-12, py + 9, 10, 6);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 5px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('马牛', -7, py + 13.5);
+    ctx.restore();
+  } else if (view === 'back') {
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(0, py + 2, 18, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = hair;
+    ctx.beginPath(); ctx.ellipse(0, py - 14, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0, py + 2, 18, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = darken(suit, 0.12);
+    ctx.fillRect(-18, py + 2, 36, 22);
+    ctx.fillStyle = lapel;
+    ctx.fillRect(-2, py + 4, 4, 16);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(7, py + 2, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = hair;
+    ctx.beginPath();
+    ctx.moveTo(2, py - 8);
+    ctx.quadraticCurveTo(8, py - 30, 16, py - 18);
+    ctx.quadraticCurveTo(14, py - 10, 6, py - 6);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#2a2220';
+    ctx.beginPath(); ctx.ellipse(10, py - 2, 2.8, 3.8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(7, py + 2, 16, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = suit;
+    ctx.fillRect(-2, py + 2, 20, 20);
+    ctx.fillStyle = tie;
+    ctx.fillRect(8, py + 8, 3, 10);
+    ctx.restore();
   }
 }
 

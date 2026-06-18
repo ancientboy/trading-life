@@ -50,6 +50,7 @@ SHOP_CATALOG = [
     {"id": "outfit_chef", "type": "outfit", "value": "chef", "cost": 160, "label": "星级厨师服"},
     {"id": "outfit_knight", "type": "outfit", "value": "knight", "cost": 260, "label": "皇家骑士甲"},
     {"id": "outfit_street", "type": "outfit", "value": "street", "cost": 150, "label": "潮牌卫衣"},
+    {"id": "outfit_maniu", "type": "outfit", "value": "maniu", "cost": 200, "label": "马牛西装"},
     {"id": "zone_skin_hall_gold", "type": "zone_skin", "value": "hall:gold", "cost": 200, "label": "大厅 · 金色 lounge 皮肤包"},
     {"id": "zone_skin_restaurant_premium", "type": "zone_skin", "value": "restaurant:premium", "cost": 180, "label": "粤菜馆 · 尊享宴席皮肤包"},
     {"id": "zone_skin_restaurant_modern", "type": "zone_skin", "value": "restaurant:modern", "cost": 220, "label": "粤菜馆 · 现代简约皮肤包"},
@@ -168,13 +169,14 @@ HAT_UNLOCK_MAP = {
     "top": "hat_top_unlock",
     "bobble": "hat_bobble_unlock",
 }
-OUTFIT_IDS = {"default", "panda", "astronaut", "chef", "knight", "street"}
+OUTFIT_IDS = {"default", "panda", "astronaut", "chef", "knight", "street", "maniu"}
 OUTFIT_UNLOCK_MAP = {
     "panda": "outfit_panda",
     "astronaut": "outfit_astronaut",
     "chef": "outfit_chef",
     "knight": "outfit_knight",
     "street": "outfit_street",
+    "maniu": "outfit_maniu",
 }
 
 

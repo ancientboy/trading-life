@@ -357,7 +357,7 @@ export function AgentWorkshop() {
             }}
           >
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={36} selected={editId === a.agentId} />
+              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={36} selected={editId === a.agentId} />
               <div>
                 <div style={{ fontWeight: 600, fontSize: 12 }}>{a.data.name}</div>
                 <div style={{ fontSize: 10, color: '#8a7e72' }}>
@@ -375,7 +375,7 @@ export function AgentWorkshop() {
         ) : (
           <>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-              <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={64} />
+              <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} outfitId={d.outfitId} scarfEnabled={d.scarfEnabled} hatEnabled={d.hatEnabled} size={64} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 16 }}>{d.name}</div>
                 <div style={{ fontSize: 12, color: '#8a7e72' }}>{d.desc}</div>
