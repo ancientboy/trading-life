@@ -91,11 +91,11 @@ export default function App() {
     };
   }, [loggedIn, initAgents, syncLifeState, syncSeats, syncEngagement, updateFromOverview, syncUserPortfolio, setTicker, addMessage, processPendingDeepLink]);
 
-  if (deepLink.view === 'spectate' && deepLink.room) {
-    return <PublicSpectateView roomId={deepLink.room} loggedIn={loggedIn} />;
+  if (!loggedIn && deepLink.view === 'spectate' && deepLink.room) {
+    return <PublicSpectateView roomId={deepLink.room} loggedIn={false} />;
   }
-  if (deepLink.view === 'leaderboard') {
-    return <PublicLeaderboardView loggedIn={loggedIn} />;
+  if (!loggedIn && deepLink.view === 'leaderboard') {
+    return <PublicLeaderboardView loggedIn={false} />;
   }
   if (!loggedIn && deepLink.join) {
     return <PublicJoinLanding roomCode={deepLink.join} />;

@@ -5,7 +5,10 @@ import {
   fetchPublicRoomPreview, fetchPublicSeasonInfo, fetchPublicSeasonLeaderboard,
   fetchPublicSpectateState, fetchReferralInfo,
 } from '../../lib/lifeEngagementApi';
-import { buildInviteLink, buildJoinLink, buildLeaderboardLink, shareOrCopy } from '../../lib/shareUtils';
+import {
+  buildInviteLink, buildJoinLink, buildLeaderboardLink, buildSpectateLink,
+  copyTextWithFallback, isWeChatBrowser, shareOrCopy, shareResultMessage,
+} from '../../lib/shareUtils';
 import { isLoggedIn } from '../../lib/lifeAuth';
 import { PokerCard } from './PokerCard';
 
@@ -14,9 +17,9 @@ const PHASE_LABEL: Record<string, string> = {
   between_hands: '局间', complete: '结束', waiting: '等待',
 };
 
-type PublicShellProps = { loggedIn: boolean; children: React.ReactNode; title: string };
+type PublicShellProps = { loggedIn: boolean; children: React.ReactNode; title: string; footerExtra?: React.ReactNode };
 
-function PublicShell({ loggedIn, children, title }: PublicShellProps) {
+function PublicShell({ loggedIn, children, title, footerExtra }: PublicShellProps) {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f0e8', padding: '16px 12px 32px' }}>
       <div style={{ maxWidth: 520, margin: '0 auto' }}>
@@ -28,12 +31,28 @@ function PublicShell({ loggedIn, children, title }: PublicShellProps) {
         {children}
         {!loggedIn && (
           <div style={{ marginTop: 20, textAlign: 'center' }}>
-            <a href="/trading/life/" className="ui-btn" style={{ display: 'inline-block', padding: '10px 24px', textDecoration: 'none' }}>
+            {footerExtra}
+            <a href="/trading/life/" className="ui-btn" style={{ display: 'inline-block', padding: '10px 24px', textDecoration: 'none', marginTop: footerExtra ? 8 : 0 }}>
               登录 / 注册参与
             </a>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function LoadingBlock({ text = '加载中…' }: { text?: string }) {
+  return <div style={{ textAlign: 'center', padding: 24, color: '#8a7e72', fontSize: 13 }}>{text}</div>;
+}
+
+function ErrorBlock({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div style={{ textAlign: 'center', padding: 16 }}>
+      <div style={{ color: '#c0392b', fontSize: 12, marginBottom: 10 }}>{message}</div>
+      {onRetry && (
+        <button type="button" className="ui-btn" style={{ fontSize: 12 }} onClick={onRetry}>重试</button>
+      )}
     </div>
   );
 }
@@ -44,10 +63,12 @@ export function PublicSpectateView({ roomId, loggedIn }: { roomId: string; logge
   const [status, setStatus] = useState('playing');
   const [buyIn, setBuyIn] = useState(0);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const sinceRef = useRef(0);
 
   const poll = useCallback(async () => {
     const r = await fetchPublicSpectateState(roomId, sinceRef.current);
+    setLoading(false);
     if (!r.ok) {
       setError(r.error || '加载失败');
       return;
@@ -69,15 +90,20 @@ export function PublicSpectateView({ roomId, loggedIn }: { roomId: string; logge
     return () => clearInterval(t);
   }, [poll]);
 
-  const share = () => {
-    const url = `${window.location.origin}/trading/life/?view=spectate&room=${encodeURIComponent(roomId)}`;
-    void shareOrCopy({ title: '交易人生观赛', text: '🃏 进阶德州锦标赛直播中', url });
+  const share = async () => {
+    const url = buildSpectateLink(roomId);
+    const r = await shareOrCopy({ title: '交易人生观赛', text: '🃏 进阶德州锦标赛直播中', url });
+    if (typeof window !== 'undefined') {
+      window.alert(shareResultMessage(r));
+    }
   };
 
   return (
     <PublicShell loggedIn={authed} title="公开观赛 · 进阶德州">
       <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '1px solid #e0d4c4' }}>
-        {error && <div style={{ color: '#c0392b', fontSize: 12, marginBottom: 8 }}>{error}</div>}
+        {error && !game && <ErrorBlock message={error} onRetry={() => { setLoading(true); void poll(); }} />}
+        {error && game && <div style={{ color: '#c0392b', fontSize: 12, marginBottom: 8 }}>{error}</div>}
+        {loading && !game && !error && <LoadingBlock text="加载观赛桌…" />}
         {game ? (
           <>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#2ea872', marginBottom: 8 }}>
@@ -114,12 +140,15 @@ export function PublicSpectateView({ roomId, loggedIn }: { roomId: string; logge
               </div>
             )}
           </>
-        ) : !error && (
-          <div style={{ textAlign: 'center', padding: 24, color: '#8a7e72', fontSize: 13 }}>加载观赛桌…</div>
-        )}
-        <button type="button" className="ui-btn" style={{ width: '100%', marginTop: 12 }} onClick={share}>
+        ) : null}
+        <button type="button" className="ui-btn" style={{ width: '100%', marginTop: 12 }} onClick={() => void share()}>
           分享观赛链接
         </button>
+        {isWeChatBrowser() && (
+          <p style={{ fontSize: 10, color: '#9a8b7a', marginTop: 8, textAlign: 'center' }}>
+            微信内可复制链接后粘贴发送给好友
+          </p>
+        )}
       </div>
     </PublicShell>
   );
@@ -130,24 +159,33 @@ export function PublicLeaderboardView({ loggedIn }: { loggedIn?: boolean }) {
   const [metric, setMetric] = useState('points');
   const [entries, setEntries] = useState<Array<{ rank: number; name: string; points_earned?: number; social_score?: number; pvp_wins?: number; pnl_score?: number }>>([]);
   const [seasonName, setSeasonName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchPublicSeasonInfo().then(r => {
-      if (r.ok && r.season) setSeasonName(r.season.name || '当前赛季');
-    });
-    fetchPublicSeasonLeaderboard(metric).then(r => {
-      if (r.ok) setEntries(r.entries);
-    });
+  const load = useCallback(() => {
+    setLoading(true);
+    setError('');
+    Promise.all([
+      fetchPublicSeasonInfo(),
+      fetchPublicSeasonLeaderboard(metric),
+    ]).then(([info, board]) => {
+      if (info.ok && info.season) setSeasonName(info.season.name || '当前赛季');
+      if (board.ok) setEntries(board.entries ?? []);
+      else setError(board.error || '排行榜加载失败');
+    }).catch(() => setError('网络错误')).finally(() => setLoading(false));
   }, [metric]);
+
+  useEffect(() => { load(); }, [load]);
 
   const metricLabel: Record<string, string> = { points: '积分', social: '社交', pvp: 'PvP', pnl: 'PnL' };
 
-  const share = () => {
-    void shareOrCopy({
+  const share = async () => {
+    const r = await shareOrCopy({
       title: '交易人生赛季榜',
       text: `🏆 ${seasonName || '赛季'}排行榜 · ${metricLabel[metric]}`,
       url: buildLeaderboardLink(),
     });
+    if (typeof window !== 'undefined') window.alert(shareResultMessage(r));
   };
 
   return (
@@ -162,6 +200,11 @@ export function PublicLeaderboardView({ loggedIn }: { loggedIn?: boolean }) {
             </button>
           ))}
         </div>
+        {loading && <LoadingBlock />}
+        {error && !loading && <ErrorBlock message={error} onRetry={load} />}
+        {!loading && !error && entries.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 20, color: '#8a7e72', fontSize: 12 }}>暂无排行数据</div>
+        )}
         {entries.map(e => (
           <div key={e.rank} style={{ display: 'flex', gap: 8, padding: '8px 0', borderBottom: '1px dashed #eee8dc', fontSize: 12 }}>
             <span style={{ width: 28, color: e.rank <= 3 ? '#d4af37' : '#999', fontWeight: 700 }}>{e.rank}</span>
@@ -171,7 +214,7 @@ export function PublicLeaderboardView({ loggedIn }: { loggedIn?: boolean }) {
             </span>
           </div>
         ))}
-        <button type="button" className="ui-btn" style={{ width: '100%', marginTop: 12 }} onClick={share}>
+        <button type="button" className="ui-btn" style={{ width: '100%', marginTop: 12 }} onClick={() => void share()}>
           分享排行榜
         </button>
       </div>
@@ -181,31 +224,79 @@ export function PublicLeaderboardView({ loggedIn }: { loggedIn?: boolean }) {
 
 export function PublicJoinLanding({ roomCode }: { roomCode: string }) {
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof fetchPublicRoomPreview>> | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchPublicRoomPreview(roomCode).then(setPreview);
+  const load = useCallback(() => {
+    setLoading(true);
+    fetchPublicRoomPreview(roomCode).then(setPreview).finally(() => setLoading(false));
   }, [roomCode]);
 
+  useEffect(() => { load(); }, [load]);
+
   const link = buildJoinLink(roomCode);
+  const isPlaying = preview?.ok && preview.status === 'playing';
+  const canSpectate = isPlaying && preview?.game_mode === 'advanced' && preview.room_id;
+  const spectateUrl = canSpectate ? buildSpectateLink(preview.room_id!) : '';
+
+  const goRegister = () => {
+    sessionStorage.setItem('tl_pending_join', roomCode.replace(/\D/g, '').slice(0, 5));
+    window.location.href = '/trading/life/';
+  };
+
+  const copyLink = async () => {
+    const r = await shareOrCopy({
+      title: '加入德州桌',
+      text: isPlaying
+        ? `🃏 交易人生德州房间 #${roomCode} 进行中`
+        : `🃏 来交易人生德州扑克房间 #${roomCode}`,
+      url: isPlaying && spectateUrl ? spectateUrl : link,
+    });
+    if (typeof window !== 'undefined') window.alert(shareResultMessage(r));
+  };
 
   return (
-    <PublicShell loggedIn={false} title="好友邀请你加入德州桌">
+    <PublicShell
+      loggedIn={false}
+      title={isPlaying ? '好友牌局进行中' : '好友邀请你加入德州桌'}
+      footerExtra={(
+        <button type="button" className="ui-btn" style={{ display: 'block', width: '100%', maxWidth: 280, margin: '0 auto', padding: '12px 20px' }}
+          onClick={goRegister}>
+          注册并{isPlaying && canSpectate ? '观赛' : '加入'} · 房间 #{roomCode}
+        </button>
+      )}
+    >
       <div style={{ background: '#fff', borderRadius: 12, padding: 14, border: '1px solid #e0d4c4', fontSize: 13 }}>
-        {preview?.ok ? (
+        {loading && <LoadingBlock text="加载房间信息…" />}
+        {!loading && preview?.ok ? (
           <>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>房间 #{preview.room_code}</div>
+            {isPlaying && (
+              <div style={{ padding: '8px 10px', background: '#fff8e8', borderRadius: 8, marginBottom: 10, fontSize: 12, color: '#8a6a20' }}>
+                牌局已开始，无法直接入座{canSpectate ? ' · 可点击下方观赛' : ''}
+              </div>
+            )}
             <div style={{ color: '#6a5a48', lineHeight: 1.6 }}>
               模式：{preview.game_mode === 'advanced' ? '进阶锦标赛' : '经典比牌'}<br />
+              状态：{preview.status === 'waiting' ? '等待中' : '进行中'}<br />
               买入：{preview.buy_in} 积分<br />
               当前 {preview.human_count} 人在座 · 最多 {preview.max_players} 人
             </div>
           </>
-        ) : (
-          <div style={{ color: '#8a7e72' }}>{preview?.error || '加载房间信息…'}</div>
+        ) : !loading ? (
+          <ErrorBlock message={preview?.error || '房间不存在或已结束'} onRetry={load} />
+        ) : null}
+        {canSpectate && (
+          <a href={spectateUrl} className="ui-btn" style={{ display: 'block', width: '100%', marginTop: 12, textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}>
+            进入公开观赛
+          </a>
         )}
-        <button type="button" className="ui-btn" style={{ width: '100%', marginTop: 12 }}
-          onClick={() => void shareOrCopy({ title: '加入德州桌', text: `🃏 来交易人生德州扑克房间 #${roomCode}`, url: link })}>
-          复制邀请链接
+        {!isPlaying && (
+          <button type="button" className="ui-btn" style={{ width: '100%', marginTop: 12 }} onClick={goRegister}>
+            注册并加入房间 #{roomCode}
+          </button>
+        )}
+        <button type="button" className="ui-btn" style={{ width: '100%', marginTop: 8 }} onClick={() => void copyLink()}>
+          {isPlaying ? '复制观赛链接' : '复制邀请链接'}
         </button>
       </div>
     </PublicShell>
@@ -215,13 +306,23 @@ export function PublicJoinLanding({ roomCode }: { roomCode: string }) {
 export function ReferralPanel() {
   const addMessage = useGameStore(s => s.addMessage);
   const [info, setInfo] = useState<Awaited<ReturnType<typeof fetchReferralInfo>> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchReferralInfo().then(setInfo);
+  const load = useCallback(() => {
+    setLoading(true);
+    setError('');
+    fetchReferralInfo()
+      .then(r => { setInfo(r); if (!r.ok) setError(r.error || '加载失败'); })
+      .catch(() => setError('网络错误'))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (!info?.ok) {
-    return <div style={{ fontSize: 12, color: '#8a7e72' }}>加载邀请信息…</div>;
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return <LoadingBlock text="加载邀请信息…" />;
+  if (error || !info?.ok) {
+    return <ErrorBlock message={error || '无法加载邀请信息'} onRetry={load} />;
   }
 
   const link = buildInviteLink(info.invite_code || '');
@@ -247,8 +348,8 @@ export function ReferralPanel() {
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
         <button type="button" className="ui-btn" style={{ flex: 1 }}
           onClick={async () => {
-            await navigator.clipboard.writeText(info.invite_code || '');
-            addMessage('邀请码已复制');
+            const ok = await copyTextWithFallback(info.invite_code || '');
+            addMessage(ok ? '邀请码已复制' : '复制失败');
           }}>
           复制码
         </button>
@@ -259,11 +360,16 @@ export function ReferralPanel() {
               text: `🐧 来交易人生养 Agent！用我的邀请码 ${info.invite_code} 注册`,
               url: link,
             });
-            addMessage(r === 'shared' ? '已分享' : '邀请链接已复制');
+            addMessage(shareResultMessage(r));
           }}>
           分享链接
         </button>
       </div>
+      {isWeChatBrowser() && (
+        <p style={{ fontSize: 10, color: '#9a8b7a', marginBottom: 8 }}>
+          微信内请复制链接后粘贴发送给好友
+        </p>
+      )}
       <div style={{ fontSize: 11, color: '#8a7e72' }}>
         已邀请 {info.invites_count ?? 0} 人 · 其中 {info.poker_rewards ?? 0} 人已完成首局扑克
       </div>

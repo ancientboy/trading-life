@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PokerCard, PokerCardRow } from './PokerCard';
 import type { AdvancedPokerGame } from '../../lib/lifeEngagementApi';
 import { fetchAdvancedPokerState } from '../../lib/lifeEngagementApi';
+import { buildSpectateLink, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
+import { useGameStore } from '../../store/useGameStore';
 
 const PHASE_LABEL: Record<string, string> = {
   preflop: '翻牌前',
@@ -31,6 +33,7 @@ type Props = {
 };
 
 export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: Props) {
+  const addMessage = useGameStore(s => s.addMessage);
   const [game, setGame] = useState<AdvancedPokerGame | null>(null);
   const [status, setStatus] = useState('playing');
   const [log, setLog] = useState<string[]>([]);
@@ -379,6 +382,17 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       {onClose && (
         <button className="ui-btn" style={{ width: '100%', marginTop: 10 }} onClick={onClose}>关闭观赛</button>
       )}
+      <button type="button" className="ui-btn" style={{ width: '100%', marginTop: 8 }}
+        onClick={async () => {
+          const r = await shareOrCopy({
+            title: '交易人生观赛',
+            text: `🃏 进阶德州锦标赛 · 买入 ${buyIn}`,
+            url: buildSpectateLink(roomId),
+          });
+          addMessage(shareResultMessage(r));
+        }}>
+        分享观赛链接
+      </button>
     </div>
   );
 }
