@@ -14,11 +14,12 @@ const PHASE_LABEL: Record<string, string> = {
   waiting: '等待',
 };
 
+/** 每档仅调节刷新间隔；每轮只推进 1 步，保证画面与行动记录同步 */
 const PACE_OPTIONS = [
-  { id: 'slow', label: '慢速', intervalMs: 2800, steps: 8 },
-  { id: 'normal', label: '正常', intervalMs: 1600, steps: 15 },
-  { id: 'fast', label: '较快', intervalMs: 900, steps: 25 },
-  { id: 'turbo', label: '极速', intervalMs: 450, steps: 40 },
+  { id: 'slow', label: '慢速', intervalMs: 2400 },
+  { id: 'normal', label: '正常', intervalMs: 1400 },
+  { id: 'fast', label: '较快', intervalMs: 750 },
+  { id: 'turbo', label: '极速', intervalMs: 380 },
 ] as const;
 
 type PaceId = typeof PACE_OPTIONS[number]['id'];
@@ -38,78 +39,133 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
   const [autoComplete, setAutoComplete] = useState(true);
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
+
   const sinceRef = useRef(0);
   const doneRef = useRef(false);
-  const pollRef = useRef(0);
+  const handRef = useRef(0);
+  const eventCountRef = useRef(0);
+  const inFlightRef = useRef(false);
   const stallRef = useRef(0);
   const lastSigRef = useRef('');
+  const pausedRef = useRef(paused);
+  const statusRef = useRef(status);
   const [stallCount, setStallCount] = useState(0);
+
+  pausedRef.current = paused;
+  statusRef.current = status;
 
   const pace = PACE_OPTIONS.find(p => p.id === paceId) ?? PACE_OPTIONS[1];
 
-  const poll = useCallback(async (opts?: { force?: boolean; initial?: boolean }) => {
-    pollRef.current += 1;
-    const ticket = pollRef.current;
+  const applyGame = useCallback((g: AdvancedPokerGame, st: string, force: boolean) => {
+    if (!force && g.event_count < eventCountRef.current) return false;
+
+    const sig = `${g.event_count}|${g.phase}|${g.actor_index}|${g.hand_number}|${g.community.join(',')}`;
+    if (sig === lastSigRef.current && st === 'playing' && !force) {
+      stallRef.current += 1;
+      setStallCount(stallRef.current);
+    } else {
+      stallRef.current = 0;
+      setStallCount(0);
+      lastSigRef.current = sig;
+    }
+
+    if (g.hand_number !== handRef.current) {
+      handRef.current = g.hand_number;
+      if (handRef.current > 0) {
+        setLog(prev => [...prev.slice(-79), `━━━ 第 ${g.hand_number} 手开始 ━━━`]);
+      }
+    }
+
+    eventCountRef.current = g.event_count;
+    setGame(g);
+
+    if (g.events?.length) {
+      const maxSeq = Math.max(...g.events.map(ev => ev.seq ?? 0));
+      sinceRef.current = maxSeq + 1;
+      const newLines = g.events.map(ev => formatEvent(ev)).filter(Boolean) as string[];
+      if (newLines.length) setLog(prev => [...prev.slice(-80), ...newLines]);
+    } else if (g.event_count > sinceRef.current) {
+      sinceRef.current = g.event_count;
+    }
+
+    return true;
+  }, []);
+
+  const poll = useCallback(async (opts?: { force?: boolean; initial?: boolean; steps?: number }) => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     const isInitial = opts?.initial ?? false;
     const force = opts?.force ?? false;
     if (isInitial) setLoading(true);
+    else setSyncing(true);
     try {
+      const steps = opts?.steps ?? (force ? 12 : isInitial ? 4 : 1);
       const r = await fetchAdvancedPokerState(roomId, sinceRef.current, {
-        autoRun: !paused || force,
-        maxSteps: force ? 60 : (isInitial ? 20 : pace.steps),
+        autoRun: !pausedRef.current || force,
+        maxSteps: steps,
       });
-      if (ticket !== pollRef.current) return;
       if (!r.ok) {
         setError(r.error || '同步失败');
         return;
       }
       setError('');
-      if (r.game) {
-        const sig = `${r.game.event_count}|${r.game.phase}|${r.game.actor_index}|${r.game.hand_number}`;
-        if (sig === lastSigRef.current && r.status === 'playing' && !force) {
-          stallRef.current += 1;
-          setStallCount(stallRef.current);
-        } else {
-          stallRef.current = 0;
-          setStallCount(0);
-          lastSigRef.current = sig;
-        }
-        setGame(r.game);
-        sinceRef.current = r.game.event_count;
-        const newLines = r.game.events.map(ev => formatEvent(ev)).filter(Boolean) as string[];
-        if (newLines.length) setLog(prev => [...prev.slice(-80), ...newLines]);
+      if (r.game) applyGame(r.game, r.status ?? 'playing', force);
+      if (r.status) {
+        setStatus(r.status);
+        statusRef.current = r.status;
       }
-      if (r.status) setStatus(r.status);
       if (r.settlement && !doneRef.current) {
         doneRef.current = true;
         onComplete?.(r.settlement);
       }
     } catch {
-      if (ticket === pollRef.current) setError('网络错误');
+      setError('网络错误');
     } finally {
-      if (ticket === pollRef.current) setLoading(false);
+      inFlightRef.current = false;
+      setLoading(false);
+      setSyncing(false);
     }
-  }, [roomId, paused, pace.steps, onComplete]);
+  }, [roomId, applyGame, onComplete]);
 
   useEffect(() => {
     sinceRef.current = 0;
     doneRef.current = false;
+    handRef.current = 0;
+    eventCountRef.current = 0;
     stallRef.current = 0;
     lastSigRef.current = '';
     setLog([]);
     setGame(null);
     setStatus('playing');
+    statusRef.current = 'playing';
     setError('');
     setLoading(true);
-    void poll({ initial: true });
-  }, [roomId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (paused || status === 'tournament_complete') return;
-    const t = setInterval(() => { void poll(); }, pace.intervalMs);
-    return () => clearInterval(t);
-  }, [poll, paused, pace.intervalMs, status]);
+    let cancelled = false;
+    let timer = 0;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      timer = window.setTimeout(async () => {
+        if (cancelled) return;
+        if (!pausedRef.current && statusRef.current !== 'tournament_complete') {
+          await poll({});
+        }
+        scheduleNext();
+      }, pace.intervalMs);
+    };
+
+    void poll({ initial: true }).then(() => {
+      if (!cancelled) scheduleNext();
+    });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [roomId, pace.intervalMs, poll]);
 
   if (!game && loading) {
     return (
@@ -124,13 +180,15 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     return (
       <div style={{ textAlign: 'center', padding: 24, color: '#c0392b' }}>
         <div>{error || '无法加载牌局'}</div>
-        <button className="ui-btn" style={{ marginTop: 12 }} onClick={() => void poll({ initial: true, force: true })}>重试</button>
+        <button className="ui-btn" style={{ marginTop: 12 }} onClick={() => void poll({ initial: true, force: true, steps: 20 })}>重试</button>
       </div>
     );
   }
 
   const activePlayers = game.players.filter(p => !p.eliminated);
   const lastReason = game.last_reasoning;
+  const showLastAction = lastReason && status === 'playing'
+    && lastReason.seat_index !== game.actor_index;
 
   return (
     <div style={{ color: '#3d3530', fontSize: 12 }}>
@@ -159,30 +217,30 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
         </button>
         {!autoComplete && (
           <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px' }}
-            onClick={() => void poll({ force: true })}>
+            onClick={() => void poll({ force: true, steps: 1 })}>
             下一步
           </button>
         )}
-        {stallCount >= 3 && status === 'playing' && (
+        {stallCount >= 8 && status === 'playing' && (
           <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px', fontWeight: 700, color: '#c0392b' }}
-            onClick={() => { stallRef.current = 0; setStallCount(0); void poll({ force: true }); }}>
+            onClick={() => { stallRef.current = 0; setStallCount(0); void poll({ force: true, steps: 15 }); }}>
             强制推进
           </button>
         )}
-        {loading && status !== 'tournament_complete' && (
-          <span style={{ fontSize: 10, color: '#8a7e72' }}>{autoComplete ? '自动推进中…' : '同步中…'}</span>
+        {syncing && status !== 'tournament_complete' && (
+          <span style={{ fontSize: 10, color: '#8a7e72' }}>同步中…</span>
         )}
       </div>
 
       {autoComplete && status === 'playing' && !paused && (
         <div style={{ fontSize: 10, color: '#6a8aad', marginBottom: 8, padding: '6px 10px', background: '#eef4ff', borderRadius: 6 }}>
-          已开启自动观赛（{pace.label} · 每 {Math.round(pace.intervalMs / 100) / 10}s 刷新）— 牌局将自动推进至锦标赛结束
+          逐步观赛（{pace.label} · 每步约 {Math.round(pace.intervalMs / 100) / 10}s）— 画面与行动记录同步推进
         </div>
       )}
 
-      {stallCount >= 3 && status === 'playing' && !paused && (
+      {stallCount >= 8 && status === 'playing' && !paused && (
         <div style={{ fontSize: 10, color: '#c0392b', marginBottom: 8, padding: '6px 10px', background: '#fff0f0', borderRadius: 6 }}>
-          牌局似乎暂停了 — 可点「强制推进」，或切换更快速度
+          牌局似乎暂停了 — 可点「强制推进」
         </div>
       )}
 
@@ -203,7 +261,7 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
             ))
           )}
         </div>
-        {lastReason && status === 'playing' && (
+        {showLastAction && (
           <div style={{
             marginTop: 10, padding: '8px 10px', background: 'rgba(255,255,255,0.12)',
             borderRadius: 8, fontSize: 11, textAlign: 'left',
@@ -215,7 +273,7 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
             )}
           </div>
         )}
-        {game.actor_name && status === 'playing' && !lastReason && (
+        {game.actor_name && status === 'playing' && !showLastAction && (
           <div style={{ marginTop: 8, fontSize: 11, color: '#a5d6a7' }}>行动中：<b>{game.actor_name}</b></div>
         )}
       </div>
@@ -296,7 +354,7 @@ function actionLabel(action?: string) {
 
 function formatEvent(ev: {
   kind: string; name?: string; action?: string; amount?: number;
-  phase?: string; hand_name?: string; label?: string; reason?: string;
+  phase?: string; hand_name?: string; label?: string; reason?: string; seq?: number;
 }): string | null {
   if (ev.kind === 'action') {
     return `▸ ${ev.name} ${actionLabel(ev.action)}${ev.amount ? ` ${ev.amount}` : ''}`;
