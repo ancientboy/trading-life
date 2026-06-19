@@ -45,7 +45,7 @@
   },
   "installed": {
     "niuma": {
-      "default": ["front"]
+      "default": ["front", "back", "side"]
     }
   }
 }

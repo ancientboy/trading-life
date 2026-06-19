@@ -407,6 +407,10 @@ function drawWalkLimbs(
   }
 }
 
+function niumaUsesSprite(ap: AgentAppearanceState, view: 'front' | 'back' | 'side'): boolean {
+  return ap.speciesId === 'niuma' && niumaSpriteReady('niuma', ap.outfitId as NiumaSkinId, view);
+}
+
 /** 背面 — 圆头 + 后脑围巾 + 手脚 */
 function drawAgentBack(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
@@ -424,11 +428,12 @@ function drawAgentBack(
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 18, 22, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  dropShadow(ctx, x, py + 6, 32, 36, 0.12);
+  const spriteBack = niumaUsesSprite(ap, 'back');
+  if (!spriteBack) dropShadow(ctx, x, py + 6, 32, 36, 0.12);
   ctx.save(); ctx.translate(x, 0);
   const phase = walkPhase(t, walking);
   const anim = { swing: walking ? Math.sin(phase) * 5 : 0, bounce: walking ? Math.abs(Math.sin(phase)) * 2 : 0 };
-  drawWalkLimbs(ctx, py, 'n', walking, t, color, ap);
+  if (!spriteBack) drawWalkLimbs(ctx, py, 'n', walking, t, color, ap);
   drawAgentTorso(ctx, py, color, ap, 'back', 1, anim);
   drawAgentHeadLayer(ctx, py, color, ap, 'back');
   ctx.restore();
@@ -458,12 +463,12 @@ function drawAgentFront(
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 18, 22, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  dropShadow(ctx, x, py + 6, 32, 36, 0.12);
+  const spriteFront = niumaUsesSprite(ap, 'front');
+  if (!spriteFront) dropShadow(ctx, x, py + 6, 32, 36, 0.12);
   ctx.save(); ctx.translate(x, 0);
   const phase = walkPhase(t, walking);
   const anim = { swing: walking ? Math.sin(phase) * 5 : 0, bounce: walking ? Math.abs(Math.sin(phase)) * 2 : 0 };
-  const useNiumaSprite = ap.speciesId === 'niuma' && niumaSpriteReady('niuma', ap.outfitId as NiumaSkinId, 'front');
-  if (!useNiumaSprite) drawWalkLimbs(ctx, py, 's', walking, t, color, ap);
+  if (!spriteFront) drawWalkLimbs(ctx, py, 's', walking, t, color, ap);
   drawAgentTorso(ctx, py, color, ap, 'front', 1, anim);
   drawAgentHeadLayer(ctx, py, color, ap, 'front');
   ctx.restore();
@@ -493,11 +498,12 @@ function drawAgentSide(
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 16, 22, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  dropShadow(ctx, x, py + 6, 28, 34, 0.12);
+  const spriteSide = niumaUsesSprite(ap, 'side');
+  if (!spriteSide) dropShadow(ctx, x, py + 6, 28, 34, 0.12);
   ctx.save(); ctx.translate(x, 0);
   const phase = walkPhase(t, walking);
   const anim = { swing: walking ? Math.sin(phase) * 5 : 0, bounce: walking ? Math.abs(Math.sin(phase)) * 2 : 0 };
-  drawWalkLimbs(ctx, py, facing, walking, t, color, ap);
+  if (!spriteSide) drawWalkLimbs(ctx, py, facing, walking, t, color, ap);
   drawAgentTorso(ctx, py, color, ap, 'side', flip, anim);
   drawAgentHeadLayer(ctx, py, color, ap, 'side', flip);
   ctx.restore();
