@@ -276,6 +276,7 @@ async def get_advanced_state(
     auto_run: bool = True,
     max_steps: int = 1,
     use_llm: bool = False,
+    run_until_complete: bool = False,
 ) -> dict:
     with life_db._lock:
         with life_db._conn() as c:
@@ -291,15 +292,21 @@ async def get_advanced_state(
 
     spectator = bool(room.get("spectator"))
 
-    if auto_run and max_steps > 0 and state["status"] == "playing":
-        state = await run_ticks(state, max_steps=max_steps, use_llm=use_llm)
+    if auto_run and state["status"] == "playing":
+        if run_until_complete:
+            total = 0
+            hard_cap = 250
+            while state["status"] == "playing" and total < hard_cap:
+                batch = min(30, hard_cap - total)
+                state = await run_ticks(state, max_steps=batch, use_llm=use_llm)
+                total += batch
+        elif max_steps > 0:
+            cap = max(1, min(max_steps, 80))
+            state = await run_ticks(state, max_steps=cap, use_llm=use_llm)
         with life_db._lock:
             with life_db._conn() as c:
                 _save_game_state(c, room_id, state)
                 if state["status"] == "tournament_complete":
-                    players = [dict(p) for p in c.execute(
-                        "SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)
-                    ).fetchall()]
                     room = dict(c.execute("SELECT * FROM poker_rooms WHERE id=?", (room_id,)).fetchone())
 
     pub = public_state(state, viewer_user_id=account_id, since_seq=since_seq, spectator_mode=spectator)

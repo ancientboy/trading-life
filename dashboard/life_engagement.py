@@ -1495,19 +1495,26 @@ async def get_advanced_poker_state(
     auto_run: bool = True,
     max_steps: int = 1,
     use_llm: bool = False,
+    run_until_complete: bool = False,
     account_id: str = Depends(resolve_account_id),
 ):
     from poker_advanced import get_advanced_state
+    cap = 80 if not run_until_complete else 250
     return await get_advanced_state(
         room_id, account_id, since_seq=since_seq,
-        auto_run=auto_run, max_steps=max(0, min(max_steps, 20)), use_llm=use_llm,
+        auto_run=auto_run,
+        max_steps=max(0, min(max_steps, cap)),
+        use_llm=use_llm,
+        run_until_complete=run_until_complete,
     )
 
 
 @pvp_router.post("/pvp/poker/rooms/{room_id}/advanced/tick")
 async def tick_advanced_poker(room_id: str, account_id: str = Depends(resolve_account_id)):
     from poker_advanced import get_advanced_state
-    return await get_advanced_state(room_id, account_id, since_seq=0, auto_run=True)
+    return await get_advanced_state(
+        room_id, account_id, since_seq=0, auto_run=True, max_steps=40, use_llm=False,
+    )
 
 
 @pvp_router.get("/pvp/seats/auctions")

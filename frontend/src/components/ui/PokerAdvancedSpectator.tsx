@@ -15,9 +15,9 @@ const PHASE_LABEL: Record<string, string> = {
 };
 
 const PACE_OPTIONS = [
-  { id: 'slow', label: '慢速', intervalMs: 3500, steps: 1 },
-  { id: 'normal', label: '正常', intervalMs: 2200, steps: 1 },
-  { id: 'fast', label: '较快', intervalMs: 1200, steps: 2 },
+  { id: 'slow', label: '慢速', intervalMs: 2800, steps: 8 },
+  { id: 'normal', label: '正常', intervalMs: 1600, steps: 15 },
+  { id: 'fast', label: '较快', intervalMs: 900, steps: 25 },
 ] as const;
 
 type PaceId = typeof PACE_OPTIONS[number]['id'];
@@ -34,24 +34,31 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
   const [status, setStatus] = useState('playing');
   const [log, setLog] = useState<string[]>([]);
   const [paceId, setPaceId] = useState<PaceId>('normal');
+  const [autoComplete, setAutoComplete] = useState(true);
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const sinceRef = useRef(0);
   const doneRef = useRef(false);
   const pollRef = useRef(0);
+  const burstRef = useRef(false);
+  const initialLoadRef = useRef(true);
 
   const pace = PACE_OPTIONS.find(p => p.id === paceId) ?? PACE_OPTIONS[1];
 
   const poll = useCallback(async (manual = false) => {
     pollRef.current += 1;
     const ticket = pollRef.current;
-    if (!manual) setLoading(true);
+    if (initialLoadRef.current || manual) setLoading(true);
     try {
+      const useBurst = autoComplete && !paused && !manual;
       const r = await fetchAdvancedPokerState(roomId, sinceRef.current, {
-        autoRun: !paused || manual,
-        maxSteps: manual ? 1 : pace.steps,
+        autoRun: !paused,
+        maxSteps: useBurst ? 40 : (manual ? 1 : pace.steps),
+        runUntilComplete: useBurst && !burstRef.current,
       });
+      if (useBurst) burstRef.current = true;
+      initialLoadRef.current = false;
       if (ticket !== pollRef.current) return;
       if (!r.ok) {
         setError(r.error || '同步失败');
@@ -62,7 +69,7 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
         setGame(r.game);
         sinceRef.current = r.game.event_count;
         const newLines = r.game.events.map(ev => formatEvent(ev)).filter(Boolean) as string[];
-        if (newLines.length) setLog(prev => [...prev.slice(-60), ...newLines]);
+        if (newLines.length) setLog(prev => [...prev.slice(-80), ...newLines]);
       }
       if (r.status) setStatus(r.status);
       if (r.settlement && !doneRef.current) {
@@ -74,20 +81,28 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     } finally {
       if (ticket === pollRef.current) setLoading(false);
     }
-  }, [roomId, paused, pace.steps, onComplete]);
+  }, [roomId, paused, pace.steps, autoComplete, onComplete]);
 
   useEffect(() => {
     sinceRef.current = 0;
     doneRef.current = false;
+    burstRef.current = false;
+    initialLoadRef.current = true;
     setLog([]);
+    setStatus('playing');
     void poll(true);
   }, [roomId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (paused || status === 'tournament_complete') return;
+    if (autoComplete) {
+      void poll(false);
+      const t = setInterval(() => { void poll(false); }, 1200);
+      return () => clearInterval(t);
+    }
     const t = setInterval(() => { void poll(false); }, pace.intervalMs);
     return () => clearInterval(t);
-  }, [poll, paused, pace.intervalMs, status]);
+  }, [poll, paused, pace.intervalMs, status, autoComplete]);
 
   if (!game && loading) {
     return (
@@ -112,7 +127,6 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
 
   return (
     <div style={{ color: '#3d3530', fontSize: 12 }}>
-      {/* 顶栏 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
         <span style={{ fontWeight: 700, color: '#2ea872' }}>
           观赛 · 第 {game.hand_number} 手 · {PHASE_LABEL[game.phase] || game.phase}
@@ -120,9 +134,13 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
         <span style={{ fontSize: 11, color: '#8a7e72' }}>带入 {buyIn} · 盲注 {game.small_blind}/{game.big_blind}</span>
       </div>
 
-      {/* 节奏控制 */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        {PACE_OPTIONS.map(p => (
+        <button type="button" className={`ui-btn ${autoComplete ? 'active' : ''}`}
+          style={{ fontSize: 10, padding: '4px 10px', fontWeight: 700 }}
+          onClick={() => { setAutoComplete(v => !v); burstRef.current = false; }}>
+          {autoComplete ? '✓ 自动播到结束' : '手动步进'}
+        </button>
+        {!autoComplete && PACE_OPTIONS.map(p => (
           <button key={p.id} type="button" className={`ui-btn ${paceId === p.id ? 'active' : ''}`}
             style={{ fontSize: 10, padding: '4px 8px' }} onClick={() => setPaceId(p.id)}>
             {p.label}
@@ -132,14 +150,23 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
           onClick={() => setPaused(v => !v)}>
           {paused ? '▶ 继续' : '⏸ 暂停'}
         </button>
-        <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px' }}
-          onClick={() => void poll(true)}>
-          下一步
-        </button>
-        {loading && <span style={{ fontSize: 10, color: '#8a7e72' }}>同步中…</span>}
+        {!autoComplete && (
+          <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px' }}
+            onClick={() => void poll(true)}>
+            下一步
+          </button>
+        )}
+        {loading && status !== 'tournament_complete' && (
+          <span style={{ fontSize: 10, color: '#8a7e72' }}>{autoComplete ? '自动推进中…' : '同步中…'}</span>
+        )}
       </div>
 
-      {/* 牌桌中央 — 公共牌 + 底池 */}
+      {autoComplete && status === 'playing' && !paused && (
+        <div style={{ fontSize: 10, color: '#6a8aad', marginBottom: 8, padding: '6px 10px', background: '#eef4ff', borderRadius: 6 }}>
+          已开启自动观赛 — 无需点击，牌局将自动推进至锦标赛结束
+        </div>
+      )}
+
       <div style={{
         padding: 14, background: 'linear-gradient(160deg,#1a4d32,#0f3320)', borderRadius: 12,
         marginBottom: 10, color: '#e8f5e9', textAlign: 'center',
@@ -174,7 +201,6 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
         )}
       </div>
 
-      {/* 全员手牌 — 观赛模式全开 */}
       <div style={{ fontSize: 11, fontWeight: 700, color: '#6a5a48', marginBottom: 6 }}>
         全员底牌（观赛透视）
       </div>
@@ -222,11 +248,10 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
 
       {status === 'tournament_complete' && (
         <div style={{ padding: 10, background: '#eef4ff', borderRadius: 8, marginBottom: 8, fontSize: 12 }}>
-          🏆 锦标赛结束
+          🏆 锦标赛结束 — 积分已结算
         </div>
       )}
 
-      {/* 行动日志 */}
       <div style={{ fontSize: 11, fontWeight: 700, color: '#6a5a48', marginBottom: 4 }}>行动记录</div>
       <div style={{
         maxHeight: 140, overflowY: 'auto', fontSize: 11, color: '#5a4a3a',
@@ -252,7 +277,7 @@ function actionLabel(action?: string) {
 
 function formatEvent(ev: {
   kind: string; name?: string; action?: string; amount?: number;
-  phase?: string; hand_name?: string; label?: string;
+  phase?: string; hand_name?: string; label?: string; reason?: string;
 }): string | null {
   if (ev.kind === 'action') {
     return `▸ ${ev.name} ${actionLabel(ev.action)}${ev.amount ? ` ${ev.amount}` : ''}`;

@@ -403,12 +403,13 @@ export async function startAiSpectator(agentId: string, buyIn = 1000, numPlayers
 export async function fetchAdvancedPokerState(
   roomId: string,
   sinceSeq = 0,
-  opts?: { autoRun?: boolean; maxSteps?: number; useLlm?: boolean },
+  opts?: { autoRun?: boolean; maxSteps?: number; useLlm?: boolean; runUntilComplete?: boolean },
 ) {
   const params = new URLSearchParams({ since_seq: String(sinceSeq) });
   if (opts?.autoRun === false) params.set('auto_run', 'false');
   if (opts?.maxSteps != null) params.set('max_steps', String(opts.maxSteps));
   if (opts?.useLlm) params.set('use_llm', 'true');
+  if (opts?.runUntilComplete) params.set('run_until_complete', 'true');
   const r = await fetch(
     `${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/advanced/state?${params}`,
     { headers: headers() },
