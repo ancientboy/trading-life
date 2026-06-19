@@ -34,7 +34,7 @@ import {
   type PokerRoom,
 } from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
-import { isCrossZoneTravel, zoneForNode, zoneForIntent } from '../lib/zoneTransit';
+import { isCrossZoneTravel, zoneForNode, zoneForIntent, resolveAgentZone } from '../lib/zoneTransit';
 import {
   DEFAULT_ZONE_SKINS, effectiveZoneSkin, normalizeZoneSkins,
   type SkinZone,
@@ -188,6 +188,7 @@ interface GameStore {
   flyToZone: (zone: ZoneId) => void;
   resetCamera: () => void;
   setFollowAgent: (id: string | null) => void;
+  followAgentZone: (zone: ZoneId) => void;
   setCameraLookAt: (x: number, z: number, opts?: { zoom?: number; overview?: boolean }) => void;
   setCameraZoom: (zoom: number) => void;
   panCamera: (dx: number, dz: number) => void;
@@ -726,7 +727,42 @@ export const useGameStore = create<GameStore>((set, get) => ({
     cameraZoom: WORLD_MAP.zoneZoom,
     mapOverview: false,
   }),
-  setFollowAgent: (id) => set({ followAgentId: id, selectedAgentId: id, rightPanelCollapsed: false }),
+  setFollowAgent: (id) => {
+    if (!id) {
+      set({ followAgentId: null });
+      return;
+    }
+    const char = get().agents[id];
+    const base = { followAgentId: id, selectedAgentId: id, rightPanelCollapsed: false };
+    if (!char) {
+      set(base);
+      return;
+    }
+    const zone = resolveAgentZone(char);
+    const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino';
+    set({
+      ...base,
+      activeZone: zone,
+      sidebarActive: zone === 'hall' ? 'hall' : zone,
+      rightTab: ZONE_TO_RIGHT_TAB[zone],
+      selectedFacility: isLeisure ? LEISURE_FACILITY[zone] : null,
+      cameraLookAt: { x: char.x, z: char.z },
+      cameraZoom: WORLD_MAP.zoneZoom,
+      mapOverview: false,
+    });
+  },
+
+  followAgentZone: (zone) => {
+    const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino';
+    set({
+      activeZone: zone,
+      sidebarActive: zone === 'hall' ? 'hall' : zone,
+      rightTab: ZONE_TO_RIGHT_TAB[zone],
+      selectedFacility: isLeisure ? LEISURE_FACILITY[zone] : null,
+      cameraZoom: WORLD_MAP.zoneZoom,
+      mapOverview: false,
+    });
+  },
 
   setCameraLookAt: (x, z, opts) => set(s => ({
     cameraLookAt: { x, z },

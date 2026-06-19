@@ -298,9 +298,9 @@ async def get_advanced_state(
     if auto_run and state["status"] == "playing":
         if run_until_complete:
             total = 0
-            hard_cap = 250
+            hard_cap = 60
             while state["status"] == "playing" and total < hard_cap:
-                batch = min(30, hard_cap - total)
+                batch = min(20, hard_cap - total)
                 state = await run_ticks(state, max_steps=batch, use_llm=use_llm)
                 total += batch
         elif max_steps > 0:

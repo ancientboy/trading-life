@@ -409,16 +409,16 @@ export async function fetchAdvancedPokerState(
   if (opts?.autoRun === false) params.set('auto_run', 'false');
   if (opts?.maxSteps != null) params.set('max_steps', String(opts.maxSteps));
   if (opts?.useLlm) params.set('use_llm', 'true');
-  if (opts?.runUntilComplete) params.set('run_until_complete', 'true');
-  const r = await fetch(
-    `${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/advanced/state?${params}`,
-    { headers: headers() },
-  );
-  return parse<{
+  // run_until_complete 会阻塞整局在单次请求内，易导致前端长时间卡在加载页，不再使用
+  return fetchJson<{
     ok: boolean; room_id?: string; game?: AdvancedPokerGame; status?: string;
     settlement?: { results: Array<{ name: string; stack: number; rank: number; won: number; eliminated: boolean }>; winner?: { name: string }; balance?: number; net?: number; won?: number };
     error?: string;
-  }>(r);
+  }>(
+    `${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/advanced/state?${params}`,
+    { headers: headers() },
+    18000,
+  );
 }
 
 export async function fetchAgentPokerProfile(agentId: string) {

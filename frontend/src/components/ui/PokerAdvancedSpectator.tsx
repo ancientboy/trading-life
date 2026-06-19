@@ -15,10 +15,10 @@ const PHASE_LABEL: Record<string, string> = {
 };
 
 const PACE_OPTIONS = [
-  { id: 'slow', label: '慢速', intervalMs: 2800, steps: 8, burstSteps: 20 },
-  { id: 'normal', label: '正常', intervalMs: 1600, steps: 15, burstSteps: 40 },
-  { id: 'fast', label: '较快', intervalMs: 900, steps: 25, burstSteps: 55 },
-  { id: 'turbo', label: '极速', intervalMs: 450, steps: 40, burstSteps: 80 },
+  { id: 'slow', label: '慢速', intervalMs: 2800, steps: 8 },
+  { id: 'normal', label: '正常', intervalMs: 1600, steps: 15 },
+  { id: 'fast', label: '较快', intervalMs: 900, steps: 25 },
+  { id: 'turbo', label: '极速', intervalMs: 450, steps: 40 },
 ] as const;
 
 type PaceId = typeof PACE_OPTIONS[number]['id'];
@@ -42,27 +42,23 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
   const sinceRef = useRef(0);
   const doneRef = useRef(false);
   const pollRef = useRef(0);
-  const burstRef = useRef(false);
-  const initialLoadRef = useRef(true);
   const stallRef = useRef(0);
   const lastSigRef = useRef('');
   const [stallCount, setStallCount] = useState(0);
 
   const pace = PACE_OPTIONS.find(p => p.id === paceId) ?? PACE_OPTIONS[1];
 
-  const poll = useCallback(async (manual = false, force = false) => {
+  const poll = useCallback(async (opts?: { force?: boolean; initial?: boolean }) => {
     pollRef.current += 1;
     const ticket = pollRef.current;
-    if (initialLoadRef.current || manual) setLoading(true);
+    const isInitial = opts?.initial ?? false;
+    const force = opts?.force ?? false;
+    if (isInitial) setLoading(true);
     try {
-      const useBurst = autoComplete && !paused && !manual && !force;
       const r = await fetchAdvancedPokerState(roomId, sinceRef.current, {
         autoRun: !paused || force,
-        maxSteps: force ? 80 : (useBurst ? pace.burstSteps : (manual ? 1 : pace.steps)),
-        runUntilComplete: useBurst && !burstRef.current,
+        maxSteps: force ? 60 : (isInitial ? 20 : pace.steps),
       });
-      if (useBurst) burstRef.current = true;
-      initialLoadRef.current = false;
       if (ticket !== pollRef.current) return;
       if (!r.ok) {
         setError(r.error || '同步失败');
@@ -94,27 +90,26 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     } finally {
       if (ticket === pollRef.current) setLoading(false);
     }
-  }, [roomId, paused, pace.steps, pace.burstSteps, autoComplete, onComplete]);
+  }, [roomId, paused, pace.steps, onComplete]);
 
   useEffect(() => {
     sinceRef.current = 0;
     doneRef.current = false;
-    burstRef.current = false;
-    initialLoadRef.current = true;
     stallRef.current = 0;
-    setStallCount(0);
     lastSigRef.current = '';
     setLog([]);
+    setGame(null);
     setStatus('playing');
-    void poll(true);
+    setError('');
+    setLoading(true);
+    void poll({ initial: true });
   }, [roomId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (paused || status === 'tournament_complete') return;
-    void poll(false);
-    const t = setInterval(() => { void poll(false); }, autoComplete ? pace.intervalMs : pace.intervalMs);
+    const t = setInterval(() => { void poll(); }, pace.intervalMs);
     return () => clearInterval(t);
-  }, [poll, paused, pace.intervalMs, status, autoComplete]);
+  }, [poll, paused, pace.intervalMs, status]);
 
   if (!game && loading) {
     return (
@@ -129,7 +124,7 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     return (
       <div style={{ textAlign: 'center', padding: 24, color: '#c0392b' }}>
         <div>{error || '无法加载牌局'}</div>
-        <button className="ui-btn" style={{ marginTop: 12 }} onClick={() => void poll(true)}>重试</button>
+        <button className="ui-btn" style={{ marginTop: 12 }} onClick={() => void poll({ initial: true, force: true })}>重试</button>
       </div>
     );
   }
@@ -149,12 +144,12 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <button type="button" className={`ui-btn ${autoComplete ? 'active' : ''}`}
           style={{ fontSize: 10, padding: '4px 10px', fontWeight: 700 }}
-          onClick={() => { setAutoComplete(v => !v); burstRef.current = false; stallRef.current = 0; setStallCount(0); }}>
+          onClick={() => { setAutoComplete(v => !v); stallRef.current = 0; setStallCount(0); }}>
           {autoComplete ? '✓ 自动播到结束' : '手动步进'}
         </button>
         {PACE_OPTIONS.map(p => (
           <button key={p.id} type="button" className={`ui-btn ${paceId === p.id ? 'active' : ''}`}
-            style={{ fontSize: 10, padding: '4px 8px' }} onClick={() => { setPaceId(p.id); burstRef.current = false; }}>
+            style={{ fontSize: 10, padding: '4px 8px' }} onClick={() => setPaceId(p.id)}>
             {p.label}
           </button>
         ))}
@@ -164,13 +159,13 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
         </button>
         {!autoComplete && (
           <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px' }}
-            onClick={() => void poll(true)}>
+            onClick={() => void poll({ force: true })}>
             下一步
           </button>
         )}
         {stallCount >= 3 && status === 'playing' && (
           <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px', fontWeight: 700, color: '#c0392b' }}
-            onClick={() => { stallRef.current = 0; setStallCount(0); void poll(false, true); }}>
+            onClick={() => { stallRef.current = 0; setStallCount(0); void poll({ force: true }); }}>
             强制推进
           </button>
         )}
