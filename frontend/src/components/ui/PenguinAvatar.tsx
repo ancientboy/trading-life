@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { drawAgent } from '../paper/paperDraw';
 import { resolveAppearance, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
 import type { OutfitId } from '../../lib/agentOutfits';
-import { characterSpriteUrl, loadCharacterSprite } from '../../lib/characterSprites';
 
 export interface PenguinAvatarProps {
   color: string;
@@ -17,7 +16,7 @@ export interface PenguinAvatarProps {
   selected?: boolean;
 }
 
-/** 迷你 Q 版头像 — 与游戏场景 2D 渲染一致，支持全身服装 */
+/** 迷你 Q 版头像 — Canvas 2D 矢量，与游戏场景一致 */
 export function PenguinAvatar({
   color,
   headwear = 'scarf',
@@ -38,10 +37,8 @@ export function PenguinAvatar({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    let cancelled = false;
 
     const paint = () => {
-      if (cancelled) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = size * dpr;
       canvas.height = size * dpr;
@@ -71,10 +68,6 @@ export function PenguinAvatar({
     };
 
     paint();
-    if (ap.speciesId === 'niuma') {
-      void loadCharacterSprite(characterSpriteUrl('niuma', String(ap.outfitId), 'front', 'skin')).then(() => paint());
-    }
-    return () => { cancelled = true; };
   }, [ap.color, ap.speciesId, ap.outfitId, ap.hairStyle, ap.scarfEnabled, ap.hatEnabled, ap.headwear, ap.hatStyle, size]);
 
   return (

@@ -10,7 +10,6 @@ import {
 } from '../../lib/agentAppearance';
 import { drawAgentOutfitFull2d, drawOutfitAccessories2d, drawOutfitLimbs2d, outfitReplacesBaseCharacter, type OutfitId } from '../../lib/agentOutfits';
 import { drawNiumaCharacter2d, drawNiumaAccessories2d, drawNiumaLimbs2d, type NiumaSkinId } from '../../lib/agentSpecies';
-import { characterSpriteUrl, drawCharacterSpriteFront, getCachedCharacterSprite, niumaSpriteReady } from '../../lib/characterSprites';
 import {
   cantonesePalette, hallRestPalette, spaPalette, vipPalette, receptionPalette,
   type CantonesePalette, type SpaPalette, type VipPalette, type ReceptionPalette,
@@ -354,7 +353,6 @@ function drawAgentTorso(
 
 function drawAgentHeadLayer(ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState, view: 'front' | 'back' | 'side', flip = 1) {
   if (ap.speciesId === 'niuma') {
-    if (niumaSpriteReady('niuma', ap.outfitId as NiumaSkinId, view)) return;
     drawNiumaAccessories2d(ctx, py, ap.hairStyle, color, view, flip);
     return;
   }
@@ -407,8 +405,8 @@ function drawWalkLimbs(
   }
 }
 
-function niumaUsesSprite(ap: AgentAppearanceState, view: 'front' | 'back' | 'side'): boolean {
-  return ap.speciesId === 'niuma' && niumaSpriteReady('niuma', ap.outfitId as NiumaSkinId, view);
+function niumaUsesSprite(_ap: AgentAppearanceState, _view: 'front' | 'back' | 'side'): boolean {
+  return false;
 }
 
 /** 背面 — 圆头 + 后脑围巾 + 手脚 */

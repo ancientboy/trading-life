@@ -5,6 +5,7 @@ import {
   listSeatAuctions, bidSeat, fetchDispatchQueue, processDispatchQueue,
   type LeaderboardEntry, type SeasonCosmetic, type SeatAuction,
 } from '../../lib/lifeEngagementApi';
+import { buildLeaderboardLink, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
 
 export function SeasonPanel() {
   const points = useGameStore(s => s.points);
@@ -15,7 +16,12 @@ export function SeasonPanel() {
   const addMessage = useGameStore(s => s.addMessage);
   const flyToZone = useGameStore(s => s.flyToZone);
 
-  const [tab, setTab] = useState<'rank' | 'season' | 'pvp' | 'auction'>('rank');
+  const [tab, setTab] = useState<'rank' | 'season' | 'pvp' | 'auction'>(() => {
+    const saved = sessionStorage.getItem('tl_season_initial_tab');
+    sessionStorage.removeItem('tl_season_initial_tab');
+    if (saved === 'rank' || saved === 'season' || saved === 'pvp' || saved === 'auction') return saved;
+    return 'rank';
+  });
   const [metric, setMetric] = useState('points');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [auctions, setAuctions] = useState<SeatAuction[]>([]);
@@ -73,6 +79,17 @@ export function SeasonPanel() {
               <span className="gold">{Math.round(e.points_earned || e.social_score || e.pvp_wins || e.pnl_score)}</span>
             </div>
           ))}
+          <button type="button" className="ui-btn" style={{ width: '100%', marginTop: 10 }}
+            onClick={async () => {
+              const r = await shareOrCopy({
+                title: '交易人生赛季榜',
+                text: `🏆 ${season?.name || '赛季'}排行榜 · ${metricLabel[metric]}`,
+                url: buildLeaderboardLink(),
+              });
+              addMessage(shareResultMessage(r));
+            }}>
+            分享排行榜
+          </button>
         </>
       )}
 

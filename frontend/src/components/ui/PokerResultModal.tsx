@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { useGameStore, type PokerHandResult, type PokerPlayerResult } from '../../store/useGameStore';
 import { PokerDealingCards } from './PokerDealingCards';
 import { PokerCardRow } from './PokerCard';
-import { buildPokerShareText, downloadPokerShareCard, shareOrCopy } from '../../lib/shareUtils';
+import { appBaseUrl, buildPokerShareText, downloadPokerShareCard, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
 
 function formatHandLabel(r: PokerPlayerResult): string {
   if (r.hand_name) return r.hand_name;
@@ -208,9 +208,9 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
             setSharing(true);
             try {
               const text = buildPokerShareText(data);
-              const url = `${window.location.origin}/trading/life/?view=leaderboard`;
+              const url = appBaseUrl();
               const r = await shareOrCopy({ title: '交易人生 · 德州扑克', text, url });
-              addMessage(r === 'shared' ? '已分享战绩' : '战绩文案已复制');
+              addMessage(shareResultMessage(r));
             } finally {
               setSharing(false);
             }
@@ -222,7 +222,7 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
           onClick={async () => {
             setSharing(true);
             try {
-              await downloadPokerShareCard(data);
+              await downloadPokerShareCard(data, appBaseUrl());
               addMessage('分享卡已保存');
             } catch {
               addMessage('生成分享卡失败');

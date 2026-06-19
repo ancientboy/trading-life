@@ -528,9 +528,15 @@ export async function fetchReferralInfo() {
   const r = await fetch(`${API}/growth/referral`, { headers: headers() });
   return parse<{
     ok: boolean; invite_code?: string; invites_count?: number; poker_rewards?: number;
+    invitees?: Array<{ invitee_id: string; name: string; registered_at: string; poker_done: boolean }>;
     rewards?: { invitee_signup: number; inviter_signup: number; inviter_first_poker: number };
     error?: string;
   }>(r);
+}
+
+export async function fetchGrowthNotifications() {
+  const r = await fetch(`${API}/growth/notifications`, { headers: headers() });
+  return parse<{ ok: boolean; messages?: string[] }>(r);
 }
 
 export async function fetchPublicRoomPreview(roomCode: string) {

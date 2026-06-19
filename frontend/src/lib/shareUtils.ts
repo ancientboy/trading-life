@@ -45,6 +45,7 @@ export function persistDeepLink(): void {
   if (d.join) sessionStorage.setItem('tl_pending_join', d.join);
   if (d.invite) sessionStorage.setItem('tl_pending_invite', d.invite);
   if (d.view === 'spectate' && d.room) sessionStorage.setItem('tl_pending_spectate', d.room);
+  if (d.view === 'leaderboard') sessionStorage.setItem('tl_pending_leaderboard', '1');
 }
 
 export function clearUrlParams(): void {
@@ -54,18 +55,76 @@ export function clearUrlParams(): void {
   window.history.replaceState({}, '', url.pathname + url.hash);
 }
 
-export async function shareOrCopy(opts: { title: string; text: string; url: string }): Promise<'shared' | 'copied'> {
+/** 读取并合并 URL + sessionStorage 中的 Deep Link 意图（读后清除 storage） */
+export function consumeDeepLinkIntent(): {
+  spectate?: string;
+  join?: string;
+  leaderboard?: boolean;
+  invite?: string;
+} {
+  const d = parseDeepLink();
+  const spectate = sessionStorage.getItem('tl_pending_spectate')
+    || (d.view === 'spectate' && d.room ? d.room : undefined)
+    || undefined;
+  const join = sessionStorage.getItem('tl_pending_join') || d.join || undefined;
+  const leaderboard = sessionStorage.getItem('tl_pending_leaderboard') === '1' || d.view === 'leaderboard';
+  const invite = sessionStorage.getItem('tl_pending_invite') || d.invite || undefined;
+
+  sessionStorage.removeItem('tl_pending_spectate');
+  sessionStorage.removeItem('tl_pending_join');
+  sessionStorage.removeItem('tl_pending_leaderboard');
+  return { spectate, join, leaderboard, invite };
+}
+
+/** 复制文本 — clipboard API 失败时用 textarea 降级 */
+export async function copyTextWithFallback(text: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch { /* fallback below */ }
+  }
+  if (typeof document === 'undefined') return false;
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch { ok = false; }
+  document.body.removeChild(ta);
+  return ok;
+}
+
+export function isWeChatBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /MicroMessenger/i.test(navigator.userAgent);
+}
+
+export async function shareOrCopy(opts: {
+  title: string;
+  text: string;
+  url: string;
+  /** 微信内提示用户右上角分享 */
+  wechatHint?: boolean;
+}): Promise<'shared' | 'copied' | 'failed'> {
   const payload = `${opts.text}\n${opts.url}`;
   if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       await navigator.share({ title: opts.title, text: opts.text, url: opts.url });
       return 'shared';
     } catch {
-      /* user cancelled or unsupported */
+      /* cancelled or unsupported */
     }
   }
-  await navigator.clipboard.writeText(payload);
-  return 'copied';
+  const ok = await copyTextWithFallback(payload);
+  if (ok && opts.wechatHint !== false && isWeChatBrowser()) {
+    return 'copied';
+  }
+  return ok ? 'copied' : 'failed';
 }
 
 const CARD_SUIT: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' };
@@ -93,7 +152,7 @@ export function buildPokerShareText(data: PokerHandResult): string {
   return '🃏 交易人生 · 德州扑克精彩一局';
 }
 
-export async function renderPokerShareCard(data: PokerHandResult): Promise<Blob> {
+export async function renderPokerShareCard(data: PokerHandResult, linkUrl?: string): Promise<Blob> {
   const me = data.results.find(r => !r.is_npc);
   const top = data.results.find(r => r.rank === 1);
   const won = data.won > 0;
@@ -139,21 +198,52 @@ export async function renderPokerShareCard(data: PokerHandResult): Promise<Blob>
     y += 28;
   }
 
-  ctx.fillStyle = 'rgba(255,255,255,0.45)';
-  ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText('扫码或打开链接加入 · trading-life', 24, h - 24);
+  const footerUrl = linkUrl || appBaseUrl();
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.font = '11px system-ui, sans-serif';
+  const footer = footerUrl.length > 48 ? `${footerUrl.slice(0, 46)}…` : footerUrl;
+  ctx.fillText(footer, 24, h - 28);
+  ctx.fillText('扫码或打开链接加入', 24, h - 12);
+
+  try {
+    const QRCode = (await import('qrcode')).default;
+    const qrDataUrl = await QRCode.toDataURL(footerUrl, {
+      width: 96,
+      margin: 1,
+      color: { dark: '#1a4d32', light: '#ffffff' },
+    });
+    const qrImg = new Image();
+    await new Promise<void>((resolve, reject) => {
+      qrImg.onload = () => resolve();
+      qrImg.onerror = () => reject(new Error('QR load failed'));
+      qrImg.src = qrDataUrl;
+    });
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(w - 118, h - 118, 104, 104);
+    ctx.drawImage(qrImg, w - 112, h - 112, 92, 92);
+  } catch {
+    /* QR optional */
+  }
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(b => (b ? resolve(b) : reject(new Error('生成图片失败'))), 'image/png');
   });
 }
 
-export async function downloadPokerShareCard(data: PokerHandResult): Promise<void> {
-  const blob = await renderPokerShareCard(data);
+export async function downloadPokerShareCard(data: PokerHandResult, linkUrl?: string): Promise<void> {
+  const blob = await renderPokerShareCard(data, linkUrl);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = `trading-life-poker-${Date.now()}.png`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export function shareResultMessage(result: 'shared' | 'copied' | 'failed', wechat = isWeChatBrowser()): string {
+  if (result === 'shared') return '已分享';
+  if (result === 'copied') {
+    return wechat ? '链接已复制 · 请粘贴到微信发送给好友' : '链接已复制';
+  }
+  return '复制失败，请长按链接手动复制';
 }

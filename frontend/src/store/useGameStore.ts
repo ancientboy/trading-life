@@ -22,7 +22,7 @@ import {
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, type SeatMap } from '../lib/seatRegistry';
-import { parseDeepLink } from '../lib/shareUtils';
+import { consumeDeepLinkIntent } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
 import type { LeisureTierId } from '../lib/leisureTiers';
@@ -245,6 +245,7 @@ interface GameStore {
   syncPokerRoom: () => Promise<void>;
   restorePokerRoom: () => Promise<void>;
   processPendingDeepLink: () => Promise<void>;
+  tryPendingJoin: () => Promise<void>;
   clearPokerRoom: () => void;
   setPokerSpectateRoom: (room: { id: string; buyIn: number } | null) => void;
   leavePokerRoom: () => Promise<void>;
@@ -720,6 +721,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
     get().speakForAgent(id, 'greeting');
     await get().syncUserPortfolio();
+    void get().tryPendingJoin();
     return true;
   },
   resetCamera: () => set({
@@ -873,7 +875,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncEngagement: async () => {
     try {
-      const [seasonRes, evRes] = await Promise.all([fetchSeasonCurrent(), fetchNpcEvents()]);
+      const api = await import('../lib/lifeEngagementApi');
+      const [seasonRes, evRes, notifRes] = await Promise.all([
+        api.fetchSeasonCurrent(),
+        api.fetchNpcEvents(),
+        api.fetchGrowthNotifications().catch(() => ({ ok: false as const, messages: [] as string[] })),
+      ]);
+      if (notifRes.ok && notifRes.messages?.length) {
+        for (const msg of notifRes.messages) get().addMessage(msg);
+      }
       if (seasonRes.ok && seasonRes.season) {
         set({
           season: seasonRes.season,
@@ -936,11 +946,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   processPendingDeepLink: async () => {
-    const join = sessionStorage.getItem('tl_pending_join') || parseDeepLink().join;
-    const spectate = sessionStorage.getItem('tl_pending_spectate');
-    sessionStorage.removeItem('tl_pending_join');
-    sessionStorage.removeItem('tl_pending_spectate');
-    sessionStorage.removeItem('tl_pending_invite');
+    const { spectate, join, leaderboard, invite } = consumeDeepLinkIntent();
 
     if (spectate) {
       const preview = await fetchPublicRoomPreview(spectate).catch(() => null);
@@ -948,20 +954,53 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ pokerSpectateRoom: { id: spectate, buyIn } });
       get().flyToZone('casino');
       get().openModal('poker');
-      get().addMessage('已打开公开观赛');
+      get().addMessage('已打开观赛');
       return;
     }
 
+    if (leaderboard) {
+      sessionStorage.setItem('tl_season_initial_tab', 'rank');
+      get().openModal('rank');
+      get().addMessage('已打开赛季排行榜');
+      return;
+    }
+
+    if (invite) {
+      sessionStorage.removeItem('tl_pending_invite');
+      get().addMessage('邀请码仅在新用户注册时生效 · 可分享给好友注册');
+    }
+
+    if (join) {
+      sessionStorage.setItem('tl_pending_join', join);
+      await get().tryPendingJoin();
+    }
+  },
+
+  tryPendingJoin: async () => {
+    const join = sessionStorage.getItem('tl_pending_join');
     if (!join) return;
+
     const agentIds = Object.keys(get().agents);
     const agentId = get().selectedAgentId && get().agents[get().selectedAgentId!]
       ? get().selectedAgentId!
       : agentIds[0];
-    if (!agentId) {
-      sessionStorage.setItem('tl_pending_join', join);
-      return;
-    }
+    if (!agentId) return;
+
+    sessionStorage.removeItem('tl_pending_join');
     try {
+      const preview = await fetchPublicRoomPreview(join).catch(() => null);
+      if (preview?.ok && preview.status === 'playing') {
+        if (preview.game_mode === 'advanced' && preview.room_id) {
+          set({ pokerSpectateRoom: { id: preview.room_id, buyIn: preview.buy_in ?? 1000 } });
+          get().flyToZone('casino');
+          get().openModal('poker');
+          get().addMessage('房间已开始 · 已为你打开观赛');
+          return;
+        }
+        get().addMessage('房间已开始，无法加入 · 请让好友重新开桌');
+        return;
+      }
+
       const r = await joinPokerRoomByCode(join, agentId);
       if (r.ok && r.room) {
         get().applyPokerRoom(r.room);
@@ -970,10 +1009,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         get().openModal('poker');
         get().addMessage(r.message || `已加入房间 ${r.room_code || join}`);
       } else {
+        sessionStorage.setItem('tl_pending_join', join);
         get().addMessage(r.error || '加入房间失败');
       }
     } catch {
-      get().addMessage('加入房间失败');
+      sessionStorage.setItem('tl_pending_join', join);
+      get().addMessage('加入房间失败，请稍后重试');
     }
   },
 

@@ -6,7 +6,7 @@ import { useGameStore } from '../../store/useGameStore';
 export function LoginPanel({ initialInvite = '' }: { initialInvite?: string }) {
   const applyLifeState = useGameStore(s => s.applyLifeState);
   const initAgents = useGameStore(s => s.initAgents);
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register'>(initialInvite.trim() ? 'register' : 'login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -102,6 +102,12 @@ export function LoginPanel({ initialInvite = '' }: { initialInvite?: string }) {
         <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
           用户名仅限英文字母、数字、下划线（3-20 位）<br />
           每个账户独立积分、任务与自定义 Agent
+          {sessionStorage.getItem('tl_pending_join') && (
+            <>
+              <br />
+              <span style={{ color: '#3a6bb5' }}>注册后将自动尝试加入好友牌桌</span>
+            </>
+          )}
         </p>
       </div>
     </div>
