@@ -36,7 +36,7 @@ async function fetchJson<T>(url: string, init?: RequestInit, timeoutMs = 20000):
   } catch (e) {
     clearTimeout(timer);
     const err = e as Error;
-    if (err.name === 'AbortError') return { ok: false, error: '发牌超时，请重试' } as T;
+    if (err.name === 'AbortError') return { ok: false, error: '同步超时，请重试', timedOut: true } as T;
     return { ok: false, error: '网络错误，请检查连接后重试' } as T;
   }
 }
@@ -51,7 +51,10 @@ export async function postChat(channel: string, body: string, agentId = '') {
   const r = await fetch(`${API}/social/chat`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ channel, body, agent_id: agentId }),
   });
-  return parse<{ ok: boolean; id?: number; created_at?: number }>(r);
+  return parse<{
+    ok: boolean; id?: number; created_at?: number;
+    agent_replies?: Array<{ id: number; body: string; agent_id: string; kind: string; created_at: number }>;
+  }>(r);
 }
 
 export async function syncMood(agents: { agent_id: string; stress: number; mood_tag?: string; zone?: string; channel?: string }[]) {
@@ -89,12 +92,79 @@ export async function claimNpcEvent(eventId: string) {
   return parse<{ ok: boolean; reward?: number; balance?: number; buff_type?: string; error?: string }>(r);
 }
 
-export async function tableSpeak(channel: string, agentId: string, agentName: string, soulMd: string) {
+export async function tableSpeak(
+  channel: string, agentId: string, agentName: string, soulMd: string,
+  opts?: {
+    context?: string; activity?: string | null; stress?: number; mood_tag?: string;
+    decision_mode?: string; nearby_names?: string[]; target_agent_name?: string;
+  },
+) {
   const r = await fetch(`${API}/social/table-speak`, {
     method: 'POST', headers: headers(),
-    body: JSON.stringify({ channel, agent_id: agentId, agent_name: agentName, soul_md: soulMd }),
+    body: JSON.stringify({
+      channel, agent_id: agentId, agent_name: agentName, soul_md: soulMd,
+      ...opts,
+    }),
   });
-  return parse<{ ok: boolean; line?: string; created_at?: number }>(r);
+  return parse<{ ok: boolean; line?: string; created_at?: number; message_id?: number }>(r);
+}
+
+export async function agentBrainSpeak(opts: {
+  agent_id: string;
+  agent_name: string;
+  soul_md: string;
+  channel?: string;
+  context?: string;
+  activity?: string | null;
+  stress?: number;
+  mood_tag?: string;
+  decision_mode?: string;
+  nearby_names?: string[];
+  target_agent_name?: string;
+  post_to_chat?: boolean;
+  remember?: boolean;
+}) {
+  const r = await fetch(`${API}/social/agent-brain/speak`, {
+    method: 'POST', headers: headers(), body: JSON.stringify(opts),
+  });
+  return parse<{
+    ok: boolean; line?: string;
+    chat?: { id: number; body: string; agent_id: string; created_at: number };
+  }>(r);
+}
+
+export async function agentBrainDialogue(opts: {
+  channel: string;
+  agent_a_id: string; agent_a_name: string; agent_a_soul: string;
+  agent_b_id: string; agent_b_name: string; agent_b_soul: string;
+  rounds?: number;
+}) {
+  const r = await fetch(`${API}/social/agent-brain/dialogue`, {
+    method: 'POST', headers: headers(), body: JSON.stringify(opts),
+  });
+  return parse<{
+    ok: boolean; messages?: Array<{ id: number; body: string; agent_id: string; created_at: number }>;
+    turns?: number; error?: string;
+  }>(r);
+}
+
+export async function agentBrainTeaParty(opts: {
+  channel: string; zone: string;
+  agents: Array<{ agent_id: string; name: string; soul_md: string }>;
+  topic?: string;
+}) {
+  const r = await fetch(`${API}/social/agent-brain/tea-party`, {
+    method: 'POST', headers: headers(), body: JSON.stringify(opts),
+  });
+  return parse<{
+    ok: boolean; messages?: Array<{ id: number; body: string; agent_id: string; created_at: number }>;
+    topic?: string; error?: string;
+  }>(r);
+}
+
+export async function fetchAgentMemories(agentId: string) {
+  const r = await fetch(`${API}/social/agent-brain/memory/${encodeURIComponent(agentId)}`, { headers: headers() });
+  return parse<{ ok: boolean; memories: Array<{ id: number; kind: string; summary: string; created_at: number }> }>(r);
 }
 
 export interface ChatMessage {
@@ -113,9 +183,9 @@ export async function listPokerRooms() {
   return parse<{ ok: boolean; rooms: PokerRoom[] }>(r);
 }
 
-export async function createPokerRoom(buyIn = 30, agentId = '') {
+export async function createPokerRoom(buyIn = 30, agentId = '', gameMode: 'classic' | 'advanced' = 'classic') {
   const r = await fetch(`${API}/pvp/poker/rooms`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ buy_in: buyIn, agent_id: agentId }),
+    method: 'POST', headers: headers(), body: JSON.stringify({ buy_in: buyIn, agent_id: agentId, game_mode: gameMode }),
   });
   return parse<{
     ok: boolean; room_id?: string; room_code?: string; buy_in?: number; seat_id?: string;
@@ -174,6 +244,8 @@ export async function startPokerRoom(roomId: string) {
   const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/start`, { method: 'POST', headers: headers() });
   return parse<{
     ok: boolean; mode?: string; balance?: number; won?: number; net?: number; cost?: number; pot?: number;
+    room_id?: string;
+    game?: AdvancedPokerGame;
     community_cards?: string[];
     tie?: boolean; winners_count?: number;
     results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
@@ -274,7 +346,105 @@ export interface PokerRoomPlayer {
 
 export interface PokerRoom {
   id: string; room_code?: string; status: string; pot: number; buy_in: number;
+  game_mode?: 'classic' | 'advanced';
+  spectator?: boolean;
   human_count?: number; player_names?: string[]; players: PokerRoomPlayer[];
+}
+
+export interface AdvancedPokerPlayer {
+  seat_index: number; user_id: string; agent_id: string; seat_id: string;
+  name: string; is_npc: boolean; stack: number; hole_cards: string[];
+  folded: boolean; all_in: boolean; bet_street: number; eliminated: boolean;
+  poker_preset?: string;
+}
+
+export interface AdvancedPokerEvent {
+  seq: number; kind: string;
+  seat_index?: number; name?: string; action?: string; amount?: number;
+  phase?: string; community?: string[];
+  hand_name?: string; reason?: string;
+}
+
+export interface AdvancedPokerGame {
+  room_id: string; buy_in: number; hand_number: number;
+  phase: string; status: string; community: string[];
+  pot: number; current_bet: number; actor_index: number; actor_name: string;
+  button_index: number; big_blind: number; small_blind: number;
+  players: AdvancedPokerPlayer[];
+  winners_last_hand: Array<{ seat_index: number; name: string; amount: number; hand_name?: string }>;
+  events: AdvancedPokerEvent[];
+  event_count: number;
+  last_reasoning?: { seat_index: number; name: string; action: string; amount?: number; reason: string };
+}
+
+export interface PokerProfile {
+  preset: string; label?: string;
+  vpip: number; pfr: number; aggression: number; bluff_freq: number; fold_to_raise: number;
+  notes?: string;
+  stats?: { hands: number; wins: number; vpip_hits?: number; pfr_hits?: number };
+}
+
+export async function fetchPokerPresets() {
+  const r = await fetch(`${API}/pvp/poker/presets`, { headers: headers() });
+  return parse<{ ok: boolean; presets: Array<{ id: string; label: string }>; advanced_buy_ins: number[]; classic_buy_ins: number[] }>(r);
+}
+
+export async function startAiSpectator(agentId: string, buyIn = 1000, numPlayers = 4) {
+  return fetchJson<{
+    ok: boolean; room_id?: string; buy_in?: number; balance?: number; message?: string;
+    game?: AdvancedPokerGame; settlement?: { results: Array<{ name: string; stack: number; rank: number; won: number }>; winner?: { name: string } };
+    error?: string;
+  }>(`${API}/pvp/poker/ai-spectator/start`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ agent_id: agentId, buy_in: buyIn, num_players: numPlayers }),
+  }, 25000);
+}
+
+export async function fetchAdvancedPokerState(
+  roomId: string,
+  sinceSeq = 0,
+  opts?: { autoRun?: boolean; maxSteps?: number; useLlm?: boolean; runUntilComplete?: boolean },
+) {
+  const params = new URLSearchParams({ since_seq: String(sinceSeq) });
+  if (opts?.autoRun === false) params.set('auto_run', 'false');
+  if (opts?.maxSteps != null) params.set('max_steps', String(opts.maxSteps));
+  if (opts?.useLlm) params.set('use_llm', 'true');
+  // run_until_complete 会阻塞整局在单次请求内，易导致前端长时间卡在加载页，不再使用
+  return fetchJson<{
+    ok: boolean; room_id?: string; game?: AdvancedPokerGame; status?: string;
+    settlement?: { results: Array<{ name: string; stack: number; rank: number; won: number; eliminated: boolean }>; winner?: { name: string }; balance?: number; net?: number; won?: number };
+    error?: string; timedOut?: boolean;
+  }>(
+    `${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/advanced/state?${params}`,
+    { headers: headers() },
+    45000,
+  );
+}
+
+export async function fetchAgentPokerProfile(agentId: string) {
+  const r = await fetch(`${API}/agents/${encodeURIComponent(agentId)}/poker-profile`, { headers: headers() });
+  return parse<{ ok: boolean; profile: PokerProfile; presets: string[]; error?: string }>(r);
+}
+
+export async function parseAgentPokerStyle(agentId: string, text: string) {
+  const r = await fetch(`${API}/agents/${encodeURIComponent(agentId)}/poker-style/parse`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ text }),
+  });
+  return parse<{ ok: boolean; profile?: PokerProfile; source?: string; message?: string; error?: string }>(r);
+}
+
+export async function feedbackAgentPokerStyle(agentId: string, feedback: string) {
+  const r = await fetch(`${API}/agents/${encodeURIComponent(agentId)}/poker-style/feedback`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ feedback }),
+  });
+  return parse<{ ok: boolean; profile?: PokerProfile; message?: string; error?: string }>(r);
+}
+
+export async function setAgentPokerPreset(agentId: string, preset: string) {
+  const r = await fetch(`${API}/agents/${encodeURIComponent(agentId)}/poker-profile`, {
+    method: 'PUT', headers: headers(), body: JSON.stringify({ preset }),
+  });
+  return parse<{ ok: boolean; profile?: PokerProfile; error?: string }>(r);
 }
 
 export interface SeatAuction {
@@ -350,4 +520,51 @@ export function chatChannelForZone(zone: string, nodeId?: string | null): string
   if (zone === 'spa' && nodeId?.startsWith('bed_')) return nodeId;
   if (zone === 'hall' && nodeId?.startsWith('rest_l')) return nodeId;
   return zone;
+}
+
+// ─── 增长 / 裂变 ───
+
+export async function fetchReferralInfo() {
+  const r = await fetch(`${API}/growth/referral`, { headers: headers() });
+  return parse<{
+    ok: boolean; invite_code?: string; invites_count?: number; poker_rewards?: number;
+    invitees?: Array<{ invitee_id: string; name: string; registered_at: string; poker_done: boolean }>;
+    rewards?: { invitee_signup: number; inviter_signup: number; inviter_first_poker: number };
+    error?: string;
+  }>(r);
+}
+
+export async function fetchGrowthNotifications() {
+  const r = await fetch(`${API}/growth/notifications`, { headers: headers() });
+  return parse<{ ok: boolean; messages?: string[] }>(r);
+}
+
+export async function fetchPublicRoomPreview(roomCode: string) {
+  const code = roomCode.replace(/\D/g, '').slice(0, 5);
+  const r = await fetch(`${API}/public/poker/rooms/${encodeURIComponent(code)}/preview`);
+  return parse<{
+    ok: boolean; room_id?: string; room_code?: string; status?: string;
+    buy_in?: number; game_mode?: string; human_count?: number; max_players?: number; error?: string;
+  }>(r);
+}
+
+export async function fetchPublicSpectateState(roomId: string, sinceSeq = 0) {
+  const params = new URLSearchParams({ since_seq: String(sinceSeq), max_steps: '1' });
+  return fetchJson<{
+    ok: boolean; room_id?: string; buy_in?: number; game?: AdvancedPokerGame; status?: string; error?: string;
+  }>(
+    `${API}/public/poker/rooms/${encodeURIComponent(roomId)}/spectate?${params}`,
+    { headers: { 'Content-Type': 'application/json' } },
+    45000,
+  );
+}
+
+export async function fetchPublicSeasonLeaderboard(metric = 'points') {
+  const r = await fetch(`${API}/public/season/leaderboard?metric=${encodeURIComponent(metric)}&limit=20`);
+  return parse<{ ok: boolean; entries: LeaderboardEntry[]; metric?: string }>(r);
+}
+
+export async function fetchPublicSeasonInfo() {
+  const r = await fetch(`${API}/public/season/info`);
+  return parse<{ ok: boolean; season?: { id: string; name: string; ends_at: number } | null }>(r);
 }

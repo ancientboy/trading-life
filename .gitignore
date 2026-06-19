@@ -19,3 +19,5 @@ venv/
 
 # Runtime logs (regenerated on server)
 logs/
+*.db
+data/life_game.db

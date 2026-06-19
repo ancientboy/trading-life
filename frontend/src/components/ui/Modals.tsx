@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useGameStore, type ModalId } from '../../store/useGameStore';
 import { AgentWorkshop } from './AgentWorkshop';
 import { DailyTasksPanel } from './DailyTasksPanel';
 import { SeasonPanel } from './SeasonPanel';
+import { PokerAdvancedSpectator } from './PokerAdvancedSpectator';
 import { PokerGamePanel } from './PokerGamePanel';
 import { PokerResultModal } from './PokerResultModal';
 import { PenguinAvatar } from './PenguinAvatar';
@@ -12,7 +13,9 @@ import { AppIcon } from '../icons/AppIcon';
 import { LucideIcons, MiniLucide } from '../icons/lucideIcons';
 import { DINE_TIERS, MASSAGE_TIERS } from '../../lib/leisureTiers';
 import { isZoneSkinShopItem } from '../../lib/zoneSkins';
+import { isOutfitShopItem, isSpeciesShopItem, isHairShopItem } from '../../lib/lifeShop';
 import { StrategyEditor } from './StrategyEditor';
+import { SceneSkinsPanel } from './SceneSkinsPanel';
 
 const TITLES: Record<Exclude<ModalId, null>, string> = {
   workshop: 'Agent 工坊',
@@ -102,7 +105,8 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
           <p><b>休闲费用：</b>休息免费；用餐/按摩基础档免费，高档消耗积分；德州免费入座，开局才扣买入</p>
           <p><b>每日积分：</b>顶部积分栏可领取 1000 积分（每日一次）</p>
           <p><b>创建 Agent：</b>左侧「Agent 工坊」→ 点「创建 Agent」→ 填写名称、外形、SOUL</p>
-          <p><b>自主活动：</b>无人操作时 Agent 会自行漫步、休息、前往休闲区，到达后播放对应互动动画</p>
+          <p><b>自主 AI：</b>Agent 具备三层大脑（感知→决策→执行），会按性格自主社交、漫游或减压；区域聊天可 @Agent 对话</p>
+          <p><b>自主活动：</b>无人操作时 Agent 自行决定去向，到达后播放互动动画并可能发言</p>
           {tradeFeed.length > 0 && <p style={{ fontSize: 11, color: '#9a8b7a' }}>已加载 {tradeFeed.length} 条成交</p>}
         </div>
       );
@@ -114,7 +118,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
         icon: t.id === 'a' ? LucideIcons.massageBed : t.id === 'b' ? LucideIcons.massageWind : LucideIcons.massageOil,
       }))} />;
     case 'poker':
-      return <PokerGamePanel />;
+      return <PokerModalContent />;
     case 'poker_result':
       return pokerHandResult ? <PokerResultModal data={pokerHandResult} /> : null;
     case 'shop':
@@ -126,6 +130,37 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
     default:
       return null;
   }
+}
+
+function PokerModalContent() {
+  const spectate = useGameStore(s => s.pokerSpectateRoom);
+  const setSpectate = useGameStore(s => s.setPokerSpectateRoom);
+  const addMessage = useGameStore(s => s.addMessage);
+
+  const onSpectateComplete = useCallback((settlement: {
+    balance?: number; winner?: { name: string }; net?: number;
+  }) => {
+    if (settlement.balance != null) useGameStore.setState({ points: settlement.balance });
+    const w = settlement.winner?.name;
+    addMessage(w ? `🏆 ${w} 赢得锦标赛` : '锦标赛结束');
+    if (settlement.net != null && settlement.net > 0) {
+      addMessage(`你的 Agent 净赚 +${settlement.net} 积分`);
+    }
+    setSpectate(null);
+  }, [addMessage, setSpectate]);
+
+  if (spectate) {
+    return (
+      <PokerAdvancedSpectator
+        roomId={spectate.id}
+        buyIn={spectate.buyIn}
+        onComplete={onSpectateComplete}
+        onClose={() => setSpectate(null)}
+      />
+    );
+  }
+
+  return <PokerGamePanel />;
 }
 
 function LeisureModal({ type, title, lucide, items }: {
@@ -165,7 +200,7 @@ function LeisureModal({ type, title, lucide, items }: {
           {agent ? (
             <div style={{ marginTop: 8, padding: 8, background: '#faf6ef', borderRadius: 8, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>服务对象：</span>
-              <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} size={24} />
+              <PenguinAvatar color={agent.data.color} headwear={agent.data.headwear} hatStyle={agent.data.hatStyle} speciesId={agent.data.speciesId} outfitId={agent.data.outfitId} scarfEnabled={agent.data.scarfEnabled} hatEnabled={agent.data.hatEnabled} size={24} />
               <b>{agent.data.name}</b>
               <span>· 压力 {Math.round(agent.stress)}%</span>
             </div>
@@ -195,11 +230,19 @@ function LeisureModal({ type, title, lucide, items }: {
           return;
         }
         setBusy(true);
-        const ok = await sendAgentToLeisure(type, agent.agentId, picked, item.cost);
-        if (ok) addMessage(`${agent.data.name} 选择了「${item.name}」${item.cost > 0 ? ` · -${item.cost} 积分` : ' · 免费'} · ${item.effect}`);
-        else if (!canAfford) addMessage(`积分不足，需要 ${item.cost} 积分`);
-        setBusy(false);
-        if (ok) closeModal();
+        try {
+          const ok = await sendAgentToLeisure(type, agent.agentId, picked, item.cost);
+          if (ok) {
+            addMessage(`${agent.data.name} 选择了「${item.name}」${item.cost > 0 ? ` · -${item.cost} 积分` : ' · 免费'} · ${item.effect}`);
+            closeModal();
+          } else if (!canAfford) {
+            addMessage(`积分不足，需要 ${item.cost} 积分`);
+          }
+        } catch {
+          addMessage('派遣失败，请稍后重试');
+        } finally {
+          setBusy(false);
+        }
       }}>
         {busy ? 'Agent 正在前往…' : !canAfford ? `积分不足（需 ${item.cost}）` : item.cost <= 0 ? '免费派遣' : `确认 · ${item.cost} 积分`}
       </button>
@@ -216,6 +259,10 @@ function ShopPanel() {
   const [tab, setTab] = useState<'buy' | 'scene'>(hasZoneSkins ? 'scene' : 'buy');
 
   const agentItems = shopCatalog.filter(i => i.type === 'color' || i.type === 'hat');
+  const speciesItems = shopCatalog.filter(i => isSpeciesShopItem(i) && !i.legacy);
+  const outfitItems = shopCatalog.filter(i => i.type === 'outfit');
+  const niumaOutfitItems = shopCatalog.filter(i => i.type === 'niuma_outfit' || i.type === 'maniu_outfit');
+  const hairItems = shopCatalog.filter(i => isHairShopItem(i));
   const zoneItems = shopCatalog.filter(i => isZoneSkinShopItem(i) && !i.legacy);
   // 旧版皮肤包仍在 catalog 中时也展示
   const legacyZoneItems = shopCatalog.filter(i => i.type === 'zone_skin' && i.legacy);
@@ -223,6 +270,10 @@ function ShopPanel() {
   const shopTypeLabel = (type: string) => {
     if (type === 'color') return '解锁围巾/帽子颜色';
     if (type === 'hat') return '解锁帽子款式';
+    if (type === 'outfit') return '解锁企鹅服装皮肤';
+    if (type === 'niuma_outfit' || type === 'maniu_outfit') return '解锁牛马专属皮肤';
+    if (type === 'hair') return '解锁牛马发型款式';
+    if (type === 'species') return '解锁独立角色类型';
     if (type === 'zone_skin') return '区域场景皮肤包';
     return '场景装饰';
   };
@@ -266,6 +317,27 @@ function ShopPanel() {
 
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Agent 装扮</div>
           {agentItems.map(renderShopRow)}
+
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>角色类型</div>
+          <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
+            牛马是与企鹅同级的独立角色，可在工坊切换
+          </p>
+          {speciesItems.map(renderShopRow)}
+
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>企鹅服装皮肤</div>
+          <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
+            购买后在 Agent 工坊 →「装扮」更换；可与围巾、帽子同时穿戴
+          </p>
+          {outfitItems.map(renderShopRow)}
+
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>牛马专属皮肤</div>
+          {niumaOutfitItems.map(renderShopRow)}
+
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>牛马发型</div>
+          <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>
+            牛马专属可变配饰，在工坊选牛马后更换发型与发色
+          </p>
+          {hairItems.map(renderShopRow)}
 
           <div style={{ fontSize: 13, fontWeight: 700, margin: '16px 0 8px' }}>区域皮肤包</div>
           <p style={{ fontSize: 11, color: '#9a8b7a', margin: '0 0 8px' }}>

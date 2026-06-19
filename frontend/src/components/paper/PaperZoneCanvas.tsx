@@ -8,6 +8,7 @@ import { PAPER, agentVisibleInZone } from '../../lib/zoneProjection';
 import {
   makePaperCamera, camToScreen, screenToPaper, renderZone, renderAgents, renderPokerRoomGuests,
 } from './renderZone';
+import { resolveAgentZone } from '../../lib/zoneTransit';
 import { getStoredAccount } from '../../lib/lifeAuth';
 
 export function PaperZoneCanvas() {
@@ -44,6 +45,7 @@ export function PaperZoneCanvas() {
   const panCamera = useGameStore(s => s.panCamera);
   const setCameraZoom = useGameStore(s => s.setCameraZoom);
   const setCameraLookAt = useGameStore(s => s.setCameraLookAt);
+  const followAgentZone = useGameStore(s => s.followAgentZone);
 
   const getPan = useCallback(() => {
     const cam = ZONE_CAMERA[activeZone];
@@ -106,7 +108,11 @@ export function PaperZoneCanvas() {
       if (!paused) tickCharacterSim(dt);
       if (followAgentId && agents[followAgentId]) {
         const a = agents[followAgentId];
-        if (Math.abs(a.x - cameraLookAt.x) > 0.15 || Math.abs(a.z - cameraLookAt.z) > 0.15) {
+        const agentZone = resolveAgentZone(a);
+        const st = useGameStore.getState();
+        if (agentZone !== st.activeZone) followAgentZone(agentZone);
+        const cam = st.cameraLookAt;
+        if (Math.abs(a.x - cam.x) > 0.12 || Math.abs(a.z - cam.z) > 0.12) {
           setCameraLookAt(a.x, a.z);
         }
       }
@@ -115,7 +121,7 @@ export function PaperZoneCanvas() {
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [paused, followAgentId, agents, cameraLookAt, activeZone, paint, setCameraLookAt]);
+  }, [paused, followAgentId, agents, activeZone, paint, setCameraLookAt, followAgentZone]);
 
   useEffect(() => {
     const onResize = () => paint();

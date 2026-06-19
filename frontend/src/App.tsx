@@ -1,13 +1,16 @@
 import { useEffect } from 'react';
 import { AppShell } from './components/layout/AppShell';
 import { LoginPanel } from './components/ui/LoginPanel';
+import { PublicJoinLanding, PublicLeaderboardView, PublicSpectateView } from './components/ui/PublicViews';
 import { useGameStore } from './store/useGameStore';
 import { fetchOverview, fetchTicker } from './lib/api';
 import { lifeSessionStart } from './lib/lifeApi';
 import { isLoggedIn } from './lib/lifeAuth';
 import { syncMood } from './lib/lifeEngagementApi';
+import { clearUrlParams, parseDeepLink, persistDeepLink } from './lib/shareUtils';
 
 import { preloadAllSprites } from './lib/spriteTextures';
+import { preloadNiumaSprites } from './lib/characterSprites';
 
 export default function App() {
   const initAgents = useGameStore(s => s.initAgents);
@@ -18,20 +21,36 @@ export default function App() {
   const syncUserPortfolio = useGameStore(s => s.syncUserPortfolio);
   const setTicker = useGameStore(s => s.setTicker);
   const addMessage = useGameStore(s => s.addMessage);
+  const processPendingDeepLink = useGameStore(s => s.processPendingDeepLink);
   const loggedIn = isLoggedIn();
+  const deepLink = parseDeepLink();
 
   useEffect(() => {
-    if (!loggedIn) return;
+    if (!loggedIn) {
+      persistDeepLink();
+      return;
+    }
     initAgents();
-    syncLifeState().then(() => useGameStore.getState().restorePokerRoom().catch(() => {}));
+    syncLifeState().then(() => {
+      useGameStore.getState().restorePokerRoom().catch(() => {});
+      void processPendingDeepLink();
+      clearUrlParams();
+    });
     preloadAllSprites().catch(() => {});
+    preloadNiumaSprites();
     const pollSystem = () => fetchOverview().then(data => {
       updateFromOverview(data);
     }).catch(() => {});
     const pollPortfolio = () => syncUserPortfolio().catch(() => {});
     const tick = () => fetchTicker().then(setTicker).catch(() => {});
     pollSystem(); pollPortfolio(); tick();
-    addMessage('欢迎来到交易人生 · 登录后开始挂机与派遣');
+    const flashInvite = sessionStorage.getItem('tl_flash_invite');
+    if (flashInvite) {
+      sessionStorage.removeItem('tl_flash_invite');
+      addMessage(flashInvite);
+    } else {
+      addMessage('欢迎来到交易人生 · 登录后开始挂机与派遣');
+    }
     const a = setInterval(pollSystem, 8000);
     const g = setInterval(pollPortfolio, 45000);
     const b = setInterval(tick, 10000);
@@ -52,6 +71,7 @@ export default function App() {
     const pokerPoll = setInterval(() => {
       const st = useGameStore.getState();
       if (st.activeZone !== 'casino') return;
+      if (st.pokerSpectateRoom) return;
       if (st.pokerRoom?.id && st.pokerRoom.status === 'waiting') {
         st.syncPokerRoom().catch(() => {});
       } else {
@@ -69,8 +89,20 @@ export default function App() {
       clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f); clearInterval(pokerPoll);
       document.removeEventListener('visibilitychange', onVis);
     };
-  }, [loggedIn, initAgents, syncLifeState, syncSeats, syncEngagement, updateFromOverview, syncUserPortfolio, setTicker, addMessage]);
+  }, [loggedIn, initAgents, syncLifeState, syncSeats, syncEngagement, updateFromOverview, syncUserPortfolio, setTicker, addMessage, processPendingDeepLink]);
 
-  if (!loggedIn) return <LoginPanel />;
+  if (!loggedIn && deepLink.view === 'spectate' && deepLink.room) {
+    return <PublicSpectateView roomId={deepLink.room} loggedIn={false} />;
+  }
+  if (!loggedIn && deepLink.view === 'leaderboard') {
+    return <PublicLeaderboardView loggedIn={false} />;
+  }
+  if (!loggedIn && deepLink.join) {
+    return <PublicJoinLanding roomCode={deepLink.join} />;
+  }
+
+  if (!loggedIn) {
+    return <LoginPanel initialInvite={deepLink.invite || sessionStorage.getItem('tl_pending_invite') || ''} />;
+  }
   return <AppShell />;
 }

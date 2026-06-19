@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { useGameStore, type PokerHandResult, type PokerPlayerResult } from '../../store/useGameStore';
 import { PokerDealingCards } from './PokerDealingCards';
 import { PokerCardRow } from './PokerCard';
+import { appBaseUrl, buildPokerShareText, downloadPokerShareCard, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
 
 function formatHandLabel(r: PokerPlayerResult): string {
   if (r.hand_name) return r.hand_name;
@@ -82,7 +83,9 @@ function PlayerHandBlock({
 
 export function PokerResultModal({ data }: { data: PokerHandResult }) {
   const closeModal = useGameStore(s => s.closeModal);
+  const addMessage = useGameStore(s => s.addMessage);
   const [dealt, setDealt] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const me = data.results.find(r => !r.is_npc);
   const won = data.won > 0;
@@ -198,10 +201,42 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
         </>
       )}
 
-      <button className="ui-btn" style={{ width: '100%', marginTop: 14, padding: '10px 0' }}
-        disabled={!dealt} onClick={closeModal}>
-        {dealt ? '关闭' : '发牌中…'}
-      </button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+        <button className="ui-btn" style={{ flex: 1, padding: '10px 0' }}
+          disabled={!dealt || sharing}
+          onClick={async () => {
+            setSharing(true);
+            try {
+              const text = buildPokerShareText(data);
+              const url = appBaseUrl();
+              const r = await shareOrCopy({ title: '交易人生 · 德州扑克', text, url });
+              addMessage(shareResultMessage(r));
+            } finally {
+              setSharing(false);
+            }
+          }}>
+          {sharing ? '…' : '📤 分享'}
+        </button>
+        <button className="ui-btn" style={{ flex: 1, padding: '10px 0' }}
+          disabled={!dealt || sharing}
+          onClick={async () => {
+            setSharing(true);
+            try {
+              await downloadPokerShareCard(data, appBaseUrl());
+              addMessage('分享卡已保存');
+            } catch {
+              addMessage('生成分享卡失败');
+            } finally {
+              setSharing(false);
+            }
+          }}>
+          🖼 海报
+        </button>
+        <button className="ui-btn" style={{ flex: 1, padding: '10px 0' }}
+          disabled={!dealt} onClick={closeModal}>
+          关闭
+        </button>
+      </div>
     </div>
   );
 }

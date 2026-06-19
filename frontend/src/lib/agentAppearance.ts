@@ -1,5 +1,12 @@
 import { scarfColorsFromAccent, type ScarfPalette } from './scarfColors';
 import type { AgentMeta } from './constants';
+import type { OutfitId } from './agentOutfits';
+import { OUTFIT_CATALOG } from './agentOutfits';
+import {
+  type SpeciesId, type NiumaSkinId, type HairStyleId,
+  SPECIES_CATALOG, NIUMa_SKIN_CATALOG, HAIR_STYLES,
+  migrateLegacyAppearance,
+} from './agentSpecies';
 
 export type AgentHeadwear = 'scarf' | 'hat';
 
@@ -14,16 +21,61 @@ export const HAT_STYLES: Record<HatStyleId, { label: string }> = {
   beret: { label: '贝雷帽' },
 };
 
-import type { AgentMeta } from './constants';
+export interface AgentAppearanceState {
+  speciesId: SpeciesId;
+  outfitId: OutfitId | NiumaSkinId;
+  scarfEnabled: boolean;
+  hatEnabled: boolean;
+  hatStyle: HatStyleId;
+  hairStyle: HairStyleId;
+  color: string;
+  /** 兼容旧 API / 存储 */
+  headwear: AgentHeadwear;
+}
+
+export function resolveAppearance(meta: Partial<AgentMeta>): AgentAppearanceState {
+  let scarfEnabled = meta.scarfEnabled;
+  let hatEnabled = meta.hatEnabled;
+  if (scarfEnabled == null && hatEnabled == null) {
+    if (meta.headwear === 'hat') {
+      scarfEnabled = false;
+      hatEnabled = true;
+    } else {
+      scarfEnabled = true;
+      hatEnabled = false;
+    }
+  }
+  scarfEnabled = scarfEnabled ?? true;
+  hatEnabled = hatEnabled ?? false;
+  const headwear: AgentHeadwear = hatEnabled && !scarfEnabled ? 'hat' : 'scarf';
+  const migrated = migrateLegacyAppearance(meta);
+  const speciesId = migrated.speciesId;
+  return {
+    speciesId,
+    outfitId: migrated.outfitId as OutfitId | NiumaSkinId,
+    scarfEnabled: speciesId === 'niuma' ? false : scarfEnabled,
+    hatEnabled: speciesId === 'niuma' ? false : hatEnabled,
+    hatStyle: meta.hatStyle ?? 'beanie',
+    hairStyle: (meta.hairStyle as HairStyleId) ?? 'pompadour',
+    color: meta.color ?? '#FFD700',
+    headwear,
+  };
+}
 
 export function normalizeAgentMeta(meta: Partial<AgentMeta> & { icon?: string }): AgentMeta {
   const agentType = meta.agentType ?? 'trading';
+  const appearance = resolveAppearance(meta);
   return {
     id: meta.id ?? 'unknown',
     name: meta.name ?? 'Agent',
-    color: meta.color ?? '#FFD700',
-    headwear: meta.headwear ?? 'scarf',
-    hatStyle: meta.hatStyle ?? 'beanie',
+    color: appearance.color,
+    headwear: appearance.headwear,
+    hatStyle: appearance.hatStyle,
+    hairStyle: appearance.hairStyle,
+    speciesId: appearance.speciesId,
+    outfitId: appearance.outfitId as string,
+    scarfEnabled: appearance.scarfEnabled,
+    hatEnabled: appearance.hatEnabled,
     desc: meta.desc ?? '',
     strategy: meta.strategy ?? (agentType === 'entertainment' ? '休闲陪伴' : ''),
     market: meta.market ?? (agentType === 'entertainment' ? '—' : ''),
@@ -34,6 +86,23 @@ export function normalizeAgentMeta(meta: Partial<AgentMeta> & { icon?: string })
   };
 }
 
+export function appearanceSummary(meta: Partial<AgentMeta>): string {
+  const a = resolveAppearance(meta);
+  const parts: string[] = [];
+  if (a.speciesId === 'niuma') {
+    parts.push(SPECIES_CATALOG.niuma.label);
+    if (a.outfitId !== 'default') parts.push(NIUMa_SKIN_CATALOG[a.outfitId as NiumaSkinId]?.label ?? String(a.outfitId));
+    parts.push(HAIR_STYLES[a.hairStyle].label);
+  } else {
+    if (a.outfitId !== 'default') parts.push(OUTFIT_CATALOG[a.outfitId as OutfitId]?.label ?? String(a.outfitId));
+    else parts.push(SPECIES_CATALOG.penguin.label);
+    if (a.scarfEnabled) parts.push('围巾');
+    if (a.hatEnabled) parts.push(HAT_STYLES[a.hatStyle].label);
+  }
+  return parts.join(' · ');
+}
+
+/** @deprecated 使用 appearanceSummary */
 export function headwearLabel(headwear: AgentHeadwear, hatStyle: HatStyleId): string {
   return headwear === 'scarf' ? '条纹围巾' : HAT_STYLES[hatStyle].label;
 }
@@ -113,7 +182,6 @@ export function drawAgentHat2d(
     return;
   }
 
-  // front
   switch (style) {
     case 'beanie':
       ctx.beginPath(); ctx.ellipse(0, py - 14, 14, 9, 0, 0, Math.PI * 2); ctx.fill();

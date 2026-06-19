@@ -142,6 +142,11 @@ function ZoneAgents({ zone }: { zone: ZoneId }) {
               accentColor={meta.color}
               headwear={meta.headwear}
               hatStyle={meta.hatStyle}
+              outfitId={meta.outfitId}
+              speciesId={meta.speciesId}
+              hairStyle={meta.hairStyle}
+              scarfEnabled={meta.scarfEnabled}
+              hatEnabled={meta.hatEnabled}
               label={meta.name}
               status={status}
               stress={char.stress}

@@ -78,6 +78,7 @@ class RegisterBody(BaseModel):
     username: str
     password: str
     display_name: str = ""
+    invite_code: str = ""
 
 
 class LoginBody(BaseModel):
@@ -108,6 +109,14 @@ async def auth_register(body: RegisterBody):
     if not res.get("ok"):
         return {"ok": False, "error": "用户名已被占用"}
     account_id = res["account_id"]
+    invite_msg = ""
+    code = (body.invite_code or "").strip()
+    if code:
+        ref = life_db.apply_referral(account_id, code)
+        if ref.get("ok"):
+            invite_msg = f" · 邀请奖励 +{ref['invitee_bonus']} 积分"
+        else:
+            invite_msg = f" · {ref.get('error', '邀请码无效')}"
     token = life_db.create_session(account_id)
     life_db.reset_session_idle(account_id)
     life_db.ensure_portfolio(account_id)
@@ -120,6 +129,7 @@ async def auth_register(body: RegisterBody):
         "token": token,
         "account": _account_public(acc or {"id": account_id, "username": username, "display_name": username}),
         "state": _public_state(user, account_id),
+        "invite_message": invite_msg.strip(" · ") if invite_msg else "",
     }
 
 

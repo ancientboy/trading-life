@@ -22,19 +22,21 @@ import {
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, type SeatMap } from '../lib/seatRegistry';
+import { consumeDeepLinkIntent } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
 import type { LeisureTierId } from '../lib/leisureTiers';
-import { DAILY_ALLOWANCE_AMOUNT, stressReliefFor } from '../lib/leisureTiers';
+import { DAILY_ALLOWANCE_AMOUNT, getLeisureTier, stressReliefFor, type LeisureService } from '../lib/leisureTiers';
 import { homeNodeForAgent } from '../lib/agentHome';
 import { isLoggedIn, getStoredAccount } from '../lib/lifeAuth';
 import {
   fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
-  chatChannelForZone, fetchPokerRoom, fetchMyPokerRoom, leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
+  chatChannelForZone, fetchPokerRoom, fetchMyPokerRoom, joinPokerRoomByCode, fetchPublicRoomPreview,
+  leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
   type PokerRoom,
 } from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
-import { isCrossZoneTravel, zoneForNode, zoneForIntent } from '../lib/zoneTransit';
+import { isCrossZoneTravel, zoneForNode, zoneForIntent, resolveAgentZone } from '../lib/zoneTransit';
 import {
   DEFAULT_ZONE_SKINS, effectiveZoneSkin, normalizeZoneSkins,
   type SkinZone,
@@ -137,6 +139,8 @@ interface GameStore {
   dailyAllowanceClaimed: boolean;
   dailyAllowanceAmount: number;
   agentBubble: { agentId: string; text: string; until: number } | null;
+  /** Agent 大脑决策刷新计数（驱动 UI 模式标签） */
+  brainVersion: number;
   chatMessages: ChatMessage[];
   npcEvents: NpcEvent[];
   season: SeasonInfo | null;
@@ -149,6 +153,8 @@ interface GameStore {
   pokerTableDealingUntil: number;
   /** 当前多人德州房间（等待/进行中） */
   pokerRoom: PokerRoom | null;
+  /** 进阶观赛房间（全局唯一，避免多面板重复轮询） */
+  pokerSpectateRoom: { id: string; buyIn: number } | null;
   /** 上次客户端挂机 tick 时间（performance.now） */
   lastIdleClientTick: number;
   /** 当前用户可操作（派遣/编辑）的 Agent */
@@ -186,6 +192,7 @@ interface GameStore {
   flyToZone: (zone: ZoneId) => void;
   resetCamera: () => void;
   setFollowAgent: (id: string | null) => void;
+  followAgentZone: (zone: ZoneId) => void;
   setCameraLookAt: (x: number, z: number, opts?: { zoom?: number; overview?: boolean }) => void;
   setCameraZoom: (zoom: number) => void;
   panCamera: (dx: number, dz: number) => void;
@@ -213,7 +220,16 @@ interface GameStore {
   earnPoints: (amount: number, reason?: string) => void;
   trySpendPoints: (amount: number) => { ok: boolean; balance: number };
   saveCustomAgentSoul: (agentId: string, content: string) => Promise<boolean>;
-  saveCustomAgentAppearance: (agentId: string, appearance: { headwear: import('../lib/agentAppearance').AgentHeadwear; hatStyle: import('../lib/agentAppearance').HatStyleId; color: string }) => Promise<boolean>;
+  saveCustomAgentAppearance: (agentId: string, appearance: {
+    speciesId?: import('../lib/agentSpecies').SpeciesId;
+    outfitId?: import('../lib/agentOutfits').OutfitId | import('../lib/agentSpecies').NiumaSkinId;
+    hairStyle?: string;
+    scarfEnabled?: boolean;
+    hatEnabled?: boolean;
+    headwear: import('../lib/agentAppearance').AgentHeadwear;
+    hatStyle: import('../lib/agentAppearance').HatStyleId;
+    color: string;
+  }) => Promise<boolean>;
   tickIdlePoints: (now: number) => void;
   claimDailyTask: (taskId: string) => Promise<boolean>;
   claimDailyAllowance: () => Promise<boolean>;
@@ -228,7 +244,10 @@ interface GameStore {
   alignLocalAgentToPokerRoom: (room: PokerRoom) => void;
   syncPokerRoom: () => Promise<void>;
   restorePokerRoom: () => Promise<void>;
+  processPendingDeepLink: () => Promise<void>;
+  tryPendingJoin: () => Promise<void>;
   clearPokerRoom: () => void;
+  setPokerSpectateRoom: (room: { id: string; buyIn: number } | null) => void;
   leavePokerRoom: () => Promise<void>;
   changePokerRoomSeat: (seatId: string) => Promise<boolean>;
   seatAgentAtPoker: (agentId: string, seatId?: string) => Promise<boolean>;
@@ -272,7 +291,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   soulMd: '',
   messages: [],
   npcBubble: null,
-  points: 200,
+  points: 10000,
   dailyTasks: {},
   dailyTaskDefs: [],
   dailyDate: '',
@@ -284,6 +303,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   dailyAllowanceClaimed: false,
   dailyAllowanceAmount: DAILY_ALLOWANCE_AMOUNT,
   agentBubble: null,
+  brainVersion: 0,
   chatMessages: [],
   npcEvents: [],
   season: null,
@@ -294,6 +314,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pokerHandResult: null,
   pokerTableDealingUntil: 0,
   pokerRoom: null,
+  pokerSpectateRoom: null,
   lastIdleClientTick: 0,
   operableAgentIds: [],
   isAdmin: false,
@@ -513,72 +534,142 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   sendAgentToFacility: async (action, opts) => {
-    const s = get();
-    const id = opts?.agentId || s.selectedAgentId || Object.values(s.agents).sort((a, b) => b.stress - a.stress)[0]?.agentId;
-    if (!id || !s.agents[id]) return false;
-    if (!get().canOperateAgent(id)) {
-      get().addMessage(`${s.agents[id].data.name} 是系统 Agent，请前往工坊创建你自己的 Agent`);
-      return false;
-    }
-
-    const skipCost = opts?.skipCost ?? (FACILITY_BASE_COST[action] === 0);
-    const cost = opts?.cost ?? s.facilityCosts[action] ?? FACILITY_BASE_COST[action];
-    if (!skipCost && cost > 0) {
-      const disp = await lifeDispatch(action, cost);
-      if (!disp.ok) {
-        get().addMessage(`积分不足，需要 ${cost} 积分（当前 ${disp.balance}）`);
+    try {
+      const s = get();
+      const id = opts?.agentId || s.selectedAgentId || Object.values(s.agents).sort((a, b) => b.stress - a.stress)[0]?.agentId;
+      if (!id || !s.agents[id]) return false;
+      if (!get().canOperateAgent(id)) {
+        get().addMessage(`${s.agents[id].data.name} 是系统 Agent，请前往工坊创建你自己的 Agent`);
         return false;
       }
-      set({ points: disp.balance });
-    }
 
-    const zoneMap = { dine: 'restaurant' as ZoneId, massage: 'spa' as ZoneId, poker: 'casino' as ZoneId, rest: 'hall' as ZoneId };
-    const intentMap = { dine: 'dine' as const, massage: 'massage' as const, poker: 'poker' as const, rest: 'rest' as const };
-    const nodeMap = { dine: OfficePath.dineByAgent, massage: OfficePath.massageByAgent, poker: OfficePath.pokerByAgent, rest: OfficePath.boothByAgent };
+      const skipCost = opts?.skipCost ?? (FACILITY_BASE_COST[action] === 0);
+      const cost = opts?.cost ?? s.facilityCosts[action] ?? FACILITY_BASE_COST[action];
+      const tierId = opts?.tierId ?? 'a';
+      const char0 = s.agents[id];
 
-    const zone = zoneMap[action];
-    const cam = ZONE_CAMERA[zone];
-    const node = opts?.nodeId || nodeMap[action][id];
-    if (!node) return false;
+      const zoneMap = { dine: 'restaurant' as ZoneId, massage: 'spa' as ZoneId, poker: 'casino' as ZoneId, rest: 'hall' as ZoneId };
+      const intentMap = { dine: 'dine' as const, massage: 'massage' as const, poker: 'poker' as const, rest: 'rest' as const };
+      const nodeMap = { dine: OfficePath.dineByAgent, massage: OfficePath.massageByAgent, poker: OfficePath.pokerByAgent, rest: OfficePath.boothByAgent };
+      const zone = zoneMap[action];
+      const cam = ZONE_CAMERA[zone];
+      const node = opts?.nodeId || nodeMap[action][id];
+      if (!node) {
+        get().addMessage('未找到可用座位，请稍后再试');
+        return false;
+      }
 
-    if (!hasFreeSeat(action, id, mergeLocalSeatOccupancy(s.seatOccupancy, s.agents))) {
-      const queueCost = FACILITY_BASE_COST[action] ?? 0;
-      await enqueueDispatch(id, action, opts?.nodeId || '', queueCost);
-      get().addMessage(`${s.agents[id].data.name} 座位已满，已加入派遣队列`);
+      const leisureService = action === 'dine' || action === 'massage' ? action : null;
+      const alreadyAtService = leisureService && char0.activity === action && !!char0.destNode;
+      const enRouteToService = leisureService && char0.travelIntent === action && !char0.activity;
+
+      if (alreadyAtService || enRouteToService) {
+        if (!skipCost && cost > 0) {
+          const disp = await lifeDispatch(action, cost);
+          if (!disp.ok) {
+            get().addMessage(`积分不足，需要 ${cost} 积分（当前 ${disp.balance}）`);
+            return false;
+          }
+          set({ points: disp.balance });
+        }
+        const now = performance.now();
+        const dur = action === 'massage' ? 10000 : 9000;
+        const tierDef = getLeisureTier(leisureService as LeisureService, tierId);
+        const relief = stressReliefFor(leisureService as LeisureService, tierId);
+        let char: CharState;
+        if (alreadyAtService) {
+          char = {
+            ...char0,
+            leisureTier: tierId,
+            activityStartedAt: now,
+            activityUntil: now + dur + Math.random() * 5000,
+            userDispatched: true,
+            travelIntent: null,
+            isWalking: false,
+            pathQueue: [],
+            pathIndex: 0,
+            inTransit: false,
+            stress: relief > 0 ? Math.max(0, char0.stress * (1 - relief)) : char0.stress,
+          };
+        } else {
+          char = teleportAgentToDestination({
+            ...char0,
+            leisureTier: tierId,
+            activity: null,
+            activityUntil: 0,
+            userDispatched: true,
+            travelIntent: action,
+          }, char0.destNode || node, now);
+        }
+        set({
+          agents: { ...get().agents, [id]: char },
+          selectedAgentId: id,
+          followAgentId: null,
+          activeZone: zone,
+          sidebarActive: zone === 'hall' ? 'hall' : zone,
+          rightTab: 'facility',
+          selectedFacility: LEISURE_FACILITY[zone as keyof typeof LEISURE_FACILITY] ?? null,
+          activeModal: null,
+          cameraLookAt: { x: cam.x, z: cam.z },
+          cameraZoom: WORLD_MAP.zoneZoom,
+          mapOverview: false,
+        });
+        get().addMessage(`${char.data.name} 已切换「${tierDef.name}」${!skipCost && cost > 0 ? ` · -${cost} 积分` : ''}`);
+        get().speakForAgent(id, action, action);
+        return true;
+      }
+
+      if (!skipCost && cost > 0) {
+        const disp = await lifeDispatch(action, cost);
+        if (!disp.ok) {
+          get().addMessage(`积分不足，需要 ${cost} 积分（当前 ${disp.balance}）`);
+          return false;
+        }
+        set({ points: disp.balance });
+      }
+
+      if (!hasFreeSeat(action, id, mergeLocalSeatOccupancy(get().seatOccupancy, get().agents))) {
+        const queueCost = cost > 0 ? cost : (FACILITY_BASE_COST[action] ?? 0);
+        await enqueueDispatch(id, action, opts?.nodeId || '', queueCost);
+        get().addMessage(`${char0.data.name} 座位已满，已加入派遣队列`);
+        return false;
+      }
+
+      const mergedSeats = mergeLocalSeatOccupancy(get().seatOccupancy, get().agents);
+      const forcedPokerSeat = action === 'poker' && opts?.nodeId?.startsWith('poker_s') ? opts.nodeId : null;
+      const resolvedSeat = forcedPokerSeat || resolveAvailableSeat(action, node, id, mergedSeats) || node;
+
+      let char = {
+        ...get().agents[id],
+        travelIntent: intentMap[action],
+        activity: null,
+        activityUntil: 0,
+        userDispatched: true,
+        leisureTier: tierId,
+      };
+      char = teleportAgentToDestination(char, resolvedSeat, performance.now());
+
+      set({
+        agents: { ...get().agents, [id]: char },
+        selectedAgentId: id,
+        followAgentId: null,
+        activeZone: zone,
+        sidebarActive: zone === 'hall' ? 'hall' : zone,
+        rightTab: action === 'rest' ? 'hall' : 'facility',
+        selectedFacility: action === 'rest' ? null : LEISURE_FACILITY[zone as keyof typeof LEISURE_FACILITY] ?? null,
+        rightPanelCollapsed: action === 'poker' ? true : false,
+        activeModal: action === 'poker' ? 'poker' : null,
+        cameraLookAt: { x: cam.x, z: cam.z },
+        cameraZoom: WORLD_MAP.zoneZoom,
+        mapOverview: false,
+      });
+      get().addMessage(`${char.data.name} 已抵达${cam.label}${!skipCost && cost > 0 ? ` · -${cost} 积分` : ' · 免费'}`);
+      get().speakForAgent(id, action, action);
+      return true;
+    } catch {
+      get().addMessage('派遣失败，请检查网络后重试');
       return false;
     }
-
-    const mergedSeats = mergeLocalSeatOccupancy(s.seatOccupancy, s.agents);
-    const forcedPokerSeat = action === 'poker' && opts?.nodeId?.startsWith('poker_s') ? opts.nodeId : null;
-    const resolvedSeat = forcedPokerSeat || resolveAvailableSeat(action, node, id, mergedSeats) || node;
-
-    let char = {
-      ...s.agents[id],
-      travelIntent: intentMap[action],
-      activity: null,
-      activityUntil: 0,
-      userDispatched: true,
-      leisureTier: opts?.tierId ?? 'a',
-    };
-    char = teleportAgentToDestination(char, resolvedSeat, performance.now());
-
-    set({
-      agents: { ...s.agents, [id]: char },
-      selectedAgentId: id,
-      followAgentId: null,
-      activeZone: zone,
-      sidebarActive: zone === 'hall' ? 'hall' : zone,
-      rightTab: action === 'rest' ? 'hall' : 'facility',
-      selectedFacility: action === 'rest' ? null : LEISURE_FACILITY[zone as keyof typeof LEISURE_FACILITY] ?? null,
-      rightPanelCollapsed: action === 'poker' ? true : false,
-      activeModal: action === 'poker' ? 'poker' : null,
-      cameraLookAt: { x: cam.x, z: cam.z },
-      cameraZoom: WORLD_MAP.zoneZoom,
-      mapOverview: false,
-    });
-    get().addMessage(`${char.data.name} 已抵达${cam.label}${!skipCost && cost > 0 ? ` · -${cost} 积分` : ' · 免费'}`);
-    get().speakForAgent(id, action, action);
-    return true;
   },
 
   createAgent: async (draft) => {
@@ -630,6 +721,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
     get().speakForAgent(id, 'greeting');
     await get().syncUserPortfolio();
+    void get().tryPendingJoin();
     return true;
   },
   resetCamera: () => set({
@@ -644,7 +736,42 @@ export const useGameStore = create<GameStore>((set, get) => ({
     cameraZoom: WORLD_MAP.zoneZoom,
     mapOverview: false,
   }),
-  setFollowAgent: (id) => set({ followAgentId: id, selectedAgentId: id, rightPanelCollapsed: false }),
+  setFollowAgent: (id) => {
+    if (!id) {
+      set({ followAgentId: null });
+      return;
+    }
+    const char = get().agents[id];
+    const base = { followAgentId: id, selectedAgentId: id, rightPanelCollapsed: false };
+    if (!char) {
+      set(base);
+      return;
+    }
+    const zone = resolveAgentZone(char);
+    const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino';
+    set({
+      ...base,
+      activeZone: zone,
+      sidebarActive: zone === 'hall' ? 'hall' : zone,
+      rightTab: ZONE_TO_RIGHT_TAB[zone],
+      selectedFacility: isLeisure ? LEISURE_FACILITY[zone] : null,
+      cameraLookAt: { x: char.x, z: char.z },
+      cameraZoom: WORLD_MAP.zoneZoom,
+      mapOverview: false,
+    });
+  },
+
+  followAgentZone: (zone) => {
+    const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino';
+    set({
+      activeZone: zone,
+      sidebarActive: zone === 'hall' ? 'hall' : zone,
+      rightTab: ZONE_TO_RIGHT_TAB[zone],
+      selectedFacility: isLeisure ? LEISURE_FACILITY[zone] : null,
+      cameraZoom: WORLD_MAP.zoneZoom,
+      mapOverview: false,
+    });
+  },
 
   setCameraLookAt: (x, z, opts) => set(s => ({
     cameraLookAt: { x, z },
@@ -748,7 +875,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncEngagement: async () => {
     try {
-      const [seasonRes, evRes] = await Promise.all([fetchSeasonCurrent(), fetchNpcEvents()]);
+      const api = await import('../lib/lifeEngagementApi');
+      const [seasonRes, evRes, notifRes] = await Promise.all([
+        api.fetchSeasonCurrent(),
+        api.fetchNpcEvents(),
+        api.fetchGrowthNotifications().catch(() => ({ ok: false as const, messages: [] as string[] })),
+      ]);
+      if (notifRes.ok && notifRes.messages?.length) {
+        for (const msg of notifRes.messages) get().addMessage(msg);
+      }
       if (seasonRes.ok && seasonRes.season) {
         set({
           season: seasonRes.season,
@@ -810,7 +945,82 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } catch { /* ignore */ }
   },
 
+  processPendingDeepLink: async () => {
+    const { spectate, join, leaderboard, invite } = consumeDeepLinkIntent();
+
+    if (spectate) {
+      const preview = await fetchPublicRoomPreview(spectate).catch(() => null);
+      const buyIn = preview?.ok ? (preview.buy_in ?? 1000) : 1000;
+      set({ pokerSpectateRoom: { id: spectate, buyIn } });
+      get().flyToZone('casino');
+      get().openModal('poker');
+      get().addMessage('已打开观赛');
+      return;
+    }
+
+    if (leaderboard) {
+      sessionStorage.setItem('tl_season_initial_tab', 'rank');
+      get().openModal('rank');
+      get().addMessage('已打开赛季排行榜');
+      return;
+    }
+
+    if (invite) {
+      sessionStorage.removeItem('tl_pending_invite');
+      get().addMessage('邀请码仅在新用户注册时生效 · 可分享给好友注册');
+    }
+
+    if (join) {
+      sessionStorage.setItem('tl_pending_join', join);
+      await get().tryPendingJoin();
+    }
+  },
+
+  tryPendingJoin: async () => {
+    const join = sessionStorage.getItem('tl_pending_join');
+    if (!join) return;
+
+    const agentIds = Object.keys(get().agents);
+    const agentId = get().selectedAgentId && get().agents[get().selectedAgentId!]
+      ? get().selectedAgentId!
+      : agentIds[0];
+    if (!agentId) return;
+
+    sessionStorage.removeItem('tl_pending_join');
+    try {
+      const preview = await fetchPublicRoomPreview(join).catch(() => null);
+      if (preview?.ok && preview.status === 'playing') {
+        if (preview.game_mode === 'advanced' && preview.room_id) {
+          set({ pokerSpectateRoom: { id: preview.room_id, buyIn: preview.buy_in ?? 1000 } });
+          get().flyToZone('casino');
+          get().openModal('poker');
+          get().addMessage('房间已开始 · 已为你打开观赛');
+          return;
+        }
+        get().addMessage('房间已开始，无法加入 · 请让好友重新开桌');
+        return;
+      }
+
+      const r = await joinPokerRoomByCode(join, agentId);
+      if (r.ok && r.room) {
+        get().applyPokerRoom(r.room);
+        if (r.seat_id) await get().seatAgentAtPoker(agentId, r.seat_id);
+        get().flyToZone('casino');
+        get().openModal('poker');
+        get().addMessage(r.message || `已加入房间 ${r.room_code || join}`);
+      } else {
+        sessionStorage.setItem('tl_pending_join', join);
+        get().addMessage(r.error || '加入房间失败');
+      }
+    } catch {
+      sessionStorage.setItem('tl_pending_join', join);
+      get().addMessage('加入房间失败，请稍后重试');
+    }
+  },
+
   clearPokerRoom: () => set({ pokerRoom: null }),
+
+  setPokerSpectateRoom: (room) => set({ pokerSpectateRoom: room }),
 
   leavePokerRoom: async () => {
     const rid = get().pokerRoom?.id;

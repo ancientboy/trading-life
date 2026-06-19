@@ -25,7 +25,7 @@ DAILY_TASK_DEFS = [
 ]
 
 DEFAULT_FREE_UNLOCKS = ["color_default", "hat_beanie", "hat_cap"]
-STARTING_POINTS = 200
+STARTING_POINTS = 10000
 DEFAULT_PORTFOLIO_USDT = 50000.0
 DEFAULT_AGENT_ALLOC_USDT = 10000.0
 
@@ -37,7 +37,7 @@ def init_db(data_dir: Path) -> None:
         c.executescript("""
         CREATE TABLE IF NOT EXISTS life_users (
             id TEXT PRIMARY KEY,
-            points INTEGER NOT NULL DEFAULT 200,
+            points INTEGER NOT NULL DEFAULT 10000,
             last_idle_tick INTEGER NOT NULL DEFAULT 0,
             daily_date TEXT NOT NULL DEFAULT '',
             stats_json TEXT NOT NULL DEFAULT '{}',
@@ -170,6 +170,15 @@ def init_db(data_dir: Path) -> None:
             processed_at INTEGER NOT NULL DEFAULT 0
         );
         CREATE INDEX IF NOT EXISTS idx_dispatch_pending ON dispatch_queue(user_id, status);
+        CREATE TABLE IF NOT EXISTS agent_memory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            agent_id TEXT NOT NULL,
+            kind TEXT NOT NULL DEFAULT 'event',
+            summary TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_agent_memory ON agent_memory(user_id, agent_id, created_at DESC);
         CREATE TABLE IF NOT EXISTS trading_pk (
             id TEXT PRIMARY KEY,
             challenger_id TEXT NOT NULL,
@@ -242,8 +251,134 @@ def init_db(data_dir: Path) -> None:
             PRIMARY KEY (user_id, agent_id)
         );
         """)
+    _migrate_poker_advanced_columns()
+    _migrate_referrals()
+    _migrate_life_notifications()
     _migrate_json_files(data_dir)
     _seed_engagement_data()
+
+
+def _migrate_poker_advanced_columns() -> None:
+    """进阶德州扑克 — 房间状态 / 玩家筹码字段"""
+    cols_rooms = [
+        ("game_mode", "TEXT NOT NULL DEFAULT 'classic'"),
+        ("phase", "TEXT NOT NULL DEFAULT ''"),
+        ("hand_number", "INTEGER NOT NULL DEFAULT 0"),
+        ("game_state_json", "TEXT NOT NULL DEFAULT ''"),
+        ("spectator", "INTEGER NOT NULL DEFAULT 0"),
+    ]
+    cols_players = [
+        ("stack", "INTEGER NOT NULL DEFAULT 0"),
+        ("hole_cards_json", "TEXT NOT NULL DEFAULT '[]'"),
+        ("folded", "INTEGER NOT NULL DEFAULT 0"),
+        ("all_in", "INTEGER NOT NULL DEFAULT 0"),
+        ("current_bet", "INTEGER NOT NULL DEFAULT 0"),
+        ("eliminated", "INTEGER NOT NULL DEFAULT 0"),
+        ("meta_json", "TEXT NOT NULL DEFAULT '{}'"),
+    ]
+    with _conn() as c:
+        existing_r = {r[1] for r in c.execute("PRAGMA table_info(poker_rooms)").fetchall()}
+        for name, ddl in cols_rooms:
+            if name not in existing_r:
+                c.execute(f"ALTER TABLE poker_rooms ADD COLUMN {name} {ddl}")
+        existing_p = {r[1] for r in c.execute("PRAGMA table_info(poker_room_players)").fetchall()}
+        for name, ddl in cols_players:
+            if name not in existing_p:
+                c.execute(f"ALTER TABLE poker_room_players ADD COLUMN {name} {ddl}")
+
+
+def _migrate_referrals() -> None:
+    with _conn() as c:
+        existing = {r[1] for r in c.execute("PRAGMA table_info(life_accounts)").fetchall()}
+        if "invite_code" not in existing:
+            c.execute("ALTER TABLE life_accounts ADD COLUMN invite_code TEXT")
+        if "referred_by" not in existing:
+            c.execute("ALTER TABLE life_accounts ADD COLUMN referred_by TEXT")
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS referrals (
+                invitee_id TEXT PRIMARY KEY,
+                inviter_id TEXT NOT NULL,
+                register_rewarded INTEGER NOT NULL DEFAULT 0,
+                poker_rewarded INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT ''
+            )
+        """)
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_life_accounts_invite_code "
+            "ON life_accounts(invite_code) WHERE invite_code IS NOT NULL AND invite_code != ''"
+        )
+
+
+def _migrate_life_notifications() -> None:
+    with _conn() as c:
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS life_notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                message TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                read INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS idx_life_notifications_account "
+            "ON life_notifications(account_id, read, id)"
+        )
+
+
+def push_life_notification(account_id: str, kind: str, message: str) -> None:
+    if not account_id:
+        return
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                "INSERT INTO life_notifications (account_id, kind, message, created_at, read) "
+                "VALUES (?,?,?,?,0)",
+                (account_id, kind, message, datetime.now(CST).isoformat()),
+            )
+
+
+def pop_life_notifications(account_id: str, limit: int = 10) -> list[str]:
+    with _lock:
+        with _conn() as c:
+            rows = c.execute(
+                "SELECT id, message FROM life_notifications "
+                "WHERE account_id=? AND read=0 ORDER BY id ASC LIMIT ?",
+                (account_id, max(1, min(limit, 20))),
+            ).fetchall()
+            if not rows:
+                return []
+            ids = [int(r["id"]) for r in rows]
+            placeholders = ",".join("?" * len(ids))
+            c.execute(f"UPDATE life_notifications SET read=1 WHERE id IN ({placeholders})", ids)
+            return [str(r["message"]) for r in rows]
+
+
+def list_referral_invitees(account_id: str, limit: int = 30) -> list[dict]:
+    with _lock:
+        with _conn() as c:
+            rows = c.execute(
+                """
+                SELECT r.invitee_id, r.created_at, r.poker_rewarded,
+                       COALESCE(NULLIF(a.display_name, ''), a.username, '好友') AS name
+                FROM referrals r
+                LEFT JOIN life_accounts a ON a.id = r.invitee_id
+                WHERE r.inviter_id=?
+                ORDER BY r.created_at DESC
+                LIMIT ?
+                """,
+                (account_id, max(1, min(limit, 50))),
+            ).fetchall()
+    return [
+        {
+            "invitee_id": r["invitee_id"],
+            "name": r["name"],
+            "registered_at": r["created_at"],
+            "poker_done": bool(r["poker_rewarded"]),
+        }
+        for r in rows
+    ]
 
 
 def _conn() -> sqlite3.Connection:
@@ -568,6 +703,7 @@ def create_account(username: str, password_hash: str, display_name: str) -> dict
             except sqlite3.IntegrityError:
                 return {"ok": False, "error": "username_taken"}
     ensure_user(aid)
+    ensure_invite_code(aid)
     return {"ok": True, "account_id": aid}
 
 
@@ -681,6 +817,47 @@ def _seed_engagement_data() -> None:
 
 def now_ms() -> int:
     return int(datetime.now(CST).timestamp() * 1000)
+
+
+MAX_AGENT_MEMORIES = 30
+
+
+def append_agent_memory(user_id: str, agent_id: str, kind: str, summary: str) -> None:
+    text = (summary or "").strip()[:200]
+    if not text or not agent_id:
+        return
+    ts = now_ms()
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                "INSERT INTO agent_memory (user_id, agent_id, kind, summary, created_at) VALUES (?,?,?,?,?)",
+                (user_id, agent_id, (kind or "event")[:16], text, ts),
+            )
+            cnt = c.execute(
+                "SELECT COUNT(*) FROM agent_memory WHERE user_id=? AND agent_id=?",
+                (user_id, agent_id),
+            ).fetchone()[0]
+            if cnt > MAX_AGENT_MEMORIES:
+                c.execute(
+                    """DELETE FROM agent_memory WHERE id IN (
+                       SELECT id FROM agent_memory WHERE user_id=? AND agent_id=?
+                       ORDER BY created_at ASC LIMIT ?)""",
+                    (user_id, agent_id, cnt - MAX_AGENT_MEMORIES),
+                )
+
+
+def get_agent_memories(user_id: str, agent_id: str, limit: int = 12) -> list[dict]:
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT id, kind, summary, created_at FROM agent_memory WHERE user_id=? AND agent_id=? ORDER BY created_at DESC LIMIT ?",
+            (user_id, agent_id, max(1, min(limit, 30))),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def memory_snippets_for_prompt(user_id: str, agent_id: str, limit: int = 8) -> list[str]:
+    rows = get_agent_memories(user_id, agent_id, limit)
+    return [r["summary"] for r in reversed(rows)]
 
 
 def ensure_season_score(season_id: str, user_id: str) -> None:
@@ -841,4 +1018,126 @@ def adjust_portfolio_cash(user_id: str, delta: float) -> float:
             )
             row = c.execute("SELECT cash FROM user_portfolios WHERE user_id=?", (user_id,)).fetchone()
             return float(row["cash"]) if row else 0.0
+
+
+# ─── 邀请裂变 ───────────────────────────────────────────────
+
+REFERRAL_INVITEE_BONUS = 500
+REFERRAL_INVITER_SIGNUP = 300
+REFERRAL_INVITER_POKER = 200
+
+
+def _gen_invite_code(c) -> str:
+    import random
+    import string
+    chars = string.ascii_uppercase + string.digits
+    for _ in range(60):
+        code = "".join(random.choice(chars) for _ in range(6))
+        if not c.execute("SELECT 1 FROM life_accounts WHERE invite_code=?", (code,)).fetchone():
+            return code
+    return uuid4_hex()[:6].upper()
+
+
+def ensure_invite_code(account_id: str) -> str:
+    with _lock:
+        with _conn() as c:
+            row = c.execute("SELECT invite_code FROM life_accounts WHERE id=?", (account_id,)).fetchone()
+            if row and row["invite_code"]:
+                return str(row["invite_code"])
+            code = _gen_invite_code(c)
+            c.execute("UPDATE life_accounts SET invite_code=? WHERE id=?", (code, account_id))
+            return code
+
+
+def apply_referral(invitee_id: str, code: str) -> dict:
+    code = (code or "").strip().upper()
+    if not code or len(code) < 4:
+        return {"ok": False, "error": "邀请码无效"}
+    with _lock:
+        with _conn() as c:
+            inviter = c.execute(
+                "SELECT id FROM life_accounts WHERE invite_code=? COLLATE NOCASE", (code,),
+            ).fetchone()
+            if not inviter:
+                return {"ok": False, "error": "邀请码不存在"}
+            inviter_id = inviter["id"]
+            if inviter_id == invitee_id:
+                return {"ok": False, "error": "不能使用自己的邀请码"}
+            if c.execute("SELECT 1 FROM referrals WHERE invitee_id=?", (invitee_id,)).fetchone():
+                return {"ok": False, "error": "已绑定过邀请人"}
+            c.execute(
+                "INSERT INTO referrals (invitee_id, inviter_id, register_rewarded, poker_rewarded, created_at) "
+                "VALUES (?,?,1,0,?)",
+                (invitee_id, inviter_id, datetime.now(CST).isoformat()),
+            )
+            c.execute("UPDATE life_accounts SET referred_by=? WHERE id=?", (inviter_id, invitee_id))
+    from life_game import load_user, save_user, _earn
+    u_invitee = load_user(invitee_id)
+    _earn(u_invitee, REFERRAL_INVITEE_BONUS, account_id=invitee_id)
+    save_user(invitee_id, u_invitee)
+    u_inviter = load_user(inviter_id)
+    _earn(u_inviter, REFERRAL_INVITER_SIGNUP, account_id=inviter_id)
+    save_user(inviter_id, u_inviter)
+    push_life_notification(
+        inviter_id, "referral_signup",
+        f"🎉 新好友注册成功，你获得 +{REFERRAL_INVITER_SIGNUP} 积分",
+    )
+    return {
+        "ok": True,
+        "inviter_bonus": REFERRAL_INVITER_SIGNUP,
+        "invitee_bonus": REFERRAL_INVITEE_BONUS,
+    }
+
+
+def try_referral_poker_reward(invitee_id: str) -> None:
+    if not invitee_id or invitee_id.startswith(("npc_", "ai_")):
+        return
+    inviter_id = None
+    invitee_name = "好友"
+    with _lock:
+        with _conn() as c:
+            row = c.execute(
+                "SELECT inviter_id FROM referrals WHERE invitee_id=? AND poker_rewarded=0", (invitee_id,),
+            ).fetchone()
+            if not row:
+                return
+            inviter_id = row["inviter_id"]
+            acc = c.execute(
+                "SELECT COALESCE(NULLIF(display_name,''), username, '好友') AS name "
+                "FROM life_accounts WHERE id=?", (invitee_id,),
+            ).fetchone()
+            if acc:
+                invitee_name = acc["name"]
+            c.execute("UPDATE referrals SET poker_rewarded=1 WHERE invitee_id=?", (invitee_id,))
+    from life_game import load_user, save_user, _earn
+    u = load_user(inviter_id)
+    _earn(u, REFERRAL_INVITER_POKER, account_id=inviter_id)
+    save_user(inviter_id, u)
+    push_life_notification(
+        inviter_id, "referral_poker",
+        f"🎁 {invitee_name} 完成首局扑克，你获得 +{REFERRAL_INVITER_POKER} 积分",
+    )
+
+
+def get_referral_summary(account_id: str) -> dict:
+    code = ensure_invite_code(account_id)
+    with _lock:
+        with _conn() as c:
+            count = c.execute(
+                "SELECT COUNT(*) FROM referrals WHERE inviter_id=?", (account_id,),
+            ).fetchone()[0]
+            poker_done = c.execute(
+                "SELECT COUNT(*) FROM referrals WHERE inviter_id=? AND poker_rewarded=1", (account_id,),
+            ).fetchone()[0]
+    return {
+        "invite_code": code,
+        "invites_count": count,
+        "poker_rewards": poker_done,
+        "invitees": list_referral_invitees(account_id),
+        "rewards": {
+            "invitee_signup": REFERRAL_INVITEE_BONUS,
+            "inviter_signup": REFERRAL_INVITER_SIGNUP,
+            "inviter_first_poker": REFERRAL_INVITER_POKER,
+        },
+    }
 

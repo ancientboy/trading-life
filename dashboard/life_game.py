@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 import life_db
 from life_auth import router as auth_router, resolve_account_id, ensure_admin_account
 from life_engagement import social_router, pvp_router, season_router
+from life_growth import growth_router
 
 # life_trading 在模块末尾注册，避免循环导入
 
@@ -45,6 +46,23 @@ SHOP_CATALOG = [
     {"id": "hat_beret_unlock", "type": "hat", "value": "beret", "cost": 120, "label": "贝雷帽款式"},
     {"id": "hat_top_unlock", "type": "hat", "value": "top", "cost": 150, "label": "礼帽款式"},
     {"id": "hat_bobble_unlock", "type": "hat", "value": "bobble", "cost": 100, "label": "毛球帽款式"},
+    {"id": "outfit_panda", "type": "outfit", "value": "panda", "cost": 180, "label": "熊猫连体服"},
+    {"id": "outfit_astronaut", "type": "outfit", "value": "astronaut", "cost": 220, "label": "太空探险服"},
+    {"id": "outfit_chef", "type": "outfit", "value": "chef", "cost": 160, "label": "星级厨师服"},
+    {"id": "outfit_knight", "type": "outfit", "value": "knight", "cost": 260, "label": "皇家骑士甲"},
+    {"id": "outfit_street", "type": "outfit", "value": "street", "cost": 150, "label": "潮牌卫衣"},
+    {"id": "species_niuma", "type": "species", "value": "niuma", "cost": 200, "label": "牛马角色"},
+    {"id": "outfit_niuma_casual", "type": "niuma_outfit", "value": "casual", "cost": 150, "label": "牛马 · 休闲 Polo"},
+    {"id": "outfit_niuma_executive", "type": "niuma_outfit", "value": "executive", "cost": 180, "label": "牛马 · 总裁黑金"},
+    {"id": "hair_curly_unlock", "type": "hair", "value": "curly", "cost": 120, "label": "牛马 · 卷发"},
+    {"id": "hair_spiky_unlock", "type": "hair", "value": "spiky", "cost": 120, "label": "牛马 · 刺猬头"},
+    {"id": "hair_afro_unlock", "type": "hair", "value": "afro", "cost": 150, "label": "牛马 · 爆炸头"},
+    {"id": "hair_twin_unlock", "type": "hair", "value": "twin", "cost": 100, "label": "牛马 · 双丸子"},
+    # 旧版 id 兼容
+    {"id": "species_maniu", "type": "species", "value": "niuma", "cost": 200, "label": "牛马角色（旧版）", "legacy": True},
+    {"id": "outfit_maniu", "type": "species", "value": "niuma", "cost": 200, "label": "牛马角色（旧版2）", "legacy": True},
+    {"id": "outfit_maniu_casual", "type": "niuma_outfit", "value": "casual", "cost": 150, "label": "牛马 · 休闲（旧版）", "legacy": True},
+    {"id": "outfit_maniu_executive", "type": "niuma_outfit", "value": "executive", "cost": 180, "label": "牛马 · 黑金（旧版）", "legacy": True},
     {"id": "zone_skin_hall_gold", "type": "zone_skin", "value": "hall:gold", "cost": 200, "label": "大厅 · 金色 lounge 皮肤包"},
     {"id": "zone_skin_restaurant_premium", "type": "zone_skin", "value": "restaurant:premium", "cost": 180, "label": "粤菜馆 · 尊享宴席皮肤包"},
     {"id": "zone_skin_restaurant_modern", "type": "zone_skin", "value": "restaurant:modern", "cost": 220, "label": "粤菜馆 · 现代简约皮肤包"},
@@ -101,6 +119,7 @@ router.include_router(auth_router)
 router.include_router(social_router)
 router.include_router(pvp_router)
 router.include_router(season_router)
+router.include_router(growth_router)
 
 _zhipu_key: str = ""
 
@@ -163,6 +182,54 @@ HAT_UNLOCK_MAP = {
     "top": "hat_top_unlock",
     "bobble": "hat_bobble_unlock",
 }
+OUTFIT_IDS = {"default", "panda", "astronaut", "chef", "knight", "street"}
+OUTFIT_UNLOCK_MAP = {
+    "panda": "outfit_panda",
+    "astronaut": "outfit_astronaut",
+    "chef": "outfit_chef",
+    "knight": "outfit_knight",
+    "street": "outfit_street",
+}
+SPECIES_IDS = {"penguin", "niuma"}
+SPECIES_UNLOCK_MAP = {"niuma": "species_niuma"}
+NIUMa_OUTFIT_IDS = {"default", "casual", "executive"}
+NIUMa_OUTFIT_UNLOCK_MAP = {
+    "casual": "outfit_niuma_casual",
+    "executive": "outfit_niuma_executive",
+}
+FREE_HAIR_STYLES = {"pompadour", "buzz", "sidepart"}
+HAIR_STYLE_IDS = {"pompadour", "buzz", "sidepart", "curly", "spiky", "afro", "twin"}
+HAIR_UNLOCK_MAP = {
+    "curly": "hair_curly_unlock",
+    "spiky": "hair_spiky_unlock",
+    "afro": "hair_afro_unlock",
+    "twin": "hair_twin_unlock",
+}
+
+
+def _species_unlocked(user: dict, species_id: str) -> bool:
+    if species_id == "penguin":
+        return True
+    unlocks = set(user.get("shop_unlocks", []))
+    key = SPECIES_UNLOCK_MAP.get(species_id)
+    if key and key in unlocks:
+        return True
+    # 旧版 maniu 解锁兼容
+    if species_id == "niuma" and ("species_maniu" in unlocks or "outfit_maniu" in unlocks):
+        return True
+    return False
+
+
+def _niuma_skin_unlocked(user: dict, skin_id: str) -> bool:
+    if skin_id == "default":
+        return True
+    unlocks = user.get("shop_unlocks", [])
+    key = NIUMa_OUTFIT_UNLOCK_MAP.get(skin_id)
+    if key and key in unlocks:
+        return True
+    legacy = {"casual": "outfit_maniu_casual", "executive": "outfit_maniu_executive"}
+    leg = legacy.get(skin_id)
+    return leg in unlocks if leg else False
 
 
 def _parse_zone_skin_value(value: str) -> tuple[str, str] | None:
@@ -205,14 +272,41 @@ def _normalize_zone_skins(user: dict) -> dict[str, str]:
     return out
 
 
-def _appearance_allowed(user: dict, headwear: str, hat_style: str, color: str) -> tuple[bool, str]:
-    if headwear not in ("scarf", "hat"):
-        return False, "无效的配饰类型"
+def _appearance_allowed(
+    user: dict,
+    species_id: str,
+    outfit_id: str,
+    scarf_enabled: bool,
+    hat_enabled: bool,
+    hat_style: str,
+    hair_style: str,
+    color: str,
+) -> tuple[bool, str]:
+    if species_id not in SPECIES_IDS:
+        return False, "无效的角色类型"
+    if species_id == "niuma":
+        if not _species_unlocked(user, "niuma"):
+            return False, "牛马角色尚未解锁，请先在积分商城购买"
+        if outfit_id not in NIUMa_OUTFIT_IDS:
+            return False, "无效的牛马皮肤"
+        if outfit_id != "default" and not _niuma_skin_unlocked(user, outfit_id):
+            return False, "该牛马皮肤尚未解锁，请先在积分商城购买"
+        if hair_style not in HAIR_STYLE_IDS:
+            return False, "无效的发型款式"
+        if hair_style not in FREE_HAIR_STYLES:
+            unlock_id = HAIR_UNLOCK_MAP.get(hair_style)
+            if unlock_id and unlock_id not in user.get("shop_unlocks", []):
+                return False, "该发型尚未解锁，请先在积分商城购买"
+    else:
+        if outfit_id not in OUTFIT_IDS:
+            return False, "无效的服装款式"
+        if outfit_id != "default":
+            unlock_id = OUTFIT_UNLOCK_MAP.get(outfit_id)
+            if unlock_id and unlock_id not in user.get("shop_unlocks", []):
+                return False, "该服装尚未解锁，请先在积分商城购买"
     if hat_style not in ("beanie", "cap", "top", "bobble", "beret"):
         return False, "无效的帽子款式"
-    if headwear == "scarf" and hat_style not in FREE_HAT_STYLES:
-        hat_style = "beanie"
-    if hat_style not in FREE_HAT_STYLES:
+    if hat_enabled and hat_style not in FREE_HAT_STYLES:
         unlock_id = HAT_UNLOCK_MAP.get(hat_style)
         if unlock_id and unlock_id not in user.get("shop_unlocks", []):
             return False, "该帽子款式尚未解锁，请先在积分商城购买"
@@ -224,6 +318,38 @@ def _appearance_allowed(user: dict, headwear: str, hat_style: str, color: str) -
         if not ok:
             return False, "该颜色尚未解锁，请先在积分商城购买"
     return True, ""
+
+
+def _resolve_appearance_body(body: "AgentAppearanceBody") -> tuple[str, str, bool, bool, str, str, str]:
+    """解析外观请求（兼容旧 headwear / maniu 命名）。"""
+    scarf = body.scarfEnabled
+    hat = body.hatEnabled
+    if scarf is None and hat is None:
+        if body.headwear == "hat":
+            scarf, hat = False, True
+        else:
+            scarf, hat = True, False
+    scarf = True if scarf is None else bool(scarf)
+    hat = False if hat is None else bool(hat)
+    species_id = (body.speciesId or "penguin").strip()
+    outfit_id = (body.outfitId or "default").strip()
+    hair_style = (body.hairStyle or "pompadour").strip()
+    if species_id == "maniu":
+        species_id = "niuma"
+    if outfit_id == "maniu":
+        species_id = "niuma"
+        outfit_id = "default"
+    if species_id not in SPECIES_IDS:
+        species_id = "penguin"
+    if species_id == "niuma":
+        scarf, hat = False, False
+        if outfit_id not in NIUMa_OUTFIT_IDS:
+            outfit_id = "default"
+        if hair_style not in HAIR_STYLE_IDS:
+            hair_style = "pompadour"
+    elif outfit_id not in OUTFIT_IDS:
+        outfit_id = "default"
+    return species_id, outfit_id, scarf, hat, body.hatStyle, hair_style, body.color
 
 
 def _permissions_for(account_id: str, user: dict) -> dict:
@@ -333,8 +459,13 @@ class AgentSoulBody(BaseModel):
 
 
 class AgentAppearanceBody(BaseModel):
+    speciesId: str = "penguin"
+    outfitId: str = "default"
+    scarfEnabled: Optional[bool] = None
+    hatEnabled: Optional[bool] = None
     headwear: str = "scarf"
     hatStyle: str = "beanie"
+    hairStyle: str = "pompadour"
     color: str = "#FFD700"
 
 
@@ -344,6 +475,13 @@ class AgentSpeakBody(BaseModel):
     soul_md: str = ""
     context: str = "greeting"
     activity: Optional[str] = None
+    stress: float = 0
+    mood_tag: str = "neutral"
+    decision_mode: str = ""
+    nearby_names: list[str] = Field(default_factory=list)
+    user_message: str = ""
+    target_agent_name: str = ""
+    memory_snippets: list[str] = Field(default_factory=list)
 
 
 class MigrateBody(BaseModel):
@@ -639,13 +777,19 @@ async def life_update_appearance(agent_id: str, body: AgentAppearanceBody, accou
     custom = user.get("custom_agents", {})
     if agent_id not in custom:
         raise HTTPException(404, "Agent not found")
-    ok, err = _appearance_allowed(user, body.headwear, body.hatStyle, body.color)
+    species_id, outfit_id, scarf, hat, hat_style, hair_style, color = _resolve_appearance_body(body)
+    ok, err = _appearance_allowed(user, species_id, outfit_id, scarf, hat, hat_style, hair_style, color)
     if not ok:
         return {"ok": False, "error": err}
     meta = custom[agent_id]
-    meta["headwear"] = body.headwear
-    meta["hatStyle"] = body.hatStyle if body.headwear == "hat" else meta.get("hatStyle", "beanie")
-    meta["color"] = body.color
+    meta["speciesId"] = species_id
+    meta["outfitId"] = outfit_id
+    meta["scarfEnabled"] = scarf
+    meta["hatEnabled"] = hat
+    meta["headwear"] = "hat" if hat and not scarf else "scarf"
+    meta["hatStyle"] = hat_style
+    meta["hairStyle"] = hair_style
+    meta["color"] = color
     custom[agent_id] = meta
     save_user(uid, user)
     return {"ok": True, "message": "外形已保存", "agent": meta}
@@ -656,6 +800,73 @@ async def life_agent_speak(body: AgentSpeakBody, account_id: str = Depends(resol
     _validate_user_id(account_id)
     line = await _generate_speak_line(body)
     return {"ok": True, "line": line}
+
+
+class AgentPokerStyleBody(BaseModel):
+    text: str = ""
+
+
+class AgentPokerFeedbackBody(BaseModel):
+    feedback: str = ""
+
+
+class AgentPokerPresetBody(BaseModel):
+    preset: str = "tag"
+
+
+@router.get("/agents/{agent_id}/poker-profile")
+async def get_agent_poker_profile(agent_id: str, account_id: str = Depends(resolve_account_id)):
+    from poker_bot import merge_profile, POKER_PRESETS
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    meta = (user.get("custom_agents") or {}).get(agent_id)
+    if not meta:
+        raise HTTPException(404, "Agent not found")
+    profile = merge_profile(meta.get("pokerProfile"))
+    return {"ok": True, "profile": profile, "presets": list(POKER_PRESETS.keys())}
+
+
+@router.put("/agents/{agent_id}/poker-profile")
+async def update_agent_poker_preset(agent_id: str, body: AgentPokerPresetBody, account_id: str = Depends(resolve_account_id)):
+    from poker_bot import default_profile
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    custom = user.get("custom_agents") or {}
+    if agent_id not in custom:
+        raise HTTPException(404, "Agent not found")
+    custom[agent_id]["pokerProfile"] = default_profile(body.preset or "tag")
+    save_user(uid, user)
+    return {"ok": True, "profile": custom[agent_id]["pokerProfile"]}
+
+
+@router.post("/agents/{agent_id}/poker-style/parse")
+async def parse_agent_poker_style(agent_id: str, body: AgentPokerStyleBody, account_id: str = Depends(resolve_account_id)):
+    from poker_style import parse_poker_style
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    custom = user.get("custom_agents") or {}
+    if agent_id not in custom:
+        raise HTTPException(404, "Agent not found")
+    out = await parse_poker_style(body.text)
+    if out.get("ok") and out.get("profile"):
+        custom[agent_id]["pokerProfile"] = out["profile"]
+        save_user(uid, user)
+    return out
+
+
+@router.post("/agents/{agent_id}/poker-style/feedback")
+async def feedback_agent_poker_style(agent_id: str, body: AgentPokerFeedbackBody, account_id: str = Depends(resolve_account_id)):
+    from poker_style import apply_style_feedback
+    from poker_bot import merge_profile
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    custom = user.get("custom_agents") or {}
+    if agent_id not in custom:
+        raise HTTPException(404, "Agent not found")
+    profile = apply_style_feedback(merge_profile(custom[agent_id].get("pokerProfile")), body.feedback)
+    custom[agent_id]["pokerProfile"] = profile
+    save_user(uid, user)
+    return {"ok": True, "profile": profile, "message": "风格已根据反馈微调"}
 
 
 @router.get("/seats")
@@ -686,21 +897,49 @@ SOUL_FALLBACK = {
     "massage": ["感觉压力都散掉了", "技师手法真不错", "差点睡着了…"],
     "poker": ["这把运气不错！", "荷官发牌好快", "再来一局？"],
     "trading": ["盯盘中，别打扰我～", "这波趋势有意思", "策略信号出现了"],
+    "social_approach": ["嘿，你也在这呀！", "一起坐坐？", "好久不见～"],
+    "wandering": ["到处逛逛真不错", "这边风景还行", "下一家去哪呢"],
+    "self_care": ["该放松一下了", "压力有点大…", "想找个地方歇歇"],
+    "chat_reply": ["哈哈有道理", "我也这么觉得", "说得对！"],
+    "agent_to_agent": ["你今天状态怎么样？", "一起摸鱼？", "别卷了来聊天"],
+    "tea_party": ["大家聊什么呢？", "今天气氛不错呀", "我赞成！", "哈哈哈"],
 }
 
 
 async def _generate_speak_line(body: AgentSpeakBody) -> str:
     import random
     ctx = body.context or "greeting"
-    pool = SOUL_FALLBACK.get(ctx, SOUL_FALLBACK["greeting"])
+    base_key = ctx.split("|")[0] if "|" in ctx else ctx
+    pool = SOUL_FALLBACK.get(base_key, SOUL_FALLBACK.get(ctx, SOUL_FALLBACK["greeting"]))
     if not _zhipu_key or len((body.soul_md or "").strip()) < 10:
         return random.choice(pool)
     soul_excerpt = (body.soul_md or "")[:1200]
+    extra = []
+    if body.stress >= 55:
+        extra.append(f"当前压力 {int(body.stress)}%")
+    if body.mood_tag and body.mood_tag != "neutral":
+        extra.append(f"情绪:{body.mood_tag}")
+    if body.nearby_names:
+        extra.append(f"附近:{','.join(body.nearby_names[:3])}")
+    if body.user_message:
+        extra.append(f"玩家说:{body.user_message[:60]}")
+    if body.target_agent_name:
+        extra.append(f"正在和 {body.target_agent_name} 互动")
+    if body.decision_mode:
+        extra.append(f"行为模式:{body.decision_mode}")
+    mem = body.memory_snippets or []
+    if mem:
+        extra.append("记忆:" + "；".join(mem[-6:]))
+    scene = ctx + (f"，活动：{body.activity}" if body.activity else "")
+    if extra:
+        scene += "；" + "；".join(extra)
+    mem_block = ""
+    if mem:
+        mem_block = "\n\n近期记忆（可参考，保持连贯）:\n" + "\n".join(f"- {m}" for m in mem[-8:])
     prompt = (
         f"你是游戏角色「{body.agent_name}」。根据以下 SOUL 人格文档，"
-        f"用一句话（不超过28字、口语化、不加引号）回应当前场景：{ctx}"
-        + (f"，活动：{body.activity}" if body.activity else "")
-        + f"\n\nSOUL:\n{soul_excerpt}"
+        f"用一句话（不超过28字、口语化、不加引号）回应当前场景：{scene}"
+        f"\n\nSOUL:\n{soul_excerpt}{mem_block}"
     )
     try:
         async with aiohttp.ClientSession() as session:

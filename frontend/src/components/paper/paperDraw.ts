@@ -5,9 +5,11 @@ import { casinoSeatSlotAngle, CASINO_PLAYER_SEATS } from '../../lib/zoneFurnitur
 import { outfitForRole, type NpcRole } from '../../lib/npcOutfits';
 import { DEFAULT_SCARF, scarfColorsFromAccent, type ScarfPalette } from '../../lib/scarfColors';
 import {
-  drawAgentHat2d, drawAgentScarf2d,
+  drawAgentHat2d, drawAgentScarf2d, resolveAppearance, type AgentAppearanceState,
   type AgentHeadwear, type HatStyleId,
 } from '../../lib/agentAppearance';
+import { drawAgentOutfitFull2d, drawOutfitAccessories2d, drawOutfitLimbs2d, outfitReplacesBaseCharacter, type OutfitId } from '../../lib/agentOutfits';
+import { drawNiumaCharacter2d, drawNiumaAccessories2d, drawNiumaLimbs2d, type NiumaSkinId } from '../../lib/agentSpecies';
 import {
   cantonesePalette, hallRestPalette, spaPalette, vipPalette, receptionPalette,
   type CantonesePalette, type SpaPalette, type VipPalette, type ReceptionPalette,
@@ -152,6 +154,8 @@ export function drawAgent(
     activity?: AgentActivity; facing?: AgentFacing; sitting?: boolean;
     pose?: 'stand' | 'sit' | 'lie' | 'desk';
     headwear?: AgentHeadwear; hatStyle?: HatStyleId;
+    outfitId?: OutfitId | NiumaSkinId; speciesId?: string; hairStyle?: string;
+    scarfEnabled?: boolean; hatEnabled?: boolean;
     blanket?: boolean;
   },
 ) {
@@ -186,7 +190,7 @@ function drawAgentSitting(
   const t = opts.t ?? 0;
   const facing = opts.facing ?? 's';
   const py = y + (opts.activity === 'dine' ? Math.abs(Math.sin(t * 3)) * 1.5 : 0);
-  const hw = agentHw(opts);
+  const ap = resolveDrawAppearance({ ...opts, color });
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 20, 18, 0, 0, Math.PI * 2); ctx.stroke();
@@ -197,19 +201,14 @@ function drawAgentSitting(
     const flip = facing === 'w' ? -1 : 1;
     ctx.fillStyle = PENGUIN.foot;
     ctx.beginPath(); ctx.ellipse(flip * 6, py + 10, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
-    drawPenguinBody(ctx, py - 4, true);
-    if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 4, color, 'side', flip);
-    drawPenguinFace(ctx, py - 4, true, flip);
-    if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 6, hw.hatStyle, color, 'side', flip);
+    drawAgentTorso(ctx, py - 4, color, ap, 'side', flip);
+    drawAgentHeadLayer(ctx, py - 4, color, ap, 'side', flip);
   } else if (facing === 'n') {
-    drawPenguinBody(ctx, py - 4, false, false);
-    if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 4, color, 'back');
-    else if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 6, hw.hatStyle, color, 'back');
+    drawAgentTorso(ctx, py - 4, color, ap, 'back');
+    drawAgentHeadLayer(ctx, py - 4, color, ap, 'back');
   } else {
-    drawPenguinBody(ctx, py - 2);
-    if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py - 2, color, 'front');
-    drawPenguinFace(ctx, py - 2);
-    if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 4, hw.hatStyle, color, 'front');
+    drawAgentTorso(ctx, py - 2, color, ap, 'front');
+    drawAgentHeadLayer(ctx, py - 2, color, ap, 'front');
     if (opts.pose === 'desk' || opts.trading) {
       ctx.fillStyle = '#4285F4';
       ctx.fillRect(-14, py - 18, 28, 5);
@@ -254,11 +253,9 @@ function drawAgentResting(
   ctx.beginPath(); ctx.ellipse(10, 14, 7, 3.5, 0.2, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(18, 12, 6, 3, 0.1, 0, Math.PI * 2); ctx.fill();
 
-  drawPenguinBody(ctx, -2, true);
-  const hw = agentHw(opts);
-  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, -2, color, 'side', 1);
-  drawPenguinFace(ctx, -2, true, 1);
-  if (hw.headwear === 'hat') drawAgentHat2d(ctx, -4, hw.hatStyle, color, 'side', 1);
+  const ap = resolveDrawAppearance({ ...opts, color });
+  drawAgentTorso(ctx, -2, color, ap, 'side', 1);
+  drawAgentHeadLayer(ctx, -2, color, ap, 'side', 1);
 
   ctx.restore();
 
@@ -335,39 +332,65 @@ function drawPenguinBody(ctx: CanvasRenderingContext2D, py: number, profile = fa
   }
 }
 
-function agentHw(opts: { headwear?: AgentHeadwear; hatStyle?: HatStyleId }) {
-  return { headwear: opts.headwear ?? 'scarf' as AgentHeadwear, hatStyle: opts.hatStyle ?? 'beanie' as HatStyleId };
+function resolveDrawAppearance(opts: { speciesId?: string; outfitId?: OutfitId | NiumaSkinId; hairStyle?: string; scarfEnabled?: boolean; hatEnabled?: boolean; headwear?: AgentHeadwear; hatStyle?: HatStyleId; color?: string }): AgentAppearanceState {
+  return resolveAppearance(opts);
 }
 
-function drawHeadwearFront(ctx: CanvasRenderingContext2D, py: number, color: string, hw: ReturnType<typeof agentHw>) {
-  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py, color, 'front');
-  drawPenguinFace(ctx, py - 2);
-  if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'front');
+function drawAgentTorso(
+  ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState,
+  view: 'front' | 'back' | 'side', flip = 1, anim?: { swing: number; bounce: number },
+) {
+  if (ap.speciesId === 'niuma') {
+    drawNiumaCharacter2d(ctx, py, ap.outfitId as NiumaSkinId, view, flip, anim?.swing ?? 0, anim?.bounce ?? 0);
+    return;
+  }
+  if (outfitReplacesBaseCharacter(ap.outfitId as OutfitId)) {
+    drawAgentOutfitFull2d(ctx, py, ap.outfitId as OutfitId, color, view, flip);
+  } else {
+    drawPenguinBody(ctx, py, view === 'side', view !== 'back');
+  }
 }
 
-function drawHeadwearBack(ctx: CanvasRenderingContext2D, py: number, color: string, hw: ReturnType<typeof agentHw>) {
-  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py, color, 'back');
-  else drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'back');
-}
-
-function drawHeadwearSide(ctx: CanvasRenderingContext2D, py: number, color: string, hw: ReturnType<typeof agentHw>, flip: number) {
-  if (hw.headwear === 'scarf') drawAgentScarf2d(ctx, py, color, 'side', flip);
-  drawPenguinFace(ctx, py - 2, true, flip);
-  if (hw.headwear === 'hat') drawAgentHat2d(ctx, py - 2, hw.hatStyle, color, 'side', flip);
+function drawAgentHeadLayer(ctx: CanvasRenderingContext2D, py: number, color: string, ap: AgentAppearanceState, view: 'front' | 'back' | 'side', flip = 1) {
+  if (ap.speciesId === 'niuma') {
+    drawNiumaAccessories2d(ctx, py, ap.hairStyle, color, view, flip);
+    return;
+  }
+  if (outfitReplacesBaseCharacter(ap.outfitId as OutfitId)) {
+    drawOutfitAccessories2d(ctx, py, ap.outfitId as OutfitId, color, ap.scarfEnabled, ap.hatEnabled, ap.hatStyle, view, flip);
+    return;
+  }
+  if (view === 'front') {
+    if (ap.scarfEnabled) drawAgentScarf2d(ctx, py, color, 'front');
+    drawPenguinFace(ctx, py - 2);
+    if (ap.hatEnabled) drawAgentHat2d(ctx, py - 2, ap.hatStyle, color, 'front');
+  } else if (view === 'back') {
+    if (ap.scarfEnabled) drawAgentScarf2d(ctx, py, color, 'back');
+    if (ap.hatEnabled) drawAgentHat2d(ctx, py - 2, ap.hatStyle, color, 'back');
+  } else {
+    if (ap.scarfEnabled) drawAgentScarf2d(ctx, py, color, 'side', flip);
+    drawPenguinFace(ctx, py - 2, true, flip);
+    if (ap.hatEnabled) drawAgentHat2d(ctx, py - 2, ap.hatStyle, color, 'side', flip);
+  }
 }
 
 /** 手脚摆动 — 参考 144 office-engine */
 function drawWalkLimbs(
   ctx: CanvasRenderingContext2D, py: number, facing: AgentFacing,
-  walking: boolean, t: number, _color: string,
+  walking: boolean, t: number, color: string, ap: AgentAppearanceState,
 ) {
   const phase = walkPhase(t, walking);
   const swing = walking ? Math.sin(phase) * 5 : 0;
   const bounce = walking ? Math.abs(Math.sin(phase)) * 2 : 0;
-  const vert = facing === 'n' || facing === 's';
+  if (ap.speciesId === 'niuma') {
+    drawNiumaLimbs2d(ctx, py, facing, swing, bounce);
+    return;
+  }
+  if (drawOutfitLimbs2d(ctx, py, ap.outfitId as OutfitId, color, facing, walking, t, swing, bounce)) return;
 
   ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = PENGUIN.black;
   ctx.fillStyle = PENGUIN.foot;
+  const vert = facing === 'n' || facing === 's';
   if (vert) {
     ctx.beginPath(); ctx.ellipse(-5, py + 18 - bounce + swing, 5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(5, py + 18 - bounce - swing, 5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
@@ -382,6 +405,10 @@ function drawWalkLimbs(
   }
 }
 
+function niumaUsesSprite(_ap: AgentAppearanceState, _view: 'front' | 'back' | 'side'): boolean {
+  return false;
+}
+
 /** 背面 — 圆头 + 后脑围巾 + 手脚 */
 function drawAgentBack(
   ctx: CanvasRenderingContext2D, x: number, y: number, color: string,
@@ -394,16 +421,19 @@ function drawAgentBack(
   const walking = !!opts.walking;
   const bob = walking ? Math.abs(Math.sin(walkPhase(t, walking))) * 2.5 : 0;
   const py = y + bob;
-  const hw = agentHw(opts);
+  const ap = resolveDrawAppearance({ ...opts, color });
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 18, 22, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  dropShadow(ctx, x, py + 6, 32, 36, 0.12);
+  const spriteBack = niumaUsesSprite(ap, 'back');
+  if (!spriteBack) dropShadow(ctx, x, py + 6, 32, 36, 0.12);
   ctx.save(); ctx.translate(x, 0);
-  drawWalkLimbs(ctx, py, 'n', walking, t, color);
-  drawPenguinBody(ctx, py, false, false);
-  drawHeadwearBack(ctx, py, color, hw);
+  const phase = walkPhase(t, walking);
+  const anim = { swing: walking ? Math.sin(phase) * 5 : 0, bounce: walking ? Math.abs(Math.sin(phase)) * 2 : 0 };
+  if (!spriteBack) drawWalkLimbs(ctx, py, 'n', walking, t, color, ap);
+  drawAgentTorso(ctx, py, color, ap, 'back', 1, anim);
+  drawAgentHeadLayer(ctx, py, color, ap, 'back');
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }
@@ -414,6 +444,8 @@ function drawAgentFront(
   opts: {
     selected?: boolean; trading?: boolean; walking?: boolean; t?: number;
     activity?: AgentActivity; headwear?: AgentHeadwear; hatStyle?: HatStyleId;
+    outfitId?: OutfitId | NiumaSkinId; speciesId?: string; hairStyle?: string;
+    scarfEnabled?: boolean; hatEnabled?: boolean;
   },
 ) {
   const t = opts.t ?? 0;
@@ -423,17 +455,20 @@ function drawAgentFront(
   else if (opts.trading) bob = Math.sin(t * 4) * 1.5;
   else if (opts.activity === 'dine') bob = Math.abs(Math.sin(t * 3)) * 1.5;
   const py = y + bob;
-  const hw = agentHw(opts);
+  const ap = resolveDrawAppearance({ ...opts, color });
 
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 18, 22, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  dropShadow(ctx, x, py + 6, 32, 36, 0.12);
+  const spriteFront = niumaUsesSprite(ap, 'front');
+  if (!spriteFront) dropShadow(ctx, x, py + 6, 32, 36, 0.12);
   ctx.save(); ctx.translate(x, 0);
-  drawWalkLimbs(ctx, py, 's', walking, t, color);
-  drawPenguinBody(ctx, py);
-  drawHeadwearFront(ctx, py, color, hw);
+  const phase = walkPhase(t, walking);
+  const anim = { swing: walking ? Math.sin(phase) * 5 : 0, bounce: walking ? Math.abs(Math.sin(phase)) * 2 : 0 };
+  if (!spriteFront) drawWalkLimbs(ctx, py, 's', walking, t, color, ap);
+  drawAgentTorso(ctx, py, color, ap, 'front', 1, anim);
+  drawAgentHeadLayer(ctx, py, color, ap, 'front');
   ctx.restore();
   if (opts.trading) {
     ctx.fillStyle = '#4285F4';
@@ -455,17 +490,20 @@ function drawAgentSide(
   const walking = !!opts.walking;
   const bob = walking ? Math.abs(Math.sin(walkPhase(t, walking))) * 2.5 : 0;
   const py = y + bob;
-  const hw = agentHw(opts);
+  const ap = resolveDrawAppearance({ ...opts, color });
   const flip = facing === 'w' ? -1 : 1;
   if (opts.selected) {
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, py, 16, 22, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  dropShadow(ctx, x, py + 6, 28, 34, 0.12);
+  const spriteSide = niumaUsesSprite(ap, 'side');
+  if (!spriteSide) dropShadow(ctx, x, py + 6, 28, 34, 0.12);
   ctx.save(); ctx.translate(x, 0);
-  drawWalkLimbs(ctx, py, facing, walking, t, color);
-  drawPenguinBody(ctx, py, true);
-  drawHeadwearSide(ctx, py, color, hw, flip);
+  const phase = walkPhase(t, walking);
+  const anim = { swing: walking ? Math.sin(phase) * 5 : 0, bounce: walking ? Math.abs(Math.sin(phase)) * 2 : 0 };
+  if (!spriteSide) drawWalkLimbs(ctx, py, facing, walking, t, color, ap);
+  drawAgentTorso(ctx, py, color, ap, 'side', flip, anim);
+  drawAgentHeadLayer(ctx, py, color, ap, 'side', flip);
   ctx.restore();
   drawActivityBadge(ctx, x, py, opts.activity, t);
 }
@@ -491,7 +529,7 @@ export function drawAgentTop(
   },
 ) {
   const t = opts.t ?? 0;
-  const hw = agentHw(opts);
+  const ap = resolveDrawAppearance({ ...opts, color });
   const breathe = Math.sin(t * 1.8) * 0.8;
   const py = y + breathe;
   if (opts.selected) {
@@ -518,9 +556,10 @@ export function drawAgentTop(
   ctx.beginPath(); ctx.ellipse(-19, -3, 4, 4.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = PENGUIN.beak;
   ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-28, 2); ctx.lineTo(-24, 4); ctx.closePath(); ctx.fill();
-  if (hw.headwear === 'scarf') {
+  if (ap.scarfEnabled) {
     drawPenguinScarf(ctx, -14, -4, 12, 4, false, scarfColorsFromAccent(color));
-  } else if (hw.headwear === 'hat') {
+  }
+  if (ap.hatEnabled) {
     ctx.fillStyle = color;
     ctx.beginPath(); ctx.ellipse(-18, -6, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
   }

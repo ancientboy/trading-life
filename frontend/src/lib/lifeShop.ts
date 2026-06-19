@@ -1,5 +1,12 @@
 import { APPEARANCE_PRESETS } from './customAgents';
 import type { HatStyleId } from './agentAppearance';
+import { OUTFIT_CATALOG, OUTFIT_IDS, OUTFIT_UNLOCK_MAP, type OutfitId } from './agentOutfits';
+import {
+  SPECIES_CATALOG, SPECIES_IDS, isSpeciesUnlocked, isNiumaSkinUnlocked,
+  unlockedNiumaSkins, NIUMa_SKIN_CATALOG, NIUMa_SKIN_IDS,
+  isHairUnlocked, unlockedHairStyles, HAIR_STYLES,
+  type SpeciesId, type NiumaSkinId, type HairStyleId,
+} from './agentSpecies';
 
 const FREE_COLORS = new Set(APPEARANCE_PRESETS.colors);
 const FREE_HATS = new Set<HatStyleId>(['beanie', 'cap']);
@@ -20,6 +27,12 @@ export function isHatUnlocked(style: HatStyleId, shopUnlocks: string[]) {
   return id ? shopUnlocks.includes(id) : true;
 }
 
+export function isOutfitUnlocked(outfitId: OutfitId, shopUnlocks: string[]): boolean {
+  if (outfitId === 'default') return true;
+  const unlockId = OUTFIT_UNLOCK_MAP[outfitId];
+  return unlockId ? shopUnlocks.includes(unlockId) : false;
+}
+
 export function unlockedColors(catalog: { id: string; type: string; value: string; label: string }[], shopUnlocks: string[]) {
   const base = [...APPEARANCE_PRESETS.colors];
   catalog.filter(i => i.type === 'color' && shopUnlocks.includes(i.id)).forEach(i => {
@@ -33,11 +46,45 @@ export function unlockedHatStyles(shopUnlocks: string[]): HatStyleId[] {
   return all.filter(h => isHatUnlocked(h, shopUnlocks));
 }
 
+export function unlockedOutfits(shopUnlocks: string[]): OutfitId[] {
+  return OUTFIT_IDS.filter(id => isOutfitUnlocked(id, shopUnlocks));
+}
+
+export function unlockedSkinsForSpecies(speciesId: SpeciesId, shopUnlocks: string[]): (OutfitId | NiumaSkinId)[] {
+  if (speciesId === 'niuma') return unlockedNiumaSkins(shopUnlocks);
+  return unlockedOutfits(shopUnlocks);
+}
+
+export function unlockedSpecies(shopUnlocks: string[]): SpeciesId[] {
+  return SPECIES_IDS.filter(id => isSpeciesUnlocked(id, shopUnlocks));
+}
+
+export function unlockedHairStylesForNiuma(shopUnlocks: string[]): HairStyleId[] {
+  return unlockedHairStyles(shopUnlocks);
+}
+
 export function ownedZoneSkinPacks(shopUnlocks: string[]) {
   return shopUnlocks.filter(id => id.startsWith('zone_skin_') || id.startsWith('skin_'));
 }
 
-/** @deprecated 使用 ownedZoneSkinPacks */
 export function ownedCosmetics(shopUnlocks: string[]) {
   return ownedZoneSkinPacks(shopUnlocks);
 }
+
+export function isOutfitShopItem(item: { id: string; type: string }): boolean {
+  return item.type === 'outfit' || item.type === 'niuma_outfit' || item.type === 'maniu_outfit';
+}
+
+export function isSpeciesShopItem(item: { id: string; type: string }): boolean {
+  return item.type === 'species';
+}
+
+export function isHairShopItem(item: { id: string; type: string }): boolean {
+  return item.type === 'hair';
+}
+
+export function skinCatalogForSpecies(speciesId: SpeciesId) {
+  return speciesId === 'niuma' ? NIUMa_SKIN_CATALOG : OUTFIT_CATALOG;
+}
+
+export { OUTFIT_CATALOG, OUTFIT_IDS, SPECIES_CATALOG, NIUMa_SKIN_CATALOG, NIUMa_SKIN_IDS, HAIR_STYLES };

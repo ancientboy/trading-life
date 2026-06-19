@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { drawAgent } from '../paper/paperDraw';
-import { headwearLabel, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
+import { appearanceSummary, resolveAppearance, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
+import type { OutfitId } from '../../lib/agentOutfits';
+import type { SpeciesId, NiumaSkinId, HairStyleId } from '../../lib/agentSpecies';
 
 const PREVIEW_W = 260;
 const PREVIEW_H = 210;
@@ -9,17 +11,21 @@ interface AgentScenePreviewProps {
   color: string;
   headwear: AgentHeadwear;
   hatStyle: HatStyleId;
+  speciesId?: SpeciesId | string;
+  outfitId?: OutfitId | NiumaSkinId | string;
+  hairStyle?: HairStyleId | string;
+  scarfEnabled?: boolean;
+  hatEnabled?: boolean;
   name?: string;
 }
 
 function paintPreview(
   ctx: CanvasRenderingContext2D,
   dpr: number,
-  color: string,
-  headwear: AgentHeadwear,
-  hatStyle: HatStyleId,
+  props: AgentScenePreviewProps,
   t: number,
 ) {
+  const ap = resolveAppearance(props);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, PREVIEW_W, PREVIEW_H);
 
@@ -35,9 +41,14 @@ function paintPreview(
   ctx.fill();
 
   ctx.save();
-  drawAgent(ctx, PREVIEW_W / 2, PREVIEW_H * 0.54, color, {
-    headwear,
-    hatStyle,
+  drawAgent(ctx, PREVIEW_W / 2, PREVIEW_H * 0.54, ap.color, {
+    speciesId: ap.speciesId,
+    outfitId: ap.outfitId,
+    hairStyle: ap.hairStyle,
+    scarfEnabled: ap.scarfEnabled,
+    hatEnabled: ap.hatEnabled,
+    headwear: ap.headwear,
+    hatStyle: ap.hatStyle,
     facing: 's',
     t,
     walking: false,
@@ -52,10 +63,10 @@ function paintPreview(
 }
 
 /** 创建页场景预览 — 单角色居中，与游戏内 2D 渲染一致 */
-export function AgentScenePreview({ color, headwear, hatStyle, name }: AgentScenePreviewProps) {
+export function AgentScenePreview(props: AgentScenePreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const propsRef = useRef({ color, headwear, hatStyle });
-  propsRef.current = { color, headwear, hatStyle };
+  const propsRef = useRef(props);
+  propsRef.current = props;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -75,8 +86,7 @@ export function AgentScenePreview({ color, headwear, hatStyle, name }: AgentScen
 
     const draw = (now: number) => {
       if (!alive) return;
-      const { color: c, headwear: hw, hatStyle: hs } = propsRef.current;
-      paintPreview(ctx, dpr, c, hw, hs, (now - t0) / 1000);
+      paintPreview(ctx, dpr, propsRef.current, (now - t0) / 1000);
       raf = requestAnimationFrame(draw);
     };
 
@@ -86,6 +96,8 @@ export function AgentScenePreview({ color, headwear, hatStyle, name }: AgentScen
       cancelAnimationFrame(raf);
     };
   }, []);
+
+  const summary = appearanceSummary(props);
 
   return (
     <div style={{
@@ -106,12 +118,12 @@ export function AgentScenePreview({ color, headwear, hatStyle, name }: AgentScen
       </div>
       <div style={{ marginTop: 10, textAlign: 'center' }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: '#3d3530', marginBottom: 4 }}>
-          {name?.trim() || '新 Agent'}
+          {props.name?.trim() || '新 Agent'}
         </div>
         <div style={{ fontSize: 11, color: '#9a8b7a', lineHeight: 1.5 }}>
-          {headwearLabel(headwear, hatStyle)}
+          {summary}
           <br />
-          配色 · <span style={{ color }}>{color}</span>
+          配色 · <span style={{ color: props.color }}>{props.color}</span>
         </div>
       </div>
     </div>

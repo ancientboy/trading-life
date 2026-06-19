@@ -7,6 +7,9 @@ import { AppIcon } from '../icons/AppIcon';
 import { StrategyEditor } from './StrategyEditor';
 import { ProfitIcon, LossIcon, PieAssetIcon } from '../icons/phosphorIcons';
 import { PenguinAvatar } from './PenguinAvatar';
+import { BrainModeBadge } from './BrainModeBadge';
+import { fetchAgentMemories } from '../../lib/lifeEngagementApi';
+import { brainModeLabel, getAgentBrainMode } from '../../lib/agentBrain';
 import { DailyTasksPanel } from './DailyTasksPanel';
 import { SocialPanel } from './SocialPanel';
 import { PokerGamePanel } from './PokerGamePanel';
@@ -63,6 +66,7 @@ export function RightPanel() {
   const navigateSidebar = useGameStore(s => s.navigateSidebar);
   const sendAgentToLeisure = useGameStore(s => s.sendAgentToLeisure);
   const canOperateAgent = useGameStore(s => s.canOperateAgent);
+  const brainVersion = useGameStore(s => s.brainVersion);
   const [msg, setMsg] = useState('');
   const [portfolioResetting, setPortfolioResetting] = useState(false);
 
@@ -152,6 +156,7 @@ export function RightPanel() {
             expanded={selectedAgentId === a.agentId}
             operable={canOperateAgent(a.agentId)}
             compact
+            brainVersion={brainVersion}
             onToggle={() => { selectAgent(a.agentId); focusAgent(a.agentId); flyToZone('hall'); }}
           />
         ))}
@@ -185,6 +190,7 @@ export function RightPanel() {
             soulMd={selectedAgentId === a.agentId ? soulMd : ''}
             msg={selectedAgentId === a.agentId ? msg : ''}
             setMsg={setMsg}
+            brainVersion={brainVersion}
             onToggle={() => selectAgent(a.agentId)}
             onFollow={() => setFollowAgent(a.agentId)}
           />
@@ -234,7 +240,7 @@ export function RightPanel() {
             <div style={{ fontWeight: 600, marginBottom: 4 }}>当前在此的 Agent</div>
             {leisureAgents.map(a => (
               <div key={a.agentId} style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={22} />
+                <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} speciesId={a.data.speciesId} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={22} />
                 <span>{a.data.name}</span>
                 {activeZone === 'casino' && <span style={{ fontSize: 10, color: '#48d093' }}>已入座</span>}
               </div>
@@ -294,7 +300,7 @@ export function RightPanel() {
         {allPositions.map(({ agent: a, pos }, i) => (
           <div key={i} style={{ marginBottom: 8, padding: 8, background: '#faf6ef', borderRadius: 8, cursor: 'pointer' }} onClick={() => selectAgent(a.agentId)}>
             <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={20} />
+              <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} speciesId={a.data.speciesId} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={20} />
               <span>{a.data.name}</span>
             </div>
             <PositionRow pos={pos} />
@@ -306,7 +312,7 @@ export function RightPanel() {
           <div key={a.agentId} style={{ marginBottom: 6, padding: 8, background: '#faf6ef', borderRadius: 8, cursor: 'pointer' }} onClick={() => selectAgent(a.agentId)}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} size={22} />
+                <PenguinAvatar color={a.data.color} headwear={a.data.headwear} hatStyle={a.data.hatStyle} speciesId={a.data.speciesId} outfitId={a.data.outfitId} scarfEnabled={a.data.scarfEnabled} hatEnabled={a.data.hatEnabled} size={22} />
                 {a.data.name}
               </span>
               <span className={(a.data.pnl || 0) >= 0 ? 'profit' : 'loss'} style={{ fontSize: 12 }}>
@@ -343,6 +349,25 @@ export function RightPanel() {
   }
 }
 
+function AgentMemoryList({ agentId, operable, brainVersion }: { agentId: string; operable?: boolean; brainVersion: number }) {
+  const [memories, setMemories] = useState<Array<{ kind: string; summary: string; created_at: number }>>([]);
+  useEffect(() => {
+    if (!operable) { setMemories([]); return; }
+    fetchAgentMemories(agentId).then(r => { if (r.ok) setMemories(r.memories); });
+  }, [agentId, operable, brainVersion]);
+  if (!operable || memories.length === 0) return null;
+  return (
+    <div style={{ marginTop: 8, padding: 8, background: '#faf6ef', borderRadius: 6, fontSize: 10 }}>
+      <div style={{ fontWeight: 700, color: '#6a5a48', marginBottom: 4 }}>📝 近期记忆</div>
+      {memories.slice(0, 5).map(m => (
+        <div key={m.created_at + m.summary} style={{ color: '#8a7e72', marginBottom: 2, lineHeight: 1.4 }}>
+          · {m.summary}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AgentAccordionItem({
   char,
   expanded,
@@ -355,6 +380,7 @@ function AgentAccordionItem({
   soulMd,
   msg,
   setMsg,
+  brainVersion = 0,
   onToggle,
   onFollow,
 }: {
@@ -369,12 +395,15 @@ function AgentAccordionItem({
   soulMd?: string;
   msg?: string;
   setMsg?: (m: string) => void;
+  brainVersion?: number;
   onToggle: () => void;
   onFollow?: () => void;
 }) {
   const d = char.data;
   const pnl = d.pnl || 0;
   const agentId = char.agentId;
+  void brainVersion;
+  const mode = getAgentBrainMode(agentId);
 
   return (
     <div
@@ -398,6 +427,7 @@ function AgentAccordionItem({
         <div className="agent-accordion-body" style={{ padding: '0 10px 10px', borderTop: '1px dashed #d4e8dc' }}>
           {compact ? (
             <>
+              <Row k="大脑模式" v={mode ? brainModeLabel(mode) : '思考中…'} />
               <Row k="压力值" v={`${Math.round(char.stress)}%`} />
               <Row k="活动" v={char.activity || STATE_LABEL[char.state] || char.state} />
               <Row k="盈亏" v={(pnl >= 0 ? '+' : '') + '$' + Math.round(pnl).toLocaleString()} className={pnl >= 0 ? 'profit' : 'loss'} />
@@ -426,6 +456,7 @@ function AgentAccordionItem({
               )}
               {panelTab === 'overview' && (
                 <>
+                  <Row k="大脑模式" v={mode ? brainModeLabel(mode) : '思考中…'} />
                   <Row k="状态" v={d.running ? '🟢 运行中' : '⚪ 已停止'} />
                   <Row k="压力值" v={`${Math.round(char.stress)}%`} />
                   <Row k="活动" v={char.activity || STATE_LABEL[char.state] || char.state} />
@@ -441,6 +472,7 @@ function AgentAccordionItem({
                       {d.positions!.map((p, i) => <PositionRow key={i} pos={p} compact />)}
                     </div>
                   )}
+                  <AgentMemoryList agentId={agentId} operable={operable} brainVersion={brainVersion} />
                 </>
               )}
               {panelTab === 'config' && schema && config && setMsg && (
@@ -497,6 +529,8 @@ function AgentAccordionItem({
 }
 
 function AgentCard({ char, selected, operable, onSelect, embedded }: { char: CharState; selected: boolean; operable?: boolean; onSelect: () => void; embedded?: boolean }) {
+  const brainVersion = useGameStore(s => s.brainVersion);
+  void brainVersion;
   const d = char.data;
   const pnl = d.pnl || 0;
   const posCount = d.positions?.length || 0;
@@ -513,10 +547,11 @@ function AgentCard({ char, selected, operable, onSelect, embedded }: { char: Cha
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} size={36} />
+        <PenguinAvatar color={d.color} headwear={d.headwear} hatStyle={d.hatStyle} speciesId={d.speciesId} outfitId={d.outfitId} scarfEnabled={d.scarfEnabled} hatEnabled={d.hatEnabled} size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
             {d.name}
+            <BrainModeBadge agentId={char.agentId} />
             {isSystem && <span style={{ fontSize: 9, color: '#9a8b7a', background: '#eee8dc', padding: '1px 5px', borderRadius: 4 }}>系统</span>}
             {operable && <span style={{ fontSize: 9, color: '#48d093', background: '#eef8f0', padding: '1px 5px', borderRadius: 4 }}>我的</span>}
           </div>

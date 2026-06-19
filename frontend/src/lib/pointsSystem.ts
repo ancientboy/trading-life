@@ -3,7 +3,7 @@
 const STORAGE_KEY = 'trading-life-points';
 const LAST_IDLE_KEY = 'trading-life-points-idle';
 
-export const STARTING_POINTS = 200;
+export const STARTING_POINTS = 10000;
 
 /** 完成活动奖励 */
 export const ACTIVITY_REWARDS: Record<'rest' | 'dine' | 'massage' | 'poker', number> = {

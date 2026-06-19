@@ -1,0 +1,43 @@
+{
+  "version": 3,
+  "promptSpec": "frontend/src/lib/characterPromptSpec.ts",
+  "render": {
+    "mode": "canvas",
+    "note": "场景内统一 Canvas 2D 程序化绘制；不使用 PNG 贴图。新皮肤在 agentSpecies.ts / agentOutfits.ts 扩展矢量函数。"
+  },
+  "rules": [
+    "角色渲染：Canvas 2D 矢量 only，禁止 PNG sprite 贴图",
+    "新增物种/皮肤：扩展 draw*2d 函数，与企鹅同级",
+    "promptSpec 仅作 AI 参考素材规范，不参与运行时渲染"
+  ],
+  "canvas": {
+    "size": 512,
+    "background": "transparent",
+    "anchor": "bottom-center"
+  },
+  "species": {
+    "penguin": {
+      "label": "经典企鹅",
+      "bodyType": "plump oval penguin — NOT egg-shaped",
+      "render": "canvas",
+      "layers": ["body", "outfit", "accessory"],
+      "views": ["front", "back", "side"],
+      "skins": {
+        "default": { "label": "默认", "outfitKey": null },
+        "agent": { "label": "特工西装", "outfitKey": "penguin_agent_suit" }
+      }
+    },
+    "niuma": {
+      "label": "马牛",
+      "bodyType": "egg-shaped chibi, no feet",
+      "render": "canvas",
+      "layers": ["body", "outfit", "hair"],
+      "views": ["front", "back", "side"],
+      "skins": {
+        "default": { "label": "商务西装", "outfitKey": "niuma_default" },
+        "casual": { "label": "休闲 Polo", "outfitKey": "niuma_casual" },
+        "executive": { "label": "总裁黑金", "outfitKey": "niuma_executive" }
+      }
+    }
+  }
+}

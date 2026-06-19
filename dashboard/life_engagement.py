@@ -43,6 +43,248 @@ class TableSpeakBody(BaseModel):
     agent_id: str
     agent_name: str = "Agent"
     soul_md: str = ""
+    context: str = "greeting"
+    activity: Optional[str] = None
+    stress: float = 0
+    mood_tag: str = "neutral"
+    decision_mode: str = ""
+    nearby_names: list[str] = Field(default_factory=list)
+    target_agent_name: str = ""
+
+
+class AgentBrainSpeakBody(BaseModel):
+    channel: str = ""
+    agent_id: str
+    agent_name: str = "Agent"
+    soul_md: str = ""
+    context: str = "greeting"
+    activity: Optional[str] = None
+    stress: float = 0
+    mood_tag: str = "neutral"
+    decision_mode: str = ""
+    nearby_names: list[str] = Field(default_factory=list)
+    target_agent_name: str = ""
+    post_to_chat: bool = False
+    remember: bool = True
+
+
+class AgentDialogueBody(BaseModel):
+    channel: str
+    agent_a_id: str
+    agent_a_name: str = "Agent A"
+    agent_a_soul: str = ""
+    agent_b_id: str
+    agent_b_name: str = "Agent B"
+    agent_b_soul: str = ""
+    rounds: int = 2
+
+
+class AgentTeaPartyBody(BaseModel):
+    channel: str
+    zone: str = "hall"
+    agents: list[dict] = Field(default_factory=list)
+    topic: str = ""
+
+
+async def _speak_with_memory(
+    account_id: str,
+    body: "AgentSpeakBody",
+    remember: bool = True,
+    remember_kind: str = "event",
+    remember_prefix: str = "",
+) -> str:
+    from life_game import AgentSpeakBody, _generate_speak_line
+
+    mem = life_db.memory_snippets_for_prompt(account_id, body.agent_id)
+    enriched = body.model_copy(update={"memory_snippets": mem})
+    line = await _generate_speak_line(enriched)
+    if line and remember:
+        summary = f"{remember_prefix}{line}"[:200] if remember_prefix else line[:200]
+        life_db.append_agent_memory(account_id, body.agent_id, remember_kind, summary)
+    return line
+
+
+async def _run_agent_dialogue(
+    account_id: str,
+    channel: str,
+    aid_a: str, name_a: str, soul_a: str,
+    aid_b: str, name_b: str, soul_b: str,
+    rounds: int = 2,
+) -> list[dict]:
+    from life_game import AgentSpeakBody
+    from agent_brain import build_speak_context
+
+    out: list[dict] = []
+    prev = ""
+    total = max(2, min(rounds, 3)) * 2
+    for turn in range(total):
+        if turn % 2 == 0:
+            aid, name, soul, other = aid_a, name_a, soul_a, name_b
+        else:
+            aid, name, soul, other = aid_b, name_b, soul_b, name_a
+        ctx = build_speak_context(
+            "agent_to_agent",
+            target_name=other,
+            user_message=prev or f"碰到{other}",
+        )
+        line = await _speak_with_memory(
+            account_id,
+            AgentSpeakBody(
+                agent_id=aid,
+                agent_name=name,
+                soul_md=soul,
+                context=ctx,
+                decision_mode="social",
+                user_message=prev[:120] if prev else "",
+                target_agent_name=other,
+            ),
+            remember_kind="social",
+            remember_prefix=f"对{other}: ",
+        )
+        if prev:
+            life_db.append_agent_memory(account_id, aid, "social", f"{other}说: {prev}"[:200])
+        if not line:
+            continue
+        row = await _insert_agent_chat_line(account_id, channel, aid, line)
+        out.append(row)
+        prev = line
+    if out:
+        life_db.append_agent_memory(account_id, aid_a, "social", f"与{name_b}聊天"[:200])
+        life_db.append_agent_memory(account_id, aid_b, "social", f"与{name_a}聊天"[:200])
+    return out
+
+
+TEA_PARTY_TOPICS = ["今日战况", "去哪放松", "摸鱼心得", "美食推荐", "八卦时间"]
+
+
+async def _run_tea_party(
+    account_id: str,
+    channel: str,
+    zone: str,
+    agents: list[dict],
+    topic: str = "",
+) -> tuple[list[dict], str]:
+    from life_game import AgentSpeakBody
+    from agent_brain import build_speak_context
+
+    if len(agents) < 3:
+        return [], ""
+    topic = (topic or random.choice(TEA_PARTY_TOPICS)).strip()[:40]
+    names = [a.get("name") or a.get("agent_id") or "Agent" for a in agents[:5]]
+    out: list[dict] = []
+    for a in agents[:5]:
+        aid = a.get("agent_id") or ""
+        name = a.get("name") or aid
+        soul = a.get("soul_md") or ""
+        if not aid:
+            continue
+        others = [n for n in names if n != name]
+        ctx = build_speak_context(
+            "tea_party",
+            nearby_names=others,
+            target_name="",
+        ) + f"|topic:{topic}|zone:{zone}"
+        line = await _speak_with_memory(
+            account_id,
+            AgentSpeakBody(
+                agent_id=aid,
+                agent_name=name,
+                soul_md=soul,
+                context=ctx,
+                decision_mode="social",
+                nearby_names=others,
+            ),
+            remember_kind="social",
+            remember_prefix=f"茶话会·{topic}: ",
+        )
+        if not line:
+            continue
+        row = await _insert_agent_chat_line(account_id, channel, aid, line)
+        out.append(row)
+    if out:
+        for a in agents[:5]:
+            aid = a.get("agent_id") or ""
+            if aid:
+                life_db.append_agent_memory(
+                    account_id, aid, "social",
+                    f"参加{zone}茶话会·{topic}"[:200],
+                )
+    return out, topic
+
+
+async def _insert_agent_chat_line(
+    account_id: str,
+    channel: str,
+    agent_id: str,
+    line: str,
+) -> dict:
+    acc = life_db.get_account_by_id(account_id)
+    ts = life_db.now_ms()
+    with life_db._lock:
+        with life_db._conn() as c:
+            c.execute(
+                "INSERT INTO chat_messages (channel, user_id, display_name, agent_id, body, kind, created_at) VALUES (?,?,?,?,?,?,?)",
+                (channel, account_id, (acc or {}).get("display_name", ""), agent_id, line, "agent", ts),
+            )
+            mid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
+    return {"id": mid, "body": line, "agent_id": agent_id, "kind": "agent", "created_at": ts}
+
+
+async def _agent_replies_to_chat(
+    account_id: str,
+    channel: str,
+    user_text: str,
+    sender_agent_id: str = "",
+) -> list[dict]:
+    """用户发言后 — @Agent 或娱乐 Agent 随机接话。"""
+    from life_game import load_user, AgentSpeakBody, _generate_speak_line
+    from agent_brain import find_mentioned_agents, derive_traits, mood_tag_from_stress, build_speak_context
+
+    user = load_user(account_id)
+    custom = user.get("custom_agents") or {}
+    if not custom:
+        return []
+
+    mentioned = find_mentioned_agents(user_text, custom)
+    responders: list[tuple[str, dict]] = list(mentioned)
+
+    if not responders and ("?" in user_text or "？" in user_text or "吗" in user_text):
+        ents = [(aid, m) for aid, m in custom.items() if m.get("agentType") == "entertainment"]
+        if ents and random.random() < 0.55:
+            responders.append(random.choice(ents))
+
+    if not responders and random.random() < 0.12:
+        aid = random.choice(list(custom.keys()))
+        responders.append((aid, custom[aid]))
+
+    out: list[dict] = []
+    for aid, meta in responders[:2]:
+        name = meta.get("name") or aid
+        soul = meta.get("soulMd") or ""
+        agent_type = meta.get("agentType") or "entertainment"
+        life_db.append_agent_memory(account_id, aid, "user", f"用户: {user_text[:120]}")
+        mem = life_db.memory_snippets_for_prompt(account_id, aid)
+        ctx = build_speak_context(
+            "chat_reply",
+            stress=40,
+            mood_tag="neutral",
+            user_message=user_text,
+        )
+        line = await _generate_speak_line(AgentSpeakBody(
+            agent_id=aid,
+            agent_name=name,
+            soul_md=soul,
+            context=ctx,
+            decision_mode="social",
+            user_message=user_text[:120],
+            memory_snippets=mem,
+        ))
+        if not line:
+            continue
+        life_db.append_agent_memory(account_id, aid, "chat", f"回复: {line}"[:200])
+        row = await _insert_agent_chat_line(account_id, channel, aid, line)
+        out.append(row)
+    return out
 
 
 @social_router.get("/social/chat/{channel}")
@@ -72,7 +314,10 @@ async def post_chat(body: ChatPostBody, account_id: str = Depends(resolve_accoun
             )
             mid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
     life_db.add_season_points(account_id, social=2)
-    return {"ok": True, "id": mid, "created_at": ts}
+    if body.agent_id:
+        life_db.append_agent_memory(account_id, body.agent_id, "user", f"用户: {text[:120]}")
+    replies = await _agent_replies_to_chat(account_id, ch, text, body.agent_id)
+    return {"ok": True, "id": mid, "created_at": ts, "agent_replies": replies}
 
 
 @social_router.post("/social/mood/sync")
@@ -198,20 +443,102 @@ async def claim_event(event_id: str, account_id: str = Depends(resolve_account_i
 @social_router.post("/social/table-speak")
 async def table_speak(body: TableSpeakBody, account_id: str = Depends(resolve_account_id)):
     from life_game import _generate_speak_line, AgentSpeakBody
+    from agent_brain import build_speak_context
 
+    ctx = body.context or build_speak_context(
+        body.decision_mode or "social",
+        activity=body.activity,
+        stress=body.stress,
+        mood_tag=body.mood_tag,
+        nearby_names=body.nearby_names,
+        target_name=body.target_agent_name,
+    )
     line = await _generate_speak_line(AgentSpeakBody(
-        agent_id=body.agent_id, agent_name=body.agent_name,
-        soul_md=body.soul_md, context="greeting", activity=None,
+        agent_id=body.agent_id,
+        agent_name=body.agent_name,
+        soul_md=body.soul_md,
+        context=ctx,
+        activity=body.activity,
+        stress=body.stress,
+        mood_tag=body.mood_tag,
+        decision_mode=body.decision_mode,
+        nearby_names=body.nearby_names,
+        target_agent_name=body.target_agent_name,
     ))
-    acc = life_db.get_account_by_id(account_id)
-    ts = life_db.now_ms()
-    with life_db._lock:
-        with life_db._conn() as c:
-            c.execute(
-                "INSERT INTO chat_messages (channel, user_id, display_name, agent_id, body, kind, created_at) VALUES (?,?,?,?,?,?,?)",
-                (body.channel, account_id, (acc or {}).get("display_name", ""), body.agent_id, line, "agent", ts),
-            )
-    return {"ok": True, "line": line, "created_at": ts}
+    row = await _insert_agent_chat_line(account_id, body.channel, body.agent_id, line)
+    return {"ok": True, "line": line, "created_at": row["created_at"], "message_id": row["id"]}
+
+
+@social_router.post("/social/agent-brain/speak")
+async def agent_brain_speak(body: AgentBrainSpeakBody, account_id: str = Depends(resolve_account_id)):
+    """自主大脑执行层 — 生成台词，可选写入区域频道。"""
+    from life_game import _generate_speak_line, AgentSpeakBody
+    from agent_brain import build_speak_context
+
+    ctx = body.context or build_speak_context(
+        body.decision_mode or "greeting",
+        activity=body.activity,
+        stress=body.stress,
+        mood_tag=body.mood_tag,
+        nearby_names=body.nearby_names,
+        target_name=body.target_agent_name,
+    )
+    line = await _speak_with_memory(
+        account_id,
+        AgentSpeakBody(
+            agent_id=body.agent_id,
+            agent_name=body.agent_name,
+            soul_md=body.soul_md,
+            context=ctx,
+            activity=body.activity,
+            stress=body.stress,
+            mood_tag=body.mood_tag,
+            decision_mode=body.decision_mode,
+            nearby_names=body.nearby_names,
+            target_agent_name=body.target_agent_name,
+        ),
+        remember=body.remember,
+        remember_kind="event",
+        remember_prefix="",
+    )
+    out: dict = {"ok": True, "line": line}
+    if body.post_to_chat and body.channel and line:
+        row = await _insert_agent_chat_line(account_id, body.channel, body.agent_id, line)
+        out["chat"] = row
+    return out
+
+
+@social_router.post("/social/agent-brain/dialogue")
+async def agent_brain_dialogue(body: AgentDialogueBody, account_id: str = Depends(resolve_account_id)):
+    """Agent 互聊链 — 两人来回对话写入频道。"""
+    ch = (body.channel or "").strip()[:64]
+    if not ch or not body.agent_a_id or not body.agent_b_id:
+        return {"ok": False, "error": "参数不完整"}
+    messages = await _run_agent_dialogue(
+        account_id, ch,
+        body.agent_a_id, body.agent_a_name, body.agent_a_soul,
+        body.agent_b_id, body.agent_b_name, body.agent_b_soul,
+        max(1, min(body.rounds, 3)),
+    )
+    life_db.add_season_points(account_id, social=min(10, len(messages) * 2))
+    return {"ok": True, "messages": messages, "turns": len(messages)}
+
+
+@social_router.post("/social/agent-brain/tea-party")
+async def agent_brain_tea_party(body: AgentTeaPartyBody, account_id: str = Depends(resolve_account_id)):
+    """群聊茶话会 — 同区多 Agent 轮流发言。"""
+    ch = (body.channel or "").strip()[:64]
+    if not ch or len(body.agents) < 3:
+        return {"ok": False, "error": "至少需要 3 名 Agent"}
+    messages, topic_used = await _run_tea_party(account_id, ch, body.zone, body.agents, body.topic)
+    life_db.add_season_points(account_id, social=min(15, len(messages) * 2))
+    return {"ok": True, "messages": messages, "topic": topic_used or body.topic}
+
+
+@social_router.get("/social/agent-brain/memory/{agent_id}")
+async def get_agent_brain_memory(agent_id: str, account_id: str = Depends(resolve_account_id)):
+    rows = life_db.get_agent_memories(account_id, agent_id, 15)
+    return {"ok": True, "memories": rows}
 
 
 # ─── Phase 2: PvP ────────────────────────────────────────────────
@@ -219,6 +546,25 @@ async def table_speak(body: TableSpeakBody, account_id: str = Depends(resolve_ac
 class PokerCreateBody(BaseModel):
     buy_in: int = 30
     agent_id: str = ""
+    game_mode: str = "classic"
+
+
+class PokerAiSpectatorBody(BaseModel):
+    agent_id: str
+    buy_in: int = 1000
+    num_players: int = 4
+
+
+class PokerStyleBody(BaseModel):
+    text: str = ""
+
+
+class PokerStyleFeedbackBody(BaseModel):
+    feedback: str = ""
+
+
+class PokerStylePresetBody(BaseModel):
+    preset: str = "tag"
 
 
 class PokerJoinBody(BaseModel):
@@ -273,7 +619,7 @@ def _charge_human_buy_ins(room_id: str, room: dict, players: list) -> tuple[bool
     for p in players:
         pd = dict(p)
         uid = pd["user_id"]
-        if uid.startswith("npc_"):
+        if uid.startswith("npc_") or uid.startswith("ai_"):
             continue
         if pd.get("buy_in", 0) >= buy_in:
             continue
@@ -333,8 +679,15 @@ def _player_display_name(p: dict, account_id: str) -> str:
 
 NPC_COLORS = {
     "npc_lily": "#e8a0bf",
-    "npc_gaga": "#b8a0e8",
+    "npc_gaga": "#7ec8a4",
+    "npc_jack": "#d4af37",
 }
+from poker_style import AI_BOT_ROSTER as _AI_ROSTER
+for _ai_uid, _ai_name, _ in _AI_ROSTER:
+    NPC_COLORS.setdefault(_ai_uid, "#8a7e72")
+
+AI_DISPLAY = {uid: name for uid, name, _ in _AI_ROSTER}
+NPC_DISPLAY.update(AI_DISPLAY)
 
 
 def _generate_room_code(c) -> str:
@@ -363,8 +716,8 @@ def _resolve_room_id(c, room_id_or_code: str) -> Optional[str]:
 
 def _enrich_poker_player(p: dict, account_id: str) -> dict:
     d = dict(p)
-    uid = d["user_id"]
-    d["is_npc"] = str(uid).startswith("npc_")
+    uid = p["user_id"]
+    d["is_npc"] = str(uid).startswith("npc_") or str(uid).startswith("ai_")
     d["display_name"] = _player_display_name(d, account_id)
     d["agent_name"] = d["display_name"]
     d["user_name"] = d["display_name"]
@@ -391,7 +744,8 @@ def _enrich_poker_player(p: dict, account_id: str) -> dict:
 
 def _human_count_in_room(c, room_id: str) -> int:
     return c.execute(
-        "SELECT COUNT(*) FROM poker_room_players WHERE room_id=? AND user_id NOT LIKE 'npc_%'",
+        """SELECT COUNT(*) FROM poker_room_players
+           WHERE room_id=? AND user_id NOT LIKE 'npc_%' AND user_id NOT LIKE 'ai_%'""",
         (room_id,),
     ).fetchone()[0]
 
@@ -437,7 +791,53 @@ def _room_payload(c, room: dict, account_id: str) -> dict:
     d["players"] = enriched
     d["human_count"] = human_count
     d["player_names"] = [p["user_name"] for p in humans]
+    d["game_mode"] = room.get("game_mode") or "classic"
+    d["spectator"] = bool(room.get("spectator"))
     return d
+
+
+async def _start_advanced_tournament(
+    room_id: str,
+    room: dict,
+    players: list,
+    account_id: str,
+    spectator: bool = False,
+) -> dict:
+    """进阶模式 — 初始化锦标赛并自动推进首步"""
+    from poker_advanced import build_roster_from_db, get_advanced_state, validate_advanced_buy_in
+    from poker_style import ADVANCED_BUY_INS
+
+    buy_in = validate_advanced_buy_in(room["buy_in"])
+    if buy_in not in ADVANCED_BUY_INS:
+        return {"ok": False, "error": f"进阶模式买入须为 {ADVANCED_BUY_INS}"}
+
+    plist = _sort_poker_players(players)
+    if len(plist) < 2:
+        return {"ok": False, "error": "至少需要 2 名选手"}
+    if len(plist) > 7:
+        return {"ok": False, "error": "最多 7 人桌"}
+
+    names = {}
+    for p in plist:
+        names[p["user_id"]] = _player_display_name(p, account_id)
+
+    roster = build_roster_from_db(
+        [_enrich_poker_player(dict(p), account_id) for p in plist],
+        names,
+    )
+
+    from poker_advanced import init_advanced_room
+    with life_db._lock:
+        with life_db._conn() as c:
+            init_advanced_room(c, room_id, buy_in, room["host_user_id"], roster, spectator=spectator, create_new=False)
+
+    state_out = await get_advanced_state(room_id, account_id, since_seq=0, auto_run=False, max_steps=0)
+    state_out["mode"] = "advanced_spectator" if spectator else "advanced"
+    state_out["buy_in"] = buy_in
+    state_out["room_id"] = room_id
+    if state_out.get("settlement"):
+        state_out["balance"] = state_out["settlement"].get("balance")
+    return state_out
 
 
 def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str) -> dict:
@@ -530,6 +930,10 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
             save_user(uid, user)
             life_db.add_season_points(uid, pvp_win=1, social=5)
 
+    for r in results:
+        if not r["is_npc"] and str(r["user_id"]).startswith("acc_"):
+            life_db.try_referral_poker_reward(r["user_id"])
+
     caller_cost = buy_in
     for p in plist:
         if p["user_id"] == account_id:
@@ -610,6 +1014,7 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
         with life_db._conn() as c:
             rows = c.execute(
                 """SELECT * FROM poker_rooms WHERE status='waiting' AND id NOT LIKE 'solo_%'
+                   AND COALESCE(game_mode, 'classic') = 'classic'
                    AND EXISTS (
                      SELECT 1 FROM poker_room_players p
                      WHERE p.room_id=poker_rooms.id AND p.user_id NOT LIKE 'npc_%'
@@ -619,7 +1024,7 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
             target = None
             for r in rows:
                 cnt = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (r["id"],)).fetchone()[0]
-                if cnt < 8 and not c.execute(
+                if cnt < 7 and not c.execute(
                     "SELECT 1 FROM poker_room_players WHERE room_id=? AND user_id=?",
                     (r["id"], account_id),
                 ).fetchone():
@@ -732,16 +1137,28 @@ async def get_poker_room(room_id: str, account_id: str = Depends(resolve_account
 
 @pvp_router.post("/pvp/poker/rooms")
 async def create_poker_room(body: PokerCreateBody, account_id: str = Depends(resolve_account_id)):
+    from poker_advanced import validate_advanced_buy_in
+    from poker_style import ADVANCED_BUY_INS
+
     ts = life_db.now_ms()
-    buy_in = max(10, min(body.buy_in, 500))
+    game_mode = (body.game_mode or "classic").strip().lower()
+    if game_mode == "advanced":
+        buy_in = validate_advanced_buy_in(body.buy_in)
+        if buy_in not in ADVANCED_BUY_INS:
+            buy_in = ADVANCED_BUY_INS[0]
+    else:
+        game_mode = "classic"
+        buy_in = max(10, min(body.buy_in, 500))
     agent_id = (body.agent_id or "").strip()
     seat = "poker_s1"
     with life_db._lock:
         with life_db._conn() as c:
             rid = _generate_room_code(c)
             c.execute(
-                "INSERT INTO poker_rooms (id, status, pot, host_user_id, buy_in, created_at) VALUES (?,?,0,?,?,?)",
-                (rid, "waiting", account_id, buy_in, ts),
+                """INSERT INTO poker_rooms
+                   (id, status, pot, host_user_id, buy_in, created_at, game_mode, min_players)
+                   VALUES (?,?,0,?,?,?,?,?)""",
+                (rid, "waiting", account_id, buy_in, ts, game_mode, 2 if game_mode == "advanced" else 2),
             )
             if agent_id:
                 c.execute(
@@ -750,10 +1167,11 @@ async def create_poker_room(body: PokerCreateBody, account_id: str = Depends(res
                 )
             room = dict(c.execute("SELECT * FROM poker_rooms WHERE id=?", (rid,)).fetchone())
             payload = _room_payload(c, room, account_id)
+    mode_label = "进阶" if game_mode == "advanced" else "经典"
     return {
-        "ok": True, "room_id": rid, "room_code": rid, "buy_in": buy_in,
+        "ok": True, "room_id": rid, "room_code": rid, "buy_in": buy_in, "game_mode": game_mode,
         "seat_id": seat if agent_id else "", "room": payload,
-        "message": f"房间 {rid} 已创建 · 把编号告诉好友即可加入",
+        "message": f"{mode_label}房间 {rid} 已创建 · 最多 7 人 · 买入 {buy_in}",
     }
 
 
@@ -782,8 +1200,8 @@ async def join_poker_room(room_id: str, body: PokerJoinBody, account_id: str = D
                     "message": "已在房间中",
                 }
             count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (rid,)).fetchone()[0]
-            if count >= 8:
-                return {"ok": False, "error": "房间已满"}
+            if count >= 7:
+                return {"ok": False, "error": "房间已满（最多 7 人）"}
             taken = {r["seat_id"] for r in c.execute(
                 "SELECT seat_id FROM poker_room_players WHERE room_id=?", (rid,)
             ).fetchall()}
@@ -908,13 +1326,36 @@ async def start_poker_room(room_id: str, account_id: str = Depends(resolve_accou
                 return {"ok": False, "error": "你不在该房间中，请先加入"}
 
     room = dict(room)
-    humans = [p for p in players if not p["user_id"].startswith("npc_")]
+    game_mode = room.get("game_mode") or "classic"
+    humans = [p for p in players if not p["user_id"].startswith("npc_") and not p["user_id"].startswith("ai_")]
     if len(humans) < room["min_players"]:
-        if len(humans) == 1:
+        if len(humans) == 1 and game_mode == "classic":
             taken = {p["seat_id"] for p in players}
             with life_db._lock:
                 with life_db._conn() as c:
                     _add_npc_players_to_room(c, room_id, room["buy_in"], taken)
+                    players = [dict(p) for p in c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()]
+        elif game_mode == "advanced" and len(players) < 7:
+            # 进阶多人：不足 7 人时用 AI 选手补位
+            taken = {p["seat_id"] for p in players}
+            from poker_advanced import pick_ai_opponents
+            need = max(0, min(6, 7 - len(players)))
+            bots = pick_ai_opponents(need, {p["user_id"] for p in players})
+            with life_db._lock:
+                with life_db._conn() as c:
+                    si = 1
+                    for uid, name, _preset in bots:
+                        while f"poker_s{si}" in taken and si <= 7:
+                            si += 1
+                        if si > 7:
+                            break
+                        seat = f"poker_s{si}"
+                        taken.add(seat)
+                        c.execute(
+                            "INSERT INTO poker_room_players (room_id, user_id, agent_id, seat_id, buy_in) VALUES (?,?,?,?,?)",
+                            (room_id, uid, f"agent_{uid}", seat, 0),
+                        )
+                        si += 1
                     players = [dict(p) for p in c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()]
         else:
             return {"ok": False, "error": f"至少需要 {room['min_players']} 名玩家才能开始"}
@@ -922,6 +1363,13 @@ async def start_poker_room(room_id: str, account_id: str = Depends(resolve_accou
     ok, err = _charge_human_buy_ins(room_id, room, players)
     if not ok:
         return {"ok": False, "error": err, "cost": room["buy_in"]}
+
+    if game_mode == "advanced":
+        out = await _start_advanced_tournament(room_id, room, players, account_id, spectator=False)
+        out["cost"] = room["buy_in"]
+        if not out.get("balance"):
+            out["balance"] = load_user(account_id)["points"]
+        return out
 
     with life_db._lock:
         with life_db._conn() as c:
@@ -935,7 +1383,7 @@ async def start_poker_room(room_id: str, account_id: str = Depends(resolve_accou
             players = c.execute("SELECT * FROM poker_room_players WHERE room_id=?", (room_id,)).fetchall()
 
     out = _settle_poker_room(room_id, room, players, account_id)
-    out["mode"] = "started"
+    out["mode"] = "classic"
     out["balance"] = load_user(account_id)["points"]
     out["cost"] = room["buy_in"]
     return out
@@ -970,6 +1418,107 @@ async def play_poker_round(room_id: str, account_id: str = Depends(resolve_accou
     out["mode"] = "pvp"
     out["balance"] = load_user(account_id)["points"]
     return out
+
+
+@pvp_router.get("/pvp/poker/presets")
+async def poker_presets_catalog(account_id: str = Depends(resolve_account_id)):
+    from poker_style import catalog_presets, ADVANCED_BUY_INS, CLASSIC_BUY_INS
+    return {
+        "ok": True,
+        "presets": catalog_presets(),
+        "advanced_buy_ins": ADVANCED_BUY_INS,
+        "classic_buy_ins": CLASSIC_BUY_INS,
+    }
+
+
+@pvp_router.post("/pvp/poker/ai-spectator/start")
+async def start_ai_spectator(body: PokerAiSpectatorBody, account_id: str = Depends(resolve_account_id)):
+    """AI 观赛桌 — 用户 Agent 与 AI 选手自动博弈，用户仅观看"""
+    from life_game import load_user, save_user, _spend
+    from poker_advanced import init_advanced_room, get_advanced_state, validate_advanced_buy_in, pick_ai_opponents
+    from poker_advanced import build_roster_from_db, _agent_profile_and_soul
+    from poker_bot import merge_profile
+
+    buy_in = validate_advanced_buy_in(body.buy_in)
+    num = max(2, min(body.num_players, 7))
+    agent_id = (body.agent_id or "").strip()
+    if not agent_id:
+        return {"ok": False, "error": "请选择你的 Agent"}
+
+    user = load_user(account_id)
+    custom = user.get("custom_agents") or {}
+    if agent_id not in custom:
+        return {"ok": False, "error": "Agent 不存在"}
+    if not _spend(user, buy_in):
+        save_user(account_id, user)
+        return {"ok": False, "error": f"积分不足（需 {buy_in}）", "balance": user["points"]}
+    save_user(account_id, user)
+
+    acc = life_db.get_account_by_id(account_id)
+    agent_name = custom[agent_id].get("name") or agent_id
+    profile, soul = _agent_profile_and_soul(account_id, agent_id)
+
+    roster = [{
+        "user_id": account_id,
+        "agent_id": agent_id,
+        "seat_id": "poker_s1",
+        "name": agent_name,
+        "is_npc": False,
+        "poker_profile": profile,
+        "soul_md": soul,
+    }]
+    bots = pick_ai_opponents(num - 1, {account_id})
+    for i, (uid, name, preset) in enumerate(bots):
+        roster.append({
+            "user_id": uid,
+            "agent_id": f"agent_{uid}",
+            "seat_id": f"poker_s{i + 2}",
+            "name": name,
+            "is_npc": True,
+            "poker_profile": merge_profile({"preset": preset}),
+            "soul_md": "",
+        })
+
+    rid = f"adv_{uuid.uuid4().hex[:10]}"
+    with life_db._lock:
+        with life_db._conn() as c:
+            init_advanced_room(c, rid, buy_in, account_id, roster, spectator=True, create_new=True)
+
+    out = await get_advanced_state(rid, account_id, since_seq=0, auto_run=False, max_steps=0)
+    out["room_id"] = rid
+    out["buy_in"] = buy_in
+    out["balance"] = load_user(account_id)["points"]
+    out["message"] = f"观赛开始 · {num} 人桌 · 买入 {buy_in}"
+    return out
+
+
+@pvp_router.get("/pvp/poker/rooms/{room_id}/advanced/state")
+async def get_advanced_poker_state(
+    room_id: str,
+    since_seq: int = 0,
+    auto_run: bool = True,
+    max_steps: int = 1,
+    use_llm: bool = False,
+    run_until_complete: bool = False,
+    account_id: str = Depends(resolve_account_id),
+):
+    from poker_advanced import get_advanced_state
+    cap = 80 if not run_until_complete else 250
+    return await get_advanced_state(
+        room_id, account_id, since_seq=since_seq,
+        auto_run=auto_run,
+        max_steps=max(0, min(max_steps, cap)),
+        use_llm=use_llm,
+        run_until_complete=run_until_complete,
+    )
+
+
+@pvp_router.post("/pvp/poker/rooms/{room_id}/advanced/tick")
+async def tick_advanced_poker(room_id: str, account_id: str = Depends(resolve_account_id)):
+    from poker_advanced import get_advanced_state
+    return await get_advanced_state(
+        room_id, account_id, since_seq=0, auto_run=True, max_steps=40, use_llm=False,
+    )
 
 
 @pvp_router.get("/pvp/seats/auctions")

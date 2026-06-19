@@ -119,15 +119,15 @@ export async function lifeActivityComplete(activity: string, userInitiated = fal
   return parse<{ ok: boolean; balance: number; earned: number }>(r);
 }
 
-export async function authRegister(username: string, password: string, displayName = '') {
+export async function authRegister(username: string, password: string, displayName = '', inviteCode = '') {
   const r = await fetch(`${API}/auth/register`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password, display_name: displayName }),
+    body: JSON.stringify({ username, password, display_name: displayName, invite_code: inviteCode }),
   });
   return parseAuth<{
     ok: boolean; token?: string;
     account?: { id: string; username: string; display_name: string };
-    state?: LifeState; error?: string;
+    state?: LifeState; error?: string; invite_message?: string;
   }>(r);
 }
 
@@ -215,7 +215,16 @@ export async function lifeSaveAgentSoul(agentId: string, content: string) {
 
 export async function lifeSaveAgentAppearance(
   agentId: string,
-  appearance: { headwear: string; hatStyle: string; color: string },
+  appearance: {
+    speciesId?: string;
+    outfitId?: string;
+    hairStyle?: string;
+    scarfEnabled?: boolean;
+    hatEnabled?: boolean;
+    headwear: string;
+    hatStyle: string;
+    color: string;
+  },
 ) {
   const r = await fetch(`${API}/agents/${agentId}/appearance`, {
     method: 'PUT', headers: headers(), body: JSON.stringify(appearance),
