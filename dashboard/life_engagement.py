@@ -504,7 +504,7 @@ async def _start_advanced_tournament(
         with life_db._conn() as c:
             init_advanced_room(c, room_id, buy_in, room["host_user_id"], roster, spectator=spectator, create_new=False)
 
-    state_out = await get_advanced_state(room_id, account_id, since_seq=0, auto_run=True)
+    state_out = await get_advanced_state(room_id, account_id, since_seq=0, auto_run=False, max_steps=0)
     state_out["mode"] = "advanced_spectator" if spectator else "advanced"
     state_out["buy_in"] = buy_in
     state_out["room_id"] = room_id
@@ -1152,7 +1152,7 @@ async def start_ai_spectator(body: PokerAiSpectatorBody, account_id: str = Depen
         with life_db._conn() as c:
             init_advanced_room(c, rid, buy_in, account_id, roster, spectator=True, create_new=True)
 
-    out = await get_advanced_state(rid, account_id, since_seq=0, auto_run=True)
+    out = await get_advanced_state(rid, account_id, since_seq=0, auto_run=False, max_steps=0)
     out["room_id"] = rid
     out["buy_in"] = buy_in
     out["balance"] = load_user(account_id)["points"]
@@ -1164,10 +1164,16 @@ async def start_ai_spectator(body: PokerAiSpectatorBody, account_id: str = Depen
 async def get_advanced_poker_state(
     room_id: str,
     since_seq: int = 0,
+    auto_run: bool = True,
+    max_steps: int = 1,
+    use_llm: bool = False,
     account_id: str = Depends(resolve_account_id),
 ):
     from poker_advanced import get_advanced_state
-    return await get_advanced_state(room_id, account_id, since_seq=since_seq, auto_run=True)
+    return await get_advanced_state(
+        room_id, account_id, since_seq=since_seq,
+        auto_run=auto_run, max_steps=max(0, min(max_steps, 20)), use_llm=use_llm,
+    )
 
 
 @pvp_router.post("/pvp/poker/rooms/{room_id}/advanced/tick")

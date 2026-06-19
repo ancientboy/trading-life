@@ -202,10 +202,12 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         return;
       }
       const isAdvanced = pokerRoom?.game_mode === 'advanced' || r.mode?.startsWith('advanced');
-      if (isAdvanced && r.game && r.room_id) {
+      if (isAdvanced && r.room_id) {
         clearPokerRoom();
         if (r.balance != null) useGameStore.setState({ points: r.balance });
         setSpectateRoom({ id: r.room_id, buyIn: roomBuyIn });
+        setPhase('idle');
+        setPokerTableDealingUntil(0);
         addMessage('进阶锦标赛开始 · Agent 自主博弈中');
         return;
       }

@@ -82,25 +82,27 @@ def build_roster_from_db(players: list[dict], account_names: dict[str, str]) -> 
     return roster
 
 
-async def _pick_action(state: dict, seat_idx: int) -> tuple[str, int, str]:
+async def _pick_action(state: dict, seat_idx: int, use_llm: bool = False) -> tuple[str, int, str]:
     p = state["players"][seat_idx]
     profile = merge_profile(p.get("poker_profile"))
     soul = p.get("soul_md") or ""
-    if should_use_llm(state, seat_idx, profile):
+    if use_llm and should_use_llm(state, seat_idx, profile):
         from poker_bot import decide_with_llm
         return await decide_with_llm(state, seat_idx, profile, soul)
     return decide_action(state, seat_idx, profile)
 
 
-async def run_ticks(state: dict, max_steps: int = 8) -> dict:
+async def run_ticks(state: dict, max_steps: int = 8, use_llm: bool = False) -> dict:
     """自动推进 bot 行动，直到需要等待或达到步数上限"""
+    from poker_engine import _street_settled, _advance_street
+
     steps = 0
     while steps < max_steps and state["status"] == "playing":
         if state["phase"] == "between_hands":
             state = start_next_hand_if_ready(state)
             steps += 1
             continue
-        if state["phase"] in ("showdown", "complete") and state["status"] != "tournament_complete":
+        if state["phase"] == "showdown" and state["status"] != "tournament_complete":
             state = start_next_hand_if_ready(state)
             steps += 1
             continue
@@ -108,12 +110,25 @@ async def run_ticks(state: dict, max_steps: int = 8) -> dict:
             break
         idx = state.get("actor_index", -1)
         if idx < 0:
-            break
-        action, amount, reason = await _pick_action(state, idx)
+            # 僵局恢复：全员 all-in 等情况
+            if state["phase"] not in ("between_hands", "complete", "waiting"):
+                try:
+                    if _street_settled(state):
+                        _advance_street(state)
+                    else:
+                        break
+                except Exception:
+                    break
+            else:
+                state = start_next_hand_if_ready(state)
+            steps += 1
+            continue
+        action, amount, reason = await _pick_action(state, idx, use_llm=use_llm)
         state["last_reasoning"] = {
             "seat_index": idx,
             "name": state["players"][idx]["name"],
             "action": action,
+            "amount": amount,
             "reason": reason,
         }
         apply_action(state, idx, action, amount)
@@ -237,19 +252,31 @@ def init_advanced_room(
 
 
 def pick_ai_opponents(count: int, exclude_ids: set[str]) -> list[tuple[str, str, str]]:
+    """选取 AI 选手，保证 user_id 唯一（支持 7 人桌）"""
     pool = [x for x in AI_BOT_ROSTER if x[0] not in exclude_ids]
-    out = []
-    for i in range(min(count, len(pool))):
-        out.append(pool[i])
-    # 若不够则循环
-    pi = 0
-    while len(out) < count:
-        out.append(pool[pi % len(pool)])
-        pi += 1
-    return out[:count]
+    if not pool:
+        pool = list(AI_BOT_ROSTER)
+    out: list[tuple[str, str, str]] = []
+    used: set[str] = set(exclude_ids)
+    for i in range(count):
+        base = pool[i % len(pool)]
+        uid = base[0] if base[0] not in used else f"ai_{base[2]}_{i + 1}"
+        while uid in used:
+            uid = f"ai_gen_{i}_{len(used)}"
+        used.add(uid)
+        name = base[1] if uid == base[0] else f"{base[1]}·{i + 1}"
+        out.append((uid, name, base[2]))
+    return out
 
 
-async def get_advanced_state(room_id: str, account_id: str, since_seq: int = 0, auto_run: bool = True) -> dict:
+async def get_advanced_state(
+    room_id: str,
+    account_id: str,
+    since_seq: int = 0,
+    auto_run: bool = True,
+    max_steps: int = 1,
+    use_llm: bool = False,
+) -> dict:
     with life_db._lock:
         with life_db._conn() as c:
             room = c.execute("SELECT * FROM poker_rooms WHERE id=?", (room_id,)).fetchone()
@@ -262,8 +289,10 @@ async def get_advanced_state(room_id: str, account_id: str, since_seq: int = 0, 
             if not state:
                 return {"ok": False, "error": "牌局状态丢失"}
 
-    if auto_run and state["status"] == "playing":
-        state = await run_ticks(state, max_steps=12)
+    spectator = bool(room.get("spectator"))
+
+    if auto_run and max_steps > 0 and state["status"] == "playing":
+        state = await run_ticks(state, max_steps=max_steps, use_llm=use_llm)
         with life_db._lock:
             with life_db._conn() as c:
                 _save_game_state(c, room_id, state)
@@ -273,7 +302,7 @@ async def get_advanced_state(room_id: str, account_id: str, since_seq: int = 0, 
                     ).fetchall()]
                     room = dict(c.execute("SELECT * FROM poker_rooms WHERE id=?", (room_id,)).fetchone())
 
-    pub = public_state(state, viewer_user_id=account_id, since_seq=since_seq)
+    pub = public_state(state, viewer_user_id=account_id, since_seq=since_seq, spectator_mode=spectator)
     out = {"ok": True, "room_id": room_id, "game": pub, "status": state["status"]}
 
     if state["status"] == "tournament_complete" and room.get("status") != "settled":

@@ -304,7 +304,7 @@ export interface AdvancedPokerGame {
   winners_last_hand: Array<{ seat_index: number; name: string; amount: number; hand_name?: string }>;
   events: AdvancedPokerEvent[];
   event_count: number;
-  last_reasoning?: { seat_index: number; name: string; action: string; reason: string };
+  last_reasoning?: { seat_index: number; name: string; action: string; amount?: number; reason: string };
 }
 
 export interface PokerProfile {
@@ -327,11 +327,22 @@ export async function startAiSpectator(agentId: string, buyIn = 1000, numPlayers
   }>(`${API}/pvp/poker/ai-spectator/start`, {
     method: 'POST', headers: headers(),
     body: JSON.stringify({ agent_id: agentId, buy_in: buyIn, num_players: numPlayers }),
-  }, 60000);
+  }, 25000);
 }
 
-export async function fetchAdvancedPokerState(roomId: string, sinceSeq = 0) {
-  const r = await fetch(`${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/advanced/state?since_seq=${sinceSeq}`, { headers: headers() });
+export async function fetchAdvancedPokerState(
+  roomId: string,
+  sinceSeq = 0,
+  opts?: { autoRun?: boolean; maxSteps?: number; useLlm?: boolean },
+) {
+  const params = new URLSearchParams({ since_seq: String(sinceSeq) });
+  if (opts?.autoRun === false) params.set('auto_run', 'false');
+  if (opts?.maxSteps != null) params.set('max_steps', String(opts.maxSteps));
+  if (opts?.useLlm) params.set('use_llm', 'true');
+  const r = await fetch(
+    `${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/advanced/state?${params}`,
+    { headers: headers() },
+  );
   return parse<{
     ok: boolean; room_id?: string; game?: AdvancedPokerGame; status?: string;
     settlement?: { results: Array<{ name: string; stack: number; rank: number; won: number; eliminated: boolean }>; winner?: { name: string }; balance?: number; net?: number; won?: number };

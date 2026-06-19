@@ -14,6 +14,7 @@ AI_BOT_ROSTER = [
     ("ai_fish_1", "鱼王 Fish", "loose"),
     ("ai_maniac_1", "疯子 Max", "maniac"),
     ("ai_pro_1", "均衡 Pro", "balanced"),
+    ("ai_shark_1", "鲨鱼 Shark", "tag"),
 ]
 
 

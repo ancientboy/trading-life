@@ -440,14 +440,16 @@ def start_next_hand_if_ready(state: dict) -> dict:
     return start_new_hand(state)
 
 
-def public_state(state: dict, viewer_user_id: str | None = None, since_seq: int = 0) -> dict:
-    """观赛视角 — 默认隐藏他人底牌，摊牌后公开"""
-    show_all_holes = state["phase"] in ("showdown", "complete", "between_hands")
+def public_state(state: dict, viewer_user_id: str | None = None, since_seq: int = 0, spectator_mode: bool = False) -> dict:
+    """观赛视角 — 观赛模式公开所有底牌，便于理解决策"""
+    show_all_holes = spectator_mode or state["phase"] in ("showdown", "complete", "between_hands")
     players_out = []
     for p in state["players"]:
-        reveal = show_all_holes or not p["folded"] and state["phase"] == "showdown"
-        is_mine = viewer_user_id and p["user_id"] == viewer_user_id
-        hole = p["hole_cards"] if (reveal or is_mine) else ([ "??", "??" ] if p["hole_cards"] else [])
+        has_cards = bool(p.get("hole_cards")) and p["hole_cards"][0] != "??"
+        reveal = show_all_holes or (not p["folded"] and state["phase"] == "showdown")
+        if not reveal and viewer_user_id and p["user_id"] == viewer_user_id:
+            reveal = True
+        hole = list(p["hole_cards"]) if (reveal and has_cards) else (["??", "??"] if p.get("hole_cards") else [])
         players_out.append({
             "seat_index": p["seat_index"],
             "user_id": p["user_id"],
