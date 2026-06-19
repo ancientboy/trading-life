@@ -26,6 +26,12 @@ async def get_my_referral(account_id: str = Depends(resolve_account_id)):
     return {"ok": True, **summary}
 
 
+@growth_router.get("/growth/notifications")
+async def get_growth_notifications(account_id: str = Depends(resolve_account_id)):
+    messages = life_db.pop_life_notifications(account_id)
+    return {"ok": True, "messages": messages}
+
+
 @growth_router.get("/public/poker/rooms/{room_id}/preview")
 async def public_room_preview(room_id: str):
     """等待中房间预览 — 供 deep link 落地页展示"""

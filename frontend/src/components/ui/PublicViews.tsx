@@ -370,9 +370,27 @@ export function ReferralPanel() {
           微信内请复制链接后粘贴发送给好友
         </p>
       )}
-      <div style={{ fontSize: 11, color: '#8a7e72' }}>
+      <div style={{ fontSize: 11, color: '#8a7e72', marginBottom: 10 }}>
         已邀请 {info.invites_count ?? 0} 人 · 其中 {info.poker_rewards ?? 0} 人已完成首局扑克
       </div>
+      {(info.invitees?.length ?? 0) > 0 && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6a5a48', marginBottom: 6 }}>邀请明细</div>
+          <div style={{ maxHeight: 160, overflowY: 'auto', marginBottom: 4 }}>
+            {info.invitees!.map(inv => (
+              <div key={inv.invitee_id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '6px 0', borderBottom: '1px dashed #eee8dc', fontSize: 11,
+              }}>
+                <span style={{ fontWeight: 600 }}>{inv.name}</span>
+                <span style={{ color: inv.poker_done ? '#2ea872' : '#9a8b7a', fontSize: 10 }}>
+                  {inv.poker_done ? '✓ 已首局扑克' : '已注册'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

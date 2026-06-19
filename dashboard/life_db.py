@@ -253,6 +253,7 @@ def init_db(data_dir: Path) -> None:
         """)
     _migrate_poker_advanced_columns()
     _migrate_referrals()
+    _migrate_life_notifications()
     _migrate_json_files(data_dir)
     _seed_engagement_data()
 
@@ -306,6 +307,78 @@ def _migrate_referrals() -> None:
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_life_accounts_invite_code "
             "ON life_accounts(invite_code) WHERE invite_code IS NOT NULL AND invite_code != ''"
         )
+
+
+def _migrate_life_notifications() -> None:
+    with _conn() as c:
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS life_notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                message TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                read INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS idx_life_notifications_account "
+            "ON life_notifications(account_id, read, id)"
+        )
+
+
+def push_life_notification(account_id: str, kind: str, message: str) -> None:
+    if not account_id:
+        return
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                "INSERT INTO life_notifications (account_id, kind, message, created_at, read) "
+                "VALUES (?,?,?,?,0)",
+                (account_id, kind, message, datetime.now(CST).isoformat()),
+            )
+
+
+def pop_life_notifications(account_id: str, limit: int = 10) -> list[str]:
+    with _lock:
+        with _conn() as c:
+            rows = c.execute(
+                "SELECT id, message FROM life_notifications "
+                "WHERE account_id=? AND read=0 ORDER BY id ASC LIMIT ?",
+                (account_id, max(1, min(limit, 20))),
+            ).fetchall()
+            if not rows:
+                return []
+            ids = [int(r["id"]) for r in rows]
+            placeholders = ",".join("?" * len(ids))
+            c.execute(f"UPDATE life_notifications SET read=1 WHERE id IN ({placeholders})", ids)
+            return [str(r["message"]) for r in rows]
+
+
+def list_referral_invitees(account_id: str, limit: int = 30) -> list[dict]:
+    with _lock:
+        with _conn() as c:
+            rows = c.execute(
+                """
+                SELECT r.invitee_id, r.created_at, r.poker_rewarded,
+                       COALESCE(NULLIF(a.display_name, ''), a.username, '好友') AS name
+                FROM referrals r
+                LEFT JOIN life_accounts a ON a.id = r.invitee_id
+                WHERE r.inviter_id=?
+                ORDER BY r.created_at DESC
+                LIMIT ?
+                """,
+                (account_id, max(1, min(limit, 50))),
+            ).fetchall()
+    return [
+        {
+            "invitee_id": r["invitee_id"],
+            "name": r["name"],
+            "registered_at": r["created_at"],
+            "poker_done": bool(r["poker_rewarded"]),
+        }
+        for r in rows
+    ]
 
 
 def _conn() -> sqlite3.Connection:
@@ -1005,6 +1078,10 @@ def apply_referral(invitee_id: str, code: str) -> dict:
     u_inviter = load_user(inviter_id)
     _earn(u_inviter, REFERRAL_INVITER_SIGNUP, account_id=inviter_id)
     save_user(inviter_id, u_inviter)
+    push_life_notification(
+        inviter_id, "referral_signup",
+        f"🎉 新好友注册成功，你获得 +{REFERRAL_INVITER_SIGNUP} 积分",
+    )
     return {
         "ok": True,
         "inviter_bonus": REFERRAL_INVITER_SIGNUP,
@@ -1015,6 +1092,8 @@ def apply_referral(invitee_id: str, code: str) -> dict:
 def try_referral_poker_reward(invitee_id: str) -> None:
     if not invitee_id or invitee_id.startswith(("npc_", "ai_")):
         return
+    inviter_id = None
+    invitee_name = "好友"
     with _lock:
         with _conn() as c:
             row = c.execute(
@@ -1022,12 +1101,22 @@ def try_referral_poker_reward(invitee_id: str) -> None:
             ).fetchone()
             if not row:
                 return
-            c.execute("UPDATE referrals SET poker_rewarded=1 WHERE invitee_id=?", (invitee_id,))
             inviter_id = row["inviter_id"]
+            acc = c.execute(
+                "SELECT COALESCE(NULLIF(display_name,''), username, '好友') AS name "
+                "FROM life_accounts WHERE id=?", (invitee_id,),
+            ).fetchone()
+            if acc:
+                invitee_name = acc["name"]
+            c.execute("UPDATE referrals SET poker_rewarded=1 WHERE invitee_id=?", (invitee_id,))
     from life_game import load_user, save_user, _earn
     u = load_user(inviter_id)
     _earn(u, REFERRAL_INVITER_POKER, account_id=inviter_id)
     save_user(inviter_id, u)
+    push_life_notification(
+        inviter_id, "referral_poker",
+        f"🎁 {invitee_name} 完成首局扑克，你获得 +{REFERRAL_INVITER_POKER} 积分",
+    )
 
 
 def get_referral_summary(account_id: str) -> dict:
@@ -1044,6 +1133,7 @@ def get_referral_summary(account_id: str) -> dict:
         "invite_code": code,
         "invites_count": count,
         "poker_rewards": poker_done,
+        "invitees": list_referral_invitees(account_id),
         "rewards": {
             "invitee_signup": REFERRAL_INVITEE_BONUS,
             "inviter_signup": REFERRAL_INVITER_SIGNUP,

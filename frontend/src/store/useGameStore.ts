@@ -875,7 +875,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncEngagement: async () => {
     try {
-      const [seasonRes, evRes] = await Promise.all([fetchSeasonCurrent(), fetchNpcEvents()]);
+      const api = await import('../lib/lifeEngagementApi');
+      const [seasonRes, evRes, notifRes] = await Promise.all([
+        api.fetchSeasonCurrent(),
+        api.fetchNpcEvents(),
+        api.fetchGrowthNotifications().catch(() => ({ ok: false as const, messages: [] as string[] })),
+      ]);
+      if (notifRes.ok && notifRes.messages?.length) {
+        for (const msg of notifRes.messages) get().addMessage(msg);
+      }
       if (seasonRes.ok && seasonRes.season) {
         set({
           season: seasonRes.season,

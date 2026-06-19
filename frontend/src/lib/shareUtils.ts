@@ -201,8 +201,29 @@ export async function renderPokerShareCard(data: PokerHandResult, linkUrl?: stri
   const footerUrl = linkUrl || appBaseUrl();
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
   ctx.font = '11px system-ui, sans-serif';
-  const footer = footerUrl.length > 56 ? `${footerUrl.slice(0, 54)}…` : footerUrl;
-  ctx.fillText(footer, 24, h - 24);
+  const footer = footerUrl.length > 48 ? `${footerUrl.slice(0, 46)}…` : footerUrl;
+  ctx.fillText(footer, 24, h - 28);
+  ctx.fillText('扫码或打开链接加入', 24, h - 12);
+
+  try {
+    const QRCode = (await import('qrcode')).default;
+    const qrDataUrl = await QRCode.toDataURL(footerUrl, {
+      width: 96,
+      margin: 1,
+      color: { dark: '#1a4d32', light: '#ffffff' },
+    });
+    const qrImg = new Image();
+    await new Promise<void>((resolve, reject) => {
+      qrImg.onload = () => resolve();
+      qrImg.onerror = () => reject(new Error('QR load failed'));
+      qrImg.src = qrDataUrl;
+    });
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(w - 118, h - 118, 104, 104);
+    ctx.drawImage(qrImg, w - 112, h - 112, 92, 92);
+  } catch {
+    /* QR optional */
+  }
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(b => (b ? resolve(b) : reject(new Error('生成图片失败'))), 'image/png');
