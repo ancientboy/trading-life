@@ -14,7 +14,7 @@ import { OfficePath } from './pathfinding';
 import {
   assignPath, useGameStore,
 } from '../store/useGameStore';
-import { chatChannelForZone } from './lifeEngagementApi';
+import { chatChannelForZone, agentBrainDialogue, agentBrainTeaParty, type ChatMessage } from './lifeEngagementApi';
 import { agentBrainSpeak } from './lifeEngagementApi';
 
 export type BrainMode = 'social' | 'explore' | 'self_care';
@@ -60,9 +60,19 @@ interface BrainMemory {
   lastChatAt: number;
   traits: AgentTraits;
   socialTargetId?: string;
+  pendingDialogueTargetId?: string;
 }
 
 const brainMem = new Map<string, BrainMemory>();
+const dialogueCooldown = new Map<string, number>();
+const teaPartyCooldown = new Map<string, number>();
+let lastSocialScanAt = 0;
+let socialEventsBusy = false;
+
+const DIALOGUE_COOLDOWN_MS = 90000;
+const TEA_PARTY_COOLDOWN_MS = 180000;
+const SOCIAL_SCAN_INTERVAL_MS = 5000;
+const PROXIMITY_DIST = 1.8;
 
 function hashStr(s: string): number {
   let h = 0;
@@ -121,6 +131,114 @@ function getMemory(char: CharState): BrainMemory {
   return m;
 }
 
+function pairKey(a: string, b: string): string {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+function agentDist(a: CharState, b: CharState): number {
+  return Math.hypot(a.x - b.x, a.z - b.z);
+}
+
+function appendChatMessages(
+  channel: string,
+  rows: Array<{ id: number; body: string; agent_id: string; created_at: number }>,
+  agents: Record<string, CharState>,
+) {
+  const store = useGameStore.getState();
+  if (channel !== chatChannelForZone(store.activeZone)) return;
+  const newMsgs: ChatMessage[] = rows.map(r => ({
+    id: r.id,
+    channel,
+    user_id: '',
+    display_name: agents[r.agent_id]?.data.name || r.agent_id,
+    agent_id: r.agent_id,
+    body: r.body,
+    kind: 'agent',
+    created_at: r.created_at,
+  }));
+  store.setChatMessages([...store.chatMessages, ...newMsgs]);
+  if (rows.length > 0) store.addMessage(`💬 Agent 们正在聊天（${rows.length} 条）`);
+}
+
+async function tryAgentDialogue(a: CharState, b: CharState, channel: string, now: number): Promise<void> {
+  const key = pairKey(a.agentId, b.agentId);
+  if ((dialogueCooldown.get(key) ?? 0) > now) return;
+  if (agentDist(a, b) > PROXIMITY_DIST) return;
+  const memA = getMemory(a);
+  const memB = getMemory(b);
+  if (memA.lastMode !== 'social' && memB.lastMode !== 'social') return;
+  if (Math.random() > 0.35) return;
+
+  dialogueCooldown.set(key, now + DIALOGUE_COOLDOWN_MS);
+  const res = await agentBrainDialogue({
+    channel,
+    agent_a_id: a.agentId, agent_a_name: a.data.name, agent_a_soul: a.data.soulMd || '',
+    agent_b_id: b.agentId, agent_b_name: b.data.name, agent_b_soul: b.data.soulMd || '',
+    rounds: 2,
+  });
+  if (res.ok && res.messages?.length) {
+    appendChatMessages(channel, res.messages, useGameStore.getState().agents);
+    useGameStore.getState().setAgentBubble(a.agentId, res.messages[0]?.body || '…', now + 5000);
+    const last = res.messages[res.messages.length - 1];
+    if (last) useGameStore.getState().setAgentBubble(b.agentId, last.body, now + 5500);
+  }
+}
+
+async function tryTeaParty(zone: string, group: CharState[], channel: string, now: number): Promise<void> {
+  if (group.length < 3) return;
+  if ((teaPartyCooldown.get(zone) ?? 0) > now) return;
+  const avgSocial = group.reduce((s, c) => s + getMemory(c).traits.social, 0) / group.length;
+  if (avgSocial < 40 && Math.random() > 0.15) return;
+  if (Math.random() > 0.12) return;
+
+  teaPartyCooldown.set(zone, now + TEA_PARTY_COOLDOWN_MS);
+  const picked = group.slice(0, 5);
+  const res = await agentBrainTeaParty({
+    channel, zone,
+    agents: picked.map(c => ({ agent_id: c.agentId, name: c.data.name, soul_md: c.data.soulMd || '' })),
+  });
+  if (res.ok && res.messages?.length) {
+    appendChatMessages(channel, res.messages, useGameStore.getState().agents);
+    useGameStore.getState().addMessage(`🍵 ${zone} 茶话会 · ${res.topic || '闲聊'}`);
+    picked.forEach((c, i) => {
+      const msg = res.messages![i];
+      if (msg) useGameStore.getState().setAgentBubble(c.agentId, msg.body, now + 6000 + i * 800);
+    });
+  }
+}
+
+/** 区域社交扫描 — Agent 互聊链 + 茶话会 */
+export function tickSocialEvents(now: number): void {
+  if (socialEventsBusy || now - lastSocialScanAt < SOCIAL_SCAN_INTERVAL_MS) return;
+  lastSocialScanAt = now;
+
+  const idle = Object.values(useGameStore.getState().agents).filter(a =>
+    !a.isWalking && !a.activity && !a.inTransit && !a.travelIntent && !a.userDispatched,
+  );
+  const byZone: Record<string, CharState[]> = {};
+  idle.forEach(a => {
+    const z = zoneAtPosition(a.x, a.z);
+    (byZone[z] = byZone[z] || []).push(a);
+  });
+
+  socialEventsBusy = true;
+  void (async () => {
+    try {
+      for (const [zone, group] of Object.entries(byZone)) {
+        const channel = chatChannelForZone(zone);
+        if (group.length >= 3) await tryTeaParty(zone, group, channel, now);
+        for (let i = 0; i < group.length; i++) {
+          for (let j = i + 1; j < group.length; j++) {
+            await tryAgentDialogue(group[i], group[j], channel, now);
+          }
+        }
+      }
+    } finally {
+      socialEventsBusy = false;
+    }
+  })();
+}
+
 /** 感知层 — 采集当前 Agent 环境信息 */
 export function perceiveAgent(char: CharState, allAgents: CharState[]): AgentPerception {
   const zone = zoneAtPosition(char.x, char.z);
@@ -170,6 +288,7 @@ export function decideAgentAction(perception: AgentPerception, mem: BrainMemory)
   };
   const mode = (Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0]) as BrainMode;
   mem.lastMode = mode;
+  useGameStore.setState(s => ({ brainVersion: s.brainVersion + 1 }));
 
   return buildActionForMode(mode, perception, mem);
 }

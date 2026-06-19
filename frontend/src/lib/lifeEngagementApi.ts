@@ -122,6 +122,7 @@ export async function agentBrainSpeak(opts: {
   nearby_names?: string[];
   target_agent_name?: string;
   post_to_chat?: boolean;
+  remember?: boolean;
 }) {
   const r = await fetch(`${API}/social/agent-brain/speak`, {
     method: 'POST', headers: headers(), body: JSON.stringify(opts),
@@ -130,6 +131,40 @@ export async function agentBrainSpeak(opts: {
     ok: boolean; line?: string;
     chat?: { id: number; body: string; agent_id: string; created_at: number };
   }>(r);
+}
+
+export async function agentBrainDialogue(opts: {
+  channel: string;
+  agent_a_id: string; agent_a_name: string; agent_a_soul: string;
+  agent_b_id: string; agent_b_name: string; agent_b_soul: string;
+  rounds?: number;
+}) {
+  const r = await fetch(`${API}/social/agent-brain/dialogue`, {
+    method: 'POST', headers: headers(), body: JSON.stringify(opts),
+  });
+  return parse<{
+    ok: boolean; messages?: Array<{ id: number; body: string; agent_id: string; created_at: number }>;
+    turns?: number; error?: string;
+  }>(r);
+}
+
+export async function agentBrainTeaParty(opts: {
+  channel: string; zone: string;
+  agents: Array<{ agent_id: string; name: string; soul_md: string }>;
+  topic?: string;
+}) {
+  const r = await fetch(`${API}/social/agent-brain/tea-party`, {
+    method: 'POST', headers: headers(), body: JSON.stringify(opts),
+  });
+  return parse<{
+    ok: boolean; messages?: Array<{ id: number; body: string; agent_id: string; created_at: number }>;
+    topic?: string; error?: string;
+  }>(r);
+}
+
+export async function fetchAgentMemories(agentId: string) {
+  const r = await fetch(`${API}/social/agent-brain/memory/${encodeURIComponent(agentId)}`, { headers: headers() });
+  return parse<{ ok: boolean; memories: Array<{ id: number; kind: string; summary: string; created_at: number }> }>(r);
 }
 
 export interface ChatMessage {

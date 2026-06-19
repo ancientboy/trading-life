@@ -170,6 +170,15 @@ def init_db(data_dir: Path) -> None:
             processed_at INTEGER NOT NULL DEFAULT 0
         );
         CREATE INDEX IF NOT EXISTS idx_dispatch_pending ON dispatch_queue(user_id, status);
+        CREATE TABLE IF NOT EXISTS agent_memory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            agent_id TEXT NOT NULL,
+            kind TEXT NOT NULL DEFAULT 'event',
+            summary TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_agent_memory ON agent_memory(user_id, agent_id, created_at DESC);
         CREATE TABLE IF NOT EXISTS trading_pk (
             id TEXT PRIMARY KEY,
             challenger_id TEXT NOT NULL,
@@ -711,6 +720,47 @@ def _seed_engagement_data() -> None:
 
 def now_ms() -> int:
     return int(datetime.now(CST).timestamp() * 1000)
+
+
+MAX_AGENT_MEMORIES = 30
+
+
+def append_agent_memory(user_id: str, agent_id: str, kind: str, summary: str) -> None:
+    text = (summary or "").strip()[:200]
+    if not text or not agent_id:
+        return
+    ts = now_ms()
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                "INSERT INTO agent_memory (user_id, agent_id, kind, summary, created_at) VALUES (?,?,?,?,?)",
+                (user_id, agent_id, (kind or "event")[:16], text, ts),
+            )
+            cnt = c.execute(
+                "SELECT COUNT(*) FROM agent_memory WHERE user_id=? AND agent_id=?",
+                (user_id, agent_id),
+            ).fetchone()[0]
+            if cnt > MAX_AGENT_MEMORIES:
+                c.execute(
+                    """DELETE FROM agent_memory WHERE id IN (
+                       SELECT id FROM agent_memory WHERE user_id=? AND agent_id=?
+                       ORDER BY created_at ASC LIMIT ?)""",
+                    (user_id, agent_id, cnt - MAX_AGENT_MEMORIES),
+                )
+
+
+def get_agent_memories(user_id: str, agent_id: str, limit: int = 12) -> list[dict]:
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT id, kind, summary, created_at FROM agent_memory WHERE user_id=? AND agent_id=? ORDER BY created_at DESC LIMIT ?",
+            (user_id, agent_id, max(1, min(limit, 30))),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def memory_snippets_for_prompt(user_id: str, agent_id: str, limit: int = 8) -> list[str]:
+    rows = get_agent_memories(user_id, agent_id, limit)
+    return [r["summary"] for r in reversed(rows)]
 
 
 def ensure_season_score(season_id: str, user_id: str) -> None:

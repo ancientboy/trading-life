@@ -137,6 +137,8 @@ interface GameStore {
   dailyAllowanceClaimed: boolean;
   dailyAllowanceAmount: number;
   agentBubble: { agentId: string; text: string; until: number } | null;
+  /** Agent 大脑决策刷新计数（驱动 UI 模式标签） */
+  brainVersion: number;
   chatMessages: ChatMessage[];
   npcEvents: NpcEvent[];
   season: SeasonInfo | null;
@@ -293,6 +295,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   dailyAllowanceClaimed: false,
   dailyAllowanceAmount: DAILY_ALLOWANCE_AMOUNT,
   agentBubble: null,
+  brainVersion: 0,
   chatMessages: [],
   npcEvents: [],
   season: null,

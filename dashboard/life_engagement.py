@@ -65,6 +65,151 @@ class AgentBrainSpeakBody(BaseModel):
     nearby_names: list[str] = Field(default_factory=list)
     target_agent_name: str = ""
     post_to_chat: bool = False
+    remember: bool = True
+
+
+class AgentDialogueBody(BaseModel):
+    channel: str
+    agent_a_id: str
+    agent_a_name: str = "Agent A"
+    agent_a_soul: str = ""
+    agent_b_id: str
+    agent_b_name: str = "Agent B"
+    agent_b_soul: str = ""
+    rounds: int = 2
+
+
+class AgentTeaPartyBody(BaseModel):
+    channel: str
+    zone: str = "hall"
+    agents: list[dict] = Field(default_factory=list)
+    topic: str = ""
+
+
+async def _speak_with_memory(
+    account_id: str,
+    body: "AgentSpeakBody",
+    remember: bool = True,
+    remember_kind: str = "event",
+    remember_prefix: str = "",
+) -> str:
+    from life_game import AgentSpeakBody, _generate_speak_line
+
+    mem = life_db.memory_snippets_for_prompt(account_id, body.agent_id)
+    enriched = body.model_copy(update={"memory_snippets": mem})
+    line = await _generate_speak_line(enriched)
+    if line and remember:
+        summary = f"{remember_prefix}{line}"[:200] if remember_prefix else line[:200]
+        life_db.append_agent_memory(account_id, body.agent_id, remember_kind, summary)
+    return line
+
+
+async def _run_agent_dialogue(
+    account_id: str,
+    channel: str,
+    aid_a: str, name_a: str, soul_a: str,
+    aid_b: str, name_b: str, soul_b: str,
+    rounds: int = 2,
+) -> list[dict]:
+    from life_game import AgentSpeakBody
+    from agent_brain import build_speak_context
+
+    out: list[dict] = []
+    prev = ""
+    total = max(2, min(rounds, 3)) * 2
+    for turn in range(total):
+        if turn % 2 == 0:
+            aid, name, soul, other = aid_a, name_a, soul_a, name_b
+        else:
+            aid, name, soul, other = aid_b, name_b, soul_b, name_a
+        ctx = build_speak_context(
+            "agent_to_agent",
+            target_name=other,
+            user_message=prev or f"碰到{other}",
+        )
+        line = await _speak_with_memory(
+            account_id,
+            AgentSpeakBody(
+                agent_id=aid,
+                agent_name=name,
+                soul_md=soul,
+                context=ctx,
+                decision_mode="social",
+                user_message=prev[:120] if prev else "",
+                target_agent_name=other,
+            ),
+            remember_kind="social",
+            remember_prefix=f"对{other}: ",
+        )
+        if prev:
+            life_db.append_agent_memory(account_id, aid, "social", f"{other}说: {prev}"[:200])
+        if not line:
+            continue
+        row = await _insert_agent_chat_line(account_id, channel, aid, line)
+        out.append(row)
+        prev = line
+    if out:
+        life_db.append_agent_memory(account_id, aid_a, "social", f"与{name_b}聊天"[:200])
+        life_db.append_agent_memory(account_id, aid_b, "social", f"与{name_a}聊天"[:200])
+    return out
+
+
+TEA_PARTY_TOPICS = ["今日战况", "去哪放松", "摸鱼心得", "美食推荐", "八卦时间"]
+
+
+async def _run_tea_party(
+    account_id: str,
+    channel: str,
+    zone: str,
+    agents: list[dict],
+    topic: str = "",
+) -> tuple[list[dict], str]:
+    from life_game import AgentSpeakBody
+    from agent_brain import build_speak_context
+
+    if len(agents) < 3:
+        return [], ""
+    topic = (topic or random.choice(TEA_PARTY_TOPICS)).strip()[:40]
+    names = [a.get("name") or a.get("agent_id") or "Agent" for a in agents[:5]]
+    out: list[dict] = []
+    for a in agents[:5]:
+        aid = a.get("agent_id") or ""
+        name = a.get("name") or aid
+        soul = a.get("soul_md") or ""
+        if not aid:
+            continue
+        others = [n for n in names if n != name]
+        ctx = build_speak_context(
+            "tea_party",
+            nearby_names=others,
+            target_name="",
+        ) + f"|topic:{topic}|zone:{zone}"
+        line = await _speak_with_memory(
+            account_id,
+            AgentSpeakBody(
+                agent_id=aid,
+                agent_name=name,
+                soul_md=soul,
+                context=ctx,
+                decision_mode="social",
+                nearby_names=others,
+            ),
+            remember_kind="social",
+            remember_prefix=f"茶话会·{topic}: ",
+        )
+        if not line:
+            continue
+        row = await _insert_agent_chat_line(account_id, channel, aid, line)
+        out.append(row)
+    if out:
+        for a in agents[:5]:
+            aid = a.get("agent_id") or ""
+            if aid:
+                life_db.append_agent_memory(
+                    account_id, aid, "social",
+                    f"参加{zone}茶话会·{topic}"[:200],
+                )
+    return out, topic
 
 
 async def _insert_agent_chat_line(
@@ -117,7 +262,8 @@ async def _agent_replies_to_chat(
         name = meta.get("name") or aid
         soul = meta.get("soulMd") or ""
         agent_type = meta.get("agentType") or "entertainment"
-        traits = derive_traits(soul, agent_type, aid)
+        life_db.append_agent_memory(account_id, aid, "user", f"用户: {user_text[:120]}")
+        mem = life_db.memory_snippets_for_prompt(account_id, aid)
         ctx = build_speak_context(
             "chat_reply",
             stress=40,
@@ -131,9 +277,11 @@ async def _agent_replies_to_chat(
             context=ctx,
             decision_mode="social",
             user_message=user_text[:120],
+            memory_snippets=mem,
         ))
         if not line:
             continue
+        life_db.append_agent_memory(account_id, aid, "chat", f"回复: {line}"[:200])
         row = await _insert_agent_chat_line(account_id, channel, aid, line)
         out.append(row)
     return out
@@ -166,6 +314,8 @@ async def post_chat(body: ChatPostBody, account_id: str = Depends(resolve_accoun
             )
             mid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
     life_db.add_season_points(account_id, social=2)
+    if body.agent_id:
+        life_db.append_agent_memory(account_id, body.agent_id, "user", f"用户: {text[:120]}")
     replies = await _agent_replies_to_chat(account_id, ch, text, body.agent_id)
     return {"ok": True, "id": mid, "created_at": ts, "agent_replies": replies}
 
@@ -333,23 +483,62 @@ async def agent_brain_speak(body: AgentBrainSpeakBody, account_id: str = Depends
         nearby_names=body.nearby_names,
         target_name=body.target_agent_name,
     )
-    line = await _generate_speak_line(AgentSpeakBody(
-        agent_id=body.agent_id,
-        agent_name=body.agent_name,
-        soul_md=body.soul_md,
-        context=ctx,
-        activity=body.activity,
-        stress=body.stress,
-        mood_tag=body.mood_tag,
-        decision_mode=body.decision_mode,
-        nearby_names=body.nearby_names,
-        target_agent_name=body.target_agent_name,
-    ))
+    line = await _speak_with_memory(
+        account_id,
+        AgentSpeakBody(
+            agent_id=body.agent_id,
+            agent_name=body.agent_name,
+            soul_md=body.soul_md,
+            context=ctx,
+            activity=body.activity,
+            stress=body.stress,
+            mood_tag=body.mood_tag,
+            decision_mode=body.decision_mode,
+            nearby_names=body.nearby_names,
+            target_agent_name=body.target_agent_name,
+        ),
+        remember=body.remember,
+        remember_kind="event",
+        remember_prefix="",
+    )
     out: dict = {"ok": True, "line": line}
-    if body.post_to_chat and body.channel:
+    if body.post_to_chat and body.channel and line:
         row = await _insert_agent_chat_line(account_id, body.channel, body.agent_id, line)
         out["chat"] = row
     return out
+
+
+@social_router.post("/social/agent-brain/dialogue")
+async def agent_brain_dialogue(body: AgentDialogueBody, account_id: str = Depends(resolve_account_id)):
+    """Agent 互聊链 — 两人来回对话写入频道。"""
+    ch = (body.channel or "").strip()[:64]
+    if not ch or not body.agent_a_id or not body.agent_b_id:
+        return {"ok": False, "error": "参数不完整"}
+    messages = await _run_agent_dialogue(
+        account_id, ch,
+        body.agent_a_id, body.agent_a_name, body.agent_a_soul,
+        body.agent_b_id, body.agent_b_name, body.agent_b_soul,
+        max(1, min(body.rounds, 3)),
+    )
+    life_db.add_season_points(account_id, social=min(10, len(messages) * 2))
+    return {"ok": True, "messages": messages, "turns": len(messages)}
+
+
+@social_router.post("/social/agent-brain/tea-party")
+async def agent_brain_tea_party(body: AgentTeaPartyBody, account_id: str = Depends(resolve_account_id)):
+    """群聊茶话会 — 同区多 Agent 轮流发言。"""
+    ch = (body.channel or "").strip()[:64]
+    if not ch or len(body.agents) < 3:
+        return {"ok": False, "error": "至少需要 3 名 Agent"}
+    messages, topic_used = await _run_tea_party(account_id, ch, body.zone, body.agents, body.topic)
+    life_db.add_season_points(account_id, social=min(15, len(messages) * 2))
+    return {"ok": True, "messages": messages, "topic": topic_used or body.topic}
+
+
+@social_router.get("/social/agent-brain/memory/{agent_id}")
+async def get_agent_brain_memory(agent_id: str, account_id: str = Depends(resolve_account_id)):
+    rows = life_db.get_agent_memories(account_id, agent_id, 15)
+    return {"ok": True, "memories": rows}
 
 
 # ─── Phase 2: PvP ────────────────────────────────────────────────

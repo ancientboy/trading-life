@@ -479,6 +479,7 @@ class AgentSpeakBody(BaseModel):
     nearby_names: list[str] = Field(default_factory=list)
     user_message: str = ""
     target_agent_name: str = ""
+    memory_snippets: list[str] = Field(default_factory=list)
 
 
 class MigrateBody(BaseModel):
@@ -899,6 +900,7 @@ SOUL_FALLBACK = {
     "self_care": ["该放松一下了", "压力有点大…", "想找个地方歇歇"],
     "chat_reply": ["哈哈有道理", "我也这么觉得", "说得对！"],
     "agent_to_agent": ["你今天状态怎么样？", "一起摸鱼？", "别卷了来聊天"],
+    "tea_party": ["大家聊什么呢？", "今天气氛不错呀", "我赞成！", "哈哈哈"],
 }
 
 
@@ -923,13 +925,19 @@ async def _generate_speak_line(body: AgentSpeakBody) -> str:
         extra.append(f"正在和 {body.target_agent_name} 互动")
     if body.decision_mode:
         extra.append(f"行为模式:{body.decision_mode}")
+    mem = body.memory_snippets or []
+    if mem:
+        extra.append("记忆:" + "；".join(mem[-6:]))
     scene = ctx + (f"，活动：{body.activity}" if body.activity else "")
     if extra:
         scene += "；" + "；".join(extra)
+    mem_block = ""
+    if mem:
+        mem_block = "\n\n近期记忆（可参考，保持连贯）:\n" + "\n".join(f"- {m}" for m in mem[-8:])
     prompt = (
         f"你是游戏角色「{body.agent_name}」。根据以下 SOUL 人格文档，"
         f"用一句话（不超过28字、口语化、不加引号）回应当前场景：{scene}"
-        f"\n\nSOUL:\n{soul_excerpt}"
+        f"\n\nSOUL:\n{soul_excerpt}{mem_block}"
     )
     try:
         async with aiohttp.ClientSession() as session:

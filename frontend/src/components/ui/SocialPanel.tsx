@@ -114,6 +114,12 @@ export function SocialPanel() {
         </div>
       </Section>
 
+      <Section title="🍵 Agent 茶话会" subtitle="同区 3+ Agent 会自动开启">
+        <p style={{ fontSize: 11, color: '#8a7e72', marginBottom: 6, lineHeight: 1.45 }}>
+          当多个 Agent 在同一区域闲逛时，可能自发组织茶话会并在本频道发言。也可 @Agent 触发一对一回复。
+        </p>
+      </Section>
+
       <Section title="🎁 NPC 限时活动">
         {npcEvents.length === 0 && <p style={{ color: '#9a8b7a', fontSize: 11 }}>暂无活动</p>}
         {npcEvents.map((ev: NpcEvent) => (

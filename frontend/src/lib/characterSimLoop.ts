@@ -1,5 +1,5 @@
 import { useGameStore, assignPath, onPathComplete, teleportAgentToDestination, awardActivityPoints } from '../store/useGameStore';
-import { tickAgentBrain, brainDispatchLeisure, executeBrainSpeak } from './agentBrain';
+import { tickAgentBrain, brainDispatchLeisure, executeBrainSpeak, tickSocialEvents } from './agentBrain';
 import { homeNodeForAgent } from '../lib/agentHome';
 import { OfficePath } from './pathfinding';
 import { moveWithCollision } from './collision';
@@ -38,6 +38,8 @@ export function tickCharacterSim(dt: number) {
       if (ns < a.stress - 0.01) store.patchChar(a.agentId, { ...a, stress: ns });
     });
   });
+
+  tickSocialEvents(now);
 
   Object.values(agents).forEach(char => {
     let c = { ...char };

@@ -134,7 +134,8 @@ MODE_CONTEXT = {
     "explore": "wandering",
     "self_care": "self_care",
     "chat_reply": "chat_reply",
-    "agent_chat": "agent_to_agent",
+    "agent_to_agent": "agent_to_agent",
+    "tea_party": "tea_party",
 }
 
 
