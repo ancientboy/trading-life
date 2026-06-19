@@ -99,12 +99,37 @@ def _next_seat(state: dict, start: int, predicate) -> int | None:
     return None
 
 
+def _player_count(state: dict) -> int:
+    return len(state.get("players") or [])
+
+
+def _valid_actor_index(state: dict, idx: int) -> bool:
+    n = _player_count(state)
+    return 0 <= idx < n
+
+
+def _sanitize_actor_index(state: dict) -> bool:
+    """修正越界 actor_index，避免 public_state / run_ticks 崩溃"""
+    idx = state.get("actor_index", -1)
+    if idx < 0:
+        return False
+    if _valid_actor_index(state, idx):
+        return False
+    state["actor_index"] = -1
+    return True
+
+
 def _emit(state: dict, kind: str, payload: dict) -> None:
     state["events"].append({
         "seq": len(state["events"]),
         "kind": kind,
         **payload,
     })
+    # 防止长局事件无限膨胀导致同步响应过慢
+    if len(state["events"]) > 600:
+        state["events"] = state["events"][-400:]
+        for i, ev in enumerate(state["events"]):
+            ev["seq"] = i
 
 
 def start_new_hand(state: dict) -> dict:
@@ -447,10 +472,13 @@ def resolve_stuck_state(state: dict) -> bool:
 
     idx = state.get("actor_index", -1)
     if idx >= 0:
-        p = state["players"][idx]
-        if _can_act(p) and legal_actions(state, idx):
-            return False
-        state["actor_index"] = -1
+        if not _valid_actor_index(state, idx):
+            state["actor_index"] = -1
+        else:
+            p = state["players"][idx]
+            if _can_act(p) and legal_actions(state, idx):
+                return False
+            state["actor_index"] = -1
 
     if _street_settled(state):
         _advance_street(state)
@@ -512,6 +540,12 @@ def public_state(state: dict, viewer_user_id: str | None = None, since_seq: int 
             "poker_preset": (p.get("poker_profile") or {}).get("preset", "tag"),
         })
     events = [e for e in state["events"] if e.get("seq", 0) >= since_seq]
+    if len(events) > 120:
+        events = events[-120:]
+    actor_idx = state.get("actor_index", -1)
+    actor_name = ""
+    if _valid_actor_index(state, actor_idx):
+        actor_name = state["players"][actor_idx]["name"]
     return {
         "room_id": state["room_id"],
         "buy_in": state["buy_in"],
@@ -521,8 +555,8 @@ def public_state(state: dict, viewer_user_id: str | None = None, since_seq: int 
         "community": list(state["community"]),
         "pot": state["pot"],
         "current_bet": state["current_bet"],
-        "actor_index": state["actor_index"],
-        "actor_name": state["players"][state["actor_index"]]["name"] if state["actor_index"] >= 0 else "",
+        "actor_index": actor_idx,
+        "actor_name": actor_name,
         "button_index": state["button_index"],
         "big_blind": state["big_blind"],
         "small_blind": state["small_blind"],

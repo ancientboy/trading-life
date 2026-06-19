@@ -65,23 +65,32 @@ export function PublicSpectateView({ roomId, loggedIn }: { roomId: string; logge
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const sinceRef = useRef(0);
+  const inFlightRef = useRef(false);
 
   const poll = useCallback(async () => {
-    const r = await fetchPublicSpectateState(roomId, sinceRef.current);
-    setLoading(false);
-    if (!r.ok) {
-      setError(r.error || '加载失败');
-      return;
-    }
-    setError('');
-    if (r.buy_in) setBuyIn(r.buy_in);
-    if (r.game) {
-      setGame(r.game);
-      if (r.game.events?.length) {
-        sinceRef.current = Math.max(...r.game.events.map(e => e.seq ?? 0)) + 1;
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    try {
+      const r = await fetchPublicSpectateState(roomId, sinceRef.current);
+      setLoading(false);
+      if (!r.ok) {
+        setError(r.error || '加载失败');
+        return;
       }
+      setError('');
+      if (r.buy_in) setBuyIn(r.buy_in);
+      if (r.game) {
+        setGame(r.game);
+        if (r.game.events?.length) {
+          sinceRef.current = Math.max(...r.game.events.map(e => e.seq ?? 0)) + 1;
+        } else if (r.game.event_count > sinceRef.current) {
+          sinceRef.current = r.game.event_count;
+        }
+      }
+      if (r.status) setStatus(r.status);
+    } finally {
+      inFlightRef.current = false;
     }
-    if (r.status) setStatus(r.status);
   }, [roomId]);
 
   useEffect(() => {

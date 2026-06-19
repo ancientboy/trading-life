@@ -16,6 +16,7 @@ from poker_engine import (
     resolve_stuck_state,
     start_new_hand,
     start_next_hand_if_ready,
+    _sanitize_actor_index,
 )
 from poker_style import AI_BOT_ROSTER, ADVANCED_BUY_INS
 
@@ -114,6 +115,7 @@ async def run_ticks(state: dict, max_steps: int = 8, use_llm: bool = False, time
     """自动推进 bot 行动，直到需要等待或达到步数/时间上限"""
     import time
 
+    _sanitize_actor_index(state)
     steps = 0
     deadline = time.monotonic() + time_budget_ms / 1000.0
     while steps < max_steps and state["status"] == "playing":
@@ -126,7 +128,9 @@ async def run_ticks(state: dict, max_steps: int = 8, use_llm: bool = False, time
         if state["status"] == "tournament_complete":
             break
         idx = state.get("actor_index", -1)
-        if idx < 0:
+        if idx < 0 or not (0 <= idx < len(state["players"])):
+            if idx >= 0:
+                state["actor_index"] = -1
             if not resolve_stuck_state(state):
                 break
             steps += 1
@@ -142,6 +146,25 @@ async def run_ticks(state: dict, max_steps: int = 8, use_llm: bool = False, time
         _apply_with_fallback(state, idx, action, amount)
         steps += 1
     return state
+
+
+async def _run_ticks_bounded(
+    state: dict,
+    max_steps: int,
+    use_llm: bool = False,
+    time_budget_ms: int = 12000,
+    wall_timeout_s: float = 10.0,
+) -> dict:
+    """带墙钟上限的 run_ticks，避免单次 API 长时间阻塞"""
+    try:
+        return await asyncio.wait_for(
+            run_ticks(state, max_steps=max_steps, use_llm=use_llm, time_budget_ms=time_budget_ms),
+            timeout=wall_timeout_s,
+        )
+    except asyncio.TimeoutError:
+        _sanitize_actor_index(state)
+        resolve_stuck_state(state)
+        return state
 
 
 def settle_tournament(state: dict, room: dict, players_db: list[dict], account_id: str) -> dict:
@@ -302,19 +325,25 @@ async def get_advanced_state(
 
     spectator = bool(room.get("spectator"))
 
+    _sanitize_actor_index(state)
     if auto_run and state["status"] == "playing":
         resolve_stuck_state(state)
         if run_until_complete:
             total = 0
-            hard_cap = 60
+            hard_cap = 12
             while state["status"] == "playing" and total < hard_cap:
-                batch = min(20, hard_cap - total)
-                state = await run_ticks(state, max_steps=batch, use_llm=use_llm, time_budget_ms=15000)
+                batch = min(8, hard_cap - total)
+                state = await _run_ticks_bounded(
+                    state, max_steps=batch, use_llm=use_llm, time_budget_ms=6000, wall_timeout_s=8.0,
+                )
                 total += batch
         elif max_steps > 0:
             cap = max(1, min(max_steps, 24))
             budget = 8000 if cap <= 3 else 12000 if cap <= 8 else 15000
-            state = await run_ticks(state, max_steps=cap, use_llm=use_llm, time_budget_ms=budget)
+            wall = 8.0 if cap <= 3 else 10.0 if cap <= 8 else 12.0
+            state = await _run_ticks_bounded(
+                state, max_steps=cap, use_llm=use_llm, time_budget_ms=budget, wall_timeout_s=wall,
+            )
         with life_db._lock:
             with life_db._conn() as c:
                 _save_game_state(c, room_id, state)
@@ -370,7 +399,7 @@ async def get_public_spectate_state(
 
     if auto_run and state["status"] == "playing" and max_steps > 0:
         cap = max(1, min(max_steps, 8))
-        state = await run_ticks(state, max_steps=cap, use_llm=False, time_budget_ms=8000)
+        state = await _run_ticks_bounded(state, max_steps=cap, use_llm=False, time_budget_ms=8000, wall_timeout_s=10.0)
         with life_db._lock:
             with life_db._conn() as c:
                 _save_game_state(c, rid, state)

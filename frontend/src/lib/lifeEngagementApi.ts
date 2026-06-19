@@ -285,7 +285,7 @@ export async function pokerSolo(agentId: string, buyIn = 30) {
     tie?: boolean; winners_count?: number;
   }>(`${API}/pvp/poker/solo`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, buy_in: buyIn }),
-  });
+  }, 45000);
 }
 
 /** 快速加入：有公开房则进房，满员自动开牌；无房则单人 vs NPC */
@@ -397,7 +397,7 @@ export async function startAiSpectator(agentId: string, buyIn = 1000, numPlayers
   }>(`${API}/pvp/poker/ai-spectator/start`, {
     method: 'POST', headers: headers(),
     body: JSON.stringify({ agent_id: agentId, buy_in: buyIn, num_players: numPlayers }),
-  }, 25000);
+  }, 45000);
 }
 
 export async function fetchAdvancedPokerState(

@@ -116,9 +116,12 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       });
       if (roomIdRef.current !== roomId) return;
       if (!r.ok) {
-        setError(r.error || '同步失败');
+        const msg = r.error || '同步失败';
+        setError(msg);
         if (r.timedOut && !force && !pausedRef.current) {
           window.setTimeout(() => void runPoll({ force: true, steps: 3 }), 1500);
+        } else if (msg.includes('房间不存在') || msg.includes('状态丢失')) {
+          setBooting(false);
         }
         return;
       }
@@ -205,7 +208,12 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     return (
       <div style={{ textAlign: 'center', padding: 24, color: '#c0392b' }}>
         <div>{error || '无法加载牌局'}</div>
-        <button className="ui-btn" style={{ marginTop: 12 }} onClick={() => void runPoll({ initial: true, force: true, steps: 20 })}>重试</button>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+          <button className="ui-btn" onClick={() => void runPoll({ initial: true, force: true, steps: 6 })}>重试</button>
+          {onClose && (
+            <button className="ui-btn" onClick={onClose}>关闭并重开</button>
+          )}
+        </div>
       </div>
     );
   }
