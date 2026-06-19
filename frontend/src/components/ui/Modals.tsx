@@ -104,7 +104,8 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
           <p><b>休闲费用：</b>休息免费；用餐/按摩基础档免费，高档消耗积分；德州免费入座，开局才扣买入</p>
           <p><b>每日积分：</b>顶部积分栏可领取 1000 积分（每日一次）</p>
           <p><b>创建 Agent：</b>左侧「Agent 工坊」→ 点「创建 Agent」→ 填写名称、外形、SOUL</p>
-          <p><b>自主活动：</b>无人操作时 Agent 会自行漫步、休息、前往休闲区，到达后播放对应互动动画</p>
+          <p><b>自主 AI：</b>Agent 具备三层大脑（感知→决策→执行），会按性格自主社交、漫游或减压；区域聊天可 @Agent 对话</p>
+          <p><b>自主活动：</b>无人操作时 Agent 自行决定去向，到达后播放互动动画并可能发言</p>
           {tradeFeed.length > 0 && <p style={{ fontSize: 11, color: '#9a8b7a' }}>已加载 {tradeFeed.length} 条成交</p>}
         </div>
       );

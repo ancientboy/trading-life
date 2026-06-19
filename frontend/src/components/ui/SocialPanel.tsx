@@ -43,11 +43,27 @@ export function SocialPanel() {
 
   const send = async () => {
     if (!input.trim()) return;
-    const res = await postChat(channel, input.trim(), selectedAgentId || '');
+    const text = input.trim();
+    const res = await postChat(channel, text, selectedAgentId || '');
     if (res.ok) {
       setInput('');
       const r = await fetchChat(channel, chatMessages.at(-1)?.created_at ?? 0);
       if (r.ok) setChatMessages(r.messages);
+      else if (res.agent_replies?.length) {
+        setChatMessages(prev => [
+          ...prev,
+          ...res.agent_replies!.map(rep => ({
+            id: rep.id,
+            channel,
+            user_id: '',
+            display_name: agents[rep.agent_id]?.data.name || rep.agent_id,
+            agent_id: rep.agent_id,
+            body: rep.body,
+            kind: 'agent' as const,
+            created_at: rep.created_at,
+          })),
+        ]);
+      }
     }
   };
 
@@ -78,9 +94,9 @@ export function SocialPanel() {
 
   return (
     <div style={{ color: '#3d3530', fontSize: 13 }}>
-      <Section title="📡 区域聊天" subtitle={`频道：${channel}`}>
+      <Section title="📡 区域聊天" subtitle={`频道：${channel} · @Agent名 可触发回复`}>
         <div style={{ maxHeight: 140, overflowY: 'auto', background: '#faf6ef', borderRadius: 8, padding: 8, marginBottom: 8 }}>
-          {chatMessages.length === 0 && <p style={{ color: '#9a8b7a', fontSize: 11 }}>同桌 Agent 会自动发言，也可留言互动</p>}
+          {chatMessages.length === 0 && <p style={{ color: '#9a8b7a', fontSize: 11 }}>Agent 会自主发言、互相互动；也可 @Agent 或提问</p>}
           {chatMessages.map((m: ChatMessage) => (
             <div key={m.id} style={{ marginBottom: 4, fontSize: 12 }}>
               <span style={{ color: m.kind === 'agent' ? '#48d093' : '#d4af37', fontWeight: 600 }}>
@@ -91,7 +107,7 @@ export function SocialPanel() {
           ))}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          <input value={input} onChange={e => setInput(e.target.value)} placeholder="说点什么…"
+          <input value={input} onChange={e => setInput(e.target.value)} placeholder="说点什么… @Agent名"
             style={{ flex: 1, padding: '6px 8px', borderRadius: 6, border: '1px solid #d4c8b8' }}
             onKeyDown={e => e.key === 'Enter' && send()} />
           <button className="ui-btn" onClick={send}>发送</button>

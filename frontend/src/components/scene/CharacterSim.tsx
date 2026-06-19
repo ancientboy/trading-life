@@ -1,14 +1,9 @@
 import { useFrame } from '@react-three/fiber';
-import { useGameStore, assignPath, pickWanderTarget, onPathComplete, maybeDispatchLeisure } from '../../store/useGameStore';
+import { useGameStore, assignPath, onPathComplete } from '../../store/useGameStore';
+import { tickAgentBrain, brainDispatchLeisure } from '../../lib/agentBrain';
 import { OfficePath } from '../../lib/pathfinding';
 
 const WALK_SPEED = 2.8;
-
-function nextWanderDelay(state: import('../../lib/constants').CharState['state']): number {
-  if (state === 'trading') return 6000 + Math.random() * 10000;
-  if (state === 'scanning') return 2000 + Math.random() * 3500;
-  return 3500 + Math.random() * 5500;
-}
 
 /** 全地图 Agent 行走模拟 — 世界坐标 + 跨区寻路 */
 export function CharacterSim() {
@@ -32,28 +27,8 @@ export function CharacterSim() {
         return;
       }
       if (!c.isWalking && !c.travelIntent && !c.activity) {
-        c = maybeDispatchLeisure(c);
-      }
-      c.moveTimer += dt * 1000 * simSpeed;
-      if (!c.isWalking && !c.travelIntent && c.moveTimer > c.nextMoveTime) {
-        const skipTrading = c.state === 'trading' && Math.random() > 0.25;
-        if (!skipTrading) {
-          c.moveTimer = 0;
-          c.nextMoveTime = nextWanderDelay(c.state);
-          const target = pickWanderTarget(c);
-          if ([OfficePath.massageByAgent[c.agentId], OfficePath.dineByAgent[c.agentId], OfficePath.pokerByAgent[c.agentId]].includes(target)) {
-            const intent = target === OfficePath.massageByAgent[c.agentId] ? 'massage'
-              : target === OfficePath.dineByAgent[c.agentId] ? 'dine' : 'poker';
-            c = { ...assignPath(c, target), travelIntent: intent };
-          } else if (target === OfficePath.boothByAgent[c.agentId]) {
-            c = assignPath(c, target);
-          } else {
-            c = assignPath(c, target);
-          }
-        } else {
-          c.moveTimer = 0;
-          c.nextMoveTime = 4000 + Math.random() * 6000;
-        }
+        c = brainDispatchLeisure(c, now);
+        if (!c.isWalking && !c.travelIntent) c = tickAgentBrain(c, now);
       }
       if (c.state === 'panic' && !c.isWalking && !c.travelIntent) c = assignPath(c, 'scr_ctr');
       if (c.isWalking && c.pathQueue.length) {

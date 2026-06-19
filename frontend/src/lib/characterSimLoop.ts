@@ -1,4 +1,5 @@
-import { useGameStore, assignPath, pickWanderTarget, onPathComplete, maybeDispatchLeisure, teleportAgentToDestination, awardActivityPoints } from '../store/useGameStore';
+import { useGameStore, assignPath, onPathComplete, teleportAgentToDestination, awardActivityPoints } from '../store/useGameStore';
+import { tickAgentBrain, brainDispatchLeisure, executeBrainSpeak } from './agentBrain';
 import { homeNodeForAgent } from '../lib/agentHome';
 import { OfficePath } from './pathfinding';
 import { moveWithCollision } from './collision';
@@ -6,12 +7,6 @@ import { moveWithCollision } from './collision';
 const WALK_SPEED = 2.8;
 const STUCK_SKIP_FRAMES = 24;
 const stuckFrames = new Map<string, number>();
-
-function nextWanderDelay(state: import('./constants').CharState['state']): number {
-  if (state === 'trading') return 6000 + Math.random() * 10000;
-  if (state === 'scanning') return 2000 + Math.random() * 3500;
-  return 3500 + Math.random() * 5500;
-}
 
 /** 单帧角色模拟（供 Canvas 2D 引擎调用，不依赖 Three.js） */
 const ACTIVITY_END_LABEL: Record<string, string> = {
@@ -78,7 +73,15 @@ export function tickCharacterSim(dt: number) {
       if (userDispatched) {
         useGameStore.getState().addMessage(`${c.data.name} 结束${label}，返回${dest}`);
       } else {
-        useGameStore.getState().setAgentBubble(c.agentId, `${label}结束～`, now + 3200);
+        void executeBrainSpeak(c, {
+          mode: 'self_care',
+          targetNode: '',
+          travelIntent: null,
+          speakOnArrive: true,
+          postToChat: Math.random() < 0.2,
+          speakContext: finished ?? 'greeting',
+          targetAgentName: '',
+        }, now);
       }
       const home = homeNodeForAgent(c.agentId, c.data);
       if (home) c = assignPath(c, home);
@@ -94,28 +97,9 @@ export function tickCharacterSim(dt: number) {
       if (node) c = teleportAgentToDestination(c, node, now);
       else c = { ...c, travelIntent: null };
     }
-    if (!c.isWalking && !c.travelIntent && !c.activity) c = maybeDispatchLeisure(c);
-    c.moveTimer += scaledDt * 1000;
-    if (!c.isWalking && !c.travelIntent && c.moveTimer > c.nextMoveTime) {
-      const skipTrading = c.state === 'trading' && Math.random() > 0.25;
-      if (!skipTrading) {
-        c.moveTimer = 0;
-        c.nextMoveTime = nextWanderDelay(c.state);
-        const target = pickWanderTarget(c);
-        const booth = OfficePath.boothByAgent[c.agentId];
-        if ([OfficePath.massageByAgent[c.agentId], OfficePath.dineByAgent[c.agentId], OfficePath.pokerByAgent[c.agentId]].includes(target)) {
-          const intent = target === OfficePath.massageByAgent[c.agentId] ? 'massage'
-            : target === OfficePath.dineByAgent[c.agentId] ? 'dine' : 'poker';
-          c = { ...assignPath({ ...c, userDispatched: false }, target), travelIntent: intent };
-        } else if (target === booth || target?.startsWith('rest_l')) {
-          c = { ...assignPath({ ...c, userDispatched: false }, target), travelIntent: 'rest' };
-        } else {
-          c = assignPath({ ...c, userDispatched: false }, target);
-        }
-      } else {
-        c.moveTimer = 0;
-        c.nextMoveTime = 4000 + Math.random() * 6000;
-      }
+    if (!c.isWalking && !c.travelIntent && !c.activity && !c.inTransit) {
+      c = brainDispatchLeisure(c, now);
+      if (!c.isWalking && !c.travelIntent) c = tickAgentBrain(c, now);
     }
     if (c.state === 'panic' && !c.isWalking && !c.travelIntent && !c.inTransit) c = assignPath(c, 'scr_ctr');
     if (c.isWalking && c.pathQueue.length) {

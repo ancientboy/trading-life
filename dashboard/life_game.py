@@ -473,6 +473,12 @@ class AgentSpeakBody(BaseModel):
     soul_md: str = ""
     context: str = "greeting"
     activity: Optional[str] = None
+    stress: float = 0
+    mood_tag: str = "neutral"
+    decision_mode: str = ""
+    nearby_names: list[str] = Field(default_factory=list)
+    user_message: str = ""
+    target_agent_name: str = ""
 
 
 class MigrateBody(BaseModel):
@@ -888,21 +894,42 @@ SOUL_FALLBACK = {
     "massage": ["感觉压力都散掉了", "技师手法真不错", "差点睡着了…"],
     "poker": ["这把运气不错！", "荷官发牌好快", "再来一局？"],
     "trading": ["盯盘中，别打扰我～", "这波趋势有意思", "策略信号出现了"],
+    "social_approach": ["嘿，你也在这呀！", "一起坐坐？", "好久不见～"],
+    "wandering": ["到处逛逛真不错", "这边风景还行", "下一家去哪呢"],
+    "self_care": ["该放松一下了", "压力有点大…", "想找个地方歇歇"],
+    "chat_reply": ["哈哈有道理", "我也这么觉得", "说得对！"],
+    "agent_to_agent": ["你今天状态怎么样？", "一起摸鱼？", "别卷了来聊天"],
 }
 
 
 async def _generate_speak_line(body: AgentSpeakBody) -> str:
     import random
     ctx = body.context or "greeting"
-    pool = SOUL_FALLBACK.get(ctx, SOUL_FALLBACK["greeting"])
+    base_key = ctx.split("|")[0] if "|" in ctx else ctx
+    pool = SOUL_FALLBACK.get(base_key, SOUL_FALLBACK.get(ctx, SOUL_FALLBACK["greeting"]))
     if not _zhipu_key or len((body.soul_md or "").strip()) < 10:
         return random.choice(pool)
     soul_excerpt = (body.soul_md or "")[:1200]
+    extra = []
+    if body.stress >= 55:
+        extra.append(f"当前压力 {int(body.stress)}%")
+    if body.mood_tag and body.mood_tag != "neutral":
+        extra.append(f"情绪:{body.mood_tag}")
+    if body.nearby_names:
+        extra.append(f"附近:{','.join(body.nearby_names[:3])}")
+    if body.user_message:
+        extra.append(f"玩家说:{body.user_message[:60]}")
+    if body.target_agent_name:
+        extra.append(f"正在和 {body.target_agent_name} 互动")
+    if body.decision_mode:
+        extra.append(f"行为模式:{body.decision_mode}")
+    scene = ctx + (f"，活动：{body.activity}" if body.activity else "")
+    if extra:
+        scene += "；" + "；".join(extra)
     prompt = (
         f"你是游戏角色「{body.agent_name}」。根据以下 SOUL 人格文档，"
-        f"用一句话（不超过28字、口语化、不加引号）回应当前场景：{ctx}"
-        + (f"，活动：{body.activity}" if body.activity else "")
-        + f"\n\nSOUL:\n{soul_excerpt}"
+        f"用一句话（不超过28字、口语化、不加引号）回应当前场景：{scene}"
+        f"\n\nSOUL:\n{soul_excerpt}"
     )
     try:
         async with aiohttp.ClientSession() as session:

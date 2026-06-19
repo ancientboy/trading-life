@@ -51,7 +51,10 @@ export async function postChat(channel: string, body: string, agentId = '') {
   const r = await fetch(`${API}/social/chat`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ channel, body, agent_id: agentId }),
   });
-  return parse<{ ok: boolean; id?: number; created_at?: number }>(r);
+  return parse<{
+    ok: boolean; id?: number; created_at?: number;
+    agent_replies?: Array<{ id: number; body: string; agent_id: string; kind: string; created_at: number }>;
+  }>(r);
 }
 
 export async function syncMood(agents: { agent_id: string; stress: number; mood_tag?: string; zone?: string; channel?: string }[]) {
@@ -89,12 +92,44 @@ export async function claimNpcEvent(eventId: string) {
   return parse<{ ok: boolean; reward?: number; balance?: number; buff_type?: string; error?: string }>(r);
 }
 
-export async function tableSpeak(channel: string, agentId: string, agentName: string, soulMd: string) {
+export async function tableSpeak(
+  channel: string, agentId: string, agentName: string, soulMd: string,
+  opts?: {
+    context?: string; activity?: string | null; stress?: number; mood_tag?: string;
+    decision_mode?: string; nearby_names?: string[]; target_agent_name?: string;
+  },
+) {
   const r = await fetch(`${API}/social/table-speak`, {
     method: 'POST', headers: headers(),
-    body: JSON.stringify({ channel, agent_id: agentId, agent_name: agentName, soul_md: soulMd }),
+    body: JSON.stringify({
+      channel, agent_id: agentId, agent_name: agentName, soul_md: soulMd,
+      ...opts,
+    }),
   });
-  return parse<{ ok: boolean; line?: string; created_at?: number }>(r);
+  return parse<{ ok: boolean; line?: string; created_at?: number; message_id?: number }>(r);
+}
+
+export async function agentBrainSpeak(opts: {
+  agent_id: string;
+  agent_name: string;
+  soul_md: string;
+  channel?: string;
+  context?: string;
+  activity?: string | null;
+  stress?: number;
+  mood_tag?: string;
+  decision_mode?: string;
+  nearby_names?: string[];
+  target_agent_name?: string;
+  post_to_chat?: boolean;
+}) {
+  const r = await fetch(`${API}/social/agent-brain/speak`, {
+    method: 'POST', headers: headers(), body: JSON.stringify(opts),
+  });
+  return parse<{
+    ok: boolean; line?: string;
+    chat?: { id: number; body: string; agent_id: string; created_at: number };
+  }>(r);
 }
 
 export interface ChatMessage {

@@ -43,6 +43,100 @@ class TableSpeakBody(BaseModel):
     agent_id: str
     agent_name: str = "Agent"
     soul_md: str = ""
+    context: str = "greeting"
+    activity: Optional[str] = None
+    stress: float = 0
+    mood_tag: str = "neutral"
+    decision_mode: str = ""
+    nearby_names: list[str] = Field(default_factory=list)
+    target_agent_name: str = ""
+
+
+class AgentBrainSpeakBody(BaseModel):
+    channel: str = ""
+    agent_id: str
+    agent_name: str = "Agent"
+    soul_md: str = ""
+    context: str = "greeting"
+    activity: Optional[str] = None
+    stress: float = 0
+    mood_tag: str = "neutral"
+    decision_mode: str = ""
+    nearby_names: list[str] = Field(default_factory=list)
+    target_agent_name: str = ""
+    post_to_chat: bool = False
+
+
+async def _insert_agent_chat_line(
+    account_id: str,
+    channel: str,
+    agent_id: str,
+    line: str,
+) -> dict:
+    acc = life_db.get_account_by_id(account_id)
+    ts = life_db.now_ms()
+    with life_db._lock:
+        with life_db._conn() as c:
+            c.execute(
+                "INSERT INTO chat_messages (channel, user_id, display_name, agent_id, body, kind, created_at) VALUES (?,?,?,?,?,?,?)",
+                (channel, account_id, (acc or {}).get("display_name", ""), agent_id, line, "agent", ts),
+            )
+            mid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
+    return {"id": mid, "body": line, "agent_id": agent_id, "kind": "agent", "created_at": ts}
+
+
+async def _agent_replies_to_chat(
+    account_id: str,
+    channel: str,
+    user_text: str,
+    sender_agent_id: str = "",
+) -> list[dict]:
+    """用户发言后 — @Agent 或娱乐 Agent 随机接话。"""
+    from life_game import load_user, AgentSpeakBody, _generate_speak_line
+    from agent_brain import find_mentioned_agents, derive_traits, mood_tag_from_stress, build_speak_context
+
+    user = load_user(account_id)
+    custom = user.get("custom_agents") or {}
+    if not custom:
+        return []
+
+    mentioned = find_mentioned_agents(user_text, custom)
+    responders: list[tuple[str, dict]] = list(mentioned)
+
+    if not responders and ("?" in user_text or "？" in user_text or "吗" in user_text):
+        ents = [(aid, m) for aid, m in custom.items() if m.get("agentType") == "entertainment"]
+        if ents and random.random() < 0.55:
+            responders.append(random.choice(ents))
+
+    if not responders and random.random() < 0.12:
+        aid = random.choice(list(custom.keys()))
+        responders.append((aid, custom[aid]))
+
+    out: list[dict] = []
+    for aid, meta in responders[:2]:
+        name = meta.get("name") or aid
+        soul = meta.get("soulMd") or ""
+        agent_type = meta.get("agentType") or "entertainment"
+        traits = derive_traits(soul, agent_type, aid)
+        ctx = build_speak_context(
+            "chat_reply",
+            stress=40,
+            mood_tag="neutral",
+            user_message=user_text,
+        )
+        line = await _generate_speak_line(AgentSpeakBody(
+            agent_id=aid,
+            agent_name=name,
+            soul_md=soul,
+            context=ctx,
+            decision_mode="social",
+            user_message=user_text[:120],
+        ))
+        if not line:
+            continue
+        row = await _insert_agent_chat_line(account_id, channel, aid, line)
+        out.append(row)
+    return out
 
 
 @social_router.get("/social/chat/{channel}")
@@ -72,7 +166,8 @@ async def post_chat(body: ChatPostBody, account_id: str = Depends(resolve_accoun
             )
             mid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
     life_db.add_season_points(account_id, social=2)
-    return {"ok": True, "id": mid, "created_at": ts}
+    replies = await _agent_replies_to_chat(account_id, ch, text, body.agent_id)
+    return {"ok": True, "id": mid, "created_at": ts, "agent_replies": replies}
 
 
 @social_router.post("/social/mood/sync")
@@ -198,20 +293,63 @@ async def claim_event(event_id: str, account_id: str = Depends(resolve_account_i
 @social_router.post("/social/table-speak")
 async def table_speak(body: TableSpeakBody, account_id: str = Depends(resolve_account_id)):
     from life_game import _generate_speak_line, AgentSpeakBody
+    from agent_brain import build_speak_context
 
+    ctx = body.context or build_speak_context(
+        body.decision_mode or "social",
+        activity=body.activity,
+        stress=body.stress,
+        mood_tag=body.mood_tag,
+        nearby_names=body.nearby_names,
+        target_name=body.target_agent_name,
+    )
     line = await _generate_speak_line(AgentSpeakBody(
-        agent_id=body.agent_id, agent_name=body.agent_name,
-        soul_md=body.soul_md, context="greeting", activity=None,
+        agent_id=body.agent_id,
+        agent_name=body.agent_name,
+        soul_md=body.soul_md,
+        context=ctx,
+        activity=body.activity,
+        stress=body.stress,
+        mood_tag=body.mood_tag,
+        decision_mode=body.decision_mode,
+        nearby_names=body.nearby_names,
+        target_agent_name=body.target_agent_name,
     ))
-    acc = life_db.get_account_by_id(account_id)
-    ts = life_db.now_ms()
-    with life_db._lock:
-        with life_db._conn() as c:
-            c.execute(
-                "INSERT INTO chat_messages (channel, user_id, display_name, agent_id, body, kind, created_at) VALUES (?,?,?,?,?,?,?)",
-                (body.channel, account_id, (acc or {}).get("display_name", ""), body.agent_id, line, "agent", ts),
-            )
-    return {"ok": True, "line": line, "created_at": ts}
+    row = await _insert_agent_chat_line(account_id, body.channel, body.agent_id, line)
+    return {"ok": True, "line": line, "created_at": row["created_at"], "message_id": row["id"]}
+
+
+@social_router.post("/social/agent-brain/speak")
+async def agent_brain_speak(body: AgentBrainSpeakBody, account_id: str = Depends(resolve_account_id)):
+    """自主大脑执行层 — 生成台词，可选写入区域频道。"""
+    from life_game import _generate_speak_line, AgentSpeakBody
+    from agent_brain import build_speak_context
+
+    ctx = body.context or build_speak_context(
+        body.decision_mode or "greeting",
+        activity=body.activity,
+        stress=body.stress,
+        mood_tag=body.mood_tag,
+        nearby_names=body.nearby_names,
+        target_name=body.target_agent_name,
+    )
+    line = await _generate_speak_line(AgentSpeakBody(
+        agent_id=body.agent_id,
+        agent_name=body.agent_name,
+        soul_md=body.soul_md,
+        context=ctx,
+        activity=body.activity,
+        stress=body.stress,
+        mood_tag=body.mood_tag,
+        decision_mode=body.decision_mode,
+        nearby_names=body.nearby_names,
+        target_agent_name=body.target_agent_name,
+    ))
+    out: dict = {"ok": True, "line": line}
+    if body.post_to_chat and body.channel:
+        row = await _insert_agent_chat_line(account_id, body.channel, body.agent_id, line)
+        out["chat"] = row
+    return out
 
 
 # ─── Phase 2: PvP ────────────────────────────────────────────────
