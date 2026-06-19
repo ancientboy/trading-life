@@ -14,7 +14,6 @@ const PHASE_LABEL: Record<string, string> = {
   waiting: '等待',
 };
 
-/** 每档仅调节刷新间隔；每轮只推进 1 步，保证画面与行动记录同步 */
 const PACE_OPTIONS = [
   { id: 'slow', label: '慢速', intervalMs: 2400 },
   { id: 'normal', label: '正常', intervalMs: 1400 },
@@ -38,7 +37,7 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
   const [paceId, setPaceId] = useState<PaceId>('normal');
   const [autoComplete, setAutoComplete] = useState(true);
   const [paused, setPaused] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [booting, setBooting] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
 
@@ -51,12 +50,18 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
   const lastSigRef = useRef('');
   const pausedRef = useRef(paused);
   const statusRef = useRef(status);
+  const onCompleteRef = useRef(onComplete);
+  const roomIdRef = useRef(roomId);
   const [stallCount, setStallCount] = useState(0);
 
   pausedRef.current = paused;
   statusRef.current = status;
+  onCompleteRef.current = onComplete;
+  roomIdRef.current = roomId;
 
   const pace = PACE_OPTIONS.find(p => p.id === paceId) ?? PACE_OPTIONS[1];
+  const paceMsRef = useRef(pace.intervalMs);
+  paceMsRef.current = pace.intervalMs;
 
   const applyGame = useCallback((g: AdvancedPokerGame, st: string, force: boolean) => {
     if (!force && g.event_count < eventCountRef.current) return false;
@@ -73,7 +78,7 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
 
     if (g.hand_number !== handRef.current) {
       handRef.current = g.hand_number;
-      if (handRef.current > 0) {
+      if (g.hand_number > 0) {
         setLog(prev => [...prev.slice(-79), `━━━ 第 ${g.hand_number} 手开始 ━━━`]);
       }
     }
@@ -93,19 +98,20 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     return true;
   }, []);
 
-  const poll = useCallback(async (opts?: { force?: boolean; initial?: boolean; steps?: number }) => {
+  const runPoll = useCallback(async (opts?: { force?: boolean; initial?: boolean; steps?: number }) => {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     const isInitial = opts?.initial ?? false;
     const force = opts?.force ?? false;
-    if (isInitial) setLoading(true);
+    if (isInitial) setBooting(true);
     else setSyncing(true);
     try {
       const steps = opts?.steps ?? (force ? 12 : isInitial ? 4 : 1);
-      const r = await fetchAdvancedPokerState(roomId, sinceRef.current, {
+      const r = await fetchAdvancedPokerState(roomIdRef.current, sinceRef.current, {
         autoRun: !pausedRef.current || force,
         maxSteps: steps,
       });
+      if (roomIdRef.current !== roomId) return;
       if (!r.ok) {
         setError(r.error || '同步失败');
         return;
@@ -118,16 +124,16 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       }
       if (r.settlement && !doneRef.current) {
         doneRef.current = true;
-        onComplete?.(r.settlement);
+        onCompleteRef.current?.(r.settlement);
       }
     } catch {
       setError('网络错误');
     } finally {
       inFlightRef.current = false;
-      setLoading(false);
+      setBooting(false);
       setSyncing(false);
     }
-  }, [roomId, applyGame, onComplete]);
+  }, [roomId, applyGame]);
 
   useEffect(() => {
     sinceRef.current = 0;
@@ -141,7 +147,7 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     setStatus('playing');
     statusRef.current = 'playing';
     setError('');
-    setLoading(true);
+    setBooting(true);
 
     let cancelled = false;
     let timer = 0;
@@ -151,13 +157,13 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       timer = window.setTimeout(async () => {
         if (cancelled) return;
         if (!pausedRef.current && statusRef.current !== 'tournament_complete') {
-          await poll({});
+          await runPoll({});
         }
         scheduleNext();
-      }, pace.intervalMs);
+      }, paceMsRef.current);
     };
 
-    void poll({ initial: true }).then(() => {
+    void runPoll({ initial: true }).then(() => {
       if (!cancelled) scheduleNext();
     });
 
@@ -165,9 +171,15 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [roomId, pace.intervalMs, poll]);
+  }, [roomId]); // 仅 roomId 变化时重置，避免父组件重渲染导致闪烁
 
-  if (!game && loading) {
+  useEffect(() => {
+    if (!paused && status !== 'tournament_complete') {
+      void runPoll({});
+    }
+  }, [paused]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!game && booting) {
     return (
       <div style={{ textAlign: 'center', padding: 24, color: '#6a5a48' }}>
         <div style={{ fontSize: 14, fontWeight: 600 }}>正在进入观赛桌…</div>
@@ -180,7 +192,7 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     return (
       <div style={{ textAlign: 'center', padding: 24, color: '#c0392b' }}>
         <div>{error || '无法加载牌局'}</div>
-        <button className="ui-btn" style={{ marginTop: 12 }} onClick={() => void poll({ initial: true, force: true, steps: 20 })}>重试</button>
+        <button className="ui-btn" style={{ marginTop: 12 }} onClick={() => void runPoll({ initial: true, force: true, steps: 20 })}>重试</button>
       </div>
     );
   }
@@ -217,13 +229,13 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
         </button>
         {!autoComplete && (
           <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px' }}
-            onClick={() => void poll({ force: true, steps: 1 })}>
+            onClick={() => void runPoll({ force: true, steps: 1 })}>
             下一步
           </button>
         )}
         {stallCount >= 8 && status === 'playing' && (
           <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px', fontWeight: 700, color: '#c0392b' }}
-            onClick={() => { stallRef.current = 0; setStallCount(0); void poll({ force: true, steps: 15 }); }}>
+            onClick={() => { stallRef.current = 0; setStallCount(0); void runPoll({ force: true, steps: 15 }); }}>
             强制推进
           </button>
         )}

@@ -6,7 +6,6 @@ import {
   pokerSolo, pokerQuickJoin, createPokerRoom, joinPokerRoomByCode, joinPokerRoom,
   startPokerRoom, listPokerRooms, startAiSpectator, type PokerRoom,
 } from '../../lib/lifeEngagementApi';
-import { PokerAdvancedSpectator } from './PokerAdvancedSpectator';
 import { PokerStyleEditor } from './PokerStyleEditor';
 import { isLoggedIn, getStoredAccount } from '../../lib/lifeAuth';
 
@@ -50,12 +49,15 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const seatAgentAtPoker = useGameStore(s => s.seatAgentAtPoker);
   const syncPokerRoom = useGameStore(s => s.syncPokerRoom);
   const restorePokerRoom = useGameStore(s => s.restorePokerRoom);
+  const setPokerSpectateRoom = useGameStore(s => s.setPokerSpectateRoom);
+  const pokerSpectateRoom = useGameStore(s => s.pokerSpectateRoom);
+  const openModal = useGameStore(s => s.openModal);
+  const activeModal = useGameStore(s => s.activeModal);
   const activeZone = useGameStore(s => s.activeZone);
 
   const [tierId, setTierId] = useState<string>('casual');
   const [advTierId, setAdvTierId] = useState<string>('adv1k');
   const [modeTab, setModeTab] = useState<'classic' | 'advanced'>('classic');
-  const [spectateRoom, setSpectateRoom] = useState<{ id: string; buyIn: number } | null>(null);
   const [numAiPlayers, setNumAiPlayers] = useState(4);
   const [phase, setPhase] = useState<'idle' | 'dealing'>('idle');
   const [busy, setBusy] = useState<'sit' | 'quick' | 'create' | 'join' | 'start' | 'seat' | null>(null);
@@ -207,9 +209,11 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
       if (isAdvanced && r.room_id) {
         clearPokerRoom();
         if (r.balance != null) useGameStore.setState({ points: r.balance });
-        setSpectateRoom({ id: r.room_id, buyIn: roomBuyIn });
+        setPokerSpectateRoom({ id: r.room_id, buyIn: roomBuyIn });
         setPhase('idle');
         setPokerTableDealingUntil(0);
+        setBusy(null);
+        openModal('poker');
         addMessage('进阶锦标赛开始 · Agent 自主博弈中');
         return;
       }
@@ -229,22 +233,19 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
     }
   };
 
-  if (spectateRoom) {
+  if (pokerSpectateRoom && compact && activeModal !== 'poker') {
     return (
-      <PokerAdvancedSpectator
-        roomId={spectateRoom.id}
-        buyIn={spectateRoom.buyIn}
-        onComplete={settlement => {
-          if (settlement.balance != null) useGameStore.setState({ points: settlement.balance });
-          const w = settlement.winner?.name;
-          addMessage(w ? `🏆 ${w} 赢得锦标赛` : '锦标赛结束');
-          if (settlement.net != null && settlement.net > 0) {
-            addMessage(`你的 Agent 净赚 +${settlement.net} 积分`);
-          }
-        }}
-        onClose={() => setSpectateRoom(null)}
-      />
+      <div style={{ padding: 10, background: '#eef4ff', borderRadius: 8, fontSize: 12, border: '1px solid #7aa8e8' }}>
+        <div style={{ fontWeight: 700, color: '#3a6bb5', marginBottom: 6 }}>🃏 进阶观赛进行中</div>
+        <button type="button" className="ui-btn" style={{ width: '100%' }} onClick={() => openModal('poker')}>
+          打开观赛面板
+        </button>
+      </div>
     );
+  }
+
+  if (pokerSpectateRoom && !compact) {
+    return null;
   }
 
   if (phase === 'dealing') {
@@ -508,7 +509,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         </button>
       ))}
 
-      {modeTab === 'advanced' && agent && !inRoom && !spectateRoom && (
+      {modeTab === 'advanced' && agent && !inRoom && !pokerSpectateRoom && (
         <div style={{ marginBottom: 10, padding: 10, background: '#f0f4ff', borderRadius: 8, border: '1px solid #7aa8e8' }}>
           <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, color: '#3a6bb5' }}>或 · AI 观赛（单人快速体验）</div>
           <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
@@ -536,7 +537,8 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
               }
               if (r.balance != null) useGameStore.setState({ points: r.balance });
               if (r.room_id) {
-                setSpectateRoom({ id: r.room_id, buyIn: advTier.buyIn });
+                setPokerSpectateRoom({ id: r.room_id, buyIn: advTier.buyIn });
+                openModal('poker');
                 addMessage(r.message || '观赛开始');
               }
             }}>

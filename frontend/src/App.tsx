@@ -52,6 +52,7 @@ export default function App() {
     const pokerPoll = setInterval(() => {
       const st = useGameStore.getState();
       if (st.activeZone !== 'casino') return;
+      if (st.pokerSpectateRoom) return;
       if (st.pokerRoom?.id && st.pokerRoom.status === 'waiting') {
         st.syncPokerRoom().catch(() => {});
       } else {

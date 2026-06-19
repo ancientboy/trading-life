@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useGameStore, type ModalId } from '../../store/useGameStore';
 import { AgentWorkshop } from './AgentWorkshop';
 import { DailyTasksPanel } from './DailyTasksPanel';
 import { SeasonPanel } from './SeasonPanel';
+import { PokerAdvancedSpectator } from './PokerAdvancedSpectator';
 import { PokerGamePanel } from './PokerGamePanel';
 import { PokerResultModal } from './PokerResultModal';
 import { PenguinAvatar } from './PenguinAvatar';
@@ -117,7 +118,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
         icon: t.id === 'a' ? LucideIcons.massageBed : t.id === 'b' ? LucideIcons.massageWind : LucideIcons.massageOil,
       }))} />;
     case 'poker':
-      return <PokerGamePanel />;
+      return <PokerModalContent />;
     case 'poker_result':
       return pokerHandResult ? <PokerResultModal data={pokerHandResult} /> : null;
     case 'shop':
@@ -129,6 +130,37 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
     default:
       return null;
   }
+}
+
+function PokerModalContent() {
+  const spectate = useGameStore(s => s.pokerSpectateRoom);
+  const setSpectate = useGameStore(s => s.setPokerSpectateRoom);
+  const addMessage = useGameStore(s => s.addMessage);
+
+  const onSpectateComplete = useCallback((settlement: {
+    balance?: number; winner?: { name: string }; net?: number;
+  }) => {
+    if (settlement.balance != null) useGameStore.setState({ points: settlement.balance });
+    const w = settlement.winner?.name;
+    addMessage(w ? `🏆 ${w} 赢得锦标赛` : '锦标赛结束');
+    if (settlement.net != null && settlement.net > 0) {
+      addMessage(`你的 Agent 净赚 +${settlement.net} 积分`);
+    }
+    setSpectate(null);
+  }, [addMessage, setSpectate]);
+
+  if (spectate) {
+    return (
+      <PokerAdvancedSpectator
+        roomId={spectate.id}
+        buyIn={spectate.buyIn}
+        onComplete={onSpectateComplete}
+        onClose={() => setSpectate(null)}
+      />
+    );
+  }
+
+  return <PokerGamePanel />;
 }
 
 function LeisureModal({ type, title, lucide, items }: {

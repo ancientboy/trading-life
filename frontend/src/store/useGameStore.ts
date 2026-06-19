@@ -151,6 +151,8 @@ interface GameStore {
   pokerTableDealingUntil: number;
   /** 当前多人德州房间（等待/进行中） */
   pokerRoom: PokerRoom | null;
+  /** 进阶观赛房间（全局唯一，避免多面板重复轮询） */
+  pokerSpectateRoom: { id: string; buyIn: number } | null;
   /** 上次客户端挂机 tick 时间（performance.now） */
   lastIdleClientTick: number;
   /** 当前用户可操作（派遣/编辑）的 Agent */
@@ -241,6 +243,7 @@ interface GameStore {
   syncPokerRoom: () => Promise<void>;
   restorePokerRoom: () => Promise<void>;
   clearPokerRoom: () => void;
+  setPokerSpectateRoom: (room: { id: string; buyIn: number } | null) => void;
   leavePokerRoom: () => Promise<void>;
   changePokerRoomSeat: (seatId: string) => Promise<boolean>;
   seatAgentAtPoker: (agentId: string, seatId?: string) => Promise<boolean>;
@@ -307,6 +310,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pokerHandResult: null,
   pokerTableDealingUntil: 0,
   pokerRoom: null,
+  pokerSpectateRoom: null,
   lastIdleClientTick: 0,
   operableAgentIds: [],
   isAdmin: false,
@@ -929,6 +933,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   clearPokerRoom: () => set({ pokerRoom: null }),
+
+  setPokerSpectateRoom: (room) => set({ pokerSpectateRoom: room }),
 
   leavePokerRoom: async () => {
     const rid = get().pokerRoom?.id;
