@@ -25,7 +25,7 @@ DAILY_TASK_DEFS = [
 ]
 
 DEFAULT_FREE_UNLOCKS = ["color_default", "hat_beanie", "hat_cap"]
-STARTING_POINTS = 200
+STARTING_POINTS = 10000
 DEFAULT_PORTFOLIO_USDT = 50000.0
 DEFAULT_AGENT_ALLOC_USDT = 10000.0
 
@@ -37,7 +37,7 @@ def init_db(data_dir: Path) -> None:
         c.executescript("""
         CREATE TABLE IF NOT EXISTS life_users (
             id TEXT PRIMARY KEY,
-            points INTEGER NOT NULL DEFAULT 200,
+            points INTEGER NOT NULL DEFAULT 10000,
             last_idle_tick INTEGER NOT NULL DEFAULT 0,
             daily_date TEXT NOT NULL DEFAULT '',
             stats_json TEXT NOT NULL DEFAULT '{}',

@@ -82,13 +82,15 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
   const tier = BUY_IN_TIERS.find(t => t.id === tierId) ?? BUY_IN_TIERS[0];
   const advTier = ADVANCED_BUY_IN_TIERS.find(t => t.id === advTierId) ?? ADVANCED_BUY_IN_TIERS[0];
   const activeBuyIn = modeTab === 'advanced' ? advTier.buyIn : tier.buyIn;
+  const roomBuyIn = inRoom ? pokerRoom!.buy_in : activeBuyIn;
   const operableAgents = Object.values(agents).filter(a => canOperateAgent(a.agentId));
   const agent = (selectedAgentId && canOperateAgent(selectedAgentId) ? agents[selectedAgentId] : null)
     || operableAgents.sort((a, b) => b.stress - a.stress)[0];
-  const canAfford = points >= activeBuyIn;
+  const canAfford = points >= roomBuyIn;
+  const roomMode = pokerRoom?.game_mode || 'classic';
+  const filteredPublicRooms = publicRooms.filter(r => (r.game_mode || 'classic') === modeTab);
   const seatedAgent = operableAgents.find(a => a.activity === 'poker');
   const isSeated = !!seatedAgent;
-  const roomBuyIn = inRoom ? pokerRoom.buy_in : activeBuyIn;
   const playerLabel = (p: PokerRoom['players'][0]) => {
     const user = p.user_name || p.display_name || '玩家';
     const agent = p.agent_name;
@@ -279,7 +281,8 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
       ) : (
       <div style={{ fontSize: 11, color: '#8a7e72', marginBottom: 10, lineHeight: 1.55, padding: '8px 10px', background: '#eef4ff', borderRadius: 8 }}>
         <b>进阶模式</b>：翻牌前→翻牌→转牌→河牌，加注/跟注/弃牌/全下<br />
-        Agent 自主决策 · 筹码归零淘汰 · 最多 7 人 · 你只需观赛
+        <b>① 创建/加入房间</b>（最多 7 人）→ <b>② 开始锦标赛</b> · Agent 自主博弈 · 你观赛<br />
+        也可单人 <b>AI 观赛</b> 快速体验
       </div>
       )}
 
@@ -288,8 +291,17 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
       {inRoom && (
         <div style={{ marginBottom: 10, padding: 10, background: '#eef4ff', borderRadius: 8, fontSize: 12, border: '1px solid #7aa8e8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontWeight: 700, color: '#3a6bb5' }}>房间 #{pokerRoom.room_code || pokerRoom.id}</span>
-            <span style={{ fontSize: 11, color: '#6a8aad' }}>{humanCount} 人在座 · 买入 {roomBuyIn}</span>
+            <span style={{ fontWeight: 700, color: '#3a6bb5' }}>
+              房间 #{pokerRoom.room_code || pokerRoom.id}
+              <span style={{
+                marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 4,
+                background: roomMode === 'advanced' ? '#3a6bb5' : '#48d093',
+                color: '#fff',
+              }}>
+                {roomMode === 'advanced' ? '进阶' : '经典'}
+              </span>
+            </span>
+            <span style={{ fontSize: 11, color: '#6a8aad' }}>{humanCount}/7 人 · 买入 {roomBuyIn}</span>
           </div>
           <div style={{ fontSize: 11, color: '#5a7a9a', marginBottom: 8 }}>
             把编号告诉好友，对方在下方输入即可加入 · 可点击空位换座
@@ -337,7 +349,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
           }}
             disabled={!canAfford || busy !== null}
             onClick={() => void startMultiplayer()}>
-            {busy === 'start' ? '发牌中…' : modeTab === 'advanced'
+            {busy === 'start' ? '发牌中…' : roomMode === 'advanced'
               ? `开始进阶锦标赛（-${roomBuyIn} · Agent 自主博弈）`
               : `开始牌局 · 发牌（-${roomBuyIn} 积分）`}
           </button>
@@ -348,9 +360,26 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         </div>
       )}
 
+      {!compact && modeTab === 'advanced' && !inRoom && ADVANCED_BUY_IN_TIERS.map(t => (
+        <button key={t.id} className={`leisure-option ${advTierId === t.id ? 'selected' : ''}`} onClick={() => setAdvTierId(t.id)}>
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontWeight: 600 }}>{t.label}</div>
+            <div style={{ fontSize: 11, color: '#8a7e72' }}>{t.desc}</div>
+          </div>
+          <span style={{ color: '#3a6bb5', fontWeight: 600, fontSize: 12 }}>带入 {t.buyIn}</span>
+        </button>
+      ))}
+
       {!inRoom && (
-        <div style={{ marginBottom: 10, padding: 10, background: '#faf6ef', borderRadius: 8, border: '1px solid #e8dcc8' }}>
-          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>多人房间</div>
+        <div style={{ marginBottom: 10, padding: 10, background: modeTab === 'advanced' ? '#f0f4ff' : '#faf6ef', borderRadius: 8, border: `1px solid ${modeTab === 'advanced' ? '#7aa8e8' : '#e8dcc8'}` }}>
+          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 4, color: modeTab === 'advanced' ? '#3a6bb5' : undefined }}>
+            {modeTab === 'advanced' ? '进阶多人房间（最多 7 人）' : '多人房间'}
+          </div>
+          {modeTab === 'advanced' && (
+            <div style={{ fontSize: 10, color: '#6a8aad', marginBottom: 8, lineHeight: 1.45 }}>
+              创建房间邀请好友，或输入编号 / 从列表加入 · 满员后房主点开始
+            </div>
+          )}
           <button className="ui-btn" style={{ width: '100%', marginBottom: 8 }}
             disabled={!agent || busy !== null}
             onClick={async () => {
@@ -397,10 +426,13 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
               {busy === 'join' ? '…' : '加入'}
             </button>
           </div>
-          {publicRooms.length > 0 && (
+          {filteredPublicRooms.length > 0 && (
             <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #e0d4c4' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6a5a48', marginBottom: 6 }}>进行中的房间（{publicRooms.length}）</div>
-              {publicRooms.map(room => {
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6a5a48', marginBottom: 6 }}>
+                {modeTab === 'advanced' ? '等待中的进阶房间' : '进行中的房间'}（{filteredPublicRooms.length}）
+              </div>
+              {filteredPublicRooms.map(room => {
+                const rMode = room.game_mode || 'classic';
                 const names = room.player_names?.length
                   ? room.player_names
                   : room.players.filter(p => !p.is_npc && !p.user_id.startsWith('npc_'))
@@ -409,8 +441,16 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
                 return (
                   <div key={room.id} style={{ padding: '8px 0', borderBottom: '1px dashed #eee8dc' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                      <b>#{room.room_code || room.id}</b>
-                      <span style={{ fontSize: 11, color: '#8a7e72' }}>{count} 人 · 买入 {room.buy_in}</span>
+                      <b>
+                        #{room.room_code || room.id}
+                        <span style={{
+                          marginLeft: 4, fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 3,
+                          background: rMode === 'advanced' ? '#3a6bb5' : '#48d093', color: '#fff', verticalAlign: 'middle',
+                        }}>
+                          {rMode === 'advanced' ? '进阶' : '经典'}
+                        </span>
+                      </b>
+                      <span style={{ fontSize: 11, color: '#8a7e72' }}>{count}/7 人 · 买入 {room.buy_in}</span>
                     </div>
                     <div style={{ fontSize: 11, color: '#6a8aad', margin: '4px 0 6px', lineHeight: 1.45 }}>
                       {names.join('、')}
@@ -468,19 +508,9 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         </button>
       ))}
 
-      {!compact && modeTab === 'advanced' && ADVANCED_BUY_IN_TIERS.map(t => (
-        <button key={t.id} className={`leisure-option ${advTierId === t.id ? 'selected' : ''}`} onClick={() => setAdvTierId(t.id)}>
-          <div style={{ flex: 1, textAlign: 'left' }}>
-            <div style={{ fontWeight: 600 }}>{t.label}</div>
-            <div style={{ fontSize: 11, color: '#8a7e72' }}>{t.desc}</div>
-          </div>
-          <span style={{ color: '#3a6bb5', fontWeight: 600, fontSize: 12 }}>带入 {t.buyIn}</span>
-        </button>
-      ))}
-
       {modeTab === 'advanced' && agent && !inRoom && !spectateRoom && (
         <div style={{ marginBottom: 10, padding: 10, background: '#f0f4ff', borderRadius: 8, border: '1px solid #7aa8e8' }}>
-          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, color: '#3a6bb5' }}>AI 观赛 · 你的 Agent 上场</div>
+          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, color: '#3a6bb5' }}>或 · AI 观赛（单人快速体验）</div>
           <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
             {[2, 3, 4, 5, 6, 7].map(n => (
               <button key={n} type="button" className={`ui-btn ${numAiPlayers === n ? 'active' : ''}`}

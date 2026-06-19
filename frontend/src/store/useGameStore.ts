@@ -281,7 +281,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   soulMd: '',
   messages: [],
   npcBubble: null,
-  points: 200,
+  points: 10000,
   dailyTasks: {},
   dailyTaskDefs: [],
   dailyDate: '',

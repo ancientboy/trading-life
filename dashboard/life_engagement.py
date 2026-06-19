@@ -683,6 +683,7 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
         with life_db._conn() as c:
             rows = c.execute(
                 """SELECT * FROM poker_rooms WHERE status='waiting' AND id NOT LIKE 'solo_%'
+                   AND COALESCE(game_mode, 'classic') = 'classic'
                    AND EXISTS (
                      SELECT 1 FROM poker_room_players p
                      WHERE p.room_id=poker_rooms.id AND p.user_id NOT LIKE 'npc_%'
@@ -692,7 +693,7 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
             target = None
             for r in rows:
                 cnt = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (r["id"],)).fetchone()[0]
-                if cnt < 8 and not c.execute(
+                if cnt < 7 and not c.execute(
                     "SELECT 1 FROM poker_room_players WHERE room_id=? AND user_id=?",
                     (r["id"], account_id),
                 ).fetchone():
@@ -868,8 +869,8 @@ async def join_poker_room(room_id: str, body: PokerJoinBody, account_id: str = D
                     "message": "已在房间中",
                 }
             count = c.execute("SELECT COUNT(*) FROM poker_room_players WHERE room_id=?", (rid,)).fetchone()[0]
-            if count >= 8:
-                return {"ok": False, "error": "房间已满"}
+            if count >= 7:
+                return {"ok": False, "error": "房间已满（最多 7 人）"}
             taken = {r["seat_id"] for r in c.execute(
                 "SELECT seat_id FROM poker_room_players WHERE room_id=?", (rid,)
             ).fetchall()}
