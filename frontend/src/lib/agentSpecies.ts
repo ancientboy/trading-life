@@ -1,7 +1,7 @@
 /** 角色物种 — 牛马等与企鹅同级的独立基础角色 */
 
 import {
-  characterSpriteUrl, drawCharacterSpriteFront, getCachedCharacterSprite,
+  characterSpriteUrl, drawCharacterSpriteFront, getCachedCharacterSprite, speciesUsesPngSprites,
 } from './characterSprites';
 
 export const SPECIES_IDS = ['penguin', 'niuma'] as const;
@@ -369,27 +369,33 @@ export function drawNiumaCharacter2d(
   bounce = 0,
 ) {
   if (view === 'front') {
-    const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'front', 'skin'));
-    if (img) {
-      drawCharacterSpriteFront(ctx, py, img);
-      return;
+    if (speciesUsesPngSprites('niuma')) {
+      const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'front', 'skin'));
+      if (img) {
+        drawCharacterSpriteFront(ctx, py, img);
+        return;
+      }
     }
   }
   if (view === 'back') {
-    const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'back', 'skin'));
-    if (img) {
-      drawCharacterSpriteFront(ctx, py, img);
-      return;
+    if (speciesUsesPngSprites('niuma')) {
+      const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'back', 'skin'));
+      if (img) {
+        drawCharacterSpriteFront(ctx, py, img);
+        return;
+      }
     }
   }
   if (view === 'side') {
-    const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'side', 'skin'));
-    if (img) {
-      ctx.save();
-      ctx.scale(flip, 1);
-      drawCharacterSpriteFront(ctx, py, img);
-      ctx.restore();
-      return;
+    if (speciesUsesPngSprites('niuma')) {
+      const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'side', 'skin'));
+      if (img) {
+        ctx.save();
+        ctx.scale(flip, 1);
+        drawCharacterSpriteFront(ctx, py, img);
+        ctx.restore();
+        return;
+      }
     }
   }
   ctx.save();

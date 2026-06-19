@@ -43,6 +43,9 @@
       }
     }
   },
+  "render": {
+    "niuma": "procedural"
+  },
   "installed": {
     "niuma": {
       "default": ["front", "back", "side"]
