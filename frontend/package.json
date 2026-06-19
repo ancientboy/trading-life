@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "bash scripts/deploy.sh",
-    "prompts:character": "node scripts/print-character-prompts.mjs"
+    "prompts:character": "node scripts/print-character-prompts.mjs",
+    "sprites:strip-bg": "python3 scripts/strip-sprite-background.py"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
