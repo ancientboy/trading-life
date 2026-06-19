@@ -198,11 +198,19 @@ function LeisureModal({ type, title, lucide, items }: {
           return;
         }
         setBusy(true);
-        const ok = await sendAgentToLeisure(type, agent.agentId, picked, item.cost);
-        if (ok) addMessage(`${agent.data.name} 选择了「${item.name}」${item.cost > 0 ? ` · -${item.cost} 积分` : ' · 免费'} · ${item.effect}`);
-        else if (!canAfford) addMessage(`积分不足，需要 ${item.cost} 积分`);
-        setBusy(false);
-        if (ok) closeModal();
+        try {
+          const ok = await sendAgentToLeisure(type, agent.agentId, picked, item.cost);
+          if (ok) {
+            addMessage(`${agent.data.name} 选择了「${item.name}」${item.cost > 0 ? ` · -${item.cost} 积分` : ' · 免费'} · ${item.effect}`);
+            closeModal();
+          } else if (!canAfford) {
+            addMessage(`积分不足，需要 ${item.cost} 积分`);
+          }
+        } catch {
+          addMessage('派遣失败，请稍后重试');
+        } finally {
+          setBusy(false);
+        }
       }}>
         {busy ? 'Agent 正在前往…' : !canAfford ? `积分不足（需 ${item.cost}）` : item.cost <= 0 ? '免费派遣' : `确认 · ${item.cost} 积分`}
       </button>
