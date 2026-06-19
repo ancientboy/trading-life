@@ -106,6 +106,15 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
         <div style={{ fontSize: 11, color: '#8a7e72', marginTop: 4 }}>
           买入 {data.buyIn} · 奖池 {data.pot ?? '—'}（{isTie ? '平局平分' : '胜者通吃'}）
         </div>
+        {data.highlight_broadcast && (
+          <div style={{
+            marginTop: 10, padding: '8px 10px', borderRadius: 8,
+            background: '#fff8e8', border: '1px solid #d4af37',
+            fontSize: 11, fontWeight: 600, color: '#8a6e3a',
+          }}>
+            📣 已全服广播 · {data.highlight_broadcast.hand_name}
+          </div>
+        )}
       </div>
 
       <PokerDealingCards

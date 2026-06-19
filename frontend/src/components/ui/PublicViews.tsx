@@ -3,7 +3,7 @@ import { useGameStore } from '../../store/useGameStore';
 import type { AdvancedPokerGame } from '../../lib/lifeEngagementApi';
 import {
   fetchPublicRoomPreview, fetchPublicSeasonInfo, fetchPublicSeasonLeaderboard,
-  fetchPublicSpectateState, fetchReferralInfo,
+  fetchPublicSpectateState, fetchReferralInfo, remindInviteePoker,
 } from '../../lib/lifeEngagementApi';
 import {
   buildInviteLink, buildJoinLink, buildLeaderboardLink, buildSpectateLink,
@@ -335,9 +335,41 @@ export function ReferralPanel() {
   }
 
   const link = buildInviteLink(info.invite_code || '');
+  const pending = info.pending_poker_invitees ?? info.invitees?.filter(i => !i.poker_done) ?? [];
 
   return (
     <div style={{ color: '#3d3530', fontSize: 12 }}>
+      {pending.length > 0 && (
+        <div style={{ padding: 12, background: '#fff8e8', borderRadius: 10, marginBottom: 12, border: '1px solid #e8c878' }}>
+          <div style={{ fontWeight: 700, color: '#b8860b', marginBottom: 6 }}>⏳ 待助力 · 好友差 1 局扑克</div>
+          <div style={{ fontSize: 11, color: '#6a5a48', marginBottom: 8, lineHeight: 1.5 }}>
+            提醒 TA 打一局德州，你可得 +{info.rewards?.inviter_first_poker ?? 200} 积分
+          </div>
+          {pending.map(inv => (
+            <div key={inv.invitee_id} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ flex: 1, fontWeight: 600 }}>{inv.name}</span>
+              <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px' }}
+                onClick={async () => {
+                  const r = await remindInviteePoker(inv.invitee_id);
+                  addMessage(r.ok ? (r.message || '已发送站内提醒') : (r.error || '提醒失败'));
+                }}>
+                站内提醒
+              </button>
+              <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px', fontWeight: 700 }}
+                onClick={async () => {
+                  const r = await shareOrCopy({
+                    title: '交易人生 · 来打德州',
+                    text: `🃏 ${inv.name}，来交易人生打一局德州扑克！帮我解锁邀请奖励`,
+                    url: link,
+                  });
+                  addMessage(shareResultMessage(r));
+                }}>
+                分享催TA
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ padding: 12, background: '#eef4ff', borderRadius: 10, marginBottom: 12, border: '1px solid #7aa8e8' }}>
         <div style={{ fontWeight: 700, color: '#3a6bb5', marginBottom: 6 }}>邀请好友 · 双方得积分</div>
         <div style={{ lineHeight: 1.55, color: '#5a4a3a' }}>
@@ -392,8 +424,8 @@ export function ReferralPanel() {
                 padding: '6px 0', borderBottom: '1px dashed #eee8dc', fontSize: 11,
               }}>
                 <span style={{ fontWeight: 600 }}>{inv.name}</span>
-                <span style={{ color: inv.poker_done ? '#2ea872' : '#9a8b7a', fontSize: 10 }}>
-                  {inv.poker_done ? '✓ 已首局扑克' : '已注册'}
+                <span style={{ color: inv.poker_done ? '#2ea872' : '#c0392b', fontSize: 10 }}>
+                  {inv.poker_done ? '✓ 已首局扑克' : '⏳ 差 1 局扑克'}
                 </span>
               </div>
             ))}

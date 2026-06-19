@@ -77,6 +77,7 @@ export type PokerHandResult = {
   balance?: number;
   tie?: boolean;
   winners_count?: number;
+  highlight_broadcast?: { hand_name: string; won: number; pot: number } | null;
 };
 export type ZoneId = 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
 
@@ -148,6 +149,8 @@ interface GameStore {
   seasonCosmetics: SeasonCosmetic[];
   mentorPairs: { mentor_agent_id: string; mentee_agent_id: string }[];
   activeNpcBuffs: Record<string, number>;
+  pokerHighlights: import('../lib/lifeEngagementApi').PokerHighlightItem[];
+  lastHighlightId: number;
   pokerHandResult: PokerHandResult | null;
   /** 牌桌发牌动画截止时间戳 */
   pokerTableDealingUntil: number;
@@ -311,6 +314,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   seasonCosmetics: [],
   mentorPairs: [],
   activeNpcBuffs: {},
+  pokerHighlights: [],
+  lastHighlightId: 0,
   pokerHandResult: null,
   pokerTableDealingUntil: 0,
   pokerRoom: null,
@@ -876,13 +881,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
   syncEngagement: async () => {
     try {
       const api = await import('../lib/lifeEngagementApi');
-      const [seasonRes, evRes, notifRes] = await Promise.all([
+      const [seasonRes, evRes, notifRes, hlRes] = await Promise.all([
         api.fetchSeasonCurrent(),
         api.fetchNpcEvents(),
         api.fetchGrowthNotifications().catch(() => ({ ok: false as const, messages: [] as string[] })),
+        api.fetchPokerHighlights(get().lastHighlightId).catch(() => ({ ok: false as const, highlights: [] })),
       ]);
       if (notifRes.ok && notifRes.messages?.length) {
         for (const msg of notifRes.messages) get().addMessage(msg);
+      }
+      if (hlRes.ok && hlRes.highlights?.length) {
+        const prev = get().lastHighlightId;
+        const merged = [...get().pokerHighlights, ...hlRes.highlights].slice(-30);
+        const latest = hlRes.latest_id ?? hlRes.highlights[hlRes.highlights.length - 1]?.id ?? prev;
+        set({ pokerHighlights: merged, lastHighlightId: latest });
+        const newest = hlRes.highlights[hlRes.highlights.length - 1];
+        if (newest && newest.id > prev) {
+          get().addMessage(`📣 全服高光 · ${newest.display_name} ${newest.hand_name}${newest.won ? ` +${newest.won}` : ''}`);
+        }
       }
       if (seasonRes.ok && seasonRes.season) {
         set({

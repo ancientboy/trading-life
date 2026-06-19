@@ -5,7 +5,8 @@ import {
   listSeatAuctions, bidSeat, fetchDispatchQueue, processDispatchQueue,
   type LeaderboardEntry, type SeasonCosmetic, type SeatAuction,
 } from '../../lib/lifeEngagementApi';
-import { buildLeaderboardLink, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
+import { buildLeaderboardLink, shareOrCopy, shareResultMessage, buildWeeklyReportLink, buildWeeklyReportShareText, downloadWeeklyReportCard } from '../../lib/shareUtils';
+import { fetchWeeklyReport, type WeeklyReportData } from '../../lib/lifeEngagementApi';
 
 export function SeasonPanel() {
   const points = useGameStore(s => s.points);
@@ -28,8 +29,14 @@ export function SeasonPanel() {
   const [queueLen, setQueueLen] = useState(0);
   const [bidSeatId, setBidSeatId] = useState('poker_s1');
   const [bidAmount, setBidAmount] = useState(20);
+  const [weeklyReport, setWeeklyReport] = useState<WeeklyReportData | null>(null);
+  const [weeklyBusy, setWeeklyBusy] = useState(false);
 
   useEffect(() => { syncEngagement(); }, [syncEngagement]);
+
+  useEffect(() => {
+    fetchWeeklyReport().then(r => { if (r.ok && r.report) setWeeklyReport(r.report); });
+  }, [tab]);
 
   useEffect(() => {
     fetchSeasonLeaderboard(metric).then(r => { if (r.ok) setEntries(r.entries); });
@@ -60,6 +67,44 @@ export function SeasonPanel() {
               赛季分 {seasonScore.points_earned} · 社交 {seasonScore.social_score} · PvP胜 {seasonScore.pvp_wins}
             </div>
           )}
+        </div>
+      )}
+
+      {weeklyReport && (
+        <div style={{ padding: 12, background: 'linear-gradient(135deg,#eef4ff,#faf6ef)', borderRadius: 10, marginBottom: 12, border: '1px solid #7aa8e8', fontSize: 12 }}>
+          <div style={{ fontWeight: 700, color: '#3a6bb5', marginBottom: 6 }}>📊 本周战报 · {weeklyReport.week_label}</div>
+          <div style={{ lineHeight: 1.55, color: '#5a4a3a', marginBottom: 10 }}>
+            🃏 {weeklyReport.poker_games} 局 · {weeklyReport.poker_wins} 胜 · 净 {weeklyReport.points_net >= 0 ? '+' : ''}{weeklyReport.points_net}<br />
+            ✨ 最佳 {weeklyReport.best_hand_name}
+            {weeklyReport.season_rank_hint ? ` · 约第 ${weeklyReport.season_rank_hint} 名` : ''}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button" className="ui-btn" style={{ flex: 1, fontSize: 11 }} disabled={weeklyBusy}
+              onClick={async () => {
+                setWeeklyBusy(true);
+                try {
+                  const r = await shareOrCopy({
+                    title: '交易人生本周战报',
+                    text: buildWeeklyReportShareText(weeklyReport),
+                    url: buildWeeklyReportLink(),
+                  });
+                  addMessage(shareResultMessage(r));
+                } finally { setWeeklyBusy(false); }
+              }}>
+              分享战报
+            </button>
+            <button type="button" className="ui-btn" style={{ flex: 1, fontSize: 11 }} disabled={weeklyBusy}
+              onClick={async () => {
+                setWeeklyBusy(true);
+                try {
+                  await downloadWeeklyReportCard(weeklyReport, buildWeeklyReportLink());
+                  addMessage('战报海报已保存');
+                } catch { addMessage('生成海报失败'); }
+                finally { setWeeklyBusy(false); }
+              }}>
+              海报
+            </button>
+          </div>
         </div>
       )}
 

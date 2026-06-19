@@ -254,6 +254,7 @@ def init_db(data_dir: Path) -> None:
     _migrate_poker_advanced_columns()
     _migrate_referrals()
     _migrate_life_notifications()
+    _migrate_poker_highlights()
     _migrate_json_files(data_dir)
     _seed_engagement_data()
 
@@ -1121,6 +1122,8 @@ def try_referral_poker_reward(invitee_id: str) -> None:
 
 def get_referral_summary(account_id: str) -> dict:
     code = ensure_invite_code(account_id)
+    invitees = list_referral_invitees(account_id)
+    pending = [i for i in invitees if not i.get("poker_done")]
     with _lock:
         with _conn() as c:
             count = c.execute(
@@ -1133,11 +1136,282 @@ def get_referral_summary(account_id: str) -> dict:
         "invite_code": code,
         "invites_count": count,
         "poker_rewards": poker_done,
-        "invitees": list_referral_invitees(account_id),
+        "invitees": invitees,
+        "pending_poker_invitees": pending,
         "rewards": {
             "invitee_signup": REFERRAL_INVITEE_BONUS,
             "inviter_signup": REFERRAL_INVITER_SIGNUP,
             "inviter_first_poker": REFERRAL_INVITER_POKER,
         },
     }
+
+
+# ─── 裂变：本周战报 / 扑克高光 / 待助力 ───
+
+HIGHLIGHT_MIN_HAND_CAT = 5  # 顺子及以上
+HIGHLIGHT_MIN_WIN_MULT = 2  # 赢得 >= 买入 2 倍
+
+
+def _week_key(dt: Optional[datetime] = None) -> str:
+    d = (dt or datetime.now(CST)).date()
+    return d.strftime("%G-W%V")
+
+
+def _mutate_user_stats(uid: str, mutator) -> dict:
+    ensure_user(uid)
+    with _lock:
+        with _conn() as c:
+            row = c.execute("SELECT stats_json FROM life_users WHERE id=?", (uid,)).fetchone()
+            stats = json.loads(row["stats_json"] or "{}")
+            mutator(stats)
+            c.execute(
+                "UPDATE life_users SET stats_json=? WHERE id=?",
+                (json.dumps(stats, ensure_ascii=False), uid),
+            )
+            return stats
+
+
+def record_weekly_poker(
+    uid: str,
+    *,
+    won: int,
+    net: int,
+    won_hand: bool,
+    hand_cat: int,
+    hand_name: str,
+) -> None:
+    if not uid or uid.startswith(("npc_", "ai_")):
+        return
+    wk = _week_key()
+
+    def mut(stats: dict) -> None:
+        weekly = stats.setdefault("weekly", {})
+        w = weekly.setdefault(wk, {
+            "poker_games": 0,
+            "poker_wins": 0,
+            "points_net": 0,
+            "points_won": 0,
+            "best_hand_cat": 0,
+            "best_hand_name": "",
+        })
+        w["poker_games"] = int(w.get("poker_games", 0)) + 1
+        if won_hand:
+            w["poker_wins"] = int(w.get("poker_wins", 0)) + 1
+        w["points_net"] = int(w.get("points_net", 0)) + int(net)
+        if won > 0:
+            w["points_won"] = int(w.get("points_won", 0)) + int(won)
+        if hand_cat > int(w.get("best_hand_cat", 0)):
+            w["best_hand_cat"] = hand_cat
+            w["best_hand_name"] = hand_name or w.get("best_hand_name", "")
+
+    _mutate_user_stats(uid, mut)
+
+
+def get_weekly_report(account_id: str) -> dict:
+    wk = _week_key()
+    user = load_user(account_id)
+    stats = user.get("stats") or {}
+    w = (stats.get("weekly") or {}).get(wk) or {}
+    season = get_active_season()
+    season_row = None
+    if season:
+        with _lock:
+            with _conn() as c:
+                season_row = c.execute(
+                    "SELECT points_earned, social_score, pvp_wins, pnl_score, rank "
+                    "FROM season_scores WHERE season_id=? AND user_id=?",
+                    (season["id"], account_id),
+                ).fetchone()
+    acc = get_account_by_id(account_id) or {}
+    rank_hint = None
+    if season and season_row:
+        with _lock:
+            with _conn() as c:
+                better = c.execute(
+                    "SELECT COUNT(*) FROM season_scores WHERE season_id=? AND points_earned > ?",
+                    (season["id"], season_row["points_earned"]),
+                ).fetchone()[0]
+                rank_hint = int(better) + 1
+    mon = datetime.now(CST).date()
+    week_start = mon - timedelta(days=mon.weekday())
+    week_end = week_start + timedelta(days=6)
+    return {
+        "week_key": wk,
+        "week_label": f"{week_start.strftime('%m/%d')} – {week_end.strftime('%m/%d')}",
+        "display_name": acc.get("display_name") or acc.get("username") or "玩家",
+        "poker_games": int(w.get("poker_games", 0)),
+        "poker_wins": int(w.get("poker_wins", 0)),
+        "points_net": int(w.get("points_net", 0)),
+        "points_won": int(w.get("points_won", 0)),
+        "best_hand_name": w.get("best_hand_name") or "—",
+        "best_hand_cat": int(w.get("best_hand_cat", 0)),
+        "season_name": season["name"] if season else "",
+        "season_points": int(season_row["points_earned"]) if season_row else 0,
+        "season_social": int(season_row["social_score"]) if season_row else 0,
+        "season_pvp_wins": int(season_row["pvp_wins"]) if season_row else 0,
+        "season_rank_hint": rank_hint,
+        "current_points": int(user.get("points", 0)),
+    }
+
+
+def _migrate_poker_highlights() -> None:
+    with _conn() as c:
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS poker_highlights (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT '',
+                display_name TEXT NOT NULL DEFAULT '',
+                hand_name TEXT NOT NULL DEFAULT '',
+                hand_combo TEXT NOT NULL DEFAULT '',
+                community_json TEXT NOT NULL DEFAULT '[]',
+                hole_cards_json TEXT NOT NULL DEFAULT '[]',
+                won INTEGER NOT NULL DEFAULT 0,
+                pot INTEGER NOT NULL DEFAULT 0,
+                room_id TEXT NOT NULL DEFAULT '',
+                created_at INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS idx_poker_highlights_created "
+            "ON poker_highlights(created_at DESC)"
+        )
+
+
+def is_poker_highlight(hand_cat: int, won: int, buy_in: int) -> bool:
+    if hand_cat >= HIGHLIGHT_MIN_HAND_CAT:
+        return True
+    if buy_in > 0 and won >= buy_in * HIGHLIGHT_MIN_WIN_MULT:
+        return True
+    return False
+
+
+def publish_poker_highlight(
+    user_id: str,
+    display_name: str,
+    *,
+    hand_name: str,
+    hand_combo: str,
+    community: list,
+    hole_cards: list,
+    won: int,
+    pot: int,
+    room_id: str = "",
+) -> Optional[int]:
+    ts = now_ms()
+    body = f"🃏 {display_name} · {hand_name}"
+    if won > 0:
+        body += f" · 赢得 {won} 积分"
+    with _lock:
+        with _conn() as c:
+            c.execute(
+                """INSERT INTO poker_highlights
+                   (user_id, display_name, hand_name, hand_combo, community_json,
+                    hole_cards_json, won, pot, room_id, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    user_id, display_name, hand_name, hand_combo,
+                    json.dumps(community, ensure_ascii=False),
+                    json.dumps(hole_cards, ensure_ascii=False),
+                    int(won), int(pot), room_id or "", ts,
+                ),
+            )
+            hid = int(c.execute("SELECT last_insert_rowid()").fetchone()[0])
+            c.execute(
+                "INSERT INTO chat_messages (channel, user_id, display_name, agent_id, body, kind, created_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                ("global", user_id, display_name, "", body, "highlight", ts),
+            )
+    return hid
+
+
+def list_poker_highlights(since_id: int = 0, limit: int = 20) -> list[dict]:
+    with _lock:
+        with _conn() as c:
+            rows = c.execute(
+                """SELECT id, user_id, display_name, hand_name, hand_combo,
+                          community_json, hole_cards_json, won, pot, room_id, created_at
+                   FROM poker_highlights WHERE id > ? ORDER BY id DESC LIMIT ?""",
+                (max(0, since_id), max(1, min(limit, 40))),
+            ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["community"] = json.loads(d.pop("community_json") or "[]")
+            d["hole_cards"] = json.loads(d.pop("hole_cards_json") or "[]")
+        except Exception:
+            d["community"] = []
+            d["hole_cards"] = []
+        out.append(d)
+    return list(reversed(out))
+
+
+def maybe_push_pending_poker_nudges(account_id: str) -> None:
+    """邀请人：好友已注册但未首局扑克时，每日最多提醒一次"""
+    today = _today()
+    pending = [i for i in list_referral_invitees(account_id) if not i.get("poker_done")]
+    if not pending:
+        return
+
+    def mut(stats: dict) -> None:
+        sent = stats.setdefault("pending_poker_nudge_date", "")
+        if sent == today:
+            return
+        stats["pending_poker_nudge_date"] = today
+        names = "、".join(p["name"] for p in pending[:3])
+        extra = f" 等 {len(pending)} 人" if len(pending) > 3 else ""
+        push_life_notification(
+            account_id,
+            "referral_pending",
+            f"⏳ {names}{extra} 还差 1 局扑克 · 提醒 TA 你可得 +{REFERRAL_INVITER_POKER}",
+        )
+
+    _mutate_user_stats(account_id, mut)
+
+
+def maybe_push_invitee_poker_nudge(invitee_id: str) -> None:
+    """被邀请人：注册后尚未打牌，登录时 gentle nudge"""
+    with _lock:
+        with _conn() as c:
+            row = c.execute(
+                "SELECT inviter_id FROM referrals WHERE invitee_id=? AND poker_rewarded=0",
+                (invitee_id,),
+            ).fetchone()
+            if not row:
+                return
+    today = _today()
+
+    def mut(stats: dict) -> None:
+        if stats.get("invitee_poker_nudge_date") == today:
+            return
+        stats["invitee_poker_nudge_date"] = today
+        push_life_notification(
+            invitee_id,
+            "referral_invitee_poker",
+            "🃏 打一局德州扑克，帮邀请你的好友解锁 +200 奖励！",
+        )
+
+    _mutate_user_stats(invitee_id, mut)
+
+
+def remind_invitee_poker(inviter_id: str, invitee_id: str) -> dict:
+    with _lock:
+        with _conn() as c:
+            row = c.execute(
+                "SELECT 1 FROM referrals WHERE inviter_id=? AND invitee_id=? AND poker_rewarded=0",
+                (inviter_id, invitee_id),
+            ).fetchone()
+            if not row:
+                return {"ok": False, "error": "好友已完成首局或不存在"}
+            inviter = c.execute(
+                "SELECT COALESCE(NULLIF(display_name,''), username, '好友') AS name FROM life_accounts WHERE id=?",
+                (inviter_id,),
+            ).fetchone()
+    inviter_name = inviter["name"] if inviter else "好友"
+    push_life_notification(
+        invitee_id,
+        "referral_nudge",
+        f"📣 {inviter_name} 等你来打一局德州扑克！完成首局 TA 得 +{REFERRAL_INVITER_POKER} 积分",
+    )
+    return {"ok": True, "message": f"已提醒 {invitee_id}"}
 

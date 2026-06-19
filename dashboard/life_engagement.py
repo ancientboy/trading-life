@@ -934,6 +934,58 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
         if not r["is_npc"] and str(r["user_id"]).startswith("acc_"):
             life_db.try_referral_poker_reward(r["user_id"])
 
+    for r in results:
+        if r.get("is_npc"):
+            continue
+        uid = r["user_id"]
+        hand_key = r.get("hand_rank_key") or []
+        hand_cat = int(hand_key[0]) if hand_key else 0
+        player_buy_in = buy_in
+        for p in plist:
+            if p["user_id"] == uid:
+                player_buy_in = p.get("buy_in", buy_in) or buy_in
+                break
+        net = int(r.get("won") or 0) - int(player_buy_in)
+        life_db.record_weekly_poker(
+            uid,
+            won=int(r.get("won") or 0),
+            net=net,
+            won_hand=r.get("rank") == 1,
+            hand_cat=hand_cat,
+            hand_name=r.get("hand_name") or r.get("hand_combo") or "",
+        )
+        if r.get("rank") == 1 and life_db.is_poker_highlight(hand_cat, int(r.get("won") or 0), player_buy_in):
+            acc = life_db.get_account_by_id(uid) or {}
+            life_db.publish_poker_highlight(
+                uid,
+                acc.get("display_name") or acc.get("username") or r.get("name") or "玩家",
+                hand_name=r.get("hand_name") or r.get("hand_combo") or "精彩牌型",
+                hand_combo=r.get("hand_combo") or "",
+                community=community,
+                hole_cards=r.get("hole_cards") or [],
+                won=int(r.get("won") or 0),
+                pot=pot,
+                room_id=room_id,
+            )
+
+    highlight_broadcast = None
+    for r in results:
+        if r.get("user_id") == account_id and r.get("rank") == 1:
+            hand_key = r.get("hand_rank_key") or []
+            hand_cat = int(hand_key[0]) if hand_key else 0
+            player_buy_in = buy_in
+            for p in plist:
+                if p["user_id"] == account_id:
+                    player_buy_in = p.get("buy_in", buy_in) or buy_in
+                    break
+            if life_db.is_poker_highlight(hand_cat, int(r.get("won") or 0), player_buy_in):
+                highlight_broadcast = {
+                    "hand_name": r.get("hand_name") or r.get("hand_combo") or "",
+                    "won": int(r.get("won") or 0),
+                    "pot": pot,
+                }
+            break
+
     caller_cost = buy_in
     for p in plist:
         if p["user_id"] == account_id:
@@ -952,6 +1004,7 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
         "balance": load_user(account_id)["points"],
         "tie": winner_count > 1,
         "winners_count": winner_count,
+        "highlight_broadcast": highlight_broadcast,
     }
 
 

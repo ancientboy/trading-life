@@ -1,9 +1,10 @@
-"""增长 / 裂变 — 邀请返利、公开围观"""
+"""增长 / 裂变 — 邀请返利、公开围观、战报分享"""
 from __future__ import annotations
 
 from typing import Optional
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 
 import life_db
 from life_auth import resolve_account_id
@@ -15,6 +16,10 @@ REFERRAL_INVITER_SIGNUP = 300
 REFERRAL_INVITER_POKER = 200
 
 
+class ReferralRemindBody(BaseModel):
+    invitee_id: str
+
+
 def _resolve_room_id(c, room_id_or_code: str) -> Optional[str]:
     from life_engagement import _resolve_room_id as _r
     return _r(c, room_id_or_code)
@@ -22,14 +27,38 @@ def _resolve_room_id(c, room_id_or_code: str) -> Optional[str]:
 
 @growth_router.get("/growth/referral")
 async def get_my_referral(account_id: str = Depends(resolve_account_id)):
+    life_db.maybe_push_pending_poker_nudges(account_id)
     summary = life_db.get_referral_summary(account_id)
     return {"ok": True, **summary}
 
 
+@growth_router.post("/growth/referral/remind")
+async def remind_invitee_poker(body: ReferralRemindBody, account_id: str = Depends(resolve_account_id)):
+    out = life_db.remind_invitee_poker(account_id, (body.invitee_id or "").strip())
+    if not out.get("ok"):
+        return out
+    acc = life_db.get_account_by_id(account_id) or {}
+    name = acc.get("display_name") or acc.get("username") or "好友"
+    return {"ok": True, "message": f"已提醒好友，等待 TA 打一局德州"}
+
+
 @growth_router.get("/growth/notifications")
 async def get_growth_notifications(account_id: str = Depends(resolve_account_id)):
+    life_db.maybe_push_invitee_poker_nudge(account_id)
     messages = life_db.pop_life_notifications(account_id)
     return {"ok": True, "messages": messages}
+
+
+@growth_router.get("/growth/weekly-report")
+async def get_weekly_report(account_id: str = Depends(resolve_account_id)):
+    report = life_db.get_weekly_report(account_id)
+    return {"ok": True, "report": report}
+
+
+@growth_router.get("/growth/poker/highlights")
+async def list_poker_highlights(since_id: int = 0, limit: int = 15):
+    items = life_db.list_poker_highlights(since_id=since_id, limit=limit)
+    return {"ok": True, "highlights": items, "latest_id": items[-1]["id"] if items else since_id}
 
 
 @growth_router.get("/public/poker/rooms/{room_id}/preview")

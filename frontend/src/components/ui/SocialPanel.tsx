@@ -3,10 +3,11 @@ import { useGameStore } from '../../store/useGameStore';
 import {
   fetchChat, postChat, fetchNpcEvents, claimNpcEvent,
   fetchMentorPairs, pairMentor, tradingPk, listGuilds, joinGuild, createGuild,
-  type ChatMessage, type NpcEvent,
+  type ChatMessage, type NpcEvent, type PokerHighlightItem,
 } from '../../lib/lifeEngagementApi';
 import { chatChannelForZone } from '../../lib/lifeEngagementApi';
 import { ReferralPanel } from './PublicViews';
+import { appBaseUrl, buildHighlightShareText, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
 
 export function SocialPanel() {
   const activeZone = useGameStore(s => s.activeZone);
@@ -14,6 +15,7 @@ export function SocialPanel() {
   const selectedAgentId = useGameStore(s => s.selectedAgentId);
   const chatMessages = useGameStore(s => s.chatMessages);
   const setChatMessages = useGameStore(s => s.setChatMessages);
+  const pokerHighlights = useGameStore(s => s.pokerHighlights);
   const npcEvents = useGameStore(s => s.npcEvents);
   const setNpcEvents = useGameStore(s => s.setNpcEvents);
   const addMessage = useGameStore(s => s.addMessage);
@@ -26,6 +28,8 @@ export function SocialPanel() {
   const [guildName, setGuildName] = useState('');
   const [guilds, setGuilds] = useState<{ id: string; name: string; member_count: number }[]>([]);
   const [pairs, setPairs] = useState<{ mentor_agent_id: string; mentee_agent_id: string }[]>([]);
+  const [globalChat, setGlobalChat] = useState<ChatMessage[]>([]);
+  const [hlSharing, setHlSharing] = useState<number | null>(null);
 
   const channel = chatChannelForZone(activeZone);
   const agentList = Object.values(agents);
@@ -39,6 +43,9 @@ export function SocialPanel() {
   useEffect(() => {
     fetchChat(channel, 0).then(r => {
       if (r.ok) setChatMessages(r.messages);
+    });
+    fetchChat('global', 0).then(r => {
+      if (r.ok) setGlobalChat(r.messages.filter(m => m.kind === 'highlight').slice(-8));
     });
   }, [channel, setChatMessages]);
 
@@ -95,6 +102,35 @@ export function SocialPanel() {
 
   return (
     <div style={{ color: '#3d3530', fontSize: 13 }}>
+      <Section title="🃏 全服扑克高光" subtitle="顺子+ / 大胜 · 一键分享">
+        {(pokerHighlights.length === 0 && globalChat.length === 0) && (
+          <p style={{ fontSize: 11, color: '#9a8b7a' }}>暂无高光 — 打出顺子或赢得 2 倍买入将全服广播</p>
+        )}
+        {(pokerHighlights.length ? pokerHighlights : []).slice(-5).reverse().map((h: PokerHighlightItem) => (
+          <div key={h.id} style={{
+            padding: '8px 10px', marginBottom: 6, background: '#fff8e8', borderRadius: 8,
+            border: '1px solid #e8d4a0', fontSize: 11,
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>
+              {h.display_name} · {h.hand_name}
+              {h.won > 0 && <span style={{ color: '#2ea872' }}> +{h.won}</span>}
+            </div>
+            <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 10px' }}
+              disabled={hlSharing === h.id}
+              onClick={async () => {
+                setHlSharing(h.id);
+                try {
+                  const text = buildHighlightShareText(h);
+                  const r = await shareOrCopy({ title: '交易人生全服高光', text, url: appBaseUrl() });
+                  addMessage(shareResultMessage(r));
+                } finally { setHlSharing(null); }
+              }}>
+              {hlSharing === h.id ? '…' : '分享'}
+            </button>
+          </div>
+        ))}
+      </Section>
+
       <Section title="🎁 邀请好友" subtitle="分享链接 · 双方得积分">
         <ReferralPanel />
       </Section>

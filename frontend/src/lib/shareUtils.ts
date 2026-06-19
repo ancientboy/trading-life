@@ -25,6 +25,146 @@ export function buildLeaderboardLink(): string {
   return `${appBaseUrl()}?view=leaderboard`;
 }
 
+export function buildWeeklyReportLink(): string {
+  return `${appBaseUrl()}?view=leaderboard`;
+}
+
+export type WeeklyReportData = {
+  week_label: string;
+  display_name: string;
+  poker_games: number;
+  poker_wins: number;
+  points_net: number;
+  points_won: number;
+  best_hand_name: string;
+  season_name?: string;
+  season_points?: number;
+  season_pvp_wins?: number;
+  season_rank_hint?: number | null;
+  current_points?: number;
+};
+
+export function buildWeeklyReportShareText(data: WeeklyReportData): string {
+  const rank = data.season_rank_hint ? ` · 赛季约第 ${data.season_rank_hint} 名` : '';
+  return `📊 我的交易人生本周战报（${data.week_label}）\n`
+    + `🃏 德州 ${data.poker_games} 局 ${data.poker_wins} 胜 · 净 ${data.points_net >= 0 ? '+' : ''}${data.points_net} 积分\n`
+    + `🏆 最佳牌型 ${data.best_hand_name}${rank}\n`
+    + `当前积分 ${data.current_points ?? '—'}`;
+}
+
+export async function renderWeeklyReportCard(data: WeeklyReportData, linkUrl?: string): Promise<Blob> {
+  const w = 640;
+  const h = 360;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#2a3a6b');
+  grad.addColorStop(1, '#1a2540');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.fillStyle = '#ffd54f';
+  ctx.font = 'bold 22px system-ui, sans-serif';
+  ctx.fillText('交易人生 · 本周战报', 24, 44);
+
+  ctx.fillStyle = '#e3f2fd';
+  ctx.font = 'bold 26px system-ui, sans-serif';
+  ctx.fillText(data.display_name.slice(0, 12), 24, 88);
+
+  ctx.font = '15px system-ui, sans-serif';
+  ctx.fillStyle = '#bbdefb';
+  ctx.fillText(`${data.week_label}${data.season_name ? ` · ${data.season_name}` : ''}`, 24, 118);
+
+  const lines = [
+    `🃏 德州 ${data.poker_games} 局 · ${data.poker_wins} 胜 · 净 ${data.points_net >= 0 ? '+' : ''}${data.points_net}`,
+    `✨ 最佳牌型 ${data.best_hand_name}`,
+    `🏆 赛季积分 ${data.season_points ?? 0} · PvP胜 ${data.season_pvp_wins ?? 0}`,
+    data.season_rank_hint ? `📈 约第 ${data.season_rank_hint} 名` : '',
+    `💰 当前 ${data.current_points ?? 0} 积分`,
+  ].filter(Boolean);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = '14px system-ui, sans-serif';
+  let y = 156;
+  for (const line of lines) {
+    ctx.fillText(line.slice(0, 44), 24, y);
+    y += 28;
+  }
+
+  const footerUrl = linkUrl || buildWeeklyReportLink();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillText(footerUrl.length > 46 ? `${footerUrl.slice(0, 44)}…` : footerUrl, 24, h - 12);
+
+  try {
+    const QRCode = (await import('qrcode')).default;
+    const qrDataUrl = await QRCode.toDataURL(footerUrl, { width: 96, margin: 1, color: { dark: '#1a2540', light: '#ffffff' } });
+    const qrImg = new Image();
+    await new Promise<void>((resolve, reject) => {
+      qrImg.onload = () => resolve();
+      qrImg.onerror = () => reject(new Error('QR load failed'));
+      qrImg.src = qrDataUrl;
+    });
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(w - 118, h - 118, 104, 104);
+    ctx.drawImage(qrImg, w - 112, h - 112, 92, 92);
+  } catch { /* optional */ }
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('生成图片失败'))), 'image/png');
+  });
+}
+
+export async function downloadWeeklyReportCard(data: WeeklyReportData, linkUrl?: string): Promise<void> {
+  const blob = await renderWeeklyReportCard(data, linkUrl);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `trading-life-weekly-${Date.now()}.png`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export type PokerHighlightItem = {
+  id: number;
+  user_id: string;
+  display_name: string;
+  hand_name: string;
+  hand_combo?: string;
+  community?: string[];
+  hole_cards?: string[];
+  won: number;
+  pot: number;
+  room_id?: string;
+  created_at: number;
+};
+
+export function buildHighlightShareText(h: PokerHighlightItem): string {
+  return `🃏 全服高光！${h.display_name} · ${h.hand_name}${h.won ? ` · 赢得 ${h.won} 积分` : ''}`;
+}
+
+export async function renderHighlightShareCard(h: PokerHighlightItem, linkUrl?: string): Promise<Blob> {
+  const pseudo: PokerHandResult = {
+    results: [{
+      name: h.display_name,
+      score: 0,
+      rank: 1,
+      won: h.won,
+      hand_name: h.hand_name,
+      hand_combo: h.hand_combo,
+      hole_cards: h.hole_cards,
+      best_cards: h.hole_cards,
+    }],
+    community_cards: h.community,
+    won: h.won,
+    net: h.won,
+    buyIn: 0,
+    pot: h.pot,
+  };
+  return renderPokerShareCard(pseudo, linkUrl || appBaseUrl());
+}
+
 export function parseDeepLink(search?: string): {
   join?: string;
   invite?: string;

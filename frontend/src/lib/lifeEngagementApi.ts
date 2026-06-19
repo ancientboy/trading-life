@@ -250,6 +250,7 @@ export async function startPokerRoom(roomId: string) {
     tie?: boolean; winners_count?: number;
     results?: Array<{ user_id: string; name: string; score: number; rank: number; won: number; is_npc?: boolean }>;
     error?: string;
+    highlight_broadcast?: { hand_name: string; won: number; pot: number } | null;
   }>(r);
 }
 
@@ -283,6 +284,7 @@ export async function pokerSolo(agentId: string, buyIn = 30) {
     results?: PokerApiPlayerResult[];
     error?: string; cost?: number;
     tie?: boolean; winners_count?: number;
+    highlight_broadcast?: { hand_name: string; won: number; pot: number } | null;
   }>(`${API}/pvp/poker/solo`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, buy_in: buyIn }),
   }, 45000);
@@ -524,14 +526,64 @@ export function chatChannelForZone(zone: string, nodeId?: string | null): string
 
 // ─── 增长 / 裂变 ───
 
+export type WeeklyReportData = {
+  week_key: string;
+  week_label: string;
+  display_name: string;
+  poker_games: number;
+  poker_wins: number;
+  points_net: number;
+  points_won: number;
+  best_hand_name: string;
+  best_hand_cat: number;
+  season_name?: string;
+  season_points?: number;
+  season_social?: number;
+  season_pvp_wins?: number;
+  season_rank_hint?: number | null;
+  current_points?: number;
+};
+
+export type PokerHighlightItem = {
+  id: number;
+  user_id: string;
+  display_name: string;
+  hand_name: string;
+  hand_combo?: string;
+  community?: string[];
+  hole_cards?: string[];
+  won: number;
+  pot: number;
+  room_id?: string;
+  created_at: number;
+};
+
 export async function fetchReferralInfo() {
   const r = await fetch(`${API}/growth/referral`, { headers: headers() });
   return parse<{
     ok: boolean; invite_code?: string; invites_count?: number; poker_rewards?: number;
     invitees?: Array<{ invitee_id: string; name: string; registered_at: string; poker_done: boolean }>;
+    pending_poker_invitees?: Array<{ invitee_id: string; name: string; registered_at: string; poker_done: boolean }>;
     rewards?: { invitee_signup: number; inviter_signup: number; inviter_first_poker: number };
     error?: string;
   }>(r);
+}
+
+export async function remindInviteePoker(inviteeId: string) {
+  const r = await fetch(`${API}/growth/referral/remind`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ invitee_id: inviteeId }),
+  });
+  return parse<{ ok: boolean; message?: string; error?: string }>(r);
+}
+
+export async function fetchWeeklyReport() {
+  const r = await fetch(`${API}/growth/weekly-report`, { headers: headers() });
+  return parse<{ ok: boolean; report?: WeeklyReportData; error?: string }>(r);
+}
+
+export async function fetchPokerHighlights(sinceId = 0) {
+  const r = await fetch(`${API}/growth/poker/highlights?since_id=${sinceId}&limit=15`, { headers: headers() });
+  return parse<{ ok: boolean; highlights?: PokerHighlightItem[]; latest_id?: number; error?: string }>(r);
 }
 
 export async function fetchGrowthNotifications() {
