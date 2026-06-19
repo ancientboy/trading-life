@@ -9,7 +9,7 @@ export type SpeciesId = typeof SPECIES_IDS[number];
 
 export const SPECIES_CATALOG: Record<SpeciesId, { label: string; desc: string; preview: string }> = {
   penguin: { label: '经典企鹅', desc: '黑白 Q 版企鹅造型', preview: '🐧' },
-  niuma: { label: '牛马', desc: '圆蛋身 · 商务西装 · PNG 皮肤', preview: '👔' },
+  niuma: { label: '牛马', desc: '圆蛋身 · 商务西装 · Canvas 矢量', preview: '👔' },
 };
 
 export const SPECIES_UNLOCK_MAP: Partial<Record<Exclude<SpeciesId, 'penguin'>, string>> = {

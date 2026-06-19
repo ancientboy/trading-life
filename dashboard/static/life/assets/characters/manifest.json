@@ -47,7 +47,7 @@
     }
   },
   "render": {
-    "niuma": "png"
+    "niuma": "procedural"
   },
   "installed": {
     "niuma": {
