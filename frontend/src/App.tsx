@@ -10,6 +10,7 @@ import { syncMood } from './lib/lifeEngagementApi';
 import { clearUrlParams, parseDeepLink, persistDeepLink } from './lib/shareUtils';
 
 import { preloadAllSprites } from './lib/spriteTextures';
+import { preloadNiumaSprites } from './lib/characterSprites';
 
 export default function App() {
   const initAgents = useGameStore(s => s.initAgents);
@@ -36,6 +37,7 @@ export default function App() {
       clearUrlParams();
     });
     preloadAllSprites().catch(() => {});
+    preloadNiumaSprites();
     const pollSystem = () => fetchOverview().then(data => {
       updateFromOverview(data);
     }).catch(() => {});

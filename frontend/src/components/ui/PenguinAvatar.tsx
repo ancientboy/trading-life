@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { drawAgent } from '../paper/paperDraw';
 import { resolveAppearance, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
 import type { OutfitId } from '../../lib/agentOutfits';
+import { characterSpriteUrl, loadCharacterSprite } from '../../lib/characterSprites';
 
 export interface PenguinAvatarProps {
   color: string;
@@ -37,36 +38,43 @@ export function PenguinAvatar({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    let cancelled = false;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = size * dpr;
-    canvas.height = size * dpr;
+    const paint = () => {
+      if (cancelled) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, size, size);
+      ctx.fillStyle = '#faf6ef';
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, size * 0.22);
+      ctx.fill();
+      const scale = size / 52;
+      ctx.save();
+      ctx.translate(size / 2, size * 0.58);
+      ctx.scale(scale, scale);
+      drawAgent(ctx, 0, 0, ap.color, {
+        speciesId: ap.speciesId,
+        outfitId: ap.outfitId,
+        hairStyle: ap.hairStyle,
+        scarfEnabled: ap.scarfEnabled,
+        hatEnabled: ap.hatEnabled,
+        headwear: ap.headwear,
+        hatStyle: ap.hatStyle,
+        facing: 's',
+        walking: false,
+        t: 0,
+      });
+      ctx.restore();
+    };
 
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, size, size);
-
-    ctx.fillStyle = '#faf6ef';
-    ctx.beginPath();
-    ctx.roundRect(0, 0, size, size, size * 0.22);
-    ctx.fill();
-
-    const scale = size / 52;
-    ctx.save();
-    ctx.translate(size / 2, size * 0.58);
-    ctx.scale(scale, scale);
-    drawAgent(ctx, 0, 0, ap.color, {
-      speciesId: ap.speciesId,
-      outfitId: ap.outfitId,
-      hairStyle: ap.hairStyle,
-      scarfEnabled: ap.scarfEnabled,
-      hatEnabled: ap.hatEnabled,
-      headwear: ap.headwear,
-      hatStyle: ap.hatStyle,
-      facing: 's',
-      walking: false,
-      t: 0,
-    });
-    ctx.restore();
+    paint();
+    if (ap.speciesId === 'niuma') {
+      void loadCharacterSprite(characterSpriteUrl('niuma', String(ap.outfitId), 'front')).then(() => paint());
+    }
+    return () => { cancelled = true; };
   }, [ap.color, ap.speciesId, ap.outfitId, ap.hairStyle, ap.scarfEnabled, ap.hatEnabled, ap.headwear, ap.hatStyle, size]);
 
   return (
