@@ -72,7 +72,7 @@ export function PenguinAvatar({
 
     paint();
     if (ap.speciesId === 'niuma') {
-      void loadCharacterSprite(characterSpriteUrl('niuma', String(ap.outfitId), 'front')).then(() => paint());
+      void loadCharacterSprite(characterSpriteUrl('niuma', String(ap.outfitId), 'front', 'skin')).then(() => paint());
     }
     return () => { cancelled = true; };
   }, [ap.color, ap.speciesId, ap.outfitId, ap.hairStyle, ap.scarfEnabled, ap.hatEnabled, ap.headwear, ap.hatStyle, size]);

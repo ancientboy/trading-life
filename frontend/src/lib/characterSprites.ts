@@ -1,7 +1,9 @@
 /** 角色 PNG 皮肤 — 有贴图则 drawImage，无则 fallback 程序化绘制 */
+import type { CharacterPromptView } from './characterPromptSpec';
+
 const BASE = `${import.meta.env.BASE_URL}assets/characters/`;
 
-export type CharacterSpriteView = 'front' | 'back' | 'side';
+export type CharacterSpriteView = CharacterPromptView;
 
 const cache = new Map<string, HTMLImageElement>();
 const pending = new Map<string, Promise<HTMLImageElement | null>>();
@@ -10,8 +12,10 @@ export function characterSpriteUrl(
   speciesId: string,
   skinId: string,
   view: CharacterSpriteView,
+  layer: 'skin' | 'base' = 'skin',
 ): string {
-  return `${BASE}${speciesId}/${skinId}/${view}.png`;
+  const dir = layer === 'base' ? 'base' : skinId;
+  return `${BASE}${speciesId}/${dir}/${view}.png`;
 }
 
 export function getCachedCharacterSprite(url: string): HTMLImageElement | null {
@@ -57,11 +61,23 @@ export function drawCharacterSpriteFront(
 
 export function preloadNiumaSprites(): void {
   for (const skin of ['default', 'casual', 'executive']) {
-    void loadCharacterSprite(characterSpriteUrl('niuma', skin, 'front'));
+    preloadCharacterSkin('niuma', skin);
   }
 }
 
-export function niumaFrontSpriteReady(speciesId: string, skinId: string): boolean {
+export function niumaSpriteReady(speciesId: string, skinId: string, view: CharacterSpriteView): boolean {
   if (speciesId !== 'niuma') return false;
-  return !!getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'front'));
+  return !!getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, view, 'skin'));
+}
+
+/** @deprecated 使用 niumaSpriteReady */
+export function niumaFrontSpriteReady(speciesId: string, skinId: string): boolean {
+  return niumaSpriteReady(speciesId, skinId, 'front');
+}
+
+/** 预加载某物种某皮肤的三视图（有文件则缓存，无则静默失败） */
+export function preloadCharacterSkin(speciesId: string, skinId: string): void {
+  for (const view of ['front', 'back', 'side'] as const) {
+    void loadCharacterSprite(characterSpriteUrl(speciesId, skinId, view, 'skin'));
+  }
 }

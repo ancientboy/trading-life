@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "promptSpec": "frontend/src/lib/characterPromptSpec.ts",
+  "rules": [
+    "GLOBAL_PROMPT_PREFIX 与 GLOBAL_NEGATIVE_PROMPT 固定不动",
+    "仅替换 species 本体描述（penguin 圆胖 / niuma 蛋形）",
+    "视角、裸基底、服装仅在整段末尾追加短句",
+    "两套角色共享同一套光影、描边、透明底规范"
+  ],
+  "canvas": {
+    "size": 512,
+    "background": "transparent",
+    "anchor": "bottom-center"
+  },
+  "species": {
+    "penguin": {
+      "label": "经典企鹅",
+      "bodyType": "plump oval penguin — NOT egg-shaped",
+      "layers": ["body", "outfit", "accessory"],
+      "views": ["front", "back", "side"],
+      "skins": {
+        "default": { "label": "默认", "outfitKey": null },
+        "agent": { "label": "特工西装", "outfitKey": "penguin_agent_suit" }
+      },
+      "paths": {
+        "skin": "penguin/{skinId}/{view}.png",
+        "nakedBase": "penguin/base/{view}.png"
+      }
+    },
+    "niuma": {
+      "label": "马牛",
+      "bodyType": "egg-shaped chibi",
+      "layers": ["body", "outfit", "hair"],
+      "views": ["front", "back", "side"],
+      "skins": {
+        "default": { "label": "商务西装", "outfitKey": "niuma_default" },
+        "casual": { "label": "休闲 Polo", "outfitKey": "niuma_casual" },
+        "executive": { "label": "总裁黑金", "outfitKey": "niuma_executive" }
+      },
+      "paths": {
+        "skin": "niuma/{skinId}/{view}.png",
+        "nakedBase": "niuma/base/{view}.png"
+      }
+    }
+  },
+  "installed": {
+    "niuma": {
+      "default": ["front"]
+    }
+  }
+}

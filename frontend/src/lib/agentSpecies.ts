@@ -369,9 +369,26 @@ export function drawNiumaCharacter2d(
   bounce = 0,
 ) {
   if (view === 'front') {
-    const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'front'));
+    const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'front', 'skin'));
     if (img) {
       drawCharacterSpriteFront(ctx, py, img);
+      return;
+    }
+  }
+  if (view === 'back') {
+    const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'back', 'skin'));
+    if (img) {
+      drawCharacterSpriteFront(ctx, py, img);
+      return;
+    }
+  }
+  if (view === 'side') {
+    const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'side', 'skin'));
+    if (img) {
+      ctx.save();
+      ctx.scale(flip, 1);
+      drawCharacterSpriteFront(ctx, py, img);
+      ctx.restore();
       return;
     }
   }
