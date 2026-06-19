@@ -445,8 +445,12 @@ def resolve_stuck_state(state: dict) -> bool:
     if state["phase"] in ("between_hands", "waiting", "complete"):
         return False
 
-    if state.get("actor_index", -1) >= 0:
-        return False
+    idx = state.get("actor_index", -1)
+    if idx >= 0:
+        p = state["players"][idx]
+        if _can_act(p) and legal_actions(state, idx):
+            return False
+        state["actor_index"] = -1
 
     if _street_settled(state):
         _advance_street(state)

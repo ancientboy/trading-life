@@ -99,14 +99,14 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
   }, []);
 
   const runPoll = useCallback(async (opts?: { force?: boolean; initial?: boolean; steps?: number }) => {
-    if (inFlightRef.current) return;
+    const force = opts?.force ?? false;
+    if (inFlightRef.current && !force) return;
     inFlightRef.current = true;
     const isInitial = opts?.initial ?? false;
-    const force = opts?.force ?? false;
     if (isInitial) setBooting(true);
     else setSyncing(true);
     try {
-      const steps = opts?.steps ?? (force ? 12 : isInitial ? 4 : 1);
+      const steps = opts?.steps ?? (force ? 8 : isInitial ? 3 : 1);
       const r = await fetchAdvancedPokerState(roomIdRef.current, sinceRef.current, {
         autoRun: !pausedRef.current || force,
         maxSteps: steps,
@@ -114,6 +114,9 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       if (roomIdRef.current !== roomId) return;
       if (!r.ok) {
         setError(r.error || '同步失败');
+        if (r.timedOut && !force && !pausedRef.current) {
+          window.setTimeout(() => void runPoll({ force: true, steps: 3 }), 1500);
+        }
         return;
       }
       setError('');
@@ -134,6 +137,13 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       setSyncing(false);
     }
   }, [roomId, applyGame]);
+
+  const retryPoll = useCallback(() => {
+    setError('');
+    stallRef.current = 0;
+    setStallCount(0);
+    void runPoll({ force: true, steps: 6 });
+  }, [runPoll]);
 
   useEffect(() => {
     sinceRef.current = 0;
@@ -224,8 +234,14 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
           </button>
         ))}
         <button type="button" className={`ui-btn ${paused ? 'active' : ''}`} style={{ fontSize: 10, padding: '4px 8px' }}
-          onClick={() => setPaused(v => !v)}>
-          {paused ? '▶ 继续' : '⏸ 暂停'}
+          onClick={() => {
+            if (error) {
+              retryPoll();
+              return;
+            }
+            setPaused(v => !v);
+          }}>
+          {error ? '🔄 重试' : paused ? '▶ 继续' : '⏸ 暂停'}
         </button>
         {!autoComplete && (
           <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px' }}
@@ -235,7 +251,7 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
         )}
         {stallCount >= 8 && status === 'playing' && (
           <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px', fontWeight: 700, color: '#c0392b' }}
-            onClick={() => { stallRef.current = 0; setStallCount(0); void runPoll({ force: true, steps: 15 }); }}>
+            onClick={() => { stallRef.current = 0; setStallCount(0); void runPoll({ force: true, steps: 8 }); }}>
             强制推进
           </button>
         )}
@@ -350,7 +366,15 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
         {log.slice(-20).map((line, i) => <div key={i}>{line}</div>)}
       </div>
 
-      {error && <div style={{ marginTop: 8, fontSize: 11, color: '#c0392b' }}>{error}</div>}
+      {error && (
+        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: '#c0392b' }}>{error}</span>
+          <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 10px', fontWeight: 700 }}
+            onClick={retryPoll}>
+            重试同步
+          </button>
+        </div>
+      )}
 
       {onClose && (
         <button className="ui-btn" style={{ width: '100%', marginTop: 10 }} onClick={onClose}>关闭观赛</button>

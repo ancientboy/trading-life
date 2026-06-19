@@ -110,10 +110,15 @@ def _apply_with_fallback(state: dict, seat_idx: int, action: str, amount: int) -
     return resolve_stuck_state(state)
 
 
-async def run_ticks(state: dict, max_steps: int = 8, use_llm: bool = False) -> dict:
-    """自动推进 bot 行动，直到需要等待或达到步数上限"""
+async def run_ticks(state: dict, max_steps: int = 8, use_llm: bool = False, time_budget_ms: int = 12000) -> dict:
+    """自动推进 bot 行动，直到需要等待或达到步数/时间上限"""
+    import time
+
     steps = 0
+    deadline = time.monotonic() + time_budget_ms / 1000.0
     while steps < max_steps and state["status"] == "playing":
+        if time.monotonic() >= deadline:
+            break
         if state["phase"] in ("between_hands", "showdown", "waiting"):
             state = start_next_hand_if_ready(state)
             steps += 1
@@ -296,16 +301,18 @@ async def get_advanced_state(
     spectator = bool(room.get("spectator"))
 
     if auto_run and state["status"] == "playing":
+        resolve_stuck_state(state)
         if run_until_complete:
             total = 0
             hard_cap = 60
             while state["status"] == "playing" and total < hard_cap:
                 batch = min(20, hard_cap - total)
-                state = await run_ticks(state, max_steps=batch, use_llm=use_llm)
+                state = await run_ticks(state, max_steps=batch, use_llm=use_llm, time_budget_ms=15000)
                 total += batch
         elif max_steps > 0:
-            cap = max(1, min(max_steps, 80))
-            state = await run_ticks(state, max_steps=cap, use_llm=use_llm)
+            cap = max(1, min(max_steps, 24))
+            budget = 8000 if cap <= 3 else 12000 if cap <= 8 else 15000
+            state = await run_ticks(state, max_steps=cap, use_llm=use_llm, time_budget_ms=budget)
         with life_db._lock:
             with life_db._conn() as c:
                 _save_game_state(c, room_id, state)

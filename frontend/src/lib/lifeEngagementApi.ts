@@ -36,7 +36,7 @@ async function fetchJson<T>(url: string, init?: RequestInit, timeoutMs = 20000):
   } catch (e) {
     clearTimeout(timer);
     const err = e as Error;
-    if (err.name === 'AbortError') return { ok: false, error: '发牌超时，请重试' } as T;
+    if (err.name === 'AbortError') return { ok: false, error: '同步超时，请重试', timedOut: true } as T;
     return { ok: false, error: '网络错误，请检查连接后重试' } as T;
   }
 }
@@ -413,11 +413,11 @@ export async function fetchAdvancedPokerState(
   return fetchJson<{
     ok: boolean; room_id?: string; game?: AdvancedPokerGame; status?: string;
     settlement?: { results: Array<{ name: string; stack: number; rank: number; won: number; eliminated: boolean }>; winner?: { name: string }; balance?: number; net?: number; won?: number };
-    error?: string;
+    error?: string; timedOut?: boolean;
   }>(
     `${API}/pvp/poker/rooms/${encodeURIComponent(roomId)}/advanced/state?${params}`,
     { headers: headers() },
-    18000,
+    45000,
   );
 }
 
