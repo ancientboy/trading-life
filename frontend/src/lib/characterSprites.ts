@@ -2,7 +2,7 @@
 import type { CharacterPromptView } from './characterPromptSpec';
 import manifest from '../../public/assets/characters/manifest.json';
 
-const BASE = `${import.meta.env.BASE_URL}assets/characters/`;
+const BASE = `${(typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/trading/life/'}assets/characters/`;
 const MANIFEST_VERSION = String((manifest as { version?: number }).version ?? 1);
 
 export type CharacterSpriteView = CharacterPromptView;
