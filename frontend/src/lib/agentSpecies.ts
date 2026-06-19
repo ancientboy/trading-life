@@ -1,7 +1,7 @@
 /** 角色物种 — 牛马等与企鹅同级的独立基础角色 */
 
 import {
-  characterSpriteUrl, drawCharacterSpriteFront, getCachedCharacterSprite,
+  characterSpriteUrl, drawCharacterSpriteFront, getCachedCharacterSprite, speciesUsesPngSprites,
 } from './characterSprites';
 
 export const SPECIES_IDS = ['penguin', 'niuma'] as const;
@@ -9,7 +9,7 @@ export type SpeciesId = typeof SPECIES_IDS[number];
 
 export const SPECIES_CATALOG: Record<SpeciesId, { label: string; desc: string; preview: string }> = {
   penguin: { label: '经典企鹅', desc: '黑白 Q 版企鹅造型', preview: '🐧' },
-  niuma: { label: '牛马', desc: '圆蛋身 · 商务西装 · PNG 皮肤', preview: '👔' },
+  niuma: { label: '牛马', desc: '圆蛋身 · 商务西装 · Canvas 矢量', preview: '👔' },
 };
 
 export const SPECIES_UNLOCK_MAP: Partial<Record<Exclude<SpeciesId, 'penguin'>, string>> = {
@@ -369,27 +369,33 @@ export function drawNiumaCharacter2d(
   bounce = 0,
 ) {
   if (view === 'front') {
-    const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'front', 'skin'));
-    if (img) {
-      drawCharacterSpriteFront(ctx, py, img);
-      return;
+    if (speciesUsesPngSprites('niuma')) {
+      const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'front', 'skin'));
+      if (img) {
+        drawCharacterSpriteFront(ctx, py, img);
+        return;
+      }
     }
   }
   if (view === 'back') {
-    const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'back', 'skin'));
-    if (img) {
-      drawCharacterSpriteFront(ctx, py, img);
-      return;
+    if (speciesUsesPngSprites('niuma')) {
+      const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'back', 'skin'));
+      if (img) {
+        drawCharacterSpriteFront(ctx, py, img);
+        return;
+      }
     }
   }
   if (view === 'side') {
-    const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'side', 'skin'));
-    if (img) {
-      ctx.save();
-      ctx.scale(flip, 1);
-      drawCharacterSpriteFront(ctx, py, img);
-      ctx.restore();
-      return;
+    if (speciesUsesPngSprites('niuma')) {
+      const img = getCachedCharacterSprite(characterSpriteUrl('niuma', skinId, 'side', 'skin'));
+      if (img) {
+        ctx.save();
+        ctx.scale(flip, 1);
+        drawCharacterSpriteFront(ctx, py, img);
+        ctx.restore();
+        return;
+      }
     }
   }
   ctx.save();

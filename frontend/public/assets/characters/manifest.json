@@ -1,11 +1,14 @@
 {
-  "version": 1,
+  "version": 2,
   "promptSpec": "frontend/src/lib/characterPromptSpec.ts",
   "rules": [
     "GLOBAL_PROMPT_PREFIX 与 GLOBAL_NEGATIVE_PROMPT 固定不动",
-    "仅替换 species 本体描述（penguin 圆胖 / niuma 蛋形）",
-    "视角、裸基底、服装仅在整段末尾追加短句",
-    "两套角色共享同一套光影、描边、透明底规范"
+    "Paper Canvas 2D 纯平面，禁止 3D/2.5D/PBR",
+    "马牛：蛋形无脚；企鹅：圆胖带小脚，与场景原生一致",
+    "切换视角：在角色片段后追加背面/侧面短句",
+    "分层换装：裸基底 + 发型/服装部件",
+    "新增皮肤：仅改服装描述",
+    "场景渲染：manifest.render 控制 procedural | png"
   ],
   "canvas": {
     "size": 512,
@@ -29,7 +32,7 @@
     },
     "niuma": {
       "label": "马牛",
-      "bodyType": "egg-shaped chibi",
+      "bodyType": "egg-shaped chibi, no feet",
       "layers": ["body", "outfit", "hair"],
       "views": ["front", "back", "side"],
       "skins": {
@@ -42,6 +45,9 @@
         "nakedBase": "niuma/base/{view}.png"
       }
     }
+  },
+  "render": {
+    "niuma": "procedural"
   },
   "installed": {
     "niuma": {
