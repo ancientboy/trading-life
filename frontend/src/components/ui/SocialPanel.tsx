@@ -6,6 +6,7 @@ import {
   type ChatMessage, type NpcEvent,
 } from '../../lib/lifeEngagementApi';
 import { chatChannelForZone } from '../../lib/lifeEngagementApi';
+import { ReferralPanel } from './PublicViews';
 
 export function SocialPanel() {
   const activeZone = useGameStore(s => s.activeZone);
@@ -94,6 +95,10 @@ export function SocialPanel() {
 
   return (
     <div style={{ color: '#3d3530', fontSize: 13 }}>
+      <Section title="🎁 邀请好友" subtitle="分享链接 · 双方得积分">
+        <ReferralPanel />
+      </Section>
+
       <Section title="📡 区域聊天" subtitle={`频道：${channel} · @Agent名 可触发回复`}>
         <div style={{ maxHeight: 140, overflowY: 'auto', background: '#faf6ef', borderRadius: 8, padding: 8, marginBottom: 8 }}>
           {chatMessages.length === 0 && <p style={{ color: '#9a8b7a', fontSize: 11 }}>Agent 会自主发言、互相互动；也可 @Agent 或提问</p>}

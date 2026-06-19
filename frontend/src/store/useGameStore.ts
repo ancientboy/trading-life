@@ -22,6 +22,7 @@ import {
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, type SeatMap } from '../lib/seatRegistry';
+import { parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
 import type { LeisureTierId } from '../lib/leisureTiers';
@@ -30,7 +31,8 @@ import { homeNodeForAgent } from '../lib/agentHome';
 import { isLoggedIn, getStoredAccount } from '../lib/lifeAuth';
 import {
   fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
-  chatChannelForZone, fetchPokerRoom, fetchMyPokerRoom, leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
+  chatChannelForZone, fetchPokerRoom, fetchMyPokerRoom, joinPokerRoomByCode, fetchPublicRoomPreview,
+  leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
   type PokerRoom,
 } from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
@@ -242,6 +244,7 @@ interface GameStore {
   alignLocalAgentToPokerRoom: (room: PokerRoom) => void;
   syncPokerRoom: () => Promise<void>;
   restorePokerRoom: () => Promise<void>;
+  processPendingDeepLink: () => Promise<void>;
   clearPokerRoom: () => void;
   setPokerSpectateRoom: (room: { id: string; buyIn: number } | null) => void;
   leavePokerRoom: () => Promise<void>;
@@ -930,6 +933,48 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ pokerRoom: r.room });
       get().alignLocalAgentToPokerRoom(r.room);
     } catch { /* ignore */ }
+  },
+
+  processPendingDeepLink: async () => {
+    const join = sessionStorage.getItem('tl_pending_join') || parseDeepLink().join;
+    const spectate = sessionStorage.getItem('tl_pending_spectate');
+    sessionStorage.removeItem('tl_pending_join');
+    sessionStorage.removeItem('tl_pending_spectate');
+    sessionStorage.removeItem('tl_pending_invite');
+
+    if (spectate) {
+      const preview = await fetchPublicRoomPreview(spectate).catch(() => null);
+      const buyIn = preview?.ok ? (preview.buy_in ?? 1000) : 1000;
+      set({ pokerSpectateRoom: { id: spectate, buyIn } });
+      get().flyToZone('casino');
+      get().openModal('poker');
+      get().addMessage('已打开公开观赛');
+      return;
+    }
+
+    if (!join) return;
+    const agentIds = Object.keys(get().agents);
+    const agentId = get().selectedAgentId && get().agents[get().selectedAgentId!]
+      ? get().selectedAgentId!
+      : agentIds[0];
+    if (!agentId) {
+      sessionStorage.setItem('tl_pending_join', join);
+      return;
+    }
+    try {
+      const r = await joinPokerRoomByCode(join, agentId);
+      if (r.ok && r.room) {
+        get().applyPokerRoom(r.room);
+        if (r.seat_id) await get().seatAgentAtPoker(agentId, r.seat_id);
+        get().flyToZone('casino');
+        get().openModal('poker');
+        get().addMessage(r.message || `已加入房间 ${r.room_code || join}`);
+      } else {
+        get().addMessage(r.error || '加入房间失败');
+      }
+    } catch {
+      get().addMessage('加入房间失败');
+    }
   },
 
   clearPokerRoom: () => set({ pokerRoom: null }),

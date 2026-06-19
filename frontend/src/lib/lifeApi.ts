@@ -119,15 +119,15 @@ export async function lifeActivityComplete(activity: string, userInitiated = fal
   return parse<{ ok: boolean; balance: number; earned: number }>(r);
 }
 
-export async function authRegister(username: string, password: string, displayName = '') {
+export async function authRegister(username: string, password: string, displayName = '', inviteCode = '') {
   const r = await fetch(`${API}/auth/register`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password, display_name: displayName }),
+    body: JSON.stringify({ username, password, display_name: displayName, invite_code: inviteCode }),
   });
   return parseAuth<{
     ok: boolean; token?: string;
     account?: { id: string; username: string; display_name: string };
-    state?: LifeState; error?: string;
+    state?: LifeState; error?: string; invite_message?: string;
   }>(r);
 }
 

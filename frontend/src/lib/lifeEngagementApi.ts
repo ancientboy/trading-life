@@ -521,3 +521,44 @@ export function chatChannelForZone(zone: string, nodeId?: string | null): string
   if (zone === 'hall' && nodeId?.startsWith('rest_l')) return nodeId;
   return zone;
 }
+
+// ─── 增长 / 裂变 ───
+
+export async function fetchReferralInfo() {
+  const r = await fetch(`${API}/growth/referral`, { headers: headers() });
+  return parse<{
+    ok: boolean; invite_code?: string; invites_count?: number; poker_rewards?: number;
+    rewards?: { invitee_signup: number; inviter_signup: number; inviter_first_poker: number };
+    error?: string;
+  }>(r);
+}
+
+export async function fetchPublicRoomPreview(roomCode: string) {
+  const code = roomCode.replace(/\D/g, '').slice(0, 5);
+  const r = await fetch(`${API}/public/poker/rooms/${encodeURIComponent(code)}/preview`);
+  return parse<{
+    ok: boolean; room_id?: string; room_code?: string; status?: string;
+    buy_in?: number; game_mode?: string; human_count?: number; max_players?: number; error?: string;
+  }>(r);
+}
+
+export async function fetchPublicSpectateState(roomId: string, sinceSeq = 0) {
+  const params = new URLSearchParams({ since_seq: String(sinceSeq), max_steps: '1' });
+  return fetchJson<{
+    ok: boolean; room_id?: string; buy_in?: number; game?: AdvancedPokerGame; status?: string; error?: string;
+  }>(
+    `${API}/public/poker/rooms/${encodeURIComponent(roomId)}/spectate?${params}`,
+    { headers: { 'Content-Type': 'application/json' } },
+    45000,
+  );
+}
+
+export async function fetchPublicSeasonLeaderboard(metric = 'points') {
+  const r = await fetch(`${API}/public/season/leaderboard?metric=${encodeURIComponent(metric)}&limit=20`);
+  return parse<{ ok: boolean; entries: LeaderboardEntry[]; metric?: string }>(r);
+}
+
+export async function fetchPublicSeasonInfo() {
+  const r = await fetch(`${API}/public/season/info`);
+  return parse<{ ok: boolean; season?: { id: string; name: string; ends_at: number } | null }>(r);
+}

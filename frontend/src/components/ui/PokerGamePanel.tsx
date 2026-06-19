@@ -8,6 +8,7 @@ import {
 } from '../../lib/lifeEngagementApi';
 import { PokerStyleEditor } from './PokerStyleEditor';
 import { isLoggedIn, getStoredAccount } from '../../lib/lifeAuth';
+import { buildJoinLink, buildSpectateLink, shareOrCopy } from '../../lib/shareUtils';
 
 const POKER_SEAT_NUMS = [1, 2, 3, 4, 5, 6, 7] as const;
 
@@ -215,6 +216,11 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         setBusy(null);
         openModal('poker');
         addMessage('进阶锦标赛开始 · Agent 自主博弈中');
+        void shareOrCopy({
+          title: '交易人生观赛',
+          text: `🃏 进阶德州锦标赛进行中 · 买入 ${roomBuyIn}`,
+          url: buildSpectateLink(r.room_id),
+        }).then(x => { if (x === 'copied') addMessage('观赛链接已复制，可分享给好友围观'); });
         return;
       }
       clearPokerRoom();
@@ -305,8 +311,20 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
             <span style={{ fontSize: 11, color: '#6a8aad' }}>{humanCount}/7 人 · 买入 {roomBuyIn}</span>
           </div>
           <div style={{ fontSize: 11, color: '#5a7a9a', marginBottom: 8 }}>
-            把编号告诉好友，对方在下方输入即可加入 · 可点击空位换座
+            复制链接邀请好友入座 · 也可手动输入 5 位房间号
           </div>
+          <button type="button" className="ui-btn" style={{ width: '100%', marginBottom: 8, fontSize: 11 }}
+            onClick={async () => {
+              const code = pokerRoom.room_code || pokerRoom.id;
+              const r = await shareOrCopy({
+                title: '交易人生德州扑克',
+                text: `🃏 来交易人生德州桌！房间 #${code} · 买入 ${roomBuyIn}`,
+                url: buildJoinLink(code),
+              });
+              addMessage(r === 'shared' ? '邀请已分享' : '房间链接已复制');
+            }}>
+            📋 复制房间邀请链接
+          </button>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
             {POKER_SEAT_NUMS.map(n => {
               const seatId = `poker_s${n}`;

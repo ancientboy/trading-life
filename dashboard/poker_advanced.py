@@ -174,6 +174,8 @@ def settle_tournament(state: dict, room: dict, players_db: list[dict], account_i
                         save_user(uid, user)
                         if rank == 1:
                             life_db.add_season_points(uid, pvp_win=1, social=8)
+                if not is_npc:
+                    life_db.try_referral_poker_reward(uid)
                 results.append({
                     "user_id": uid,
                     "agent_id": p.get("agent_id", ""),
@@ -338,3 +340,48 @@ def validate_advanced_buy_in(buy_in: int) -> int:
     if buy_in in ADVANCED_BUY_INS:
         return buy_in
     return min(ADVANCED_BUY_INS, key=lambda x: abs(x - buy_in))
+
+
+async def get_public_spectate_state(
+    room_id: str,
+    since_seq: int = 0,
+    auto_run: bool = True,
+    max_steps: int = 1,
+) -> dict:
+    """公开围观 — 无需登录"""
+    from life_engagement import _resolve_room_id
+
+    with life_db._lock:
+        with life_db._conn() as c:
+            rid = _resolve_room_id(c, room_id)
+            if not rid:
+                return {"ok": False, "error": "房间不存在"}
+            room = c.execute("SELECT * FROM poker_rooms WHERE id=?", (rid,)).fetchone()
+            if not room:
+                return {"ok": False, "error": "房间不存在"}
+            room = dict(room)
+            if room.get("game_mode") != "advanced":
+                return {"ok": False, "error": "仅进阶锦标赛可公开围观"}
+            if room["status"] in ("closed",):
+                return {"ok": False, "error": "房间已关闭"}
+            state = _load_game_state(room)
+            if not state:
+                return {"ok": False, "error": "牌局状态丢失"}
+
+    if auto_run and state["status"] == "playing" and max_steps > 0:
+        cap = max(1, min(max_steps, 8))
+        state = await run_ticks(state, max_steps=cap, use_llm=False, time_budget_ms=8000)
+        with life_db._lock:
+            with life_db._conn() as c:
+                _save_game_state(c, rid, state)
+
+    pub = public_state(state, viewer_user_id=None, since_seq=since_seq, spectator_mode=True)
+    return {
+        "ok": True,
+        "room_id": rid,
+        "room_code": rid,
+        "buy_in": state["buy_in"],
+        "game": pub,
+        "status": state["status"],
+    }
+

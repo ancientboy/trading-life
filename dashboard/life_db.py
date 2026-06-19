@@ -252,6 +252,7 @@ def init_db(data_dir: Path) -> None:
         );
         """)
     _migrate_poker_advanced_columns()
+    _migrate_referrals()
     _migrate_json_files(data_dir)
     _seed_engagement_data()
 
@@ -283,6 +284,28 @@ def _migrate_poker_advanced_columns() -> None:
         for name, ddl in cols_players:
             if name not in existing_p:
                 c.execute(f"ALTER TABLE poker_room_players ADD COLUMN {name} {ddl}")
+
+
+def _migrate_referrals() -> None:
+    with _conn() as c:
+        existing = {r[1] for r in c.execute("PRAGMA table_info(life_accounts)").fetchall()}
+        if "invite_code" not in existing:
+            c.execute("ALTER TABLE life_accounts ADD COLUMN invite_code TEXT")
+        if "referred_by" not in existing:
+            c.execute("ALTER TABLE life_accounts ADD COLUMN referred_by TEXT")
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS referrals (
+                invitee_id TEXT PRIMARY KEY,
+                inviter_id TEXT NOT NULL,
+                register_rewarded INTEGER NOT NULL DEFAULT 0,
+                poker_rewarded INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT ''
+            )
+        """)
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_life_accounts_invite_code "
+            "ON life_accounts(invite_code) WHERE invite_code IS NOT NULL AND invite_code != ''"
+        )
 
 
 def _conn() -> sqlite3.Connection:
@@ -607,6 +630,7 @@ def create_account(username: str, password_hash: str, display_name: str) -> dict
             except sqlite3.IntegrityError:
                 return {"ok": False, "error": "username_taken"}
     ensure_user(aid)
+    ensure_invite_code(aid)
     return {"ok": True, "account_id": aid}
 
 
@@ -921,4 +945,109 @@ def adjust_portfolio_cash(user_id: str, delta: float) -> float:
             )
             row = c.execute("SELECT cash FROM user_portfolios WHERE user_id=?", (user_id,)).fetchone()
             return float(row["cash"]) if row else 0.0
+
+
+# ─── 邀请裂变 ───────────────────────────────────────────────
+
+REFERRAL_INVITEE_BONUS = 500
+REFERRAL_INVITER_SIGNUP = 300
+REFERRAL_INVITER_POKER = 200
+
+
+def _gen_invite_code(c) -> str:
+    import random
+    import string
+    chars = string.ascii_uppercase + string.digits
+    for _ in range(60):
+        code = "".join(random.choice(chars) for _ in range(6))
+        if not c.execute("SELECT 1 FROM life_accounts WHERE invite_code=?", (code,)).fetchone():
+            return code
+    return uuid4_hex()[:6].upper()
+
+
+def ensure_invite_code(account_id: str) -> str:
+    with _lock:
+        with _conn() as c:
+            row = c.execute("SELECT invite_code FROM life_accounts WHERE id=?", (account_id,)).fetchone()
+            if row and row["invite_code"]:
+                return str(row["invite_code"])
+            code = _gen_invite_code(c)
+            c.execute("UPDATE life_accounts SET invite_code=? WHERE id=?", (code, account_id))
+            return code
+
+
+def apply_referral(invitee_id: str, code: str) -> dict:
+    code = (code or "").strip().upper()
+    if not code or len(code) < 4:
+        return {"ok": False, "error": "邀请码无效"}
+    with _lock:
+        with _conn() as c:
+            inviter = c.execute(
+                "SELECT id FROM life_accounts WHERE invite_code=? COLLATE NOCASE", (code,),
+            ).fetchone()
+            if not inviter:
+                return {"ok": False, "error": "邀请码不存在"}
+            inviter_id = inviter["id"]
+            if inviter_id == invitee_id:
+                return {"ok": False, "error": "不能使用自己的邀请码"}
+            if c.execute("SELECT 1 FROM referrals WHERE invitee_id=?", (invitee_id,)).fetchone():
+                return {"ok": False, "error": "已绑定过邀请人"}
+            c.execute(
+                "INSERT INTO referrals (invitee_id, inviter_id, register_rewarded, poker_rewarded, created_at) "
+                "VALUES (?,?,1,0,?)",
+                (invitee_id, inviter_id, datetime.now(CST).isoformat()),
+            )
+            c.execute("UPDATE life_accounts SET referred_by=? WHERE id=?", (inviter_id, invitee_id))
+    from life_game import load_user, save_user, _earn
+    u_invitee = load_user(invitee_id)
+    _earn(u_invitee, REFERRAL_INVITEE_BONUS, account_id=invitee_id)
+    save_user(invitee_id, u_invitee)
+    u_inviter = load_user(inviter_id)
+    _earn(u_inviter, REFERRAL_INVITER_SIGNUP, account_id=inviter_id)
+    save_user(inviter_id, u_inviter)
+    return {
+        "ok": True,
+        "inviter_bonus": REFERRAL_INVITER_SIGNUP,
+        "invitee_bonus": REFERRAL_INVITEE_BONUS,
+    }
+
+
+def try_referral_poker_reward(invitee_id: str) -> None:
+    if not invitee_id or invitee_id.startswith(("npc_", "ai_")):
+        return
+    with _lock:
+        with _conn() as c:
+            row = c.execute(
+                "SELECT inviter_id FROM referrals WHERE invitee_id=? AND poker_rewarded=0", (invitee_id,),
+            ).fetchone()
+            if not row:
+                return
+            c.execute("UPDATE referrals SET poker_rewarded=1 WHERE invitee_id=?", (invitee_id,))
+            inviter_id = row["inviter_id"]
+    from life_game import load_user, save_user, _earn
+    u = load_user(inviter_id)
+    _earn(u, REFERRAL_INVITER_POKER, account_id=inviter_id)
+    save_user(inviter_id, u)
+
+
+def get_referral_summary(account_id: str) -> dict:
+    code = ensure_invite_code(account_id)
+    with _lock:
+        with _conn() as c:
+            count = c.execute(
+                "SELECT COUNT(*) FROM referrals WHERE inviter_id=?", (account_id,),
+            ).fetchone()[0]
+            poker_done = c.execute(
+                "SELECT COUNT(*) FROM referrals WHERE inviter_id=? AND poker_rewarded=1", (account_id,),
+            ).fetchone()[0]
+    return {
+        "invite_code": code,
+        "invites_count": count,
+        "poker_rewards": poker_done,
+        "rewards": {
+            "invitee_signup": REFERRAL_INVITEE_BONUS,
+            "inviter_signup": REFERRAL_INVITER_SIGNUP,
+            "inviter_first_poker": REFERRAL_INVITER_POKER,
+        },
+    }
 

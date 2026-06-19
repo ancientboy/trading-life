@@ -930,6 +930,10 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
             save_user(uid, user)
             life_db.add_season_points(uid, pvp_win=1, social=5)
 
+    for r in results:
+        if not r["is_npc"] and str(r["user_id"]).startswith("acc_"):
+            life_db.try_referral_poker_reward(r["user_id"])
+
     caller_cost = buy_in
     for p in plist:
         if p["user_id"] == account_id:

@@ -3,13 +3,14 @@ import { authLogin, authRegister } from '../../lib/lifeApi';
 import { setAuthSession } from '../../lib/lifeAuth';
 import { useGameStore } from '../../store/useGameStore';
 
-export function LoginPanel() {
+export function LoginPanel({ initialInvite = '' }: { initialInvite?: string }) {
   const applyLifeState = useGameStore(s => s.applyLifeState);
   const initAgents = useGameStore(s => s.initAgents);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [inviteCode, setInviteCode] = useState(initialInvite.toUpperCase());
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [authed, setAuthed] = useState(false);
@@ -33,10 +34,13 @@ export function LoginPanel() {
     try {
       const res = mode === 'login'
         ? await authLogin(name, password)
-        : await authRegister(name, password, displayName.trim());
+        : await authRegister(name, password, displayName.trim(), inviteCode.trim());
       if (!res.ok || !res.token || !res.account) {
         setError(res.error || '操作失败');
         return;
+      }
+      if ('invite_message' in res && res.invite_message) {
+        sessionStorage.setItem('tl_flash_invite', res.invite_message);
       }
       setAuthSession(res.token, res.account);
       if (res.state) applyLifeState(res.state);
@@ -77,6 +81,9 @@ export function LoginPanel() {
             <label style={{ fontSize: 12, color: '#7a6e62', display: 'block', margin: '10px 0 4px' }}>昵称（可选）</label>
             <input className="login-input" value={displayName} onChange={e => setDisplayName(e.target.value)}
               placeholder="显示名称" />
+            <label style={{ fontSize: 12, color: '#7a6e62', display: 'block', margin: '10px 0 4px' }}>邀请码（可选 · 双方得积分）</label>
+            <input className="login-input" value={inviteCode} onChange={e => setInviteCode(e.target.value.toUpperCase())}
+              placeholder="6 位邀请码" maxLength={8} />
           </>
         )}
 
