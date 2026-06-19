@@ -432,9 +432,51 @@ def _finish_hand(state: dict) -> None:
     state["actor_index"] = -1
 
 
+def resolve_stuck_state(state: dict) -> bool:
+    """解除 actor_index=-1 或 phase=showdown 等僵局，返回是否改动了状态"""
+    if state["status"] != "playing":
+        return False
+
+    if state["phase"] == "showdown":
+        state["phase"] = "between_hands"
+        state["actor_index"] = -1
+        return True
+
+    if state["phase"] in ("between_hands", "waiting", "complete"):
+        return False
+
+    if state.get("actor_index", -1) >= 0:
+        return False
+
+    if _street_settled(state):
+        _advance_street(state)
+        return True
+
+    can = [p for p in state["players"] if _can_act(p)]
+    for p in can:
+        if p["bet_street"] < state["current_bet"] or p["seat_index"] not in state["acted_this_street"]:
+            state["actor_index"] = p["seat_index"]
+            return True
+
+    if not can:
+        _advance_street(state)
+        return True
+
+    first = _next_seat(state, state["button_index"], lambda p: _can_act(p))
+    if first is not None:
+        state["actor_index"] = first
+        return True
+
+    _advance_street(state)
+    return True
+
+
 def start_next_hand_if_ready(state: dict) -> dict:
     if state["status"] == "tournament_complete":
         return state
+    if state["phase"] == "showdown":
+        state["phase"] = "between_hands"
+        state["actor_index"] = -1
     if state["phase"] not in ("between_hands", "waiting", "complete"):
         return state
     return start_new_hand(state)

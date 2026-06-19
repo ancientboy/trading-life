@@ -15,9 +15,10 @@ const PHASE_LABEL: Record<string, string> = {
 };
 
 const PACE_OPTIONS = [
-  { id: 'slow', label: '慢速', intervalMs: 2800, steps: 8 },
-  { id: 'normal', label: '正常', intervalMs: 1600, steps: 15 },
-  { id: 'fast', label: '较快', intervalMs: 900, steps: 25 },
+  { id: 'slow', label: '慢速', intervalMs: 2800, steps: 8, burstSteps: 20 },
+  { id: 'normal', label: '正常', intervalMs: 1600, steps: 15, burstSteps: 40 },
+  { id: 'fast', label: '较快', intervalMs: 900, steps: 25, burstSteps: 55 },
+  { id: 'turbo', label: '极速', intervalMs: 450, steps: 40, burstSteps: 80 },
 ] as const;
 
 type PaceId = typeof PACE_OPTIONS[number]['id'];
@@ -43,18 +44,21 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
   const pollRef = useRef(0);
   const burstRef = useRef(false);
   const initialLoadRef = useRef(true);
+  const stallRef = useRef(0);
+  const lastSigRef = useRef('');
+  const [stallCount, setStallCount] = useState(0);
 
   const pace = PACE_OPTIONS.find(p => p.id === paceId) ?? PACE_OPTIONS[1];
 
-  const poll = useCallback(async (manual = false) => {
+  const poll = useCallback(async (manual = false, force = false) => {
     pollRef.current += 1;
     const ticket = pollRef.current;
     if (initialLoadRef.current || manual) setLoading(true);
     try {
-      const useBurst = autoComplete && !paused && !manual;
+      const useBurst = autoComplete && !paused && !manual && !force;
       const r = await fetchAdvancedPokerState(roomId, sinceRef.current, {
-        autoRun: !paused,
-        maxSteps: useBurst ? 40 : (manual ? 1 : pace.steps),
+        autoRun: !paused || force,
+        maxSteps: force ? 80 : (useBurst ? pace.burstSteps : (manual ? 1 : pace.steps)),
         runUntilComplete: useBurst && !burstRef.current,
       });
       if (useBurst) burstRef.current = true;
@@ -66,6 +70,15 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       }
       setError('');
       if (r.game) {
+        const sig = `${r.game.event_count}|${r.game.phase}|${r.game.actor_index}|${r.game.hand_number}`;
+        if (sig === lastSigRef.current && r.status === 'playing' && !force) {
+          stallRef.current += 1;
+          setStallCount(stallRef.current);
+        } else {
+          stallRef.current = 0;
+          setStallCount(0);
+          lastSigRef.current = sig;
+        }
         setGame(r.game);
         sinceRef.current = r.game.event_count;
         const newLines = r.game.events.map(ev => formatEvent(ev)).filter(Boolean) as string[];
@@ -81,13 +94,16 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     } finally {
       if (ticket === pollRef.current) setLoading(false);
     }
-  }, [roomId, paused, pace.steps, autoComplete, onComplete]);
+  }, [roomId, paused, pace.steps, pace.burstSteps, autoComplete, onComplete]);
 
   useEffect(() => {
     sinceRef.current = 0;
     doneRef.current = false;
     burstRef.current = false;
     initialLoadRef.current = true;
+    stallRef.current = 0;
+    setStallCount(0);
+    lastSigRef.current = '';
     setLog([]);
     setStatus('playing');
     void poll(true);
@@ -95,12 +111,8 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
 
   useEffect(() => {
     if (paused || status === 'tournament_complete') return;
-    if (autoComplete) {
-      void poll(false);
-      const t = setInterval(() => { void poll(false); }, 1200);
-      return () => clearInterval(t);
-    }
-    const t = setInterval(() => { void poll(false); }, pace.intervalMs);
+    void poll(false);
+    const t = setInterval(() => { void poll(false); }, autoComplete ? pace.intervalMs : pace.intervalMs);
     return () => clearInterval(t);
   }, [poll, paused, pace.intervalMs, status, autoComplete]);
 
@@ -137,12 +149,12 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <button type="button" className={`ui-btn ${autoComplete ? 'active' : ''}`}
           style={{ fontSize: 10, padding: '4px 10px', fontWeight: 700 }}
-          onClick={() => { setAutoComplete(v => !v); burstRef.current = false; }}>
+          onClick={() => { setAutoComplete(v => !v); burstRef.current = false; stallRef.current = 0; setStallCount(0); }}>
           {autoComplete ? '✓ 自动播到结束' : '手动步进'}
         </button>
-        {!autoComplete && PACE_OPTIONS.map(p => (
+        {PACE_OPTIONS.map(p => (
           <button key={p.id} type="button" className={`ui-btn ${paceId === p.id ? 'active' : ''}`}
-            style={{ fontSize: 10, padding: '4px 8px' }} onClick={() => setPaceId(p.id)}>
+            style={{ fontSize: 10, padding: '4px 8px' }} onClick={() => { setPaceId(p.id); burstRef.current = false; }}>
             {p.label}
           </button>
         ))}
@@ -156,6 +168,12 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
             下一步
           </button>
         )}
+        {stallCount >= 3 && status === 'playing' && (
+          <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px', fontWeight: 700, color: '#c0392b' }}
+            onClick={() => { stallRef.current = 0; setStallCount(0); void poll(false, true); }}>
+            强制推进
+          </button>
+        )}
         {loading && status !== 'tournament_complete' && (
           <span style={{ fontSize: 10, color: '#8a7e72' }}>{autoComplete ? '自动推进中…' : '同步中…'}</span>
         )}
@@ -163,7 +181,13 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
 
       {autoComplete && status === 'playing' && !paused && (
         <div style={{ fontSize: 10, color: '#6a8aad', marginBottom: 8, padding: '6px 10px', background: '#eef4ff', borderRadius: 6 }}>
-          已开启自动观赛 — 无需点击，牌局将自动推进至锦标赛结束
+          已开启自动观赛（{pace.label} · 每 {Math.round(pace.intervalMs / 100) / 10}s 刷新）— 牌局将自动推进至锦标赛结束
+        </div>
+      )}
+
+      {stallCount >= 3 && status === 'playing' && !paused && (
+        <div style={{ fontSize: 10, color: '#c0392b', marginBottom: 8, padding: '6px 10px', background: '#fff0f0', borderRadius: 6 }}>
+          牌局似乎暂停了 — 可点「强制推进」，或切换更快速度
         </div>
       )}
 

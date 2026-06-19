@@ -10,8 +10,10 @@ import life_db
 from poker_bot import decide_action, merge_profile, record_hand_stats, should_use_llm
 from poker_engine import (
     apply_action,
+    legal_actions,
     new_tournament_state,
     public_state,
+    resolve_stuck_state,
     start_new_hand,
     start_next_hand_if_ready,
 )
@@ -92,17 +94,27 @@ async def _pick_action(state: dict, seat_idx: int, use_llm: bool = False) -> tup
     return decide_action(state, seat_idx, profile)
 
 
+def _apply_with_fallback(state: dict, seat_idx: int, action: str, amount: int) -> bool:
+    """执行动作，非法时按 check→call→fold 回退"""
+    result = apply_action(state, seat_idx, action, amount)
+    if result.get("ok"):
+        return True
+    acts = {a["action"]: a for a in legal_actions(state, seat_idx)}
+    for fallback in ("check", "call", "fold", "all_in"):
+        if fallback not in acts:
+            continue
+        amt = acts[fallback].get("amount", 0)
+        result = apply_action(state, seat_idx, fallback, amt)
+        if result.get("ok"):
+            return True
+    return resolve_stuck_state(state)
+
+
 async def run_ticks(state: dict, max_steps: int = 8, use_llm: bool = False) -> dict:
     """自动推进 bot 行动，直到需要等待或达到步数上限"""
-    from poker_engine import _street_settled, _advance_street
-
     steps = 0
     while steps < max_steps and state["status"] == "playing":
-        if state["phase"] == "between_hands":
-            state = start_next_hand_if_ready(state)
-            steps += 1
-            continue
-        if state["phase"] == "showdown" and state["status"] != "tournament_complete":
+        if state["phase"] in ("between_hands", "showdown", "waiting"):
             state = start_next_hand_if_ready(state)
             steps += 1
             continue
@@ -110,17 +122,8 @@ async def run_ticks(state: dict, max_steps: int = 8, use_llm: bool = False) -> d
             break
         idx = state.get("actor_index", -1)
         if idx < 0:
-            # 僵局恢复：全员 all-in 等情况
-            if state["phase"] not in ("between_hands", "complete", "waiting"):
-                try:
-                    if _street_settled(state):
-                        _advance_street(state)
-                    else:
-                        break
-                except Exception:
-                    break
-            else:
-                state = start_next_hand_if_ready(state)
+            if not resolve_stuck_state(state):
+                break
             steps += 1
             continue
         action, amount, reason = await _pick_action(state, idx, use_llm=use_llm)
@@ -131,7 +134,7 @@ async def run_ticks(state: dict, max_steps: int = 8, use_llm: bool = False) -> d
             "amount": amount,
             "reason": reason,
         }
-        apply_action(state, idx, action, amount)
+        _apply_with_fallback(state, idx, action, amount)
         steps += 1
     return state
 
