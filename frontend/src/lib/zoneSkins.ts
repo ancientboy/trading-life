@@ -392,6 +392,7 @@ export function arenaPalette(skinKey: string): ArenaPalette {
 
 export function skinZoneFromGameZone(zone: ZoneId): SkinZone | null {
   if (zone === 'reception') return 'reception';
+  if (zone === 'arena') return 'arena';
   if (zone === 'hall' || zone === 'restaurant' || zone === 'spa' || zone === 'casino') return zone;
   return null;
 }

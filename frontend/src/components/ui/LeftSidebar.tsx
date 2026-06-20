@@ -86,10 +86,6 @@ export function LeftSidebar() {
               if (item.id === 'tasks') {
                 setRightTab('tasks');
                 openModal('tasks');
-              } else if (item.id === 'logs') {
-                useGameStore.setState({ rightPanelCollapsed: false, rightTab: 'hall' });
-              } else if (item.id === 'events') {
-                useGameStore.setState({ rightPanelCollapsed: false, rightTab: 'events', sidebarActive: 'events' });
               } else {
                 navigateSidebar(item.id);
               }

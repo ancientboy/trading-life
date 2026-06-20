@@ -38,7 +38,7 @@ import {
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
 import { isCrossZoneTravel, zoneForNode, zoneForIntent, resolveAgentZone } from '../lib/zoneTransit';
 import {
-  DEFAULT_ZONE_SKINS, effectiveZoneSkin, normalizeZoneSkins,
+  DEFAULT_ZONE_SKINS, effectiveZoneSkin, normalizeZoneSkins, parseZoneSkinValue,
   type SkinZone,
 } from '../lib/zoneSkins';
 
@@ -420,7 +420,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const expand = { rightPanelCollapsed: false, activeModal: null as ModalId };
     const zone = SIDEBAR_TO_ZONE[action];
     if (zone) {
-      const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino';
+      const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino' || zone === 'arena';
       const cam = ZONE_CAMERA[zone];
       set({
         ...expand,
@@ -429,11 +429,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
         rightTab: ZONE_TO_RIGHT_TAB[zone],
         followAgentId: null,
         selectedNpcId: null,
-        selectedFacility: isLeisure ? LEISURE_FACILITY[zone] : null,
+        selectedFacility: isLeisure ? LEISURE_FACILITY[zone as keyof typeof LEISURE_FACILITY] : null,
         cameraLookAt: { x: cam.x, z: cam.z },
         cameraZoom: WORLD_MAP.zoneZoom,
         mapOverview: false,
+        ...(zone === 'arena' ? { selectedArenaEntryId: null } : {}),
       });
+      if (zone === 'arena') {
+        get().addMessage('🏆 已进入交易竞技馆 · 猜涨跌 / 短线大赛 / 四大玩法');
+      }
       return;
     }
     switch (action) {
@@ -478,18 +482,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         break;
       case 'social':
         set({ ...expand, sidebarActive: 'social', rightTab: 'social', rightPanelCollapsed: false });
-        break;
-      case 'events':
-        set({
-          ...expand,
-          sidebarActive: 'events',
-          activeZone: 'arena',
-          rightTab: 'events',
-          selectedFacility: 'arena_pit',
-          cameraLookAt: { x: ZONE_CAMERA.arena.x, z: ZONE_CAMERA.arena.z },
-          cameraZoom: WORLD_MAP.zoneZoom,
-          mapOverview: false,
-        });
         break;
       default:
         break;
@@ -1573,8 +1565,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   buyShopItem: async (itemId) => {
     const res = await lifeShopBuy(itemId);
     if (!res.ok) {
-      get().addMessage('积分不足或购买失败');
+      get().addMessage(res.error || '积分不足或购买失败');
       return false;
+    }
+    if (res.already_owned) {
+      get().addMessage('该商品已拥有');
+      return true;
     }
     set({ points: res.balance });
     if (res.state) get().applyLifeState(res.state);
@@ -1584,8 +1580,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
     get().addMessage(`已解锁：${res.item?.label ?? itemId}`);
     if (res.item?.type === 'zone_skin') {
-      get().addMessage('请到顶部导航「场景装扮」切换各区域风格');
-      get().openModal('scene');
+      const parsed = parseZoneSkinValue(res.item.value || '');
+      if (parsed) {
+        await get().setZoneSkin(parsed.zone, parsed.skinId);
+        if (parsed.zone === 'arena') {
+          get().flyToZone('arena');
+          get().addMessage(`竞技馆皮肤「${res.item.label}」已应用 · 可在「🎨场景装扮」切换`);
+        } else {
+          get().addMessage('可在顶部「🎨场景装扮」切换各区域风格');
+        }
+      } else {
+        get().openModal('scene');
+      }
     }
     return true;
   },

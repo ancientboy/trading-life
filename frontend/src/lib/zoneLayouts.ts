@@ -94,7 +94,7 @@ export const ZONE_LAYOUTS: Record<ZoneId, ZoneLayout> = {
       { x: 360, y: 42, dir: 'n', label: '德州', target: 'casino' },
     ],
     facilities: [
-      { id: 'arena_pit', nodeId: 'arena_pit', r: 130, label: '竞技台', action: 'rest' },
+      { id: 'arena_pit', nodeId: 'arena_pit', r: 130, label: '竞技台 · 打开面板', action: 'rest' },
     ],
   },
 };

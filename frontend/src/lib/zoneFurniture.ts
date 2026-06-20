@@ -307,16 +307,6 @@ export function hitTestPaperFacilities(
       return { action: 'poker', nodeId: seat?.s.id ?? 'poker_s1', id: 'poker_table' };
     }
   }
-  if (zone === 'arena') {
-    for (const pod of ARENA_PODS) {
-      if (Math.hypot(paper.px - pod.px, paper.py - pod.py) < 44) {
-        return { action: 'rest', nodeId: pod.id, id: pod.id };
-      }
-    }
-    if (Math.hypot(paper.px - ARENA_PIT.px, paper.py - ARENA_PIT.py) < ARENA_PIT.r) {
-      return { action: 'rest', nodeId: 'arena_pit', id: 'arena_pit' };
-    }
-  }
   if (zone === 'hall') {
     for (const d of HALL_DESKS_8) {
       const p = deskPaperPos(d.row, d.col);

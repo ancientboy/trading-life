@@ -3,7 +3,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { tickCharacterSim } from '../../lib/characterSimLoop';
 import { WORLD_MAP, ZONE_CAMERA } from '../../lib/worldMap';
 import { hitTestPaperFacilities, getAgentPaperPos, ZONE_NPCS } from '../../lib/zoneFurniture';
-import { ARENA_PODS } from './arenaDraw';
+import { ARENA_PIT, hitTestArenaPod } from './arenaDraw';
 import { fetchArenaRound } from '../../lib/lifeEngagementApi';
 import { ZONE_LAYOUTS } from '../../lib/zoneLayouts';
 import { PAPER, agentVisibleInZone } from '../../lib/zoneProjection';
@@ -190,17 +190,19 @@ export function PaperZoneCanvas() {
       }
     }
 
+    if (activeZone === 'arena') {
+      const pod = hitTestArenaPod({ px: paper.x, py: paper.y });
+      if (pod) {
+        return { type: 'arena_pod' as const, slot: pod.slot, id: pod.id };
+      }
+      if (Math.hypot(paper.x - ARENA_PIT.px, paper.y - ARENA_PIT.py) < ARENA_PIT.r) {
+        return { type: 'arena_pit' as const, id: 'arena_pit' };
+      }
+    }
+
     const fac = hitTestPaperFacilities(activeZone, { px: paper.x, py: paper.y });
     if (fac) {
       return { type: 'facility' as const, action: fac.action, nodeId: fac.nodeId, id: fac.id };
-    }
-
-    if (activeZone === 'arena') {
-      for (const pod of ARENA_PODS) {
-        if (Math.hypot(paper.x - pod.px, paper.y - pod.py) < 44) {
-          return { type: 'arena_pod' as const, slot: pod.slot, id: pod.id };
-        }
-      }
     }
 
     for (const npc of ZONE_NPCS[activeZone] ?? []) {
@@ -236,7 +238,7 @@ export function PaperZoneCanvas() {
       return;
     }
     const hit = hitTest(e.clientX, e.clientY);
-    setHoverFacilityId(hit?.type === 'facility' ? hit.id : hit?.type === 'arena_pod' ? hit.id : null);
+    setHoverFacilityId(hit?.type === 'facility' ? hit.id : (hit?.type === 'arena_pod' || hit?.type === 'arena_pit') ? hit.id : null);
     setHoverPodId(hit?.type === 'arena_pod' ? hit.id : null);
   };
 
@@ -254,13 +256,14 @@ export function PaperZoneCanvas() {
     const hit = hitTest(e.clientX, e.clientY);
     if (!hit) return;
     if (hit.type === 'nav') flyToZone(hit.target);
-    else if (hit.type === 'arena_pod') {
-      const entry = arenaLive?.entries?.[hit.slot];
-      if (entry) {
-        setSelectedArenaEntryId(entry.user_id);
-        if (rightPanelCollapsed) toggleRightPanel();
-        setRightTab('events');
+    else if (hit.type === 'arena_pod' || hit.type === 'arena_pit') {
+      if (hit.type === 'arena_pod') {
+        const entry = arenaLive?.entries?.[hit.slot];
+        if (entry) setSelectedArenaEntryId(entry.user_id);
       }
+      if (rightPanelCollapsed) toggleRightPanel();
+      setRightTab('events');
+      useGameStore.setState({ sidebarActive: 'events', activeZone: 'arena' });
     }
     else if (hit.type === 'agent') selectAgent(hit.id);
     else if (hit.type === 'npc') {

@@ -29,6 +29,7 @@ export function TopNavBar() {
   const userPortfolio = useGameStore(s => s.userPortfolio);
   const points = useGameStore(s => s.points);
   const openWorkshop = useGameStore(s => s.openWorkshop);
+  const navigateSidebar = useGameStore(s => s.navigateSidebar);
   const setRightTab = useGameStore(s => s.setRightTab);
   const dailyAllowanceClaimed = useGameStore(s => s.dailyAllowanceClaimed);
   const dailyAllowanceAmount = useGameStore(s => s.dailyAllowanceAmount);
@@ -124,7 +125,7 @@ export function TopNavBar() {
             borderColor: '#ffb74d',
             fontWeight: 700,
           }}
-          onClick={() => { setRightTab('events'); useGameStore.setState({ rightPanelCollapsed: false }); }}>
+          onClick={() => navigateSidebar('events')}>
           <span className="nav-icon-label">🏆 交易竞技</span>
         </button>
         <a href="/trading/" className="ui-btn" style={{ textDecoration: 'none', marginLeft: 4, fontSize: 11 }}>Dashboard</a>

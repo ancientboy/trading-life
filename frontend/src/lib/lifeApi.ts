@@ -175,7 +175,14 @@ export async function lifeShopBuy(itemId: string) {
   const r = await fetch(`${API}/shop/buy`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ item_id: itemId }),
   });
-  return parse<{ ok: boolean; balance: number; item?: LifeState['shop_catalog'][0]; error?: string; state?: LifeState }>(r);
+  const data = await r.json() as {
+    ok: boolean; balance: number; item?: LifeState['shop_catalog'][0];
+    error?: string; already_owned?: boolean; state?: LifeState; detail?: unknown;
+  };
+  if (!r.ok) {
+    return { ok: false, balance: data.balance ?? 0, error: extractApiError(data as Record<string, unknown>, '购买失败') };
+  }
+  return data;
 }
 
 export async function lifeSetZoneSkin(zone: string, skinId: string) {

@@ -241,7 +241,7 @@ export function drawArenaScene(
     const recentDir = entry?.recent_legs?.[0]?.direction;
     const pulse = opts?.status === 'running' && (opts.pulseSlots?.has(i) ?? false);
     drawArenaPod(ctx, pod, toScreen, ws, t, P, {
-      label: entry?.agent_name,
+      label: entry?.agent_name || `选手 ${i + 1}`,
       returnPct: entry?.return_pct,
       direction: entry?.direction || recentDir,
       pulse,

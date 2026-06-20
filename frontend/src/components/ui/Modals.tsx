@@ -275,8 +275,10 @@ function ShopPanel() {
   const shopCatalog = useGameStore(s => s.shopCatalog);
   const shopUnlocks = useGameStore(s => s.shopUnlocks);
   const buyShopItem = useGameStore(s => s.buyShopItem);
+  const addMessage = useGameStore(s => s.addMessage);
   const hasZoneSkins = shopUnlocks.some(id => id.startsWith('zone_skin_') || id.startsWith('skin_'));
   const [tab, setTab] = useState<'buy' | 'scene'>(hasZoneSkins ? 'scene' : 'buy');
+  const [buyBusy, setBuyBusy] = useState<string | null>(null);
 
   const agentItems = shopCatalog.filter(i => i.type === 'color' || i.type === 'hat');
   const speciesItems = shopCatalog.filter(i => isSpeciesShopItem(i) && !i.legacy);
@@ -300,15 +302,23 @@ function ShopPanel() {
 
   const renderShopRow = (item: typeof shopCatalog[0]) => {
     const owned = shopUnlocks.includes(item.id);
+    const busy = buyBusy === item.id;
+    const canAfford = points >= item.cost;
     return (
-      <button key={item.id} className="leisure-option" disabled={owned}
-        onClick={() => buyShopItem(item.id)} style={{ opacity: owned ? 0.55 : 1 }}>
+      <button key={item.id} className="leisure-option" disabled={owned || busy}
+        onClick={() => {
+          if (owned || busy) return;
+          setBuyBusy(item.id);
+          void buyShopItem(item.id).then(ok => {
+            if (!ok && !canAfford) addMessage(`积分不足，需要 ${item.cost} 积分（当前 ${points}）`);
+          }).finally(() => setBuyBusy(null));
+        }} style={{ opacity: owned ? 0.55 : busy ? 0.7 : 1 }}>
         <div style={{ flex: 1, textAlign: 'left' }}>
           <div style={{ fontWeight: 600 }}>{item.label}</div>
           <div style={{ fontSize: 11, color: '#8a7e72' }}>{shopTypeLabel(item.type)}</div>
         </div>
-        <span style={{ color: owned ? '#48d093' : '#d4af37', fontWeight: 600, fontSize: 12 }}>
-          {owned ? '已拥有' : `${item.cost} 积分`}
+        <span style={{ color: owned ? '#48d093' : busy ? '#9a8b7a' : '#d4af37', fontWeight: 600, fontSize: 12 }}>
+          {owned ? '已拥有' : busy ? '购买中…' : `${item.cost} 积分`}
         </span>
       </button>
     );
