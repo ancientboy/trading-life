@@ -22,7 +22,7 @@ import {
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, type SeatMap } from '../lib/seatRegistry';
-import { consumeDeepLinkIntent } from '../lib/shareUtils';
+import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
 import type { LeisureTierId } from '../lib/leisureTiers';
@@ -50,7 +50,7 @@ function scheduleSeatSync(fn: () => Promise<void>) {
 
 export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages' | 'tasks' | 'social' | 'events';
 export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs' | 'tasks' | 'events';
-export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'trading_win' | 'shop' | 'scene' | 'tasks' | null;
+export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'trading_win' | 'guess_result' | 'arena_result' | 'shop' | 'scene' | 'tasks' | null;
 
 export type PokerPlayerResult = {
   name: string;
@@ -81,12 +81,31 @@ export type PokerHandResult = {
   /** 首局扑克获胜 — 触发高价值分享卡 */
   first_win?: boolean;
 };
-export type ZoneId = 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
+export type ZoneId = 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino' | 'arena';
 
-const LEISURE_FACILITY: Record<'restaurant' | 'spa' | 'casino', string> = {
+const LEISURE_FACILITY: Record<'restaurant' | 'spa' | 'casino' | 'arena', string> = {
   restaurant: 'table',
   spa: 'bed',
   casino: 'poker',
+  arena: 'arena_pit',
+};
+
+export type GuessResultData = {
+  won: boolean;
+  direction: 'up' | 'down';
+  stake: number;
+  payout: number;
+  start_price: number;
+  end_price: number;
+  first_win?: boolean;
+};
+
+export type ArenaResultData = {
+  duration_label?: string;
+  entries: import('../lib/lifeEngagementApi').ArenaEntry[];
+  my_entry?: import('../lib/lifeEngagementApi').ArenaEntry | null;
+  my_spectator_bets?: Array<{ pick_user_id: string; pick_rank?: number; stake: number; payout?: number }>;
+  first_podium?: boolean;
 };
 
 interface GameStore {
@@ -154,7 +173,13 @@ interface GameStore {
   pokerHighlights: import('../lib/lifeEngagementApi').PokerHighlightItem[];
   lastHighlightId: number;
   pokerHandResult: PokerHandResult | null;
+  guessResultData: GuessResultData | null;
+  arenaResultData: ArenaResultData | null;
   tradingWinResult: import('../components/ui/TradingWinModal').TradingWinData | null;
+  /** 竞技馆实时数据 — 驱动 Pod/K 线场景 */
+  arenaLive: import('../lib/lifeEngagementApi').ArenaRoundState | null;
+  /** 场景内选中的竞技选手 */
+  selectedArenaEntryId: string | null;
   /** 牌桌发牌动画截止时间戳 */
   pokerTableDealingUntil: number;
   /** 当前多人德州房间（等待/进行中） */
@@ -196,6 +221,10 @@ interface GameStore {
   openWorkshop: (mode?: 'list' | 'create') => void;
   closeModal: () => void;
   showPokerResult: (result: PokerHandResult) => void;
+  showGuessResult: (result: GuessResultData) => void;
+  showArenaResult: (result: ArenaResultData) => void;
+  setArenaLive: (state: import('../lib/lifeEngagementApi').ArenaRoundState | null) => void;
+  setSelectedArenaEntryId: (id: string | null) => void;
   showTradingWin: (result: import('../components/ui/TradingWinModal').TradingWinData) => void;
   setPokerTableDealingUntil: (until: number) => void;
   flyToZone: (zone: ZoneId) => void;
@@ -323,7 +352,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pokerHighlights: [],
   lastHighlightId: 0,
   pokerHandResult: null,
+  guessResultData: null,
+  arenaResultData: null,
   tradingWinResult: null,
+  arenaLive: null,
+  selectedArenaEntryId: null,
   pokerTableDealingUntil: 0,
   pokerRoom: null,
   pokerSpectateRoom: null,
@@ -432,7 +465,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
         set({ ...expand, sidebarActive: 'social', rightTab: 'social', rightPanelCollapsed: false });
         break;
       case 'events':
-        set({ ...expand, sidebarActive: 'events', rightTab: 'events', rightPanelCollapsed: false });
+        set({
+          ...expand,
+          sidebarActive: 'events',
+          activeZone: 'arena',
+          rightTab: 'events',
+          selectedFacility: 'arena_pit',
+          cameraLookAt: { x: ZONE_CAMERA.arena.x, z: ZONE_CAMERA.arena.z },
+          cameraZoom: WORLD_MAP.zoneZoom,
+          mapOverview: false,
+        });
         break;
       default:
         break;
@@ -440,26 +482,39 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   openModal: (id) => set({ activeModal: id, rightPanelCollapsed: true }),
   openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: true }),
-  closeModal: () => set({ activeModal: null, workshopMode: 'list', pokerHandResult: null, tradingWinResult: null, pokerTableDealingUntil: 0 }),
+  closeModal: () => set({
+    activeModal: null, workshopMode: 'list', pokerHandResult: null,
+    guessResultData: null, arenaResultData: null, tradingWinResult: null, pokerTableDealingUntil: 0,
+  }),
   showPokerResult: (result) => set({
     pokerHandResult: result, activeModal: 'poker_result', rightPanelCollapsed: true, pokerTableDealingUntil: 0,
   }),
+  showGuessResult: (result) => set({
+    guessResultData: result, activeModal: 'guess_result', rightPanelCollapsed: true,
+  }),
+  showArenaResult: (result) => set({
+    arenaResultData: result, activeModal: 'arena_result', rightPanelCollapsed: true,
+  }),
+  setArenaLive: (state) => set({ arenaLive: state }),
+  setSelectedArenaEntryId: (id) => set({ selectedArenaEntryId: id }),
   showTradingWin: (result) => set({
     tradingWinResult: result, activeModal: 'trading_win', rightPanelCollapsed: true,
   }),
   setPokerTableDealingUntil: (until) => set({ pokerTableDealingUntil: until }),
   flyToZone: (zone) => {
     const cam = ZONE_CAMERA[zone];
+    const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino' || zone === 'arena';
     set({
       activeZone: zone,
-      sidebarActive: zone === 'hall' ? 'hall' : zone,
+      sidebarActive: zone === 'hall' ? 'hall' : zone === 'arena' ? 'events' : zone,
       rightTab: ZONE_TO_RIGHT_TAB[zone],
       followAgentId: null,
       activeModal: null,
-      selectedFacility: zone === 'restaurant' ? 'table' : zone === 'spa' ? 'bed' : zone === 'casino' ? 'poker' : null,
+      selectedFacility: isLeisure ? LEISURE_FACILITY[zone as keyof typeof LEISURE_FACILITY] ?? null : null,
       cameraLookAt: { x: cam.x, z: cam.z },
       cameraZoom: WORLD_MAP.zoneZoom,
       mapOverview: false,
+      ...(zone !== 'arena' ? { selectedArenaEntryId: null } : {}),
     });
   },
 
@@ -1027,6 +1082,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   processPendingDeepLink: async () => {
     const { spectate, join, leaderboard, invite } = consumeDeepLinkIntent();
+    const deepView = parseDeepLink().view;
 
     if (spectate) {
       const preview = await fetchPublicRoomPreview(spectate).catch(() => null);
@@ -1042,6 +1098,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       sessionStorage.setItem('tl_season_initial_tab', 'rank');
       get().openModal('rank');
       get().addMessage('已打开赛季排行榜');
+      return;
+    }
+
+    if (deepView === 'arena' || sessionStorage.getItem('tl_pending_arena') === '1') {
+      sessionStorage.removeItem('tl_pending_arena');
+      get().flyToZone('arena');
+      set({ rightTab: 'events', rightPanelCollapsed: false, sidebarActive: 'events' });
+      get().addMessage('🏆 欢迎来到交易竞技馆 · 猜涨跌 / 短线大赛');
       return;
     }
 

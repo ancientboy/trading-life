@@ -32,6 +32,7 @@ export function zoneForNode(nodeId: string | null): ZoneId | null {
   if (nodeId.startsWith('bed_')) return 'spa';
   if (nodeId.startsWith('dine_')) return 'restaurant';
   if (nodeId.startsWith('poker_')) return 'casino';
+  if (nodeId.startsWith('arena_')) return 'arena';
   if (nodeId.startsWith('rest_l') || nodeId.startsWith('seat_') || nodeId.startsWith('desk_')) return 'hall';
   return null;
 }

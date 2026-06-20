@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
+import { LogicDrawer } from './LogicDrawer';
 import {
   fetchGuessRound, placeGuessBet, fetchArenaRound, joinArena, arenaSpectateBet,
   fetchArenaLeaderboard, fetchArenaWinRate,
-  type GuessRoundState, type ArenaRoundState, type ArenaWinRateEntry,
+  type GuessRoundState, type ArenaRoundState, type ArenaWinRateEntry, type ArenaEntry,
 } from '../../lib/lifeEngagementApi';
 import { shareOrCopy, shareResultMessage, appBaseUrl } from '../../lib/shareUtils';
 
@@ -13,6 +14,11 @@ export function TradingEventsPanel() {
   const agents = useGameStore(s => s.agents);
   const operableAgentIds = useGameStore(s => s.operableAgentIds);
   const selectedAgentId = useGameStore(s => s.selectedAgentId);
+  const selectedArenaEntryId = useGameStore(s => s.selectedArenaEntryId);
+  const setSelectedArenaEntryId = useGameStore(s => s.setSelectedArenaEntryId);
+  const setArenaLive = useGameStore(s => s.setArenaLive);
+  const showGuessResult = useGameStore(s => s.showGuessResult);
+  const showArenaResult = useGameStore(s => s.showArenaResult);
   const addMessage = useGameStore(s => s.addMessage);
   const points = useGameStore(s => s.points);
 
@@ -29,6 +35,10 @@ export function TradingEventsPanel() {
   const [busy, setBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
 
+  const shownGuessRef = useRef<Set<string>>(new Set());
+  const shownArenaRef = useRef<Set<string>>(new Set());
+  const prevArenaLegsRef = useRef<Record<string, number>>({});
+
   const tradingAgents = useMemo(
     () => operableAgentIds.filter(id => agents[id]?.data?.agentType !== 'entertainment'),
     [operableAgentIds, agents],
@@ -37,28 +47,90 @@ export function TradingEventsPanel() {
     ? selectedAgentId
     : tradingAgents[0] || '';
 
+  const maybeShowGuessResult = useCallback((
+    settled: Record<string, unknown> | null | undefined,
+    lastMy: { direction?: string; stake?: number; payout?: number; won?: boolean; first_win?: boolean } | null | undefined,
+  ) => {
+    if (!settled || !lastMy?.direction) return;
+    const rid = String(settled.id || settled.round_id || '');
+    if (!rid || shownGuessRef.current.has(rid)) return;
+    shownGuessRef.current.add(rid);
+    const won = !!lastMy.won && (lastMy.payout ?? 0) > 0;
+    showGuessResult({
+      won,
+      direction: lastMy.direction as 'up' | 'down',
+      stake: Number(lastMy.stake) || 0,
+      payout: Number(lastMy.payout) || 0,
+      start_price: Number(settled.start_price) || 0,
+      end_price: Number(settled.end_price) || 0,
+      first_win: !!lastMy.first_win && won,
+    });
+  }, [showGuessResult]);
+
+  const maybeShowArenaResult = useCallback((lastSettled: ArenaRoundState | null | undefined) => {
+    if (!lastSettled?.round_id) return;
+    const rid = lastSettled.round_id;
+    if (shownArenaRef.current.has(rid)) return;
+    const my = lastSettled.my_entry;
+    const specHits = (lastSettled.my_spectator_bets || []).some(b => (b.payout ?? 0) > 0);
+    if (!my && !specHits) return;
+    shownArenaRef.current.add(rid);
+    showArenaResult({
+      duration_label: lastSettled.duration_label,
+      entries: lastSettled.entries || [],
+      my_entry: my,
+      my_spectator_bets: lastSettled.my_spectator_bets,
+      first_podium: !!lastSettled.first_podium && !!my?.rank && my.rank <= 3,
+    });
+  }, [showArenaResult]);
+
   const refresh = useCallback(async () => {
     if (tab === 'guess') {
       const r = await fetchGuessRound();
       if (r.ok) {
         setGuess(r.current ?? null);
         setLastGuess(r.last_settled ?? null);
+        maybeShowGuessResult(r.last_settled, r.last_my_bet);
       }
     } else {
       const [ar, lb, wr] = await Promise.all([
         fetchArenaRound(), fetchArenaLeaderboard(8), fetchArenaWinRate(12),
       ]);
-      if (ar.ok) setArena(ar.current ?? null);
+      if (ar.ok) {
+        setArena(ar.current ?? null);
+        setArenaLive(ar.current ?? null);
+        maybeShowArenaResult(ar.last_settled);
+        const cur = ar.current;
+        if (cur?.entries) {
+          cur.entries.forEach(e => {
+            const prevLegs = prevArenaLegsRef.current[e.user_id] ?? 0;
+            const nowLegs = e.legs_count ?? e.recent_legs?.length ?? 0;
+            if (cur.status === 'running' && nowLegs > prevLegs) {
+              prevArenaLegsRef.current[e.user_id] = nowLegs;
+            } else if (!prevArenaLegsRef.current[e.user_id]) {
+              prevArenaLegsRef.current[e.user_id] = nowLegs;
+            }
+          });
+        }
+      }
       if (lb.ok) setHighlights(lb.highlights ?? []);
       if (wr.ok) setWinRates(wr.entries ?? []);
     }
-  }, [tab]);
+  }, [tab, maybeShowGuessResult, maybeShowArenaResult, setArenaLive]);
 
   useEffect(() => {
     void refresh();
     const id = setInterval(() => void refresh(), 5000);
     return () => clearInterval(id);
   }, [refresh]);
+
+  const selectedEntry: ArenaEntry | null = useMemo(() => {
+    if (!arena?.entries?.length) return null;
+    if (selectedArenaEntryId) {
+      return arena.entries.find(e => e.user_id === selectedArenaEntryId) ?? null;
+    }
+    return arena.my_entry ?? null;
+  }, [arena, selectedArenaEntryId]);
 
   const betGuess = async (direction: 'up' | 'down') => {
     setBusy(true);
@@ -89,6 +161,7 @@ export function TradingEventsPanel() {
         return;
       }
       setArena(r.current ?? null);
+      setArenaLive(r.current ?? null);
       if (r.balance != null) useGameStore.setState({ points: r.balance });
       addMessage(r.message || '已报名短线大赛');
     } finally {
@@ -109,6 +182,7 @@ export function TradingEventsPanel() {
         return;
       }
       setArena(r.current ?? null);
+      setArenaLive(r.current ?? null);
       if (r.balance != null) useGameStore.setState({ points: r.balance });
       addMessage(r.message || `已押 ${RANK_LABELS[specRank] || specRank} · ${specStake} 积分`);
     } finally {
@@ -242,20 +316,31 @@ export function TradingEventsPanel() {
             )}
             {arena.my_entry && (
               <div style={{ marginTop: 8, fontSize: 11, padding: 8, background: '#fff', borderRadius: 6 }}>
-                已报名 · {arena.my_entry.direction} · {arena.my_entry.leverage}x
+                已报名 · {arena.my_entry.signal_summary || `${arena.my_entry.direction} · ${arena.my_entry.leverage}x`}
                 {(arena.my_entry.legs_count ?? 0) > 0 ? ` · ${arena.my_entry.legs_count} 轮操作` : ''}
-                {arena.my_entry.rank ? ` · 第 ${arena.my_entry.rank} 名 ${arena.my_entry.return_pct >= 0 ? '+' : ''}${arena.my_entry.return_pct}%` : ''}
+                {arena.my_entry.rank ? ` · 第 ${arena.my_entry.rank} 名 ${arena.my_entry.return_pct != null && arena.my_entry.return_pct >= 0 ? '+' : ''}${arena.my_entry.return_pct}%` : ''}
                 {arena.my_entry.prize ? ` · 奖金 +${arena.my_entry.prize}` : ''}
               </div>
             )}
           </div>
 
-          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>选手榜 · 实时收益率</div>
+          {selectedEntry && (
+            <LogicDrawer
+              entry={selectedEntry}
+              onClose={() => setSelectedArenaEntryId(null)}
+            />
+          )}
+
+          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>选手榜 · 点击看交易逻辑</div>
           {arena.entries.map(e => (
-            <div key={e.user_id} style={{
-              padding: '6px 8px', marginBottom: 4, borderRadius: 6, fontSize: 11,
-              background: e.rank === 1 ? '#fff8e8' : '#faf6ef',
-            }}>
+            <div key={e.user_id} role="button" tabIndex={0}
+              onClick={() => setSelectedArenaEntryId(e.user_id)}
+              onKeyDown={ev => { if (ev.key === 'Enter') setSelectedArenaEntryId(e.user_id); }}
+              style={{
+                padding: '6px 8px', marginBottom: 4, borderRadius: 6, fontSize: 11, cursor: 'pointer',
+                background: selectedArenaEntryId === e.user_id ? '#e8f0ff' : e.rank === 1 ? '#fff8e8' : '#faf6ef',
+                border: selectedArenaEntryId === e.user_id ? '1px solid #4a90c8' : '1px solid transparent',
+              }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>
                   {e.rank ? `${e.rank}. ` : '· '}{e.agent_name}{e.is_npc ? ' 🤖' : ''}
@@ -265,7 +350,7 @@ export function TradingEventsPanel() {
                 <span style={{ color: (e.return_pct ?? 0) >= 0 ? '#2ea872' : '#c07070', fontWeight: 600 }}>
                   {e.return_pct != null && e.return_pct !== 0
                     ? `${e.return_pct >= 0 ? '+' : ''}${e.return_pct}%`
-                    : e.strategy_preset}
+                    : e.signal_summary || e.strategy_preset}
                 </span>
               </div>
               {e.recent_legs && e.recent_legs.length > 0 && arena.status === 'running' && (

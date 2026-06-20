@@ -6,7 +6,7 @@ import { useGameStore } from './store/useGameStore';
 import { fetchOverview, fetchTicker } from './lib/api';
 import { lifeSessionStart } from './lib/lifeApi';
 import { isLoggedIn, getStoredAccount } from './lib/lifeAuth';
-import { syncMood } from './lib/lifeEngagementApi';
+import { syncMood, fetchArenaRound } from './lib/lifeEngagementApi';
 import { clearUrlParams, parseDeepLink, persistDeepLink } from './lib/shareUtils';
 
 import { preloadAllSprites } from './lib/spriteTextures';
@@ -106,6 +106,13 @@ export default function App() {
         st.restorePokerRoom().catch(() => {});
       }
     }, 4000);
+    const arenaPoll = setInterval(() => {
+      const st = useGameStore.getState();
+      if (st.activeZone !== 'arena') return;
+      fetchArenaRound().then(r => {
+        if (r.ok && r.current) st.setArenaLive(r.current);
+      }).catch(() => {});
+    }, 5000);
     const onVis = () => {
       if (document.visibilityState === 'visible') {
         lifeSessionStart().catch(() => {});
@@ -114,7 +121,7 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', onVis);
     return () => {
-      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f); clearInterval(pokerPoll);
+      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f); clearInterval(pokerPoll); clearInterval(arenaPoll);
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [loggedIn, initAgents, syncLifeState, syncSeats, syncEngagement, updateFromOverview, syncUserPortfolio, setTicker, addMessage, processPendingDeepLink]);

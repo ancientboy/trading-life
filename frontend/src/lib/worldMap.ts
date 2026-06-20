@@ -20,6 +20,7 @@ export const ZONE_CAMERA: Record<ZoneId, { x: number; z: number; label: string }
   spa: { x: 42, z: 7.5, label: '按摩放松区' },
   restaurant: { x: 14, z: 20, label: '餐厅' },
   casino: { x: 42, z: 20, label: '德州扑克' },
+  arena: { x: 42, z: 26, label: '交易竞技馆' },
 };
 
 /** 区域导航悬浮箭头（点击切换视角） */
@@ -29,9 +30,13 @@ export const ZONE_NAV_ARROWS: {
   { x: 14, z: 14.2, rotY: 0, label: '餐厅', target: 'restaurant', showWhen: 'hall' },
   { x: 27.2, z: 7.5, rotY: -Math.PI / 2, label: '按摩区', target: 'spa', showWhen: 'hall' },
   { x: 27.2, z: 12.5, rotY: -Math.PI / 2, label: '德州扑克', target: 'casino', showWhen: 'hall' },
+  { x: 27.2, z: 17.5, rotY: -Math.PI / 2, label: '交易竞技', target: 'arena', showWhen: 'hall' },
   { x: 14, z: 16.8, rotY: Math.PI, label: '交易大厅', target: 'hall', showWhen: 'restaurant' },
   { x: 25.5, z: 7.5, rotY: Math.PI, label: '交易大厅', target: 'hall', showWhen: 'spa' },
   { x: 25.5, z: 18.5, rotY: Math.PI, label: '交易大厅', target: 'hall', showWhen: 'casino' },
+  { x: 25.5, z: 22.5, rotY: Math.PI, label: '交易竞技', target: 'arena', showWhen: 'casino' },
+  { x: 25.5, z: 18.5, rotY: Math.PI, label: '交易大厅', target: 'hall', showWhen: 'arena' },
+  { x: 25.5, z: 22.5, rotY: 0, label: '德州扑克', target: 'casino', showWhen: 'arena' },
   { x: 14, z: 22.5, rotY: Math.PI, label: '交易大厅', target: 'hall', showWhen: 'reception' },
 ];
 

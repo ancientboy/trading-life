@@ -112,10 +112,18 @@ export function RightPanel() {
       </div>
 
       <div className="panel-body">
+        {activeZone === 'arena' && currentTab !== 'events' && (
+          <div style={{ marginBottom: 10, padding: 8, background: '#eef4ff', borderRadius: 8, fontSize: 11 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>🏆 交易竞技馆</div>
+            <button className="ui-btn" style={{ width: '100%' }} onClick={() => setRightTab('events')}>
+              打开竞技面板
+            </button>
+          </div>
+        )}
         {currentTab === 'hall' && renderHallPanel()}
         {currentTab === 'tasks' && <DailyTasksPanel compact />}
         {currentTab === 'social' && <SocialPanel />}
-        {currentTab === 'events' && <TradingEventsPanel />}
+        {(currentTab === 'events' || activeZone === 'arena') && <TradingEventsPanel />}
         {(currentTab === 'object' || currentTab === 'agent') && renderAgentPanel()}
         {currentTab === 'npc' && renderNpcPanel()}
         {currentTab === 'facility' && renderFacilityPanel()}

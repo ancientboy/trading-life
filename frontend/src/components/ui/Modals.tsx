@@ -17,6 +17,8 @@ import { isOutfitShopItem, isSpeciesShopItem, isHairShopItem } from '../../lib/l
 import { StrategyEditor } from './StrategyEditor';
 import { SceneSkinsPanel } from './SceneSkinsPanel';
 import { TradingWinModal } from './TradingWinModal';
+import { GuessResultModal } from './GuessResultModal';
+import { ArenaResultModal } from './ArenaResultModal';
 
 const TITLES: Record<Exclude<ModalId, null>, string> = {
   workshop: 'Agent 工坊',
@@ -30,6 +32,8 @@ const TITLES: Record<Exclude<ModalId, null>, string> = {
   poker: '德州扑克 · 开局',
   poker_result: '德州扑克 · 开牌结果',
   trading_win: '模拟盘 · 首笔盈利',
+  guess_result: '猜涨跌 · 结算',
+  arena_result: '短线大赛 · 颁奖',
   shop: '积分商城',
   scene: '场景装扮',
   tasks: '每日任务',
@@ -69,6 +73,8 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
   const tradeFeed = useGameStore(s => s.tradeFeed);
   const ticker = useGameStore(s => s.ticker);
   const pokerHandResult = useGameStore(s => s.pokerHandResult);
+  const guessResultData = useGameStore(s => s.guessResultData);
+  const arenaResultData = useGameStore(s => s.arenaResultData);
   const tradingWinResult = useGameStore(s => s.tradingWinResult);
   const agent = selectedAgentId ? agents[selectedAgentId] : null;
   const d = agent?.data;
@@ -103,7 +109,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
     case 'help':
       return (
         <div style={{ fontSize: 13, lineHeight: 1.6, color: '#6b5e4e' }}>
-          <p><b>五大分区：</b>交易大厅 · 前厅接待 · 餐厅 · 按摩 · 德州扑克</p>
+          <p><b>五大分区：</b>交易大厅 · 前厅接待 · 餐厅 · 按摩 · 德州扑克 · 交易竞技馆</p>
           <p><b>场景操作：</b>点击工位/家具（餐桌/按摩床/牌桌/休息包厢）派遣 Agent；点击箭头切换区域；拖拽平移视角</p>
           <p><b>休闲费用：</b>休息免费；用餐/按摩基础档免费，高档消耗积分；德州免费入座，开局才扣买入</p>
           <p><b>每日积分：</b>顶部积分栏可领取 1000 积分（每日一次）</p>
@@ -126,6 +132,10 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
       return pokerHandResult ? <PokerResultModal data={pokerHandResult} /> : null;
     case 'trading_win':
       return tradingWinResult ? <TradingWinModal data={tradingWinResult} /> : null;
+    case 'guess_result':
+      return guessResultData ? <GuessResultModal data={guessResultData} /> : null;
+    case 'arena_result':
+      return arenaResultData ? <ArenaResultModal data={arenaResultData} /> : null;
     case 'shop':
       return <ShopPanel />;
     case 'scene':

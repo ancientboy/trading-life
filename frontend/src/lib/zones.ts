@@ -6,7 +6,8 @@ export const ZONE_META: Record<ZoneId, { label: string; floorColor: string; w: n
   reception: { label: '前厅接待', floorColor: '#faf6ef', w: 18, d: 10 },
   restaurant: { label: '餐厅', floorColor: '#fff8eb', w: 20, d: 14 },
   spa: { label: '按摩放松区', floorColor: '#f0ebf8', w: 20, d: 14 },
-  casino: { label: '德州扑克', floorColor: '#f5efe6', w: 20, d: 14 },
+  casino: { label: '德州扑克', floorColor: '#f5efe6', w: 20, d: 10 },
+  arena: { label: '交易竞技馆', floorColor: '#1a2840', w: 20, d: 8 },
 };
 
 /** 德州牌桌中心（本地坐标） */
@@ -90,6 +91,7 @@ export const LEISURE_SPOTS: Record<ZoneId, Record<string, { x: number; z: number
   },
   spa: SPA_AGENT_SPOTS,
   casino: CASINO_AGENT_SPOTS,
+  arena: {},
 };
 
 export const SIDEBAR_TO_ZONE: Partial<Record<string, ZoneId>> = {
@@ -97,6 +99,7 @@ export const SIDEBAR_TO_ZONE: Partial<Record<string, ZoneId>> = {
   restaurant: 'restaurant',
   spa: 'spa',
   casino: 'casino',
+  events: 'arena',
 };
 
 export const ZONE_TO_RIGHT_TAB: Record<ZoneId, import('../store/useGameStore').RightTab> = {
@@ -105,4 +108,5 @@ export const ZONE_TO_RIGHT_TAB: Record<ZoneId, import('../store/useGameStore').R
   restaurant: 'facility',
   spa: 'facility',
   casino: 'facility',
+  arena: 'events',
 };

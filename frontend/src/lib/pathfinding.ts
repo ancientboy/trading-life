@@ -87,4 +87,5 @@ export const ZONES = [
   { id: 'spa', label: '按摩放松区', x: 42, z: 7.5, w: 28, d: 15, color: '#f5eef8' },
   { id: 'restaurant', label: '餐厅', x: 14, z: 20, w: 28, d: 10, color: '#fff8eb' },
   { id: 'casino', label: '德州扑克', x: 42, z: 20, w: 28, d: 10, color: '#1a1520' },
+  { id: 'arena', label: '交易竞技馆', x: 42, z: 26, w: 28, d: 8, color: '#1a2840' },
 ];

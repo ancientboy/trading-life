@@ -35,6 +35,7 @@ export const ZONE_LAYOUTS: Record<ZoneId, ZoneLayout> = {
       { x: 360, y: 598, dir: 's', label: '餐厅', target: 'restaurant' },
       { x: 698, y: 300, dir: 'e', label: '按摩', target: 'spa' },
       { x: 698, y: 430, dir: 'e', label: '德州', target: 'casino' },
+      { x: 698, y: 520, dir: 'e', label: '竞技馆', target: 'arena' },
       { x: 360, y: 42, dir: 'n', label: '前厅', target: 'reception' },
     ],
     facilities: [
@@ -77,9 +78,23 @@ export const ZONE_LAYOUTS: Record<ZoneId, ZoneLayout> = {
   casino: {
     floorColor: '#2a2220',
     accent: 'rgba(212,175,55,0.14)',
-    navArrows: [{ x: 22, y: 320, dir: 'w', label: '大厅', target: 'hall' }],
+    navArrows: [
+      { x: 22, y: 320, dir: 'w', label: '大厅', target: 'hall' },
+      { x: 360, y: 580, dir: 's', label: '竞技馆', target: 'arena' },
+    ],
     facilities: [
       { id: 'poker_table', nodeId: 'poker_table', r: 118, label: 'VIP 牌桌', action: 'poker' },
+    ],
+  },
+  arena: {
+    floorColor: '#1a2840',
+    accent: 'rgba(74,144,200,0.14)',
+    navArrows: [
+      { x: 22, y: 320, dir: 'w', label: '大厅', target: 'hall' },
+      { x: 360, y: 42, dir: 'n', label: '德州', target: 'casino' },
+    ],
+    facilities: [
+      { id: 'arena_pit', nodeId: 'arena_pit', r: 130, label: '竞技台', action: 'rest' },
     ],
   },
 };

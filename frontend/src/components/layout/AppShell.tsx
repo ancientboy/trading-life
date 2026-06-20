@@ -28,6 +28,7 @@ export function AppShell() {
       <main className="main-canvas">
         <GameCanvas />
         <PokerFloatCTA />
+        <ArenaFloatCTA />
         <CanvasControls />
       </main>
       <RightPanel />
@@ -52,6 +53,37 @@ function PokerFloatCTA() {
   return createPortal(
     <button type="button" className="poker-float-cta" onClick={() => openModal('poker')}>
       🃏 {seated.data.name} 已入座 · 点我开始牌局
+    </button>,
+    document.body,
+  );
+}
+
+/** 竞技馆悬浮 CTA — 报名/进行中快捷入口 */
+function ArenaFloatCTA() {
+  const activeZone = useGameStore(s => s.activeZone);
+  const activeModal = useGameStore(s => s.activeModal);
+  const arenaLive = useGameStore(s => s.arenaLive);
+  const setRightTab = useGameStore(s => s.setRightTab);
+  const toggleRightPanel = useGameStore(s => s.toggleRightPanel);
+  const rightCollapsed = useGameStore(s => s.rightPanelCollapsed);
+
+  if (activeZone !== 'arena') return null;
+  if (activeModal === 'guess_result' || activeModal === 'arena_result') return null;
+  if (!arenaLive) return null;
+
+  const label = arenaLive.status === 'running'
+    ? `🔥 大赛进行中 ${arenaLive.seconds_left}s · 看选手操作`
+    : arenaLive.can_join
+      ? `🏆 报名中 ${arenaLive.join_seconds_left}s · 派 Agent 参赛`
+      : '🏆 交易竞技馆 · 打开面板';
+
+  return createPortal(
+    <button type="button" className="poker-float-cta" style={{ bottom: 88 }}
+      onClick={() => {
+        if (rightCollapsed) toggleRightPanel();
+        setRightTab('events');
+      }}>
+      {label}
     </button>,
     document.body,
   );

@@ -35,7 +35,8 @@ export function zoneAtPosition(wx: number, wz: number): ZoneId {
     return 'reception';
   }
   if (wz < 15) return 'spa';
-  return 'casino';
+  if (wz < 23) return 'casino';
+  return 'arena';
 }
 
 export function isWorldBlocked(wx: number, wz: number, agentRadius = 0.35): boolean {

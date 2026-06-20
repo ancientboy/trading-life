@@ -37,6 +37,15 @@ NPC_ARENA_AGENTS = [
     ("npc_xau", "XAU·系统", "xau"),
 ]
 
+PRESET_LABELS: dict[str, str] = {
+    "xau": "黄金趋势",
+    "major": "主流币趋势",
+    "altcoin": "山寨波段",
+    "newcoin": "新币猎手",
+    "momentum": "动量快打",
+    "custom": "自定义",
+}
+
 
 class GuessBetBody(BaseModel):
     direction: str
@@ -62,6 +71,25 @@ async def _fetch_btc_price() -> float:
 def _display_name(user_id: str) -> str:
     acc = life_db.get_account_by_id(user_id) or {}
     return acc.get("display_name") or acc.get("username") or user_id[:8]
+
+
+def _recent_first_flag(stats: dict, at_key: str, event_ms: int, window_ms: int = 120_000) -> bool:
+    raw = stats.get(at_key)
+    if not raw or not event_ms:
+        return False
+    try:
+        from datetime import datetime, timezone, timedelta
+        CST = timezone(timedelta(hours=8))
+        if isinstance(raw, (int, float)):
+            ts_ms = int(raw)
+        else:
+            dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=CST)
+            ts_ms = int(dt.timestamp() * 1000)
+        return abs(ts_ms - int(event_ms)) <= window_ms
+    except Exception:
+        return False
 
 
 def _arena_timings(mode: str) -> tuple[int, int]:
@@ -161,6 +189,9 @@ async def _settle_guess_round(c, round_id: str) -> Optional[dict]:
             _earn(user, payout)
             save_user(b["user_id"], user)
             life_db.add_season_points(b["user_id"], pvp_win=1, social=3)
+            life_db.record_guess_result(b["user_id"], won=True, payout=payout)
+        elif b["user_id"] and not str(b["user_id"]).startswith(("npc_", "ai_")):
+            life_db.record_guess_result(b["user_id"], won=False, payout=0)
         c.execute("UPDATE guess_bets SET payout=? WHERE id=?", (payout, b["id"]))
 
     rd["winner_side"] = winner_side
@@ -168,7 +199,7 @@ async def _settle_guess_round(c, round_id: str) -> Optional[dict]:
     return rd
 
 
-async def _decide_agent_direction(preset_id: str, meta: dict) -> tuple[str, float]:
+async def _decide_agent_direction(preset_id: str, meta: dict) -> tuple[str, float, str]:
     from life_trading import (
         effective_preset, evaluate_entry_signal, fetch_kline_map,
         parse_kline_intervals,
@@ -184,16 +215,28 @@ async def _decide_agent_direction(preset_id: str, meta: dict) -> tuple[str, floa
     risk = meta.get("risk") or eff.get("risk", "中")
     style = eff.get("style", "trend")
     direction = "LONG"
+    reason = "动量跟随"
     if closes_e and len(closes_e) >= 12:
-        sig, _ = evaluate_entry_signal(style, closes_e, closes_f, threshold, risk)
+        sig, signal_reason = evaluate_entry_signal(style, closes_e, closes_f, threshold, risk)
         if sig == "SHORT":
             direction = "SHORT"
         elif sig == "LONG":
             direction = "LONG"
         else:
             direction = "LONG" if closes_e[-1] >= closes_e[-5] else "SHORT"
+            signal_reason = "tick 动量"
+        reason = signal_reason or reason
     lev = float(eff.get("leverage") or 5)
-    return direction, lev
+    return direction, lev, reason
+
+
+def _signal_summary(preset_id: str, direction: str, leverage: float, reason: str = "") -> str:
+    label = PRESET_LABELS.get(preset_id or "major", preset_id or "策略")
+    parts = [label, f"{direction} · {int(leverage)}x"]
+    if reason:
+        parts.append(reason)
+    tags = []
+    return " · ".join(parts)
 
 
 def _entry_meta_for_arena(user_id: str, e: dict) -> dict:
@@ -232,16 +275,19 @@ async def _close_open_leg(c, round_id: str, e: dict, price: float) -> float:
 async def _open_new_leg(c, round_id: str, e: dict, price: float) -> None:
     preset = e.get("strategy_preset") or "major"
     meta = _entry_meta_for_arena(e["user_id"], e)
-    direction, lev = await _decide_agent_direction(preset, meta)
+    direction, lev, reason = await _decide_agent_direction(preset, meta)
+    summary = _signal_summary(preset, direction, lev, reason)
     c.execute(
-        """UPDATE arena_entries SET leg_entry_price=?, leg_direction=?, leverage=?, direction=?
+        """UPDATE arena_entries SET leg_entry_price=?, leg_direction=?, leverage=?, direction=?,
+           signal_reason=?
            WHERE round_id=? AND user_id=?""",
-        (price, direction, lev, direction, round_id, e["user_id"]),
+        (price, direction, lev, direction, summary, round_id, e["user_id"]),
     )
     e["leg_entry_price"] = price
     e["leg_direction"] = direction
     e["leverage"] = lev
     e["direction"] = direction
+    e["signal_reason"] = summary
 
 
 async def _advance_arena_legs(c, rd: dict) -> None:
@@ -315,13 +361,14 @@ async def _start_arena_round(c, round_id: str) -> None:
             ).fetchone():
                 continue
             price = float(c.execute("SELECT start_price FROM arena_rounds WHERE id=?", (round_id,)).fetchone()[0])
-            direction, lev = await _decide_agent_direction(preset, {"strategyPreset": preset, "risk": "中"})
+            direction, lev, reason = await _decide_agent_direction(preset, {"strategyPreset": preset, "risk": "中"})
+            summary = _signal_summary(preset, direction, lev, reason)
             c.execute(
                 """INSERT OR IGNORE INTO arena_entries
                    (round_id, user_id, agent_id, agent_name, strategy_preset, is_npc, entry_fee,
-                    direction, leverage, entry_price, leg_entry_price, leg_direction, legs_count)
-                   VALUES (?,?,?,?,?,1,0,?,?,?,?,?,0)""",
-                (round_id, uid, uid, name, preset, direction, lev, price, price, direction),
+                    direction, leverage, entry_price, leg_entry_price, leg_direction, legs_count, signal_reason)
+                   VALUES (?,?,?,?,?,1,0,?,?,?,?,?,0,?)""",
+                (round_id, uid, uid, name, preset, direction, lev, price, price, direction, summary),
             )
 
     price = await _fetch_btc_price()
@@ -461,7 +508,13 @@ def _arena_payload(c, rd: dict, account_id: str = "") -> dict:
     for e in entries_raw:
         pub = {**e}
         pub["display_name"] = _display_name(e["user_id"]) if not e.get("is_npc") else e.get("agent_name")
-        pub["recent_legs"] = _entry_legs(c, rd["id"], e["user_id"], 4)
+        pub["signal_summary"] = e.get("signal_reason") or _signal_summary(
+            e.get("strategy_preset") or "major",
+            e.get("leg_direction") or e.get("direction") or "LONG",
+            float(e.get("leverage") or 5),
+        )
+        pub["recent_legs"] = _entry_legs(c, rd["id"], e["user_id"], 8)
+        pub["all_legs"] = _entry_legs(c, rd["id"], e["user_id"], 20)
         entries.append(pub)
     my_entry = next((e for e in entries if account_id and e["user_id"] == account_id), None)
     spec = []
@@ -536,8 +589,27 @@ async def get_guess_round(account_id: str = Depends(resolve_account_id)):
             prev = c.execute(
                 "SELECT * FROM guess_rounds WHERE status='settled' ORDER BY ends_at DESC LIMIT 1"
             ).fetchone()
+            last_my = None
+            if prev and account_id:
+                bet_row = c.execute(
+                    "SELECT * FROM guess_bets WHERE round_id=? AND user_id=?",
+                    (prev["id"], account_id),
+                ).fetchone()
+                if bet_row:
+                    last_my = dict(bet_row)
+                    ws = prev["winner_side"] if "winner_side" in prev.keys() else None
+                    if not ws and prev.get("end_price") and prev.get("start_price"):
+                        sp, ep = float(prev["start_price"]), float(prev["end_price"])
+                        ws = "tie" if abs(ep - sp) < 1e-9 else ("up" if ep > sp else "down")
+                    last_my["won"] = bool(ws and ws != "tie" and last_my["direction"] == ws)
+                    if last_my.get("won") and account_id:
+                        from life_game import load_user
+                        stats = (load_user(account_id).get("stats") or {})
+                        last_my["first_win"] = _recent_first_flag(stats, "first_guess_win_at", prev["ends_at"])
     last = dict(prev) if prev else None
-    return {"ok": True, "current": payload, "last_settled": last}
+    if last and last_my:
+        last["my_bet"] = last_my
+    return {"ok": True, "current": payload, "last_settled": last, "last_my_bet": last_my}
 
 
 @events_router.post("/pvp/trading/guess/bet")
@@ -586,11 +658,25 @@ async def place_guess_bet(body: GuessBetBody, account_id: str = Depends(resolve_
 
 @events_router.get("/pvp/trading/arena")
 async def get_arena_round(account_id: str = Depends(resolve_account_id)):
+    last_settled_payload = None
     with life_db._lock:
         with life_db._conn() as c:
             rd = await _ensure_arena_round(c)
             payload = _arena_payload(c, rd, account_id)
-    return {"ok": True, "current": payload}
+            prev = c.execute(
+                "SELECT * FROM arena_rounds WHERE status='settled' ORDER BY ends_at DESC LIMIT 1"
+            ).fetchone()
+            if prev:
+                last_settled_payload = _arena_payload(c, dict(prev), account_id)
+                if account_id:
+                    from life_game import load_user
+                    stats = (load_user(account_id).get("stats") or {})
+                    my = last_settled_payload.get("my_entry")
+                    if my and my.get("rank") and int(my["rank"]) <= 3:
+                        last_settled_payload["first_podium"] = _recent_first_flag(
+                            stats, "first_arena_podium_at", prev["ends_at"],
+                        )
+    return {"ok": True, "current": payload, "last_settled": last_settled_payload}
 
 
 @events_router.post("/pvp/trading/arena/join")
@@ -625,7 +711,8 @@ async def join_arena(body: ArenaJoinBody, account_id: str = Depends(resolve_acco
     save_user(account_id, user)
 
     preset = meta.get("strategyPreset") or meta.get("strategy_preset") or "major"
-    direction, lev = await _decide_agent_direction(preset, meta)
+    direction, lev, reason = await _decide_agent_direction(preset, meta)
+    summary = _signal_summary(preset, direction, lev, reason)
     price = float(rd.get("start_price") or await _fetch_btc_price())
 
     with life_db._lock:
@@ -633,9 +720,9 @@ async def join_arena(body: ArenaJoinBody, account_id: str = Depends(resolve_acco
             c.execute(
                 """INSERT INTO arena_entries
                    (round_id, user_id, agent_id, agent_name, strategy_preset, is_npc, entry_fee,
-                    direction, leverage, entry_price, leg_entry_price, leg_direction, legs_count)
-                   VALUES (?,?,?,?,?,0,?,?,?,?,?,?,0)""",
-                (rd["id"], account_id, agent_id, meta.get("name") or agent_id, preset, fee, direction, lev, price, price, direction),
+                    direction, leverage, entry_price, leg_entry_price, leg_direction, legs_count, signal_reason)
+                   VALUES (?,?,?,?,?,0,?,?,?,?,?,?,0,?)""",
+                (rd["id"], account_id, agent_id, meta.get("name") or agent_id, preset, fee, direction, lev, price, price, direction, summary),
             )
             c.execute(
                 "UPDATE arena_rounds SET prize_pool=prize_pool+? WHERE id=?",

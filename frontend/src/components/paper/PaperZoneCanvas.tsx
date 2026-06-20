@@ -3,6 +3,8 @@ import { useGameStore } from '../../store/useGameStore';
 import { tickCharacterSim } from '../../lib/characterSimLoop';
 import { WORLD_MAP, ZONE_CAMERA } from '../../lib/worldMap';
 import { hitTestPaperFacilities, getAgentPaperPos, ZONE_NPCS } from '../../lib/zoneFurniture';
+import { ARENA_PODS } from './arenaDraw';
+import { fetchArenaRound } from '../../lib/lifeEngagementApi';
 import { ZONE_LAYOUTS } from '../../lib/zoneLayouts';
 import { PAPER, agentVisibleInZone } from '../../lib/zoneProjection';
 import {
@@ -34,6 +36,16 @@ export function PaperZoneCanvas() {
   const pokerTableDealingUntil = useGameStore(s => s.pokerTableDealingUntil);
   const pokerRoom = useGameStore(s => s.pokerRoom);
   const zoneSkins = useGameStore(s => s.zoneSkins);
+  const arenaLive = useGameStore(s => s.arenaLive);
+  const setArenaLive = useGameStore(s => s.setArenaLive);
+  const setSelectedArenaEntryId = useGameStore(s => s.setSelectedArenaEntryId);
+  const setRightTab = useGameStore(s => s.setRightTab);
+  const toggleRightPanel = useGameStore(s => s.toggleRightPanel);
+  const rightPanelCollapsed = useGameStore(s => s.rightPanelCollapsed);
+
+  const prevLegsRef = useRef<Record<string, number>>({});
+  const [arenaPulseSlots, setArenaPulseSlots] = useState<Set<number>>(new Set());
+  const [hoverPodId, setHoverPodId] = useState<string | null>(null);
 
   const flyToZone = useGameStore(s => s.flyToZone);
   const selectAgent = useGameStore(s => s.selectAgent);
@@ -54,6 +66,32 @@ export function PaperZoneCanvas() {
       panY: (cameraLookAt.z - cam.z) * PAPER.ppu,
     };
   }, [activeZone, cameraLookAt]);
+
+  useEffect(() => {
+    if (activeZone !== 'arena') return;
+    const poll = () => fetchArenaRound().then(r => {
+      if (r.ok && r.current) setArenaLive(r.current);
+    }).catch(() => {});
+    poll();
+    const id = setInterval(poll, 4000);
+    return () => clearInterval(id);
+  }, [activeZone, setArenaLive]);
+
+  useEffect(() => {
+    if (!arenaLive?.entries) return;
+    const pulse = new Set<number>();
+    arenaLive.entries.forEach((e, i) => {
+      const prev = prevLegsRef.current[e.user_id] ?? 0;
+      const now = e.legs_count ?? e.recent_legs?.length ?? 0;
+      if (arenaLive.status === 'running' && now > prev) pulse.add(i);
+      prevLegsRef.current[e.user_id] = now;
+    });
+    if (pulse.size) {
+      setArenaPulseSlots(pulse);
+      const t = setTimeout(() => setArenaPulseSlots(new Set()), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [arenaLive]);
 
   const paint = useCallback(() => {
     const canvas = canvasRef.current;
@@ -83,6 +121,9 @@ export function PaperZoneCanvas() {
       npcBubble: performance.now() < (npcBubble?.until ?? 0) ? npcBubble : null,
       pokerTableDealing: performance.now() < pokerTableDealingUntil,
       zoneSkins,
+      arenaLive: activeZone === 'arena' ? arenaLive : null,
+      arenaPulseSlots,
+      hoverPodId,
     });
 
     renderAgents(ctx, activeZone, cam, agents, c => agentVisibleInZone(c, activeZone), {
@@ -97,7 +138,7 @@ export function PaperZoneCanvas() {
         getStoredAccount()?.id, t,
       );
     }
-  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerTableDealingUntil, pokerRoom, zoneSkins]);
+  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerTableDealingUntil, pokerRoom, zoneSkins, arenaLive, arenaPulseSlots, hoverPodId]);
 
   useEffect(() => {
     let last = performance.now();
@@ -154,6 +195,14 @@ export function PaperZoneCanvas() {
       return { type: 'facility' as const, action: fac.action, nodeId: fac.nodeId, id: fac.id };
     }
 
+    if (activeZone === 'arena') {
+      for (const pod of ARENA_PODS) {
+        if (Math.hypot(paper.x - pod.px, paper.y - pod.py) < 44) {
+          return { type: 'arena_pod' as const, slot: pod.slot, id: pod.id };
+        }
+      }
+    }
+
     for (const npc of ZONE_NPCS[activeZone] ?? []) {
       if (Math.hypot(paper.x - npc.px, paper.y - npc.py) < 32) {
         return { type: 'npc' as const, id: npc.id };
@@ -187,7 +236,8 @@ export function PaperZoneCanvas() {
       return;
     }
     const hit = hitTest(e.clientX, e.clientY);
-    setHoverFacilityId(hit?.type === 'facility' ? hit.id : null);
+    setHoverFacilityId(hit?.type === 'facility' ? hit.id : hit?.type === 'arena_pod' ? hit.id : null);
+    setHoverPodId(hit?.type === 'arena_pod' ? hit.id : null);
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -204,11 +254,23 @@ export function PaperZoneCanvas() {
     const hit = hitTest(e.clientX, e.clientY);
     if (!hit) return;
     if (hit.type === 'nav') flyToZone(hit.target);
+    else if (hit.type === 'arena_pod') {
+      const entry = arenaLive?.entries?.[hit.slot];
+      if (entry) {
+        setSelectedArenaEntryId(entry.user_id);
+        if (rightPanelCollapsed) toggleRightPanel();
+        setRightTab('events');
+      }
+    }
     else if (hit.type === 'agent') selectAgent(hit.id);
     else if (hit.type === 'npc') {
       if (hit.id === 'dealer') {
         openModal('poker');
         setNpcBubble('dealer', '欢迎！入座后点「开始牌局」发牌 🃏', performance.now() + 5000);
+      } else if (hit.id === 'ava') {
+        if (rightPanelCollapsed) toggleRightPanel();
+        setRightTab('events');
+        setNpcBubble('ava', '欢迎来到交易竞技馆！猜涨跌 / 短线大赛 / 押冠亚季军 🏆', performance.now() + 6000);
       } else if (hit.id === 'lily') openModal('dine');
       else if (hit.id === 'masseur') openModal('massage');
       else selectNpc(hit.id);

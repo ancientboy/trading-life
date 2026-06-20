@@ -1,5 +1,5 @@
 /** 裂变分享 — Deep Link、复制、分享卡 */
-import type { PokerHandResult } from '../store/useGameStore';
+import type { PokerHandResult, GuessResultData, ArenaResultData } from '../store/useGameStore';
 
 const BASE_PATH = '/trading/life/';
 
@@ -197,6 +197,7 @@ export function persistDeepLink(): void {
   if (d.invite) sessionStorage.setItem('tl_pending_invite', d.invite);
   if (d.view === 'spectate' && d.room) sessionStorage.setItem('tl_pending_spectate', d.room);
   if (d.view === 'leaderboard') sessionStorage.setItem('tl_pending_leaderboard', '1');
+  if (d.view === 'arena') sessionStorage.setItem('tl_pending_arena', '1');
 }
 
 export function clearUrlParams(): void {
@@ -546,6 +547,137 @@ export async function renderPremiumTradingShareCard(
   return new Promise((resolve, reject) => {
     canvas.toBlob(b => (b ? resolve(b) : reject(new Error('生成图片失败'))), 'image/png');
   });
+}
+
+export function buildArenaLink(): string {
+  return `${appBaseUrl()}?view=arena`;
+}
+
+export function buildGuessShareText(data: GuessResultData): string {
+  const chg = data.start_price
+    ? ((data.end_price - data.start_price) / data.start_price * 100).toFixed(3)
+    : '0';
+  return `🎯 交易人生 · 猜涨跌${data.won ? '命中' : '战报'}\n`
+    + `BTC $${Math.round(data.start_price).toLocaleString()} → $${Math.round(data.end_price).toLocaleString()} (${chg}%)\n`
+    + `我押 ${data.direction === 'up' ? '📈 涨' : '📉 跌'}${data.won ? ` · 赢得 ${data.payout} 积分` : ''}\n`
+    + (data.first_win ? '🎁 猜涨跌首胜大礼包\n' : '');
+}
+
+export async function renderGuessShareCard(data: GuessResultData, linkUrl?: string): Promise<Blob> {
+  const w = 640;
+  const h = 360;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, data.won ? '#1a3a28' : '#3a2020');
+  grad.addColorStop(1, '#0a1018');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.fillStyle = data.won ? '#66bb6a' : '#ef9a9a';
+  ctx.font = 'bold 22px system-ui, sans-serif';
+  ctx.fillText(data.won ? '🎯 猜涨跌 · 押对了！' : '📉 猜涨跌 · 本局未中', 24, 44);
+
+  ctx.fillStyle = '#e8eef5';
+  ctx.font = 'bold 26px system-ui, sans-serif';
+  ctx.fillText(`BTC $${Math.round(data.start_price).toLocaleString()} → $${Math.round(data.end_price).toLocaleString()}`, 24, 88);
+
+  ctx.font = '16px system-ui, sans-serif';
+  ctx.fillStyle = '#bbdefb';
+  ctx.fillText(`我押 ${data.direction === 'up' ? '涨 📈' : '跌 📉'}${data.won ? ` · +${data.payout} 积分` : ''}`, 24, 124);
+
+  if (data.first_win) {
+    ctx.fillStyle = '#ffd54f';
+    ctx.font = 'bold 14px system-ui, sans-serif';
+    ctx.fillText('🎁 猜涨跌首胜大礼包', 24, 160);
+  }
+
+  const footerUrl = linkUrl || buildArenaLink();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillText(footerUrl.length > 46 ? `${footerUrl.slice(0, 44)}…` : footerUrl, 24, h - 12);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('生成图片失败'))), 'image/png');
+  });
+}
+
+export async function downloadGuessShareCard(data: GuessResultData, linkUrl?: string): Promise<void> {
+  const blob = await renderGuessShareCard(data, linkUrl);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `trading-life-guess-${Date.now()}.png`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function buildArenaShareText(data: ArenaResultData): string {
+  const my = data.my_entry;
+  const podium = (data.entries || []).filter(e => e.rank && e.rank <= 3).sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+  const top = podium.map(e => `${e.rank}. ${e.agent_name} ${e.return_pct != null ? (e.return_pct >= 0 ? '+' : '') + e.return_pct + '%' : ''}`).join('\n');
+  return `🏆 交易人生 · 短线大赛${data.duration_label ? ` · ${data.duration_label}` : ''}\n`
+    + (top ? `${top}\n` : '')
+    + (my?.rank ? `我的 Agent ${my.agent_name} 第 ${my.rank} 名 ${my.return_pct != null ? (my.return_pct >= 0 ? '+' : '') + my.return_pct + '%' : ''}\n` : '')
+    + (data.first_podium ? '🎁 首次登上领奖台！\n' : '');
+}
+
+export async function renderArenaShareCard(data: ArenaResultData, linkUrl?: string): Promise<Blob> {
+  const w = 640;
+  const h = 360;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#3a2818');
+  grad.addColorStop(1, '#1a1208');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 22px system-ui, sans-serif';
+  ctx.fillText('🏆 交易竞技 · 短线大赛', 24, 44);
+
+  ctx.fillStyle = '#fff8e0';
+  ctx.font = '15px system-ui, sans-serif';
+  let y = 80;
+  (data.entries || []).filter(e => e.rank && e.rank <= 3).sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).forEach(e => {
+    ctx.fillText(`${['', '🥇', '🥈', '🥉'][e.rank ?? 0] || e.rank} ${e.agent_name} ${e.return_pct != null ? (e.return_pct >= 0 ? '+' : '') + e.return_pct + '%' : ''}`, 24, y);
+    y += 28;
+  });
+
+  if (data.my_entry?.rank) {
+    ctx.fillStyle = '#ffe082';
+    ctx.font = 'bold 14px system-ui, sans-serif';
+    ctx.fillText(`我的 Agent · 第 ${data.my_entry.rank} 名`, 24, y + 12);
+  }
+
+  if (data.first_podium) {
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillText('🎁 首次登上领奖台', 24, y + 40);
+  }
+
+  const footerUrl = linkUrl || buildArenaLink();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillText(footerUrl.length > 46 ? `${footerUrl.slice(0, 44)}…` : footerUrl, 24, h - 12);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('生成图片失败'))), 'image/png');
+  });
+}
+
+export async function downloadArenaShareCard(data: ArenaResultData, linkUrl?: string): Promise<void> {
+  const blob = await renderArenaShareCard(data, linkUrl);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `trading-life-arena-${Date.now()}.png`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function downloadPremiumTradingShareCard(

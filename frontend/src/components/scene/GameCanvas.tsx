@@ -25,6 +25,7 @@ export function GameCanvas() {
     { id: 'restaurant', label: '餐厅' },
     { id: 'spa', label: '按摩区' },
     { id: 'casino', label: '德州扑克' },
+    { id: 'arena', label: '交易竞技馆' },
   ];
 
   return (

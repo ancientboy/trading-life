@@ -74,12 +74,14 @@ SHOP_CATALOG = [
     {"id": "zone_skin_spa_zen_ink", "type": "zone_skin", "value": "spa:zen_ink", "cost": 220, "label": "理疗馆 · 水墨禅境皮肤包"},
     {"id": "zone_skin_casino_royal", "type": "zone_skin", "value": "casino:royal", "cost": 280, "label": "德州厅 · 皇家金銮皮肤包"},
     {"id": "zone_skin_reception_luxury", "type": "zone_skin", "value": "reception:luxury", "cost": 160, "label": "前厅 · 尊享接待皮肤包"},
+    {"id": "zone_skin_arena_neon", "type": "zone_skin", "value": "arena:neon", "cost": 240, "label": "竞技馆 · 霓虹赛博皮肤包"},
+    {"id": "zone_skin_arena_bloom", "type": "zone_skin", "value": "arena:bloom", "cost": 260, "label": "竞技馆 · 金色 bloom 皮肤包"},
     # 旧版 id 兼容 — 与新版皮肤包等价
     {"id": "skin_sofa_gold", "type": "zone_skin", "value": "hall:gold", "cost": 200, "label": "大厅 · 金色 lounge（旧版）", "legacy": True},
     {"id": "skin_table_premium", "type": "zone_skin", "value": "restaurant:premium", "cost": 180, "label": "粤菜馆 · 尊享宴席（旧版）", "legacy": True},
 ]
 
-ZONE_SKIN_ZONES = ("hall", "restaurant", "spa", "casino", "reception")
+ZONE_SKIN_ZONES = ("hall", "restaurant", "spa", "casino", "reception", "arena")
 ZONE_SKIN_DEFAULTS = {z: "default" for z in ZONE_SKIN_ZONES}
 ZONE_SKIN_OPTIONS: dict[str, list[dict[str, Any]]] = {
     "hall": [
@@ -106,6 +108,11 @@ ZONE_SKIN_OPTIONS: dict[str, list[dict[str, Any]]] = {
     "reception": [
         {"id": "default", "label": "经典前厅", "free": True},
         {"id": "luxury", "label": "尊享接待", "shop_ids": ["zone_skin_reception_luxury"]},
+    ],
+    "arena": [
+        {"id": "default", "label": "经典交易厅", "free": True},
+        {"id": "neon", "label": "霓虹赛博", "shop_ids": ["zone_skin_arena_neon"]},
+        {"id": "bloom", "label": "金色 bloom", "shop_ids": ["zone_skin_arena_bloom"]},
     ],
 }
 

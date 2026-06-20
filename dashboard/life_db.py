@@ -1463,6 +1463,10 @@ def _migrate_trading_events_v2(c) -> None:
     if "pick_rank" not in spec_cols:
         c.execute("ALTER TABLE arena_spectator_bets ADD COLUMN pick_rank INTEGER NOT NULL DEFAULT 1")
 
+    entry_cols2 = {r[1] for r in c.execute("PRAGMA table_info(arena_entries)").fetchall()}
+    if "signal_reason" not in entry_cols2:
+        c.execute("ALTER TABLE arena_entries ADD COLUMN signal_reason TEXT NOT NULL DEFAULT ''")
+
     c.execute("""
         CREATE TABLE IF NOT EXISTS arena_trade_legs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1480,16 +1484,44 @@ def _migrate_trading_events_v2(c) -> None:
     """)
 
 
-def record_arena_result(uid: str, *, rank: int, won: bool) -> None:
+def record_guess_result(uid: str, *, won: bool, payout: int) -> dict:
+    """猜涨跌结算统计，返回 {first_guess_win}"""
     if not uid or uid.startswith(("npc_", "ai_")):
-        return
+        return {"first_guess_win": False}
+    out = {"first_guess_win": False}
+
+    def mut(stats: dict) -> None:
+        stats["guess_games_total"] = int(stats.get("guess_games_total", 0)) + 1
+        if won:
+            stats["guess_wins_total"] = int(stats.get("guess_wins_total", 0)) + 1
+            if not stats.get("first_guess_win"):
+                stats["first_guess_win"] = True
+                stats["first_guess_win_at"] = datetime.now(CST).isoformat()
+                out["first_guess_win"] = True
+
+    _mutate_user_stats(uid, mut)
+    return out
+
+
+def record_arena_result(uid: str, *, rank: int, won: bool) -> dict:
+    if not uid or uid.startswith(("npc_", "ai_")):
+        return {"first_arena_win": False, "first_arena_podium": False}
+    out = {"first_arena_win": False, "first_arena_podium": False}
 
     def mut(stats: dict) -> None:
         stats["arena_entries_total"] = int(stats.get("arena_entries_total", 0)) + 1
         if won:
             stats["arena_wins_total"] = int(stats.get("arena_wins_total", 0)) + 1
+            if not stats.get("first_arena_win"):
+                stats["first_arena_win"] = True
+                stats["first_arena_win_at"] = datetime.now(CST).isoformat()
+                out["first_arena_win"] = True
         if rank <= 3:
             stats["arena_podium_total"] = int(stats.get("arena_podium_total", 0)) + 1
+            if not stats.get("first_arena_podium"):
+                stats["first_arena_podium"] = True
+                stats["first_arena_podium_at"] = datetime.now(CST).isoformat()
+                out["first_arena_podium"] = True
         wk = _week_key()
         weekly = stats.setdefault("weekly", {})
         w = weekly.setdefault(wk, _empty_weekly_stats())
@@ -1498,6 +1530,7 @@ def record_arena_result(uid: str, *, rank: int, won: bool) -> None:
             w["arena_wins"] = int(w.get("arena_wins", 0)) + 1
 
     _mutate_user_stats(uid, mut)
+    return out
 
 
 def record_poker_game_meta(account_id: str, won_hand: bool) -> dict:

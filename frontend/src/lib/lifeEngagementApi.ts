@@ -342,7 +342,7 @@ export async function tradingPk(defenderId = '', stake = 50) {
 }
 
 export type GuessBetInfo = {
-  direction: string; stake: number; payout?: number;
+  direction: string; stake: number; payout?: number; won?: boolean; first_win?: boolean;
 };
 
 export type GuessRoundState = {
@@ -360,6 +360,11 @@ export type GuessRoundState = {
   bets_count: number;
 };
 
+export type ArenaLeg = {
+  leg: number; direction: string; return_pct: number;
+  entry_price?: number; exit_price?: number; created_at?: number;
+};
+
 export type ArenaEntry = {
   user_id: string;
   agent_id: string;
@@ -373,7 +378,9 @@ export type ArenaEntry = {
   rank?: number;
   prize?: number;
   legs_count?: number;
-  recent_legs?: Array<{ leg: number; direction: string; return_pct: number; entry_price: number; exit_price: number }>;
+  signal_summary?: string;
+  recent_legs?: ArenaLeg[];
+  all_legs?: ArenaLeg[];
 };
 
 export type ArenaRoundState = {
@@ -396,6 +403,7 @@ export type ArenaRoundState = {
   my_spectator_bets?: Array<{ pick_user_id: string; pick_rank?: number; stake: number; payout?: number }>;
   can_join: boolean;
   can_spectate_bet: boolean;
+  first_podium?: boolean;
 };
 
 export type ArenaWinRateEntry = {
@@ -420,7 +428,11 @@ export type PublicArenaLive = {
 
 export async function fetchGuessRound() {
   const r = await fetch(`${API}/pvp/trading/guess`, { headers: headers() });
-  return parse<{ ok: boolean; current?: GuessRoundState; last_settled?: Record<string, unknown>; error?: string }>(r);
+  return parse<{
+    ok: boolean; current?: GuessRoundState;
+    last_settled?: Record<string, unknown>; last_my_bet?: GuessBetInfo & { won?: boolean; first_win?: boolean };
+    error?: string;
+  }>(r);
 }
 
 export async function placeGuessBet(direction: 'up' | 'down', stake: number) {
@@ -432,7 +444,7 @@ export async function placeGuessBet(direction: 'up' | 'down', stake: number) {
 
 export async function fetchArenaRound() {
   const r = await fetch(`${API}/pvp/trading/arena`, { headers: headers() });
-  return parse<{ ok: boolean; current?: ArenaRoundState; error?: string }>(r);
+  return parse<{ ok: boolean; current?: ArenaRoundState; last_settled?: ArenaRoundState; error?: string }>(r);
 }
 
 export async function joinArena(agentId: string) {
@@ -642,6 +654,7 @@ export interface LeaderboardEntry {
 /** 根据区域/活动解析聊天频道 */
 export function chatChannelForZone(zone: string, nodeId?: string | null): string {
   if (zone === 'casino') return 'poker_table';
+  if (zone === 'arena') return 'arena_pit';
   if (zone === 'restaurant' && nodeId?.startsWith('dine_')) return nodeId.split('_c')[0] ? nodeId.replace(/_c\d+$/, '') : 'restaurant';
   if (zone === 'spa' && nodeId?.startsWith('bed_')) return nodeId;
   if (zone === 'hall' && nodeId?.startsWith('rest_l')) return nodeId;

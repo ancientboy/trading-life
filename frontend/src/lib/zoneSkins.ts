@@ -1,9 +1,9 @@
 import type { ZoneId } from '../store/useGameStore';
 
-/** 可换肤区域（含前厅） */
-export type SkinZone = 'hall' | 'restaurant' | 'spa' | 'casino' | 'reception';
+/** 可换肤区域（含前厅、竞技馆） */
+export type SkinZone = 'hall' | 'restaurant' | 'spa' | 'casino' | 'reception' | 'arena';
 
-export const SKIN_ZONES: SkinZone[] = ['hall', 'restaurant', 'spa', 'casino', 'reception'];
+export const SKIN_ZONES: SkinZone[] = ['hall', 'restaurant', 'spa', 'casino', 'reception', 'arena'];
 
 export const SKIN_ZONE_LABELS: Record<SkinZone, string> = {
   hall: '交易大厅',
@@ -11,6 +11,7 @@ export const SKIN_ZONE_LABELS: Record<SkinZone, string> = {
   spa: '禅意理疗馆',
   casino: 'VIP 德州厅',
   reception: '前厅接待',
+  arena: '交易竞技馆',
 };
 
 export interface ZoneSkinOption {
@@ -71,6 +72,17 @@ export const ZONE_SKIN_OPTIONS: Record<SkinZone, ZoneSkinOption[]> = {
       preview: '💎', shopId: 'zone_skin_reception_luxury',
     },
   ],
+  arena: [
+    { id: 'default', label: '经典交易厅', desc: '深蓝 K 线屏与银灰 Pod', preview: '📊' },
+    {
+      id: 'neon', label: '霓虹赛博', desc: '紫青霓虹与暗色竞技台',
+      preview: '💜', shopId: 'zone_skin_arena_neon',
+    },
+    {
+      id: 'bloom', label: '金色 bloom', desc: '暖金灯光与丝绒颁奖台',
+      preview: '✨', shopId: 'zone_skin_arena_bloom',
+    },
+  ],
 };
 
 export const DEFAULT_ZONE_SKINS: Record<SkinZone, string> = {
@@ -79,6 +91,7 @@ export const DEFAULT_ZONE_SKINS: Record<SkinZone, string> = {
   spa: 'default',
   casino: 'default',
   reception: 'default',
+  arena: 'default',
 };
 
 const LEGACY_UNLOCK_MAP: Record<string, { zone: SkinZone; skinId: string }> = {
@@ -327,6 +340,54 @@ const RECEPTION: Record<string, ReceptionPalette> = {
 
 export function receptionPalette(skinKey: string): ReceptionPalette {
   return RECEPTION[skinKey] ?? RECEPTION.default;
+}
+
+export interface ArenaPalette {
+  backdropCenter: string;
+  backdropEdge: string;
+  wall: string;
+  pillar: string;
+  accent: string;
+  accentDim: string;
+  floorRing: string;
+  screenBg: string;
+  chartLine: string;
+  podBase: string;
+  podHover: string;
+  podEdge: string;
+  npcDesk: string;
+  text: string;
+  textMuted: string;
+  up: string;
+  down: string;
+}
+
+const ARENA: Record<string, ArenaPalette> = {
+  default: {
+    backdropCenter: '#1a2840', backdropEdge: '#0e1624', wall: '#243048', pillar: '#2a3850',
+    accent: '#4a90c8', accentDim: '#2a5888', floorRing: 'rgba(74,144,200,0.12)',
+    screenBg: '#0a1520', chartLine: '#48d093', podBase: '#2a3a52', podHover: '#3a5070',
+    podEdge: '#4a6888', npcDesk: '#1e2a3a', text: '#e8eef5', textMuted: 'rgba(232,238,245,0.55)',
+    up: '#48d093', down: '#e07070',
+  },
+  neon: {
+    backdropCenter: '#1a0a30', backdropEdge: '#0a0518', wall: '#2a1048', pillar: '#3a1860',
+    accent: '#e040fb', accentDim: '#9c27b0', floorRing: 'rgba(224,64,251,0.15)',
+    screenBg: '#120820', chartLine: '#00e5ff', podBase: '#2a1848', podHover: '#4a2878',
+    podEdge: '#7c4dff', npcDesk: '#1a0830', text: '#ede7f6', textMuted: 'rgba(200,180,255,0.55)',
+    up: '#00e676', down: '#ff5252',
+  },
+  bloom: {
+    backdropCenter: '#3a2818', backdropEdge: '#1a1008', wall: '#4a3828', pillar: '#5a4838',
+    accent: '#ffd700', accentDim: '#b8860b', floorRing: 'rgba(255,215,0,0.12)',
+    screenBg: '#1a1208', chartLine: '#ffb74d', podBase: '#4a3828', podHover: '#6a5840',
+    podEdge: '#c9a227', npcDesk: '#2a2010', text: '#fff8e8', textMuted: 'rgba(255,248,232,0.55)',
+    up: '#66bb6a', down: '#ef5350',
+  },
+};
+
+export function arenaPalette(skinKey: string): ArenaPalette {
+  return ARENA[skinKey] ?? ARENA.default;
 }
 
 export function skinZoneFromGameZone(zone: ZoneId): SkinZone | null {

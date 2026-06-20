@@ -113,6 +113,7 @@ export const HALL_REST_BOOTHS: RestBoothDef[] = [
   },
 ];
 
+import { ARENA_PIT, ARENA_PODS } from '../components/paper/arenaDraw';
 import type { NpcRole } from './npcOutfits';
 
 export interface ZoneNpcDef {
@@ -148,6 +149,11 @@ export const ZONE_NPCS: Record<ZoneId, ZoneNpcDef[]> = {
     px: 360, py: 160, color: '#d4af37',
     greetings: ['欢迎入座，祝你好运！', '请各位 Agent 就位', '发牌开始～'],
   }],
+  arena: [{
+    id: 'ava', name: '解说 Ava', role: '竞技解说', npcRole: 'reception',
+    px: 360, py: 130, color: '#4a90c8',
+    greetings: ['欢迎来到交易竞技馆！', 'BTC 猜涨跌 60 秒一局', '短线大赛每 30 秒 AI 换向操作', '观众可押冠亚季军～'],
+  }],
 };
 
 /** 纸面 → 世界坐标（写入寻路） */
@@ -173,6 +179,11 @@ export function syncFurnitureToPathfinding(
   if (zone === 'casino') {
     CASINO_SEATS.forEach(s => { nodes[s.id] = paperSeatToWorld(zone, s); });
     nodes.poker_table = paperSeatToWorld(zone, { px: CASINO_TABLE.px, py: CASINO_TABLE.py });
+    return;
+  }
+  if (zone === 'arena') {
+    nodes.arena_pit = paperSeatToWorld(zone, { px: ARENA_PIT.px, py: ARENA_PIT.py });
+    ARENA_PODS.forEach(p => { nodes[p.id] = paperSeatToWorld(zone, p); });
     return;
   }
   if (zone === 'hall') {
@@ -294,6 +305,16 @@ export function hitTestPaperFacilities(
         return !best || d < best.d ? { s, d } : best;
       }, null as { s: PokerSeatDef; d: number } | null);
       return { action: 'poker', nodeId: seat?.s.id ?? 'poker_s1', id: 'poker_table' };
+    }
+  }
+  if (zone === 'arena') {
+    for (const pod of ARENA_PODS) {
+      if (Math.hypot(paper.px - pod.px, paper.py - pod.py) < 44) {
+        return { action: 'rest', nodeId: pod.id, id: pod.id };
+      }
+    }
+    if (Math.hypot(paper.px - ARENA_PIT.px, paper.py - ARENA_PIT.py) < ARENA_PIT.r) {
+      return { action: 'rest', nodeId: 'arena_pit', id: 'arena_pit' };
     }
   }
   if (zone === 'hall') {

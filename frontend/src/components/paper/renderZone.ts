@@ -25,6 +25,7 @@ import {
   placeSettingAtChair,
   drawPokerTableDealing, drawReceptionInterior, drawReceptionDesk,
 } from './paperDraw';
+import { drawArenaBackdrop, drawArenaScene } from './arenaDraw';
 import { leisurePhase, tableIdForDineAgent, bedIdForMassageAgent, getLeisureRenderPaperPos, DINE_SERVE_MS } from '../../lib/leisureActivity';
 import type { SkinZone } from '../../lib/zoneSkins';
 import { hallRestPalette } from '../../lib/zoneSkins';
@@ -294,12 +295,17 @@ export function renderZone(
     npcBubble: { npcId: string; text: string; until: number } | null;
     pokerTableDealing?: boolean;
     zoneSkins?: Record<SkinZone, string>;
+    arenaLive?: import('../../lib/lifeEngagementApi').ArenaRoundState | null;
+    arenaPulseSlots?: Set<number>;
+    hoverPodId?: string | null;
   },
 ) {
   const layout = ZONE_LAYOUTS[zone];
   const skinKey = opts.zoneSkins?.[zone as SkinZone] ?? 'default';
   if (zone === 'casino') {
     drawCasinoVipBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode, skinKey);
+  } else if (zone === 'arena') {
+    drawArenaBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode, skinKey);
   } else if (zone === 'spa') {
     drawSpaZenBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode, skinKey);
   } else if (zone === 'restaurant') {
@@ -336,6 +342,22 @@ export function renderZone(
       drawCasinoScene(ctx, cam, opts.t, opts.hoverFacilityId, !!opts.pokerTableDealing, skinKey);
       drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
       break;
+    case 'arena': {
+      const live = opts.arenaLive;
+      const price = live?.start_price ? `$${Math.round(Number(live.start_price)).toLocaleString()}` : undefined;
+      drawArenaScene(
+        ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.t, skinKey,
+        {
+          hoverPodId: opts.hoverPodId,
+          entries: live?.entries,
+          status: live?.status,
+          priceLabel: price,
+          pulseSlots: opts.arenaPulseSlots,
+        },
+      );
+      drawNpcs(ctx, cam, zone, opts.t, opts.npcBubble);
+      break;
+    }
     case 'reception':
       drawReceptionInterior(ctx, cam, skinKey, opts.t, opts.hoverFacilityId);
       (ZONE_NPCS.reception ?? []).forEach((npc: ZoneNpcDef) => {
