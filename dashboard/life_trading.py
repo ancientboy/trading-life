@@ -558,6 +558,16 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
     total_agent_initial = 0.0
     total_trades = 0
     total_wins = 0
+    prev_wins = 0
+    for row in rows:
+        if row["agent_id"] not in trading_agents:
+            continue
+        st0 = _parse_state(row.get("state_json") or "{}")
+        prev_wins += int(st0.get("wins") or 0)
+
+    first_trading_win = False
+    latest_win_trade: Optional[dict] = None
+    trading_banter: Optional[str] = None
 
     for row in rows:
         aid = row["agent_id"]
@@ -589,6 +599,31 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
     if should_tick and rows:
         life_db.update_portfolio_tick(user_id, now)
 
+    new_wins = total_wins
+    if should_tick and new_wins > prev_wins:
+        win_meta = life_db.record_trading_win_meta(user_id, profitable=True)
+        if win_meta.get("first_win"):
+            first_trading_win = True
+        for view in agent_views:
+            for t in view.get("trades_history") or []:
+                if float(t.get("pnl_amount") or 0) > 0:
+                    latest_win_trade = {
+                        **t,
+                        "agent_id": view["id"],
+                        "agent_name": view["name"],
+                    }
+                    break
+            if latest_win_trade:
+                break
+        if len(agent_views) >= 2 and latest_win_trade:
+            a, b = agent_views[0], agent_views[1]
+            sym = latest_win_trade.get("symbol", "BTC")
+            pnl = float(latest_win_trade.get("pnl_amount") or 0)
+            trading_banter = (
+                f"📈 {a['name']} 止盈 {sym} +${pnl:.0f} · "
+                f"{b['name']}：收到，我在盯 {sym} 下一波"
+            )
+
     cash = float(portfolio.get("cash") or 0)
     initial = float(portfolio.get("initial_balance") or life_db.DEFAULT_PORTFOLIO_USDT)
     total_capital = cash + total_agent_capital
@@ -612,7 +647,42 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
         "source": "user_sim",
         "sim_tick_interval_sec": SIM_TICK_INTERVAL_MS // 1000,
         "system_agents_note": "大厅内系统 Agent 为全局示范盘，资产仓库仅统计你的模拟账户",
+        "first_trading_win": first_trading_win,
+        "latest_win": latest_win_trade,
+        "trading_banter": trading_banter,
     }
+
+
+def apply_strategy_feedback(meta: dict, feedback: str) -> dict:
+    """用户反馈微调策略 — 对标扑克 apply_style_feedback"""
+    out = dict(meta)
+    fb = (feedback or "").strip()
+    if not fb:
+        return out
+    lev = int(out.get("leverage") or 5)
+    th = float(out.get("threshold_pct") or out.get("thresholdPct") or 0.3)
+    risk = out.get("risk") or "中"
+    if any(k in fb for k in ("太保守", "太怂", "机会少", "不够激进")):
+        lev = min(20, lev + 1)
+        th = max(0.1, round(th - 0.05, 2))
+        if risk == "低":
+            risk = "中"
+    if any(k in fb for k in ("太激进", "太浪", "亏太多", "杠杆太高")):
+        lev = max(1, lev - 1)
+        th = min(2.0, round(th + 0.05, 2))
+        if risk in ("高", "极高"):
+            risk = "中高"
+    if any(k in fb for k in ("灵敏", "快一点", "信号慢")):
+        th = max(0.1, round(th - 0.08, 2))
+    if any(k in fb for k in ("稳一点", "少交易", "频率高")):
+        th = min(2.0, round(th + 0.08, 2))
+    out["leverage"] = lev
+    out["threshold_pct"] = th
+    out["thresholdPct"] = th
+    out["risk"] = risk
+    note = (out.get("desc") or "") + f" | 反馈:{fb[:60]}"
+    out["desc"] = note[:200]
+    return out
 
 
 def _custom_symbols(meta: dict) -> list[str]:
@@ -920,6 +990,44 @@ async def update_strategy(agent_id: str, body: StrategyBody, account_id: str = D
             state_json=row.get("state_json") or "{}",
         )
     return {"ok": True, "agent": meta, "portfolio": await build_portfolio(uid, run_tick=False)}
+
+
+class PreferenceParseBody(BaseModel):
+    preference_text: str = Field(..., min_length=4, max_length=500)
+
+
+class StrategyFeedbackBody(BaseModel):
+    feedback_text: str = Field(..., min_length=2, max_length=300)
+
+
+@router.post("/agents/{agent_id}/strategy/feedback")
+async def strategy_feedback(agent_id: str, body: StrategyFeedbackBody, account_id: str = Depends(resolve_account_id)):
+    from life_game import load_user, save_user, _validate_user_id
+
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    custom = user.get("custom_agents") or {}
+    meta = custom.get(agent_id)
+    if not meta or meta.get("agentType") == "entertainment":
+        return {"ok": False, "error": "须为交易 Agent"}
+    updated = apply_strategy_feedback(meta, body.feedback_text)
+    custom[agent_id] = updated
+    save_user(uid, user)
+    row = life_db.get_agent_trading(uid, agent_id)
+    if row:
+        life_db.save_agent_trading(
+            uid, agent_id,
+            strategy_preset=row.get("strategy_preset") or updated.get("strategyPreset") or "major",
+            capital=float(row.get("capital") or 0),
+            initial_capital=float(row.get("initial_capital") or 0),
+            state_json=row.get("state_json") or "{}",
+        )
+    return {
+        "ok": True,
+        "agent": updated,
+        "message": "已根据反馈微调杠杆/灵敏度/风控",
+        "portfolio": await build_portfolio(uid, run_tick=False),
+    }
 
 
 @router.post("/agents/{agent_id}/strategy/parse-preference")

@@ -39,7 +39,17 @@ export default function App() {
         const created = await st.runQuickOnboarding(name);
         sessionStorage.setItem('tl_onboarding_done', '1');
         if (created) {
-          addMessage('欢迎来到交易人生 · 你的 Agent 已开始在大厅走动');
+          addMessage('欢迎来到交易人生 · 娱乐 Agent 在大厅走动，交易 Agent 已入驻工位');
+          const tid = sessionStorage.getItem('tl_trading_onboard');
+          if (tid) {
+            sessionStorage.removeItem('tl_trading_onboard');
+            setTimeout(() => {
+              const st = useGameStore.getState();
+              st.selectAgent(tid, { tab: 'agent' });
+              st.openModal('strategy');
+              addMessage('💡 用一句话描述投资风格，30 秒训练你的 AI 交易员');
+            }, 2200);
+          }
         }
       }
       useGameStore.getState().restorePokerRoom().catch(() => {});

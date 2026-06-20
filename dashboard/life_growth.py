@@ -134,6 +134,100 @@ async def public_poker_demo():
     }
 
 
+@growth_router.get("/public/trading/demo")
+async def public_trading_demo():
+    """未登录试看 — BTC 迷你 K 线 + 全服最近成交（30 秒 hook）"""
+    import json
+    import os
+    from pathlib import Path
+
+    import aiohttp
+
+    symbol = "BTCUSDT"
+    closes: list[float] = []
+    price = 0.0
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "https://fapi.binance.com/fapi/v1/klines",
+                params={"symbol": symbol, "interval": "15m", "limit": 24},
+                timeout=aiohttp.ClientTimeout(total=8),
+            ) as resp:
+                if resp.status == 200:
+                    rows = await resp.json()
+                    closes = [float(r[4]) for r in rows]
+                    if closes:
+                        price = closes[-1]
+            async with session.get(
+                "https://fapi.binance.com/fapi/v1/ticker/price",
+                params={"symbol": symbol},
+                timeout=aiohttp.ClientTimeout(total=5),
+            ) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    price = float(data.get("price") or price or 0)
+    except Exception:
+        pass
+
+    if not closes:
+        base = price or 95000.0
+        closes = [base * (1 + (i - 12) * 0.0015) for i in range(24)]
+
+    trades: list[dict] = []
+    base_dir = Path(os.environ.get("TRADING_AGENT_ROOT", "/opt/trading-agent"))
+    log_path = base_dir / "data" / "trade-log.jsonl"
+    try:
+        if log_path.is_file():
+            lines = log_path.read_text(encoding="utf-8").strip().splitlines()[-40:]
+            for line in reversed(lines):
+                if not line.strip():
+                    continue
+                try:
+                    t = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                pnl = t.get("pnl_amount") or t.get("pnl") or 0
+                trades.append({
+                    "agent": t.get("agent_type") or t.get("agent") or "系统 Agent",
+                    "symbol": t.get("symbol") or "BTCUSDT",
+                    "direction": t.get("direction") or "LONG",
+                    "pnl_amount": round(float(pnl), 2),
+                    "reason": t.get("reason") or t.get("close_reason") or "",
+                    "closed_at": t.get("closed_at") or t.get("time") or "",
+                })
+                if len(trades) >= 8:
+                    break
+    except Exception:
+        pass
+
+    if not trades:
+        demos = [
+            ("Major Agent", "BTCUSDT", "LONG", 128.5),
+            ("XAU Agent", "XAUUSDT", "LONG", 42.3),
+            ("Momentum Agent", "ETHUSDT", "SHORT", 86.1),
+            ("Altcoin Agent", "SOLUSDT", "LONG", -31.2),
+        ]
+        for i, (agent, sym, direction, pnl) in enumerate(demos):
+            trades.append({
+                "agent": agent,
+                "symbol": sym,
+                "direction": direction,
+                "pnl_amount": pnl,
+                "reason": "止盈" if pnl > 0 else "止损",
+                "closed_at": "",
+            })
+
+    return {
+        "ok": True,
+        "demo": True,
+        "symbol": symbol,
+        "price": round(price or closes[-1], 2),
+        "closes": [round(c, 2) for c in closes],
+        "trades": trades,
+        "message": "注册即送 5 万 USDT 模拟盘 · 一句话训练你的 AI 交易员",
+    }
+
+
 @growth_router.get("/public/poker/rooms/{room_id}/preview")
 async def public_room_preview(room_id: str):
     """等待中房间预览 — 供 deep link 落地页展示"""

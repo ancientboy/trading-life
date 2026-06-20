@@ -16,6 +16,7 @@ import { isZoneSkinShopItem } from '../../lib/zoneSkins';
 import { isOutfitShopItem, isSpeciesShopItem, isHairShopItem } from '../../lib/lifeShop';
 import { StrategyEditor } from './StrategyEditor';
 import { SceneSkinsPanel } from './SceneSkinsPanel';
+import { TradingWinModal } from './TradingWinModal';
 
 const TITLES: Record<Exclude<ModalId, null>, string> = {
   workshop: 'Agent 工坊',
@@ -28,12 +29,13 @@ const TITLES: Record<Exclude<ModalId, null>, string> = {
   massage: '禅意理疗 · 理疗套餐',
   poker: '德州扑克 · 开局',
   poker_result: '德州扑克 · 开牌结果',
+  trading_win: '模拟盘 · 首笔盈利',
   shop: '积分商城',
   scene: '场景装扮',
   tasks: '每日任务',
 };
 
-const WIDE_MODALS: Exclude<ModalId, null>[] = ['workshop', 'strategy', 'dine', 'massage', 'poker', 'poker_result', 'shop', 'scene', 'tasks'];
+const WIDE_MODALS: Exclude<ModalId, null>[] = ['workshop', 'strategy', 'dine', 'massage', 'poker', 'poker_result', 'trading_win', 'shop', 'scene', 'tasks'];
 
 export function Modals() {
   const activeModal = useGameStore(s => s.activeModal);
@@ -67,6 +69,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
   const tradeFeed = useGameStore(s => s.tradeFeed);
   const ticker = useGameStore(s => s.ticker);
   const pokerHandResult = useGameStore(s => s.pokerHandResult);
+  const tradingWinResult = useGameStore(s => s.tradingWinResult);
   const agent = selectedAgentId ? agents[selectedAgentId] : null;
   const d = agent?.data;
 
@@ -121,6 +124,8 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
       return <PokerModalContent />;
     case 'poker_result':
       return pokerHandResult ? <PokerResultModal data={pokerHandResult} /> : null;
+    case 'trading_win':
+      return tradingWinResult ? <TradingWinModal data={tradingWinResult} /> : null;
     case 'shop':
       return <ShopPanel />;
     case 'scene':

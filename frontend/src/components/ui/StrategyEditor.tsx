@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { STRATEGY_PRESET_OPTIONS, applyStrategyPreset } from '../../lib/customAgents';
-import { parseStrategyPreference } from '../../lib/lifeApi';
+import { parseStrategyPreference, submitStrategyFeedback } from '../../lib/lifeApi';
 import { PenguinAvatar } from './PenguinAvatar';
 
 export interface StrategyDraft {
@@ -62,6 +62,13 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
+const BEGINNER_PROMPTS = [
+  '我比较保守，稳一点做 BTC，杠杆别太高',
+  '想跟 Major Agent 一样做 BTC/ETH 趋势',
+  '我喜欢激进追涨，可以接受高波动',
+  '专注黄金 XAU，中长线趋势',
+];
+
 export function StrategyEditor({
   agentId: propAgentId,
   compact,
@@ -91,6 +98,8 @@ export function StrategyEditor({
   const [msg, setMsg] = useState('');
   const [saving, setSaving] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
 
   useEffect(() => {
     const id = propAgentId || selectedAgentId || tradingAgents[0] || '';
@@ -214,7 +223,15 @@ export function StrategyEditor({
         padding: 10, marginBottom: 12, background: '#f0f4ff', borderRadius: 8,
         border: '1px solid #c8d4f0',
       }}>
-        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>一句话描述投资偏好</div>
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>一句话描述投资偏好 · 小白 30 秒上手</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+          {BEGINNER_PROMPTS.map(p => (
+            <button key={p} type="button" className="ui-btn" style={{ fontSize: 10, padding: '4px 8px' }}
+              onClick={() => setPreference(p)}>
+              {p.slice(0, 14)}…
+            </button>
+          ))}
+        </div>
         <textarea
           value={preference}
           onChange={e => setPreference(e.target.value)}
@@ -292,6 +309,49 @@ export function StrategyEditor({
         onChange={e => setDraft({ ...draft, soulMd: e.target.value })}
         style={{ ...inputStyle, minHeight: compact ? 80 : 120, fontFamily: 'monospace', fontSize: 12 }}
       />
+
+      {/* 反馈微调 — 对标扑克风格 feedback */}
+      <div style={{
+        marginTop: 12, padding: 10, background: '#fff8e8', borderRadius: 8,
+        border: '1px solid #e8dcc8',
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>④ 观察后反馈 · 训练 AI 交易员</div>
+        <textarea
+          value={feedback}
+          onChange={e => setFeedback(e.target.value)}
+          placeholder="例：太保守了机会太少 / 太激进亏太多 / 信号太慢"
+          style={{ ...inputStyle, minHeight: 44, marginBottom: 8 }}
+        />
+        <button className="ui-btn" style={{ width: '100%' }} disabled={feedbackBusy || feedback.trim().length < 2}
+          onClick={async () => {
+            if (!editId) return;
+            setFeedbackBusy(true);
+            setMsg('');
+            try {
+              const res = await submitStrategyFeedback(editId, feedback.trim());
+              if (!res.ok) {
+                setMsg(res.error || '反馈失败');
+                return;
+              }
+              if (res.portfolio) useGameStore.getState().applyUserPortfolio(res.portfolio);
+              if (res.agent) {
+                const a = res.agent;
+                setDraft(d => ({
+                  ...d,
+                  leverage: a.leverage ?? d.leverage,
+                  thresholdPct: a.threshold_pct ?? a.thresholdPct ?? d.thresholdPct,
+                  risk: a.risk ?? d.risk,
+                }));
+              }
+              setMsg(res.message || '已根据反馈微调策略');
+              setFeedback('');
+            } finally {
+              setFeedbackBusy(false);
+            }
+          }}>
+          {feedbackBusy ? '…' : '提交反馈 → 微调杠杆/灵敏度'}
+        </button>
+      </div>
 
       {/* 表现对比 */}
       {pfAgent && (

@@ -473,3 +473,79 @@ export function shareResultMessage(result: 'shared' | 'copied' | 'failed', wecha
   }
   return '复制失败，请长按链接手动复制';
 }
+
+export function buildTradingShareText(data: {
+  agentName: string;
+  trade: { symbol?: string; direction?: string; pnl_amount?: number; reason?: string };
+}): string {
+  const sym = data.trade.symbol || 'BTCUSDT';
+  const pnl = data.trade.pnl_amount ?? 0;
+  const dir = data.trade.direction || 'LONG';
+  return `📈 我在交易人生模拟盘首盈！${data.agentName} · ${sym} ${dir} · +$${pnl.toFixed(2)} · AI 24h 自动盯盘`;
+}
+
+export async function renderPremiumTradingShareCard(
+  data: { agentName: string; trade: { symbol?: string; direction?: string; pnl_amount?: number; reason?: string } },
+  linkUrl?: string,
+): Promise<Blob> {
+  const w = 640;
+  const h = 400;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  const sym = data.trade.symbol || 'BTCUSDT';
+  const pnl = data.trade.pnl_amount ?? 0;
+
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#0a1a3d');
+  grad.addColorStop(0.5, '#1a3a6b');
+  grad.addColorStop(1, '#0a1020');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = 'rgba(72,208,147,0.55)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(12, 12, w - 24, h - 24);
+
+  ctx.fillStyle = '#48d093';
+  ctx.font = 'bold 14px system-ui, sans-serif';
+  ctx.fillText('🎁 首笔盈利大礼包', 28, 48);
+
+  ctx.font = 'bold 26px system-ui, sans-serif';
+  ctx.fillText('交易人生 · AI 模拟盘', 28, 88);
+
+  ctx.fillStyle = '#e8f5e9';
+  ctx.font = 'bold 30px system-ui, sans-serif';
+  ctx.fillText(`${data.agentName} +$${pnl.toFixed(2)}`, 28, 136);
+
+  ctx.fillStyle = '#a5d6a7';
+  ctx.font = '18px system-ui, sans-serif';
+  ctx.fillText(`${sym} ${data.trade.direction || 'LONG'} · ${data.trade.reason || '止盈'}`, 28, 172);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.fillText('一句话训练 AI 交易员 · 5 万 USDT 模拟盘', 28, h - 52);
+
+  const footerUrl = linkUrl || appBaseUrl();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillText(footerUrl.length > 46 ? `${footerUrl.slice(0, 44)}…` : footerUrl, 28, h - 28);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('生成图片失败'))), 'image/png');
+  });
+}
+
+export async function downloadPremiumTradingShareCard(
+  data: Parameters<typeof renderPremiumTradingShareCard>[0],
+  linkUrl?: string,
+): Promise<void> {
+  const blob = await renderPremiumTradingShareCard(data, linkUrl);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `trading-life-first-profit-${Date.now()}.png`;
+  a.click();
+  URL.revokeObjectURL(url);
+}

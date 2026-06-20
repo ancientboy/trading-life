@@ -592,6 +592,31 @@ export async function fetchGrowthNotifications() {
   return parse<{ ok: boolean; messages?: string[] }>(r);
 }
 
+export async function fetchPublicTradingDemo() {
+  const r = await fetch(`${API}/public/trading/demo`);
+  return parse<TradingDemoResult>(r);
+}
+
+export type TradingDemoTrade = {
+  agent: string;
+  symbol: string;
+  direction: string;
+  pnl_amount: number;
+  reason?: string;
+  closed_at?: string;
+};
+
+export type TradingDemoResult = {
+  ok: boolean;
+  demo?: boolean;
+  symbol?: string;
+  price?: number;
+  closes?: number[];
+  trades?: TradingDemoTrade[];
+  message?: string;
+  error?: string;
+};
+
 export async function fetchPublicPokerDemo() {
   const r = await fetch(`${API}/public/poker/demo`);
   return parse<PokerDemoResult>(r);

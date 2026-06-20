@@ -1,5 +1,5 @@
 import { getAuthToken } from './lifeAuth';
-import type { AgentMeta } from './constants';
+import type { AgentMeta, TradeRecord } from './constants';
 import type { CustomAgentDraft } from './customAgents';
 
 const API = '/trading/api/life';
@@ -324,6 +324,9 @@ export interface UserPortfolio {
   strategy_presets?: { id: string; label: string; strategy: string; market: string; interval: string; risk: string }[];
   source?: string;
   system_agents_note?: string;
+  first_trading_win?: boolean;
+  latest_win?: TradeRecord & { agent_id?: string; agent_name?: string };
+  trading_banter?: string | null;
   error?: string;
 }
 
@@ -385,6 +388,27 @@ export async function parseStrategyPreference(agentId: string, preferenceText: s
     config?: ParsedStrategyConfig;
     source?: string;
     message?: string;
+    error?: string;
+  }>(r);
+}
+
+export async function submitStrategyFeedback(agentId: string, feedbackText: string) {
+  const r = await fetch(`${API}/portfolio/agents/${agentId}/strategy/feedback`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ feedback_text: feedbackText }),
+  });
+  return parse<{ ok: boolean; agent?: AgentMeta; portfolio?: UserPortfolio; message?: string; error?: string }>(r);
+}
+
+export async function lifeQuickCreateDual(name = '小企鹅') {
+  const r = await fetch(`${API}/agents/quick-create-dual`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ name }),
+  });
+  return parse<{
+    ok: boolean;
+    entertainment?: AgentMeta;
+    trading?: AgentMeta;
+    trading_error?: string;
+    state?: LifeState;
     error?: string;
   }>(r);
 }

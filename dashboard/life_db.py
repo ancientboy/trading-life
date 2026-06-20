@@ -1302,6 +1302,26 @@ def is_first_poker_game(account_id: str) -> bool:
     return int(stats.get("poker_games_total", 0)) == 0
 
 
+def record_trading_win_meta(account_id: str, profitable: bool) -> dict:
+    """记录模拟盘盈利笔数 / 首笔盈利，返回 {first_win}"""
+    if not account_id or account_id.startswith(("npc_", "ai_")):
+        return {"first_win": False}
+    out = {"first_win": False}
+
+    def mut(stats: dict) -> None:
+        total = int(stats.get("trading_closed_total", 0))
+        stats["trading_closed_total"] = total + 1
+        if profitable and not stats.get("first_trading_win"):
+            stats["first_trading_win"] = True
+            stats["first_trading_win_at"] = datetime.now(CST).isoformat()
+            out["first_win"] = True
+        if profitable:
+            stats["trading_wins_total"] = int(stats.get("trading_wins_total", 0)) + 1
+
+    _mutate_user_stats(account_id, mut)
+    return out
+
+
 def is_poker_highlight(hand_cat: int, won: int, buy_in: int) -> bool:
     if hand_cat >= HIGHLIGHT_MIN_HAND_CAT:
         return True

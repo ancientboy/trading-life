@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { useGameStore, type PokerHandResult, type PokerPlayerResult } from '../../store/useGameStore';
 import { PokerDealingCards } from './PokerDealingCards';
 import { PokerCardRow } from './PokerCard';
@@ -86,6 +86,22 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
   const addMessage = useGameStore(s => s.addMessage);
   const [dealt, setDealt] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const autoShared = useRef(false);
+
+  useEffect(() => {
+    if (!dealt || !data.first_win || autoShared.current) return;
+    autoShared.current = true;
+    (async () => {
+      try {
+        const text = buildPokerShareText(data);
+        const r = await shareOrCopy({ title: '交易人生 · 德州首胜', text, url: appBaseUrl() });
+        addMessage(`🎁 首胜大礼包 · ${shareResultMessage(r)}`);
+        await downloadPremiumPokerShareCard(data, appBaseUrl());
+      } catch {
+        /* 用户可手动分享 */
+      }
+    })();
+  }, [dealt, data, addMessage]);
 
   const me = data.results.find(r => !r.is_npc);
   const won = data.won > 0;

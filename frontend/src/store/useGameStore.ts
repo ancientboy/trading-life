@@ -17,7 +17,7 @@ import {
 import {
   fetchLifeState, migrateLifeState, lifeIdleTick, lifeSessionStart,
   lifeActivityComplete, lifeDispatch, lifeClaimTask, lifeShopBuy, lifeSetZoneSkin,
-  lifeCreateAgent, lifeQuickCreateAgent, lifeSaveAgentSoul, lifeSaveAgentAppearance, lifeAgentSpeak,
+  lifeCreateAgent, lifeQuickCreateAgent, lifeQuickCreateDual, lifeSaveAgentSoul, lifeSaveAgentAppearance, lifeAgentSpeak,
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
@@ -50,7 +50,7 @@ function scheduleSeatSync(fn: () => Promise<void>) {
 
 export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages' | 'tasks' | 'social';
 export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs' | 'tasks';
-export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'shop' | 'scene' | 'tasks' | null;
+export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'trading_win' | 'shop' | 'scene' | 'tasks' | null;
 
 export type PokerPlayerResult = {
   name: string;
@@ -154,6 +154,7 @@ interface GameStore {
   pokerHighlights: import('../lib/lifeEngagementApi').PokerHighlightItem[];
   lastHighlightId: number;
   pokerHandResult: PokerHandResult | null;
+  tradingWinResult: import('../components/ui/TradingWinModal').TradingWinData | null;
   /** 牌桌发牌动画截止时间戳 */
   pokerTableDealingUntil: number;
   /** 当前多人德州房间（等待/进行中） */
@@ -195,6 +196,7 @@ interface GameStore {
   openWorkshop: (mode?: 'list' | 'create') => void;
   closeModal: () => void;
   showPokerResult: (result: PokerHandResult) => void;
+  showTradingWin: (result: import('../components/ui/TradingWinModal').TradingWinData) => void;
   setPokerTableDealingUntil: (until: number) => void;
   flyToZone: (zone: ZoneId) => void;
   resetCamera: () => void;
@@ -321,6 +323,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pokerHighlights: [],
   lastHighlightId: 0,
   pokerHandResult: null,
+  tradingWinResult: null,
   pokerTableDealingUntil: 0,
   pokerRoom: null,
   pokerSpectateRoom: null,
@@ -434,9 +437,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   openModal: (id) => set({ activeModal: id, rightPanelCollapsed: true }),
   openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: true }),
-  closeModal: () => set({ activeModal: null, workshopMode: 'list', pokerHandResult: null, pokerTableDealingUntil: 0 }),
+  closeModal: () => set({ activeModal: null, workshopMode: 'list', pokerHandResult: null, tradingWinResult: null, pokerTableDealingUntil: 0 }),
   showPokerResult: (result) => set({
     pokerHandResult: result, activeModal: 'poker_result', rightPanelCollapsed: true, pokerTableDealingUntil: 0,
+  }),
+  showTradingWin: (result) => set({
+    tradingWinResult: result, activeModal: 'trading_win', rightPanelCollapsed: true,
   }),
   setPokerTableDealingUntil: (until) => set({ pokerTableDealingUntil: until }),
   flyToZone: (zone) => {
@@ -735,37 +741,51 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   runQuickOnboarding: async (displayName = '小企鹅') => {
-    const s = get();
     const accountId = getStoredAccount()?.id;
     const customMeta = loadCustomAgentMeta(accountId);
     if (Object.keys(customMeta).length > 0) return false;
 
-    const apiRes = await lifeQuickCreateAgent(displayName, 'entertainment');
-    if (!apiRes.ok || !apiRes.agent) {
+    const apiRes = await lifeQuickCreateDual(displayName);
+    if (!apiRes.ok || !apiRes.entertainment) {
       get().addMessage(apiRes.error || '自动创建 Agent 失败，可在工坊手动创建');
       return false;
     }
 
-    const meta = normalizeAgentMeta({ ...apiRes.agent, owner: 'user' });
-    const id = meta.id;
-    const slot = registerCustomAgentSlots(OfficePath, id, 'entertainment');
-    if (!slot) return false;
+    let metaMap = { ...customMeta };
+    const entMeta = normalizeAgentMeta({ ...apiRes.entertainment, owner: 'user' });
+    const entId = entMeta.id;
+    registerCustomAgentSlots(OfficePath, entId, 'entertainment');
+
+    let tradingId: string | null = null;
+    if (apiRes.trading) {
+      const trMeta = normalizeAgentMeta({ ...apiRes.trading, owner: 'user' });
+      tradingId = trMeta.id;
+      registerCustomAgentSlots(OfficePath, tradingId, 'trading');
+      metaMap[tradingId] = trMeta;
+    }
+    metaMap[entId] = entMeta;
     assignAgentSeatSlots(OfficePath);
-    saveCustomAgentMeta({ ...customMeta, [id]: meta }, accountId);
+    saveCustomAgentMeta(metaMap, accountId);
     if (apiRes.state) get().applyLifeState(apiRes.state);
     get().initAgents();
+
     set({
-      selectedAgentId: id,
-      followAgentId: id,
+      selectedAgentId: entId,
+      followAgentId: entId,
       activeZone: 'hall',
       sidebarActive: 'hall',
       rightTab: 'agent',
       cameraLookAt: { x: ZONE_CAMERA.hall.x, z: ZONE_CAMERA.hall.z },
       cameraZoom: WORLD_MAP.defaultZoom,
     });
-    get().speakForAgent(id, 'greeting');
-    get().addMessage(`🐧 ${meta.name} 已诞生 · 正在大厅闲逛，点击跟随`);
-    void get().sendAgentToFacility('dine', { agentId: id, skipCost: true, tierId: 'a' });
+    get().speakForAgent(entId, 'greeting');
+    get().addMessage(`🐧 ${entMeta.name} 已诞生 · 正在大厅闲逛`);
+    if (tradingId && apiRes.trading) {
+      get().addMessage(`📈 ${apiRes.trading.name} 已入驻工位 · 24h 模拟盯盘已启动`);
+      get().speakForAgent(tradingId, 'greeting');
+      sessionStorage.setItem('tl_trading_onboard', tradingId);
+    }
+    void get().sendAgentToFacility('dine', { agentId: entId, skipCost: true, tierId: 'a' });
     await get().syncUserPortfolio();
     return true;
   },
@@ -1251,6 +1271,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
         total_trades: data.total_trades,
       },
     });
+
+    if (data.trading_banter) {
+      get().addMessage(data.trading_banter);
+    }
+    if (data.first_trading_win && data.latest_win) {
+      get().showTradingWin({
+        trade: data.latest_win,
+        agentName: data.latest_win.agent_name || '交易员',
+        first_win: true,
+      });
+    }
   },
 
   syncUserPortfolio: async () => {

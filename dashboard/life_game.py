@@ -786,6 +786,31 @@ async def life_quick_create_agent(body: QuickCreateBody, account_id: str = Depen
     return {"ok": True, "agent": meta, "state": _public_state(user, uid), "quick": True}
 
 
+class QuickCreateDualBody(BaseModel):
+    name: str = "小企鹅"
+
+
+@router.post("/agents/quick-create-dual")
+async def life_quick_create_dual(body: QuickCreateDualBody, account_id: str = Depends(resolve_account_id)):
+    """注册 onboarding — 同时创建娱乐 + 交易 Agent"""
+    uid = _validate_user_id(account_id)
+    base = (body.name or "").strip() or "小企鹅"
+    ent = await life_quick_create_agent(QuickCreateBody(agentType="entertainment", name=base), account_id)
+    if not ent.get("ok"):
+        return ent
+    trade_name = f"{base}·交易员" if "交易员" not in base else base
+    tr = await life_quick_create_agent(QuickCreateBody(agentType="trading", name=trade_name), account_id)
+    user = load_user(uid)
+    return {
+        "ok": True,
+        "entertainment": ent.get("agent"),
+        "trading": tr.get("agent") if tr.get("ok") else None,
+        "trading_error": tr.get("error") if not tr.get("ok") else None,
+        "state": _public_state(user, uid),
+        "quick_dual": True,
+    }
+
+
 @router.post("/agents")
 async def life_create_agent(body: CustomAgentBody, account_id: str = Depends(resolve_account_id)):
     uid = _validate_user_id(account_id)
