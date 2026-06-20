@@ -1184,6 +1184,8 @@ def _empty_weekly_stats() -> dict:
         "trading_wins": 0,
         "trading_pnl": 0.0,
         "best_trade_pnl": 0.0,
+        "arena_entries": 0,
+        "arena_wins": 0,
     }
 
 
@@ -1337,6 +1339,8 @@ def get_weekly_report(account_id: str) -> dict:
         "trading_wins": int(w.get("trading_wins", 0)),
         "trading_pnl": round(float(w.get("trading_pnl", 0)), 2),
         "best_trade_pnl": round(float(w.get("best_trade_pnl", 0)), 2),
+        "arena_entries": int(w.get("arena_entries", 0)),
+        "arena_wins": int(w.get("arena_wins", 0)),
         "season_name": season["name"] if season else "",
         "season_points": int(season_row["points_earned"]) if season_row else 0,
         "season_social": int(season_row["social_score"]) if season_row else 0,
@@ -1435,6 +1439,65 @@ def _migrate_trading_events() -> None:
                 );
                 CREATE INDEX IF NOT EXISTS idx_arena_spectator_round ON arena_spectator_bets(round_id);
             """)
+            _migrate_trading_events_v2(c)
+
+
+def _migrate_trading_events_v2(c) -> None:
+    """v2: 极速/标准模式、多轮腿、押名次的 pick_rank"""
+    arena_cols = {r[1] for r in c.execute("PRAGMA table_info(arena_rounds)").fetchall()}
+    if "duration_mode" not in arena_cols:
+        c.execute("ALTER TABLE arena_rounds ADD COLUMN duration_mode TEXT NOT NULL DEFAULT 'classic'")
+    if "last_leg_index" not in arena_cols:
+        c.execute("ALTER TABLE arena_rounds ADD COLUMN last_leg_index INTEGER NOT NULL DEFAULT 0")
+
+    entry_cols = {r[1] for r in c.execute("PRAGMA table_info(arena_entries)").fetchall()}
+    for col, ddl in (
+        ("legs_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("leg_entry_price", "REAL NOT NULL DEFAULT 0"),
+        ("leg_direction", "TEXT NOT NULL DEFAULT ''"),
+    ):
+        if col not in entry_cols:
+            c.execute(f"ALTER TABLE arena_entries ADD COLUMN {col} {ddl}")
+
+    spec_cols = {r[1] for r in c.execute("PRAGMA table_info(arena_spectator_bets)").fetchall()}
+    if "pick_rank" not in spec_cols:
+        c.execute("ALTER TABLE arena_spectator_bets ADD COLUMN pick_rank INTEGER NOT NULL DEFAULT 1")
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS arena_trade_legs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            round_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            leg INTEGER NOT NULL DEFAULT 0,
+            direction TEXT NOT NULL DEFAULT 'LONG',
+            leverage REAL NOT NULL DEFAULT 5,
+            entry_price REAL NOT NULL DEFAULT 0,
+            exit_price REAL NOT NULL DEFAULT 0,
+            return_pct REAL NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS idx_arena_legs_round ON arena_trade_legs(round_id, user_id);
+    """)
+
+
+def record_arena_result(uid: str, *, rank: int, won: bool) -> None:
+    if not uid or uid.startswith(("npc_", "ai_")):
+        return
+
+    def mut(stats: dict) -> None:
+        stats["arena_entries_total"] = int(stats.get("arena_entries_total", 0)) + 1
+        if won:
+            stats["arena_wins_total"] = int(stats.get("arena_wins_total", 0)) + 1
+        if rank <= 3:
+            stats["arena_podium_total"] = int(stats.get("arena_podium_total", 0)) + 1
+        wk = _week_key()
+        weekly = stats.setdefault("weekly", {})
+        w = weekly.setdefault(wk, _empty_weekly_stats())
+        w["arena_entries"] = int(w.get("arena_entries", 0)) + 1
+        if won:
+            w["arena_wins"] = int(w.get("arena_wins", 0)) + 1
+
+    _mutate_user_stats(uid, mut)
 
 
 def record_poker_game_meta(account_id: str, won_hand: bool) -> dict:

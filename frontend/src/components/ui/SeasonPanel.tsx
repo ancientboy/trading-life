@@ -3,7 +3,8 @@ import { useGameStore } from '../../store/useGameStore';
 import {
   fetchSeasonLeaderboard, buySeasonCosmetic,
   listSeatAuctions, bidSeat, fetchDispatchQueue, processDispatchQueue,
-  type LeaderboardEntry, type SeasonCosmetic, type SeatAuction,
+  fetchArenaWinRate,
+  type LeaderboardEntry, type SeasonCosmetic, type SeatAuction, type ArenaWinRateEntry,
 } from '../../lib/lifeEngagementApi';
 import { buildLeaderboardLink, shareOrCopy, shareResultMessage, buildWeeklyReportLink, buildWeeklyReportShareText, downloadWeeklyReportCard } from '../../lib/shareUtils';
 import { fetchWeeklyReport, type WeeklyReportData } from '../../lib/lifeEngagementApi';
@@ -31,11 +32,13 @@ export function SeasonPanel() {
   const [bidAmount, setBidAmount] = useState(20);
   const [weeklyReport, setWeeklyReport] = useState<WeeklyReportData | null>(null);
   const [weeklyBusy, setWeeklyBusy] = useState(false);
+  const [arenaWinRates, setArenaWinRates] = useState<ArenaWinRateEntry[]>([]);
 
   useEffect(() => { syncEngagement(); }, [syncEngagement]);
 
   useEffect(() => {
     fetchWeeklyReport().then(r => { if (r.ok && r.report) setWeeklyReport(r.report); });
+    fetchArenaWinRate(10).then(r => { if (r.ok && r.entries) setArenaWinRates(r.entries); });
   }, [tab]);
 
   useEffect(() => {
@@ -78,6 +81,9 @@ export function SeasonPanel() {
             {(weeklyReport.trading_trades ?? 0) > 0 && (
               <>📈 模拟盘 {weeklyReport.trading_trades} 笔 · PnL {(weeklyReport.trading_pnl ?? 0) >= 0 ? '+' : ''}${Math.round(weeklyReport.trading_pnl ?? 0)}<br /></>
             )}
+            {(weeklyReport.arena_entries ?? 0) > 0 && (
+              <>🏆 竞技 {weeklyReport.arena_entries} 场 · {weeklyReport.arena_wins ?? 0} 冠 · 胜率 {Math.round((weeklyReport.arena_wins ?? 0) / (weeklyReport.arena_entries || 1) * 100)}%<br /></>
+            )}
             ✨ 最佳 {weeklyReport.best_hand_name}
             {weeklyReport.season_rank_hint ? ` · 约第 ${weeklyReport.season_rank_hint} 名` : ''}
           </div>
@@ -108,6 +114,25 @@ export function SeasonPanel() {
               海报
             </button>
           </div>
+        </div>
+      )}
+
+      {arenaWinRates.length > 0 && (
+        <div style={{ padding: 10, background: '#fff8e8', borderRadius: 8, marginBottom: 12, border: '1px solid #ffb74d', fontSize: 11 }}>
+          <div style={{ fontWeight: 700, color: '#c65a00', marginBottom: 6 }}>🏆 交易竞技胜率榜</div>
+          {arenaWinRates.slice(0, 5).map(w => (
+            <div key={w.user_id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#5a4a3a' }}>
+              <span>{w.rank}. {w.display_name}</span>
+              <span style={{ fontWeight: 600 }}>{w.win_rate}% · {w.wins}冠/{w.entries}场</span>
+            </div>
+          ))}
+          <button type="button" className="ui-btn" style={{ width: '100%', marginTop: 8, fontSize: 10 }}
+            onClick={() => {
+              sessionStorage.setItem('tl_post_login_tab', 'events');
+              useGameStore.setState({ rightTab: 'events', rightPanelCollapsed: false });
+            }}>
+            前往交易竞技 →
+          </button>
         </div>
       )}
 

@@ -288,3 +288,10 @@ async def public_season_info():
     if not season:
         return {"ok": True, "season": None}
     return {"ok": True, "season": dict(season)}
+
+
+@growth_router.get("/public/trading/arena/live")
+async def public_arena_live():
+    """未登录观赛 — 当前大赛排行榜 + 胜率榜（裂变 hook）"""
+    from trading_events import public_arena_snapshot
+    return await public_arena_snapshot()

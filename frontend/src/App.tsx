@@ -53,6 +53,14 @@ export default function App() {
         }
       }
       useGameStore.getState().restorePokerRoom().catch(() => {});
+      const postTab = sessionStorage.getItem('tl_post_login_tab');
+      if (postTab === 'events') {
+        sessionStorage.removeItem('tl_post_login_tab');
+        setTimeout(() => {
+          useGameStore.setState({ rightTab: 'events', rightPanelCollapsed: false, sidebarActive: 'events' });
+          addMessage('🏆 欢迎来到交易竞技 · 猜涨跌 / 短线大赛 / 押冠亚季军');
+        }, 800);
+      }
       void processPendingDeepLink();
       clearUrlParams();
     });

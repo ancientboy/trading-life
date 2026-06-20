@@ -364,6 +364,7 @@ export type ArenaEntry = {
   user_id: string;
   agent_id: string;
   agent_name: string;
+  display_name?: string;
   strategy_preset: string;
   is_npc?: number | boolean;
   direction: string;
@@ -371,12 +372,18 @@ export type ArenaEntry = {
   return_pct?: number;
   rank?: number;
   prize?: number;
+  legs_count?: number;
+  recent_legs?: Array<{ leg: number; direction: string; return_pct: number; entry_price: number; exit_price: number }>;
 };
 
 export type ArenaRoundState = {
   round_id: string;
   symbol: string;
   status: string;
+  duration_mode?: string;
+  duration_label?: string;
+  run_seconds?: number;
+  leg_interval_sec?: number;
   entry_fee: number;
   prize_pool: number;
   spectate_pool: number;
@@ -386,8 +393,29 @@ export type ArenaRoundState = {
   join_seconds_left: number;
   entries: ArenaEntry[];
   my_entry?: ArenaEntry | null;
+  my_spectator_bets?: Array<{ pick_user_id: string; pick_rank?: number; stake: number; payout?: number }>;
   can_join: boolean;
   can_spectate_bet: boolean;
+};
+
+export type ArenaWinRateEntry = {
+  user_id: string;
+  display_name: string;
+  entries: number;
+  wins: number;
+  podium?: number;
+  win_rate: number;
+  best_return?: number;
+  rank: number;
+};
+
+export type PublicArenaLive = {
+  ok: boolean;
+  current?: ArenaRoundState;
+  highlights?: Array<Record<string, unknown>>;
+  win_rate_board?: ArenaWinRateEntry[];
+  message?: string;
+  error?: string;
 };
 
 export async function fetchGuessRound() {
@@ -414,11 +442,21 @@ export async function joinArena(agentId: string) {
   return parse<{ ok: boolean; current?: ArenaRoundState; balance?: number; message?: string; error?: string }>(r);
 }
 
-export async function arenaSpectateBet(pickUserId: string, stake: number) {
+export async function arenaSpectateBet(pickUserId: string, stake: number, pickRank = 1) {
   const r = await fetch(`${API}/pvp/trading/arena/spectate-bet`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ pick_user_id: pickUserId, stake }),
+    method: 'POST', headers: headers(), body: JSON.stringify({ pick_user_id: pickUserId, stake, pick_rank: pickRank }),
   });
-  return parse<{ ok: boolean; current?: ArenaRoundState; balance?: number; error?: string }>(r);
+  return parse<{ ok: boolean; current?: ArenaRoundState; balance?: number; message?: string; error?: string }>(r);
+}
+
+export async function fetchArenaWinRate(limit = 15) {
+  const r = await fetch(`${API}/pvp/trading/arena/win-rate?limit=${limit}`, { headers: headers() });
+  return parse<{ ok: boolean; entries?: ArenaWinRateEntry[]; error?: string }>(r);
+}
+
+export async function fetchPublicArenaLive() {
+  const r = await fetch(`${API}/public/trading/arena/live`);
+  return parse<PublicArenaLive>(r);
 }
 
 export async function fetchArenaLeaderboard(limit = 10) {
@@ -626,6 +664,8 @@ export type WeeklyReportData = {
   trading_wins?: number;
   trading_pnl?: number;
   best_trade_pnl?: number;
+  arena_entries?: number;
+  arena_wins?: number;
   season_name?: string;
   season_points?: number;
   season_social?: number;

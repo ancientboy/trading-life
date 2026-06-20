@@ -118,9 +118,14 @@ export function TopNavBar() {
             <span className="nav-icon-label">{b.label}</span>
           </button>
         ))}
-        <button className="ui-btn nav-icon-btn" title="猜涨跌 / 短线大赛"
+        <button className="ui-btn nav-icon-btn" title="猜涨跌 / 短线大赛 / 押前三名"
+          style={{
+            background: 'linear-gradient(135deg,#fff3e0,#ffe082)',
+            borderColor: '#ffb74d',
+            fontWeight: 700,
+          }}
           onClick={() => { setRightTab('events'); useGameStore.setState({ rightPanelCollapsed: false }); }}>
-          <span className="nav-icon-label">🏆竞技</span>
+          <span className="nav-icon-label">🏆 交易竞技</span>
         </button>
         <a href="/trading/" className="ui-btn" style={{ textDecoration: 'none', marginLeft: 4, fontSize: 11 }}>Dashboard</a>
         {account && (

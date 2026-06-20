@@ -5,6 +5,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { fetchTicker } from '../../lib/api';
 import { PokerDemoHook } from './PokerDemoHook';
 import { TradingDemoHook } from './TradingDemoHook';
+import { TradingArenaPublicHook } from './TradingArenaPublicHook';
 
 const TICKER_KEYS = ['BTCUSDT', 'ETHUSDT', 'XAUUSDT'] as const;
 
@@ -101,6 +102,7 @@ export function LoginPanel({ initialInvite = '' }: { initialInvite?: string }) {
         </div>
 
         <TradingDemoHook />
+        <TradingArenaPublicHook />
         <PokerDemoHook />
 
         <div style={{ display: 'flex', gap: 8, margin: '16px 0' }}>

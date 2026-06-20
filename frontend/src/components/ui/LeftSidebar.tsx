@@ -14,7 +14,8 @@ const LEISURE: { id: SidebarAction; label: string }[] = [
   { id: 'spa', label: '按摩区' },
   { id: 'casino', label: '德州扑克' },
 ];
-const OTHER: { id: SidebarAction; label: string }[] = [
+const OTHER: { id: SidebarAction; label: string; highlight?: boolean }[] = [
+  { id: 'events', label: '🏆 交易竞技', highlight: true },
   { id: 'tasks', label: '每日任务' },
   { id: 'warehouse', label: '资产仓库' },
   { id: 'social', label: '社交大厅' },
@@ -79,7 +80,7 @@ export function LeftSidebar() {
         <div className="sidebar-divider" />
         {OTHER.map(item => (
           <SidebarBtn key={item.id} id={item.id} label={item.label} expanded={expanded || isMobile}
-            active={active === item.id} hover={hover === item.id}
+            active={active === item.id} hover={hover === item.id} badge={item.highlight}
             onHover={setHover} onClick={() => {
               if (isMobile) setExpanded(false);
               if (item.id === 'tasks') {
@@ -87,6 +88,8 @@ export function LeftSidebar() {
                 openModal('tasks');
               } else if (item.id === 'logs') {
                 useGameStore.setState({ rightPanelCollapsed: false, rightTab: 'hall' });
+              } else if (item.id === 'events') {
+                useGameStore.setState({ rightPanelCollapsed: false, rightTab: 'events', sidebarActive: 'events' });
               } else {
                 navigateSidebar(item.id);
               }

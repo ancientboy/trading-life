@@ -2,8 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import {
   fetchGuessRound, placeGuessBet, fetchArenaRound, joinArena, arenaSpectateBet,
-  fetchArenaLeaderboard, type GuessRoundState, type ArenaRoundState,
+  fetchArenaLeaderboard, fetchArenaWinRate,
+  type GuessRoundState, type ArenaRoundState, type ArenaWinRateEntry,
 } from '../../lib/lifeEngagementApi';
+import { shareOrCopy, shareResultMessage, appBaseUrl } from '../../lib/shareUtils';
+
+const RANK_LABELS: Record<number, string> = { 1: '🥇 冠军', 2: '🥈 亚军', 3: '🥉 季军' };
 
 export function TradingEventsPanel() {
   const agents = useGameStore(s => s.agents);
@@ -12,15 +16,18 @@ export function TradingEventsPanel() {
   const addMessage = useGameStore(s => s.addMessage);
   const points = useGameStore(s => s.points);
 
-  const [tab, setTab] = useState<'guess' | 'arena'>('guess');
+  const [tab, setTab] = useState<'guess' | 'arena'>('arena');
   const [guess, setGuess] = useState<GuessRoundState | null>(null);
   const [lastGuess, setLastGuess] = useState<Record<string, unknown> | null>(null);
   const [arena, setArena] = useState<ArenaRoundState | null>(null);
   const [highlights, setHighlights] = useState<Array<Record<string, unknown>>>([]);
+  const [winRates, setWinRates] = useState<ArenaWinRateEntry[]>([]);
   const [guessStake, setGuessStake] = useState(50);
   const [specStake, setSpecStake] = useState(50);
   const [specPick, setSpecPick] = useState('');
+  const [specRank, setSpecRank] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
 
   const tradingAgents = useMemo(
     () => operableAgentIds.filter(id => agents[id]?.data?.agentType !== 'entertainment'),
@@ -38,9 +45,12 @@ export function TradingEventsPanel() {
         setLastGuess(r.last_settled ?? null);
       }
     } else {
-      const [ar, lb] = await Promise.all([fetchArenaRound(), fetchArenaLeaderboard(8)]);
+      const [ar, lb, wr] = await Promise.all([
+        fetchArenaRound(), fetchArenaLeaderboard(8), fetchArenaWinRate(12),
+      ]);
       if (ar.ok) setArena(ar.current ?? null);
       if (lb.ok) setHighlights(lb.highlights ?? []);
+      if (wr.ok) setWinRates(wr.entries ?? []);
     }
   }, [tab]);
 
@@ -93,16 +103,32 @@ export function TradingEventsPanel() {
     }
     setBusy(true);
     try {
-      const r = await arenaSpectateBet(specPick, specStake);
+      const r = await arenaSpectateBet(specPick, specStake, specRank);
       if (!r.ok) {
         addMessage(r.error || '押注失败');
         return;
       }
       setArena(r.current ?? null);
       if (r.balance != null) useGameStore.setState({ points: r.balance });
-      addMessage('观众押注已提交 · 猜冠军拿走奖池');
+      addMessage(r.message || `已押 ${RANK_LABELS[specRank] || specRank} · ${specStake} 积分`);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const shareArena = async () => {
+    if (!arena) return;
+    setShareBusy(true);
+    try {
+      const top = arena.entries[0];
+      const text = `🏆 交易人生竞技 · ${arena.duration_label || '短线大赛'}\n`
+        + `${arena.status === 'running' ? '进行中' : '报名中'} · 奖池 ${arena.prize_pool}\n`
+        + (top ? `领跑：${top.agent_name} ${top.return_pct != null ? (top.return_pct >= 0 ? '+' : '') + top.return_pct + '%' : ''}\n` : '')
+        + `来押冠/亚/季军！`;
+      const r = await shareOrCopy({ title: '交易人生 · 交易竞技', text, url: appBaseUrl() });
+      addMessage(shareResultMessage(r));
+    } finally {
+      setShareBusy(false);
     }
   };
 
@@ -112,15 +138,29 @@ export function TradingEventsPanel() {
 
   return (
     <div style={{ color: '#3d3530', fontSize: 13 }}>
+      <div style={{
+        padding: '10px 12px', marginBottom: 10, borderRadius: 10,
+        background: 'linear-gradient(135deg,#fff3e0,#eef4ff)', border: '2px solid #ffb74d',
+      }}>
+        <div style={{ fontWeight: 800, fontSize: 14, color: '#c65a00', marginBottom: 4 }}>🏆 交易竞技中心</div>
+        <div style={{ fontSize: 11, color: '#7a6e62' }}>猜涨跌 60s · 大赛极速/标准 · AI 30s 多轮 · 押前三名</div>
+      </div>
+
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
         <button className="ui-btn" style={{ flex: 1, opacity: tab === 'guess' ? 1 : 0.55 }}
           onClick={() => setTab('guess')}>📊 猜涨跌 · 60s</button>
         <button className="ui-btn" style={{ flex: 1, opacity: tab === 'arena' ? 1 : 0.55 }}
-          onClick={() => setTab('arena')}>🏆 短线大赛 · 3min</button>
+          onClick={() => setTab('arena')}>🏆 短线大赛</button>
       </div>
 
-      <div style={{ fontSize: 11, color: '#8a7e72', marginBottom: 10 }}>
-        积分 {points.toLocaleString()} · AI 按策略自主判定方向 · 观众可押冠军
+      <div style={{ fontSize: 11, color: '#8a7e72', marginBottom: 10, display: 'flex', justifyContent: 'space-between' }}>
+        <span>积分 {points.toLocaleString()}</span>
+        {tab === 'arena' && (
+          <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '2px 8px' }}
+            disabled={shareBusy} onClick={() => void shareArena()}>
+            {shareBusy ? '…' : '分享邀请'}
+          </button>
+        )}
       </div>
 
       {tab === 'guess' && guess && (
@@ -176,52 +216,81 @@ export function TradingEventsPanel() {
       {tab === 'arena' && arena && (
         <>
           <div style={{ padding: 12, background: '#eef4ff', borderRadius: 10, border: '1px solid #b8cce8', marginBottom: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 700 }}>Agent 短线大赛</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <span style={{ fontWeight: 700 }}>Agent 短线大赛</span>
+                <span style={{
+                  marginLeft: 8, fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                  background: arena.duration_mode === 'speed' ? '#ffe082' : '#c8e6c9',
+                }}>
+                  {arena.duration_label || (arena.duration_mode === 'speed' ? '极速 60s' : '标准 3min')}
+                </span>
+              </div>
               <span style={{ fontSize: 11, color: '#3a6bb5' }}>
                 {arena.status === 'join' ? `报名 ${arena.join_seconds_left}s` : arena.status === 'running' ? `进行中 ${arena.seconds_left}s` : '结算中'}
               </span>
             </div>
             <div style={{ fontSize: 11, marginTop: 6, color: '#6b5e4e' }}>
               报名 {arena.entry_fee} 积分 · 奖池 {arena.prize_pool} · 观众池 {arena.spectate_pool}
+              {arena.leg_interval_sec ? ` · AI 每 ${arena.leg_interval_sec}s 换向操作` : ''}
             </div>
             {arena.can_join && !arena.my_entry && (
               <button className="ui-btn" style={{ width: '100%', marginTop: 10 }} disabled={busy || !joinAgentId}
                 onClick={() => void doJoinArena()}>
-                派 {agents[joinAgentId]?.data.name || '交易 Agent'} 参赛（AI 自主策略）
+                派 {agents[joinAgentId]?.data.name || '交易 Agent'} 参赛
               </button>
             )}
             {arena.my_entry && (
               <div style={{ marginTop: 8, fontSize: 11, padding: 8, background: '#fff', borderRadius: 6 }}>
                 已报名 · {arena.my_entry.direction} · {arena.my_entry.leverage}x
+                {(arena.my_entry.legs_count ?? 0) > 0 ? ` · ${arena.my_entry.legs_count} 轮操作` : ''}
                 {arena.my_entry.rank ? ` · 第 ${arena.my_entry.rank} 名 ${arena.my_entry.return_pct >= 0 ? '+' : ''}${arena.my_entry.return_pct}%` : ''}
                 {arena.my_entry.prize ? ` · 奖金 +${arena.my_entry.prize}` : ''}
               </div>
             )}
           </div>
 
-          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>选手榜 · 收益率 PK</div>
+          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>选手榜 · 实时收益率</div>
           {arena.entries.map(e => (
             <div key={e.user_id} style={{
               padding: '6px 8px', marginBottom: 4, borderRadius: 6, fontSize: 11,
               background: e.rank === 1 ? '#fff8e8' : '#faf6ef',
-              display: 'flex', justifyContent: 'space-between',
             }}>
-              <span>
-                {e.rank ? `${e.rank}. ` : '· '}{e.agent_name}{e.is_npc ? ' 🤖' : ''}
-                <span style={{ color: '#9a8b7a' }}> · {e.direction} {e.leverage}x</span>
-              </span>
-              <span style={{ color: (e.return_pct ?? 0) >= 0 ? '#2ea872' : '#c07070', fontWeight: 600 }}>
-                {e.return_pct != null && e.return_pct !== 0
-                  ? `${e.return_pct >= 0 ? '+' : ''}${e.return_pct}%`
-                  : e.strategy_preset}
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>
+                  {e.rank ? `${e.rank}. ` : '· '}{e.agent_name}{e.is_npc ? ' 🤖' : ''}
+                  <span style={{ color: '#9a8b7a' }}> · {e.direction} {e.leverage}x</span>
+                  {(e.legs_count ?? 0) > 0 && <span style={{ color: '#9a8b7a' }}> · {e.legs_count}轮</span>}
+                </span>
+                <span style={{ color: (e.return_pct ?? 0) >= 0 ? '#2ea872' : '#c07070', fontWeight: 600 }}>
+                  {e.return_pct != null && e.return_pct !== 0
+                    ? `${e.return_pct >= 0 ? '+' : ''}${e.return_pct}%`
+                    : e.strategy_preset}
+                </span>
+              </div>
+              {e.recent_legs && e.recent_legs.length > 0 && arena.status === 'running' && (
+                <div style={{ fontSize: 9, color: '#9a8b7a', marginTop: 3 }}>
+                  近轮：{e.recent_legs.slice(0, 3).map(l =>
+                    `${l.direction} ${l.return_pct >= 0 ? '+' : ''}${l.return_pct}%`,
+                  ).join(' · ')}
+                </div>
+              )}
             </div>
           ))}
 
           {arena.can_spectate_bet && arena.entries.length > 0 && (
             <div style={{ marginTop: 12, padding: 10, background: '#fff8e8', borderRadius: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>观众押冠军</div>
+              <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>观众押注 · 冠 / 亚 / 季军</div>
+              <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                {[1, 2, 3].map(r => (
+                  <button key={r} type="button" className="ui-btn" style={{
+                    flex: 1, fontSize: 10, opacity: specRank === r ? 1 : 0.5,
+                    background: specRank === r ? '#ffe082' : undefined,
+                  }} onClick={() => setSpecRank(r)}>
+                    {RANK_LABELS[r]}
+                  </button>
+                ))}
+              </div>
               <select className="login-input" style={{ marginBottom: 8 }} value={specPick}
                 onChange={e => setSpecPick(e.target.value)}>
                 <option value="">选择选手</option>
@@ -233,9 +302,32 @@ export function TradingEventsPanel() {
                 onChange={e => setSpecStake(Number(e.target.value))} style={{ width: '100%' }} />
               <button className="ui-btn" style={{ width: '100%', marginTop: 6 }} disabled={busy}
                 onClick={() => void doSpecBet()}>
-                押 {specStake} 积分 · 猜中冠军分观众池
+                押 {specStake} 积分 · 猜 {RANK_LABELS[specRank]} 分观众池
               </button>
             </div>
+          )}
+
+          {arena.my_spectator_bets && arena.my_spectator_bets.length > 0 && (
+            <div style={{ marginTop: 8, fontSize: 10, color: '#8a7e72' }}>
+              我的押注：{arena.my_spectator_bets.map(b =>
+                `${RANK_LABELS[b.pick_rank || 1] || b.pick_rank} ${b.stake}${b.payout ? `→+${b.payout}` : ''}`,
+              ).join(' · ')}
+            </div>
+          )}
+
+          {winRates.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, margin: '14px 0 6px' }}>📈 竞技胜率榜</div>
+              {winRates.slice(0, 6).map(w => (
+                <div key={w.user_id} style={{
+                  fontSize: 10, padding: '4px 0', display: 'flex', justifyContent: 'space-between',
+                  borderBottom: '1px dashed #eee8dc',
+                }}>
+                  <span>{w.rank}. {w.display_name}</span>
+                  <span style={{ fontWeight: 600, color: '#3a6bb5' }}>{w.win_rate}% ({w.wins}/{w.entries})</span>
+                </div>
+              ))}
+            </>
           )}
 
           {highlights.length > 0 && (
@@ -244,6 +336,7 @@ export function TradingEventsPanel() {
               {highlights.slice(0, 5).map((h, i) => (
                 <div key={i} style={{ fontSize: 10, color: '#8a7e72', padding: '2px 0' }}>
                   {h.rank}. {String(h.display_name)} {Number(h.return_pct) >= 0 ? '+' : ''}{h.return_pct}%
+                  {h.legs_count ? ` · ${h.legs_count}轮` : ''}
                   {h.prize ? ` +${h.prize}` : ''}
                 </div>
               ))}
