@@ -254,6 +254,16 @@ html, body, #root {
   color: #faf6ef;
   border-color: #4a3f35;
 }
+.ui-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+.ui-btn:disabled:hover {
+  background: #faf6ef;
+  border-color: var(--border);
+  transform: none;
+}
 
 .stat-card {
   padding: 6px 14px;

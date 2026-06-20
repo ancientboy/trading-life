@@ -25,7 +25,7 @@ import {
   placeSettingAtChair,
   drawPokerTableDealing, drawReceptionInterior, drawReceptionDesk,
 } from './paperDraw';
-import { drawArenaBackdrop, drawArenaScene } from './arenaDraw';
+import { drawArenaBackdrop, drawArenaScene, type ArenaDisplayData } from './arenaDraw';
 import { leisurePhase, tableIdForDineAgent, bedIdForMassageAgent, getLeisureRenderPaperPos, DINE_SERVE_MS } from '../../lib/leisureActivity';
 import type { SkinZone } from '../../lib/zoneSkins';
 import { hallRestPalette } from '../../lib/zoneSkins';
@@ -296,6 +296,7 @@ export function renderZone(
     pokerTableDealing?: boolean;
     zoneSkins?: Record<SkinZone, string>;
     arenaLive?: import('../../lib/lifeEngagementApi').ArenaRoundState | null;
+    arenaDisplay?: ArenaDisplayData | null;
     arenaPulseSlots?: Set<number>;
     hoverPodId?: string | null;
   },
@@ -305,7 +306,7 @@ export function renderZone(
   if (zone === 'casino') {
     drawCasinoVipBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode, skinKey);
   } else if (zone === 'arena') {
-    drawArenaBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode, skinKey);
+    drawArenaBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode, skinKey, opts.t);
   } else if (zone === 'spa') {
     drawSpaZenBackdrop(ctx, cam, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.dayMode, skinKey);
   } else if (zone === 'restaurant') {
@@ -344,14 +345,13 @@ export function renderZone(
       break;
     case 'arena': {
       const live = opts.arenaLive;
-      const price = live?.start_price ? `$${Math.round(Number(live.start_price)).toLocaleString()}` : undefined;
       drawArenaScene(
         ctx, (px, py) => pt(cam, px, py), v => ws(cam, v), opts.t, skinKey,
         {
           hoverPodId: opts.hoverPodId,
           entries: live?.entries,
           status: live?.status,
-          priceLabel: price,
+          display: opts.arenaDisplay ?? undefined,
           pulseSlots: opts.arenaPulseSlots,
         },
       );

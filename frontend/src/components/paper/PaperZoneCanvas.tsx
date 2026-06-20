@@ -3,8 +3,9 @@ import { useGameStore } from '../../store/useGameStore';
 import { tickCharacterSim } from '../../lib/characterSimLoop';
 import { WORLD_MAP, ZONE_CAMERA } from '../../lib/worldMap';
 import { hitTestPaperFacilities, getAgentPaperPos, ZONE_NPCS } from '../../lib/zoneFurniture';
-import { ARENA_PIT, hitTestArenaPod } from './arenaDraw';
-import { fetchArenaRound } from '../../lib/lifeEngagementApi';
+import { ARENA_PIT, hitTestArenaPod, type ArenaDisplayData } from './arenaDraw';
+import { fetchArenaRound, fetchGuessRound, fetchPublicArenaLive, type GuessRoundState } from '../../lib/lifeEngagementApi';
+import { fetchMarketKlines } from '../../lib/lifeApi';
 import { ZONE_LAYOUTS } from '../../lib/zoneLayouts';
 import { PAPER, agentVisibleInZone } from '../../lib/zoneProjection';
 import {
@@ -46,6 +47,8 @@ export function PaperZoneCanvas() {
   const prevLegsRef = useRef<Record<string, number>>({});
   const [arenaPulseSlots, setArenaPulseSlots] = useState<Set<number>>(new Set());
   const [hoverPodId, setHoverPodId] = useState<string | null>(null);
+  const [guessRound, setGuessRound] = useState<GuessRoundState | null>(null);
+  const [klineCloses, setKlineCloses] = useState<number[]>([]);
 
   const flyToZone = useGameStore(s => s.flyToZone);
   const selectAgent = useGameStore(s => s.selectAgent);
@@ -69,13 +72,37 @@ export function PaperZoneCanvas() {
 
   useEffect(() => {
     if (activeZone !== 'arena') return;
-    const poll = () => fetchArenaRound().then(r => {
+    const pollArena = () => fetchArenaRound().then(r => {
       if (r.ok && r.current) setArenaLive(r.current);
-    }).catch(() => {});
-    poll();
-    const id = setInterval(poll, 4000);
+      else {
+        fetchPublicArenaLive().then(pr => {
+          if (pr.ok && pr.current) setArenaLive(pr.current);
+        }).catch(() => {});
+      }
+    }).catch(() => {
+      fetchPublicArenaLive().then(pr => {
+        if (pr.ok && pr.current) setArenaLive(pr.current);
+      }).catch(() => {});
+    });
+    pollArena();
+    const id = setInterval(pollArena, 4000);
     return () => clearInterval(id);
   }, [activeZone, setArenaLive]);
+
+  useEffect(() => {
+    if (activeZone !== 'arena') return;
+    const pollDisplay = () => {
+      fetchGuessRound().then(r => {
+        if (r.ok && r.current) setGuessRound(r.current);
+      }).catch(() => {});
+      fetchMarketKlines('BTCUSDT', '1m', 48).then(r => {
+        if (r.ok && r.candles?.length) setKlineCloses(r.candles.map(c => c.close));
+      }).catch(() => {});
+    };
+    pollDisplay();
+    const id = setInterval(pollDisplay, 4000);
+    return () => clearInterval(id);
+  }, [activeZone]);
 
   useEffect(() => {
     if (!arenaLive?.entries) return;
@@ -112,6 +139,28 @@ export function PaperZoneCanvas() {
     const cam = makePaperCamera(cw, ch, cameraZoom, WORLD_MAP.defaultZoom, panX, panY);
     const t = performance.now() / 1000;
 
+    let arenaDisplay: ArenaDisplayData | null = null;
+    if (activeZone === 'arena') {
+      const btc = ticker.BTCUSDT;
+      const start = guessRound?.start_price;
+      const end = guessRound?.end_price;
+      const price = btc || end || start;
+      arenaDisplay = {
+        btcPrice: price,
+        startPrice: start,
+        endPrice: end,
+        pctChange: price && start ? ((price - start) / start) * 100 : undefined,
+        secondsLeft: guessRound?.seconds_left,
+        bettingOpen: guessRound?.betting_open,
+        poolUp: guessRound?.pool_up,
+        poolDown: guessRound?.pool_down,
+        statusLabel: guessRound
+          ? (guessRound.betting_open ? '押注中' : guessRound.status === 'locked' ? '封盘中' : '进行中')
+          : (btc ? 'LIVE' : undefined),
+        klineCloses: klineCloses.length >= 4 ? klineCloses : undefined,
+      };
+    }
+
     renderZone(ctx, activeZone, cam, agents, {
       hoverFacilityId: hoverFacilityId,
       bob: bobRef.current,
@@ -122,6 +171,7 @@ export function PaperZoneCanvas() {
       pokerTableDealing: performance.now() < pokerTableDealingUntil,
       zoneSkins,
       arenaLive: activeZone === 'arena' ? arenaLive : null,
+      arenaDisplay,
       arenaPulseSlots,
       hoverPodId,
     });
@@ -138,7 +188,7 @@ export function PaperZoneCanvas() {
         getStoredAccount()?.id, t,
       );
     }
-  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerTableDealingUntil, pokerRoom, zoneSkins, arenaLive, arenaPulseSlots, hoverPodId]);
+  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerTableDealingUntil, pokerRoom, zoneSkins, arenaLive, guessRound, klineCloses, arenaPulseSlots, hoverPodId]);
 
   useEffect(() => {
     let last = performance.now();

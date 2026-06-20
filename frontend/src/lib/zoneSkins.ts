@@ -73,7 +73,7 @@ export const ZONE_SKIN_OPTIONS: Record<SkinZone, ZoneSkinOption[]> = {
     },
   ],
   arena: [
-    { id: 'default', label: '经典交易厅', desc: '深蓝 K 线屏与银灰 Pod', preview: '📊' },
+    { id: 'default', label: '电竞赛事馆', desc: '冰蓝灯架 · 观众席 · PK 对决台', preview: '🎮' },
     {
       id: 'neon', label: '霓虹赛博', desc: '紫青霓虹与暗色竞技台',
       preview: '💜', shopId: 'zone_skin_arena_neon',
@@ -364,11 +364,11 @@ export interface ArenaPalette {
 
 const ARENA: Record<string, ArenaPalette> = {
   default: {
-    backdropCenter: '#1a2840', backdropEdge: '#0e1624', wall: '#243048', pillar: '#2a3850',
-    accent: '#4a90c8', accentDim: '#2a5888', floorRing: 'rgba(74,144,200,0.12)',
-    screenBg: '#0a1520', chartLine: '#48d093', podBase: '#2a3a52', podHover: '#3a5070',
-    podEdge: '#4a6888', npcDesk: '#1e2a3a', text: '#e8eef5', textMuted: 'rgba(232,238,245,0.55)',
-    up: '#48d093', down: '#e07070',
+    backdropCenter: '#1e3a5f', backdropEdge: '#0f2040', wall: '#2a4878', pillar: '#356090',
+    accent: '#00d4ff', accentDim: '#0088cc', floorRing: 'rgba(0,212,255,0.18)',
+    screenBg: '#0c1830', chartLine: '#00e5a0', podBase: '#3a5890', podHover: '#5088c0',
+    podEdge: '#6aa8e0', npcDesk: '#243858', text: '#f0f8ff', textMuted: 'rgba(200,230,255,0.65)',
+    up: '#00e5a0', down: '#ff6b8a',
   },
   neon: {
     backdropCenter: '#1a0a30', backdropEdge: '#0a0518', wall: '#2a1048', pillar: '#3a1860',
