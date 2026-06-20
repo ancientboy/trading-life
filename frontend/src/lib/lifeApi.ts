@@ -294,6 +294,7 @@ export interface PortfolioAgentView {
   risk: string;
   leverage?: number;
   threshold_pct?: number;
+  soul_bias_tags?: string[];
   max_positions?: number;
   strategy_snapshot?: { applied_at?: string; pnl?: number; trades?: number; wins?: number; capital?: number };
   capital: number;
@@ -325,9 +326,37 @@ export interface UserPortfolio {
   source?: string;
   system_agents_note?: string;
   first_trading_win?: boolean;
+  first_trade_hook?: boolean;
   latest_win?: TradeRecord & { agent_id?: string; agent_name?: string };
   trading_banter?: string | null;
+  agent_duels?: AgentDuel[];
   error?: string;
+}
+
+export type AgentDuel = {
+  symbol: string;
+  agent_a_id: string;
+  agent_a_name: string;
+  agent_a_direction: string;
+  agent_a_pnl: number;
+  agent_b_id: string;
+  agent_b_name: string;
+  agent_b_direction: string;
+  agent_b_pnl: number;
+};
+
+export type KlineCandle = {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
+export async function fetchMarketKlines(symbol = 'BTCUSDT', interval = '15m', limit = 80) {
+  const q = new URLSearchParams({ symbol, interval, limit: String(limit) });
+  const r = await fetch(`${API}/portfolio/market/klines?${q}`, { headers: headers() });
+  return parse<{ ok: boolean; symbol?: string; interval?: string; candles?: KlineCandle[]; error?: string }>(r);
 }
 
 export async function fetchPortfolio(): Promise<UserPortfolio> {

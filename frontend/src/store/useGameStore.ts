@@ -1275,6 +1275,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (data.trading_banter) {
       get().addMessage(data.trading_banter);
     }
+    if (data.first_trade_hook) {
+      get().addMessage('🎯 首笔模拟成交已触发！你的 Agent 已开始盯盘，可在右侧查看 K 线与持仓');
+    }
     if (data.first_trading_win && data.latest_win) {
       get().showTradingWin({
         trade: data.latest_win,

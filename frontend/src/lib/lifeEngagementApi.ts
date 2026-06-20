@@ -622,6 +622,10 @@ export type WeeklyReportData = {
   points_won: number;
   best_hand_name: string;
   best_hand_cat: number;
+  trading_trades?: number;
+  trading_wins?: number;
+  trading_pnl?: number;
+  best_trade_pnl?: number;
   season_name?: string;
   season_points?: number;
   season_social?: number;

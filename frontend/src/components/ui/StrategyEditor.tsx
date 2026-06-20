@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { STRATEGY_PRESET_OPTIONS, applyStrategyPreset } from '../../lib/customAgents';
-import { parseStrategyPreference, submitStrategyFeedback } from '../../lib/lifeApi';
+import { parseStrategyPreference, submitStrategyFeedback, fetchMarketKlines, type KlineCandle } from '../../lib/lifeApi';
 import { PenguinAvatar } from './PenguinAvatar';
+import { MiniKlineChart } from './MiniKlineChart';
 
 export interface StrategyDraft {
   strategyPreset: string;
@@ -69,6 +70,43 @@ const BEGINNER_PROMPTS = [
   '专注黄金 XAU，中长线趋势',
 ];
 
+function marketToSymbol(market: string): string {
+  const m = (market || 'BTC').toUpperCase();
+  if (m.includes('XAU') || m.includes('黄金')) return 'XAUUSDT';
+  if (m.includes('ETH') && !m.includes('BTC')) return 'ETHUSDT';
+  if (m.includes('SOL')) return 'SOLUSDT';
+  return 'BTCUSDT';
+}
+
+function intervalEntry(interval: string): string {
+  const part = (interval || '15m/1h').split('/')[0]?.trim().toLowerCase();
+  return part || '15m';
+}
+
+function AgentDuelBanner() {
+  const duels = useGameStore(s => s.userPortfolio?.agent_duels);
+  if (!duels?.length) return null;
+  const d = duels[0];
+  const sym = d.symbol.replace('USDT', '');
+  return (
+    <div style={{
+      marginBottom: 12, padding: 10, borderRadius: 8,
+      background: 'linear-gradient(135deg,#fff3e0,#fce4ec)', border: '1px solid #ffb74d',
+      fontSize: 12, lineHeight: 1.5,
+    }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>⚔️ 交易员对决 · {sym}</div>
+      <div>
+        <span className={d.agent_a_pnl >= 0 ? 'profit' : 'loss'}>{d.agent_a_name} {d.agent_a_direction}</span>
+        {' vs '}
+        <span className={d.agent_b_pnl >= 0 ? 'profit' : 'loss'}>{d.agent_b_name} {d.agent_b_direction}</span>
+      </div>
+      <div style={{ fontSize: 10, color: '#8a6a4a', marginTop: 4 }}>
+        盈亏 {d.agent_a_name} ${Math.round(d.agent_a_pnl)} · {d.agent_b_name} ${Math.round(d.agent_b_pnl)}
+      </div>
+    </div>
+  );
+}
+
 export function StrategyEditor({
   agentId: propAgentId,
   compact,
@@ -100,6 +138,23 @@ export function StrategyEditor({
   const [parsing, setParsing] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [klines, setKlines] = useState<KlineCandle[]>([]);
+
+  const chartSymbol = useMemo(() => marketToSymbol(draft.market), [draft.market]);
+  const chartInterval = useMemo(() => intervalEntry(draft.interval), [draft.interval]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchMarketKlines(chartSymbol, chartInterval, 80).then(r => {
+      if (!cancelled && r.ok && r.candles?.length) setKlines(r.candles);
+    }).catch(() => {});
+    const t = window.setInterval(() => {
+      fetchMarketKlines(chartSymbol, chartInterval, 80).then(r => {
+        if (!cancelled && r.ok && r.candles?.length) setKlines(r.candles);
+      }).catch(() => {});
+    }, 60_000);
+    return () => { cancelled = true; window.clearInterval(t); };
+  }, [chartSymbol, chartInterval]);
 
   useEffect(() => {
     const id = propAgentId || selectedAgentId || tradingAgents[0] || '';
@@ -218,6 +273,9 @@ export function StrategyEditor({
         </div>
       )}
 
+      <AgentDuelBanner />
+      <MiniKlineChart candles={klines} symbol={chartSymbol.replace('USDT', '')} height={compact ? 140 : 168} />
+
       {/* 自然语言偏好 */}
       <div style={{
         padding: 10, marginBottom: 12, background: '#f0f4ff', borderRadius: 8,
@@ -303,7 +361,15 @@ export function StrategyEditor({
       </Field>
 
       {/* SOUL */}
-      <div style={{ fontSize: 12, fontWeight: 700, margin: '12px 0 8px' }}>③ 交易人格 SOUL（影响对话与复盘语气，不直接改信号）</div>
+      <div style={{ fontSize: 12, fontWeight: 700, margin: '12px 0 8px' }}>
+        ③ 交易人格 SOUL（轻量影响信号：保守 +阈值/-杠杆，激进相反）
+      </div>
+      {(pfAgent?.soul_bias_tags as string[] | undefined)?.length ? (
+        <div style={{ fontSize: 10, color: '#6a8a5a', marginBottom: 6 }}>
+          当前 SOUL 偏移：{(pfAgent?.soul_bias_tags as string[]).join(' · ')}
+          {' · '}阈值 {pfAgent?.threshold_pct?.toFixed(2)}% · 杠杆 {pfAgent?.leverage}x
+        </div>
+      ) : null}
       <textarea
         value={draft.soulMd}
         onChange={e => setDraft({ ...draft, soulMd: e.target.value })}

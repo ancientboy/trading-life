@@ -230,11 +230,27 @@ def calc_rsi(closes: list[float], period: int = 14) -> float:
 
 
 async def fetch_klines(session: aiohttp.ClientSession, symbol: str, interval: str, limit: int = 80) -> list[float]:
+    candles = await fetch_klines_ohlc(session, symbol, interval, limit)
+    return [c["close"] for c in candles]
+
+
+async def fetch_klines_ohlc(
+    session: aiohttp.ClientSession, symbol: str, interval: str, limit: int = 80,
+) -> list[dict[str, float]]:
     params = {"symbol": symbol, "interval": interval, "limit": limit}
     try:
         async with session.get(BINANCE_KLINE_URL, params=params, timeout=aiohttp.ClientTimeout(total=8)) as resp:
             raw = await resp.json()
-            return [float(k[4]) for k in raw]
+            out: list[dict[str, float]] = []
+            for k in raw:
+                out.append({
+                    "time": int(k[0]) // 1000,
+                    "open": float(k[1]),
+                    "high": float(k[2]),
+                    "low": float(k[3]),
+                    "close": float(k[4]),
+                })
+            return out
     except Exception:
         return []
 
@@ -400,6 +416,9 @@ def run_sim_tick(
     meta: dict,
     prices: dict[str, float],
     klines: Optional[dict[tuple[str, str], list[float]]] = None,
+    *,
+    bootstrap: bool = False,
+    bootstrap_direction: Optional[str] = None,
 ) -> tuple[dict, float]:
     threshold = float(preset.get("threshold_pct", 0.3))
     risk = meta.get("risk", preset.get("risk", "中"))
@@ -435,6 +454,34 @@ def run_sim_tick(
 
     # 开新仓 — 优先 K 线策略信号，无 K 线时回退到 tick 价差
     last_prices: dict[str, float] = dict(state.get("last_prices") or {})
+
+    if bootstrap and not state["positions"] and not state.get("trades_history"):
+        sym = (preset.get("symbols") or ["BTCUSDT"])[0]
+        price = prices.get(sym)
+        if price:
+            closes_e = (klines or {}).get((sym, entry_iv), [])
+            direction = bootstrap_direction
+            if not direction:
+                if len(closes_e) >= 4:
+                    chg = (closes_e[-1] - closes_e[-3]) / closes_e[-3] * 100
+                    direction = "LONG" if chg >= 0 else "SHORT"
+                else:
+                    prev = last_prices.get(sym)
+                    if prev:
+                        direction = "LONG" if price >= prev else "SHORT"
+                    else:
+                        direction = "LONG"
+            th_boost = preset.copy()
+            th_boost["threshold_pct"] = max(0.08, threshold * 0.45)
+            state, capital = _maybe_open(
+                state, sym, price, direction, capital, th_boost, meta,
+                "首笔体验加权", interval_label,
+            )
+            last_prices[sym] = price
+            state["last_prices"] = last_prices
+            state["running"] = True
+            return state, max(0.0, capital)
+
     for sym in preset.get("symbols") or ["BTCUSDT"]:
         price = prices.get(sym)
         if not price:
@@ -489,6 +536,7 @@ def agent_trading_view(row: dict, meta: dict) -> dict:
         "risk": meta.get("risk") or preset["risk"],
         "leverage": eff.get("leverage"),
         "threshold_pct": eff.get("threshold_pct"),
+        "soul_bias_tags": eff.get("soul_bias_tags") or [],
         "max_positions": eff.get("max_positions", 2),
         "strategy_snapshot": meta.get("strategySnapshot"),
         "capital": round(capital, 2),
@@ -504,6 +552,106 @@ def agent_trading_view(row: dict, meta: dict) -> dict:
         "is_circuit_break": False,
         "owner": "user",
     }
+
+
+def _record_new_closed_trades(user_id: str, before: dict, after: dict) -> None:
+    before_keys = {
+        f"{t.get('closed_at')}:{t.get('symbol')}:{t.get('pnl_amount')}"
+        for t in (before.get("trades_history") or [])
+    }
+    for t in after.get("trades_history") or []:
+        key = f"{t.get('closed_at')}:{t.get('symbol')}:{t.get('pnl_amount')}"
+        if key in before_keys:
+            continue
+        pnl = float(t.get("pnl_amount") or 0)
+        life_db.record_weekly_trading(user_id, pnl_amount=pnl, won=pnl > 0)
+
+
+def detect_agent_duels(agent_views: list[dict]) -> list[dict]:
+    duels: list[dict] = []
+    seen: set[tuple[str, str, str]] = set()
+    for i, a in enumerate(agent_views):
+        for b in agent_views[i + 1:]:
+            for pa in a.get("positions") or []:
+                for pb in b.get("positions") or []:
+                    if pa.get("symbol") != pb.get("symbol"):
+                        continue
+                    if pa.get("direction") == pb.get("direction"):
+                        continue
+                    key = (a["id"], b["id"], pa["symbol"])
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    duels.append({
+                        "symbol": pa["symbol"],
+                        "agent_a_id": a["id"],
+                        "agent_a_name": a["name"],
+                        "agent_a_direction": pa["direction"],
+                        "agent_a_pnl": a["pnl"],
+                        "agent_b_id": b["id"],
+                        "agent_b_name": b["name"],
+                        "agent_b_direction": pb["direction"],
+                        "agent_b_pnl": b["pnl"],
+                    })
+    return duels
+
+
+def sync_sibling_hedge(
+    user_id: str,
+    rows: list,
+    trading_agents: dict,
+    prices: dict[str, float],
+) -> Optional[str]:
+    """A 开多 → B 自动开空，制造可观看的对决。"""
+    opener: Optional[tuple[str, dict, dict]] = None
+    for row in rows:
+        aid = row["agent_id"]
+        if aid not in trading_agents:
+            continue
+        st = _parse_state(row.get("state_json") or "{}")
+        for pos in st.get("positions") or []:
+            opener = (aid, row, pos)
+            break
+        if opener:
+            break
+    if not opener:
+        return None
+    opener_aid, opener_row, opener_pos = opener
+    sym = opener_pos["symbol"]
+    opp_dir = "SHORT" if opener_pos.get("direction") == "LONG" else "LONG"
+    opener_name = trading_agents[opener_aid].get("name") or opener_aid
+
+    for row in rows:
+        aid = row["agent_id"]
+        if aid == opener_aid or aid not in trading_agents:
+            continue
+        st = _parse_state(row.get("state_json") or "{}")
+        if any(p.get("symbol") == sym for p in st.get("positions") or []):
+            continue
+        meta = trading_agents[aid]
+        preset_id = row.get("strategy_preset") or meta.get("strategyPreset") or "major"
+        eff = effective_preset(preset_id, meta)
+        capital = float(row.get("capital") or 0)
+        price = prices.get(sym)
+        if not price:
+            continue
+        st, capital = _maybe_open(
+            st, sym, price, opp_dir, capital, eff, meta, signal_reason="跟单对冲",
+        )
+        life_db.save_agent_trading(
+            user_id, aid,
+            strategy_preset=row.get("strategy_preset") or "major",
+            capital=capital,
+            initial_capital=float(row.get("initial_capital") or 0),
+            state_json=json.dumps(st, ensure_ascii=False),
+        )
+        hedger_name = meta.get("name") or aid
+        label = sym.replace("USDT", "")
+        return (
+            f"⚔️ 交易员对决 · {opener_name} {opener_pos.get('direction')} "
+            f"vs {hedger_name} {opp_dir} @ {label}"
+        )
+    return None
 
 
 async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
@@ -526,7 +674,8 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
 
     now = _now_ms()
     last_tick = int(portfolio.get("last_sim_tick") or 0)
-    should_tick = run_tick and (now - last_tick >= SIM_TICK_INTERVAL_MS)
+    bootstrap = life_db.should_bootstrap_trading(user_id)
+    should_tick = run_tick and (bootstrap or (now - last_tick >= SIM_TICK_INTERVAL_MS))
 
     all_symbols: set[str] = set()
     rows = life_db.list_agent_trading(user_id)
@@ -536,7 +685,12 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
         eff = effective_preset(row.get("strategy_preset") or "major", meta_ref)
         all_symbols.update(eff.get("symbols") or [])
 
-    prices = await fetch_prices(sorted(all_symbols)) if should_tick and all_symbols else {}
+    if bootstrap:
+        all_symbols.add("BTCUSDT")
+
+    prices: dict[str, float] = {}
+    if should_tick and all_symbols:
+        prices = await fetch_prices(sorted(all_symbols))
 
     kline_requests: set[tuple[str, str]] = set()
     if should_tick:
@@ -551,6 +705,8 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
             for sym in eff.get("symbols") or []:
                 kline_requests.add((sym, entry_iv))
                 kline_requests.add((sym, filter_iv))
+        if bootstrap:
+            kline_requests.add(("BTCUSDT", "15m"))
     klines = await fetch_kline_map(kline_requests) if kline_requests else {}
 
     agent_views = []
@@ -566,8 +722,13 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
         prev_wins += int(st0.get("wins") or 0)
 
     first_trading_win = False
+    first_trade_hook = False
     latest_win_trade: Optional[dict] = None
     trading_banter: Optional[str] = None
+
+    trading_ids = [r["agent_id"] for r in rows if r["agent_id"] in trading_agents]
+    hedge_opposite: Optional[str] = None
+    bootstrap_slot = 0
 
     for row in rows:
         aid = row["agent_id"]
@@ -578,8 +739,29 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
         eff = effective_preset(preset_id, meta)
         capital = float(row.get("capital") or 0)
         if should_tick and prices:
-            st = _parse_state(row.get("state_json") or "{}")
-            st, capital = run_sim_tick(st, capital, eff, meta, prices, klines)
+            st_before = _parse_state(row.get("state_json") or "{}")
+            prev_pos = len(st_before.get("positions") or [])
+            prev_hist = len(st_before.get("trades_history") or [])
+            do_boot = (
+                bootstrap
+                and bootstrap_slot < min(2, len(trading_ids))
+                and aid == trading_ids[bootstrap_slot]
+                and prev_pos == 0
+                and prev_hist == 0
+            )
+            boot_dir = hedge_opposite if do_boot and bootstrap_slot == 1 else None
+            st, capital = run_sim_tick(
+                st_before, capital, eff, meta, prices, klines,
+                bootstrap=do_boot,
+                bootstrap_direction=boot_dir,
+            )
+            _record_new_closed_trades(user_id, st_before, st)
+            if do_boot and (len(st.get("positions") or []) > prev_pos or len(st.get("trades_history") or []) > prev_hist):
+                first_trade_hook = True
+                if st.get("positions"):
+                    pos0 = st["positions"][0]
+                    hedge_opposite = "SHORT" if pos0.get("direction") == "LONG" else "LONG"
+                bootstrap_slot += 1
             life_db.save_agent_trading(
                 user_id, aid,
                 strategy_preset=row.get("strategy_preset") or "major",
@@ -596,8 +778,34 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
         total_trades += view["trades"]
         total_wins += view["wins"]
 
+    if should_tick and prices and len(trading_ids) >= 2 and not bootstrap:
+        hedge_msg = sync_sibling_hedge(user_id, life_db.list_agent_trading(user_id), trading_agents, prices)
+        if hedge_msg:
+            trading_banter = hedge_msg
+            rows = life_db.list_agent_trading(user_id)
+            agent_views = []
+            total_agent_capital = 0.0
+            total_agent_initial = 0.0
+            total_trades = 0
+            total_wins = 0
+            for row in rows:
+                aid = row["agent_id"]
+                if aid not in trading_agents:
+                    continue
+                view = agent_trading_view(row, trading_agents[aid])
+                agent_views.append(view)
+                total_agent_capital += view["capital"]
+                total_agent_initial += view["initial_capital"]
+                total_trades += view["trades"]
+                total_wins += view["wins"]
+
+    if first_trade_hook:
+        life_db.mark_trading_bootstrap_done(user_id)
+
     if should_tick and rows:
         life_db.update_portfolio_tick(user_id, now)
+
+    agent_duels = detect_agent_duels(agent_views)
 
     new_wins = total_wins
     if should_tick and new_wins > prev_wins:
@@ -615,7 +823,7 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
                     break
             if latest_win_trade:
                 break
-        if len(agent_views) >= 2 and latest_win_trade:
+        if len(agent_views) >= 2 and latest_win_trade and not trading_banter:
             a, b = agent_views[0], agent_views[1]
             sym = latest_win_trade.get("symbol", "BTC")
             pnl = float(latest_win_trade.get("pnl_amount") or 0)
@@ -623,6 +831,14 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
                 f"📈 {a['name']} 止盈 {sym} +${pnl:.0f} · "
                 f"{b['name']}：收到，我在盯 {sym} 下一波"
             )
+
+    if agent_duels and not trading_banter:
+        d0 = agent_duels[0]
+        sym = d0["symbol"].replace("USDT", "")
+        trading_banter = (
+            f"⚔️ {d0['agent_a_name']} {d0['agent_a_direction']} vs "
+            f"{d0['agent_b_name']} {d0['agent_b_direction']} · {sym} 对决进行中"
+        )
 
     cash = float(portfolio.get("cash") or 0)
     initial = float(portfolio.get("initial_balance") or life_db.DEFAULT_PORTFOLIO_USDT)
@@ -648,8 +864,10 @@ async def build_portfolio(user_id: str, *, run_tick: bool = True) -> dict:
         "sim_tick_interval_sec": SIM_TICK_INTERVAL_MS // 1000,
         "system_agents_note": "大厅内系统 Agent 为全局示范盘，资产仓库仅统计你的模拟账户",
         "first_trading_win": first_trading_win,
+        "first_trade_hook": first_trade_hook,
         "latest_win": latest_win_trade,
         "trading_banter": trading_banter,
+        "agent_duels": agent_duels,
     }
 
 
@@ -711,6 +929,30 @@ def reset_user_portfolio(user_id: str) -> None:
     save_user(user_id, user)
 
 
+def apply_soul_trading_bias(preset: dict, meta: dict) -> dict:
+    """SOUL 心理描述 → 轻量信号偏移（threshold / leverage）。"""
+    soul = (meta.get("soulMd") or meta.get("soul_md") or "").lower()
+    out = dict(preset)
+    th = float(out.get("threshold_pct", 0.3))
+    lev = int(out.get("leverage") or 5)
+    tags: list[str] = []
+    conservative = any(k in soul for k in ("保守", "稳健", "低风险", "纪律", "冷静", "观望", "稳一点"))
+    aggressive = any(k in soul for k in ("激进", "冒险", "高波动", "冲动", "追涨", "快打"))
+    if conservative and not aggressive:
+        th = min(2.0, round(th + 0.05, 3))
+        lev = max(1, lev - 1)
+        tags.append("保守+阈值")
+    elif aggressive and not conservative:
+        th = max(0.1, round(th - 0.05, 3))
+        lev = min(20, lev + 1)
+        tags.append("激进-阈值")
+    out["threshold_pct"] = th
+    out["leverage"] = lev
+    if tags:
+        out["soul_bias_tags"] = tags
+    return out
+
+
 def effective_preset(preset_id: str, meta: dict) -> dict:
     """合并预设与用户微调参数 — 模拟盘实际执行用。"""
     p = dict(preset_for(preset_id))
@@ -721,9 +963,13 @@ def effective_preset(preset_id: str, meta: dict) -> dict:
         p["leverage"] = max(1, min(20, int(meta["leverage"])))
     if meta.get("threshold_pct") is not None:
         p["threshold_pct"] = max(0.1, min(2.0, float(meta["threshold_pct"])))
+    elif meta.get("thresholdPct") is not None:
+        p["threshold_pct"] = max(0.1, min(2.0, float(meta["thresholdPct"])))
     if meta.get("max_positions") is not None:
         p["max_positions"] = max(1, min(5, int(meta["max_positions"])))
-    return p
+    if meta.get("risk"):
+        p["risk"] = meta["risk"]
+    return apply_soul_trading_bias(p, meta)
 
 
 def _record_strategy_snapshot(meta: dict, row: dict) -> None:
@@ -890,6 +1136,26 @@ class StrategyBody(BaseModel):
 
 class PreferenceParseBody(BaseModel):
     preference_text: str = Field(..., min_length=4, max_length=500)
+
+
+@router.get("/market/klines")
+async def market_klines(
+    symbol: str = "BTCUSDT",
+    interval: str = "15m",
+    limit: int = 80,
+    account_id: str = Depends(resolve_account_id),
+):
+    from life_game import _validate_user_id
+
+    _validate_user_id(account_id)
+    sym = symbol.upper().strip()
+    iv = interval.lower().strip()
+    if iv not in VALID_KLINE_INTERVALS:
+        iv = "15m"
+    lim = max(20, min(200, int(limit)))
+    async with aiohttp.ClientSession() as session:
+        candles = await fetch_klines_ohlc(session, sym, iv, lim)
+    return {"ok": True, "symbol": sym, "interval": iv, "candles": candles}
 
 
 @router.get("")

@@ -1172,6 +1172,21 @@ def _mutate_user_stats(uid: str, mutator) -> dict:
             return stats
 
 
+def _empty_weekly_stats() -> dict:
+    return {
+        "poker_games": 0,
+        "poker_wins": 0,
+        "points_net": 0,
+        "points_won": 0,
+        "best_hand_cat": 0,
+        "best_hand_name": "",
+        "trading_trades": 0,
+        "trading_wins": 0,
+        "trading_pnl": 0.0,
+        "best_trade_pnl": 0.0,
+    }
+
+
 def record_weekly_poker(
     uid: str,
     *,
@@ -1187,14 +1202,7 @@ def record_weekly_poker(
 
     def mut(stats: dict) -> None:
         weekly = stats.setdefault("weekly", {})
-        w = weekly.setdefault(wk, {
-            "poker_games": 0,
-            "poker_wins": 0,
-            "points_net": 0,
-            "points_won": 0,
-            "best_hand_cat": 0,
-            "best_hand_name": "",
-        })
+        w = weekly.setdefault(wk, _empty_weekly_stats())
         w["poker_games"] = int(w.get("poker_games", 0)) + 1
         if won_hand:
             w["poker_wins"] = int(w.get("poker_wins", 0)) + 1
@@ -1206,6 +1214,85 @@ def record_weekly_poker(
             w["best_hand_name"] = hand_name or w.get("best_hand_name", "")
 
     _mutate_user_stats(uid, mut)
+
+
+def record_weekly_trading(
+    uid: str,
+    *,
+    pnl_amount: float,
+    won: bool,
+) -> None:
+    if not uid or uid.startswith(("npc_", "ai_")):
+        return
+    wk = _week_key()
+
+    def mut(stats: dict) -> None:
+        weekly = stats.setdefault("weekly", {})
+        w = weekly.setdefault(wk, _empty_weekly_stats())
+        w["trading_trades"] = int(w.get("trading_trades", 0)) + 1
+        if won:
+            w["trading_wins"] = int(w.get("trading_wins", 0)) + 1
+        w["trading_pnl"] = round(float(w.get("trading_pnl", 0)) + float(pnl_amount), 2)
+        best = float(w.get("best_trade_pnl", 0))
+        if pnl_amount > best:
+            w["best_trade_pnl"] = round(float(pnl_amount), 2)
+
+    _mutate_user_stats(uid, mut)
+
+
+TRADING_BOOTSTRAP_WINDOW_SEC = 60
+
+
+def _account_age_sec(account_id: str) -> Optional[float]:
+    acc = get_account_by_id(account_id) or {}
+    raw = acc.get("created_at") or ""
+    if not raw:
+        return None
+    try:
+        created = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=CST)
+        return (datetime.now(CST) - created.astimezone(CST)).total_seconds()
+    except Exception:
+        return None
+
+
+def _has_any_sim_trades(user_id: str) -> bool:
+    for row in list_agent_trading(user_id):
+        try:
+            st = json.loads(row.get("state_json") or "{}")
+        except json.JSONDecodeError:
+            continue
+        if st.get("positions") or st.get("trades_history"):
+            return True
+    return False
+
+
+def should_bootstrap_trading(account_id: str) -> bool:
+    """注册后 60 秒内、尚无模拟成交 → 首 tick 加权开仓。"""
+    if not account_id or account_id.startswith(("npc_", "ai_")):
+        return False
+    user = load_user(account_id)
+    stats = user.get("stats") or {}
+    if stats.get("trading_bootstrap_done"):
+        return False
+    if _has_any_sim_trades(account_id):
+        return False
+    age = _account_age_sec(account_id)
+    if age is None or age > TRADING_BOOTSTRAP_WINDOW_SEC:
+        return False
+    return True
+
+
+def mark_trading_bootstrap_done(account_id: str) -> None:
+    if not account_id or account_id.startswith(("npc_", "ai_")):
+        return
+
+    def mut(stats: dict) -> None:
+        stats["trading_bootstrap_done"] = True
+        stats["trading_bootstrap_at"] = datetime.now(CST).isoformat()
+
+    _mutate_user_stats(account_id, mut)
 
 
 def get_weekly_report(account_id: str) -> dict:
@@ -1246,6 +1333,10 @@ def get_weekly_report(account_id: str) -> dict:
         "points_won": int(w.get("points_won", 0)),
         "best_hand_name": w.get("best_hand_name") or "—",
         "best_hand_cat": int(w.get("best_hand_cat", 0)),
+        "trading_trades": int(w.get("trading_trades", 0)),
+        "trading_wins": int(w.get("trading_wins", 0)),
+        "trading_pnl": round(float(w.get("trading_pnl", 0)), 2),
+        "best_trade_pnl": round(float(w.get("best_trade_pnl", 0)), 2),
         "season_name": season["name"] if season else "",
         "season_points": int(season_row["points_earned"]) if season_row else 0,
         "season_social": int(season_row["social_score"]) if season_row else 0,

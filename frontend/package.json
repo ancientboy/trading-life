@@ -16,6 +16,7 @@
     "@react-three/drei": "^9.117.3",
     "@react-three/fiber": "^8.17.10",
     "gsap": "^3.12.5",
+    "lightweight-charts": "^4.2.0",
     "lucide-react": "^1.18.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",

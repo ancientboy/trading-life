@@ -37,6 +37,10 @@ export type WeeklyReportData = {
   points_net: number;
   points_won: number;
   best_hand_name: string;
+  trading_trades?: number;
+  trading_wins?: number;
+  trading_pnl?: number;
+  best_trade_pnl?: number;
   season_name?: string;
   season_points?: number;
   season_pvp_wins?: number;
@@ -46,8 +50,12 @@ export type WeeklyReportData = {
 
 export function buildWeeklyReportShareText(data: WeeklyReportData): string {
   const rank = data.season_rank_hint ? ` · 赛季约第 ${data.season_rank_hint} 名` : '';
+  const tradingLine = (data.trading_trades ?? 0) > 0
+    ? `📈 模拟盘 ${data.trading_trades} 笔 · ${data.trading_wins ?? 0} 盈 · PnL ${(data.trading_pnl ?? 0) >= 0 ? '+' : ''}$${Math.round(data.trading_pnl ?? 0)}\n`
+    : '';
   return `📊 我的交易人生本周战报（${data.week_label}）\n`
     + `🃏 德州 ${data.poker_games} 局 ${data.poker_wins} 胜 · 净 ${data.points_net >= 0 ? '+' : ''}${data.points_net} 积分\n`
+    + tradingLine
     + `🏆 最佳牌型 ${data.best_hand_name}${rank}\n`
     + `当前积分 ${data.current_points ?? '—'}`;
 }
@@ -79,6 +87,9 @@ export async function renderWeeklyReportCard(data: WeeklyReportData, linkUrl?: s
 
   const lines = [
     `🃏 德州 ${data.poker_games} 局 · ${data.poker_wins} 胜 · 净 ${data.points_net >= 0 ? '+' : ''}${data.points_net}`,
+    (data.trading_trades ?? 0) > 0
+      ? `📈 模拟盘 ${data.trading_trades} 笔 · PnL ${(data.trading_pnl ?? 0) >= 0 ? '+' : ''}$${Math.round(data.trading_pnl ?? 0)}`
+      : '',
     `✨ 最佳牌型 ${data.best_hand_name}`,
     `🏆 赛季积分 ${data.season_points ?? 0} · PvP胜 ${data.season_pvp_wins ?? 0}`,
     data.season_rank_hint ? `📈 约第 ${data.season_rank_hint} 名` : '',

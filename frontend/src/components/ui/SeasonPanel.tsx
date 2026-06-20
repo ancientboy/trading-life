@@ -75,6 +75,9 @@ export function SeasonPanel() {
           <div style={{ fontWeight: 700, color: '#3a6bb5', marginBottom: 6 }}>📊 本周战报 · {weeklyReport.week_label}</div>
           <div style={{ lineHeight: 1.55, color: '#5a4a3a', marginBottom: 10 }}>
             🃏 {weeklyReport.poker_games} 局 · {weeklyReport.poker_wins} 胜 · 净 {weeklyReport.points_net >= 0 ? '+' : ''}{weeklyReport.points_net}<br />
+            {(weeklyReport.trading_trades ?? 0) > 0 && (
+              <>📈 模拟盘 {weeklyReport.trading_trades} 笔 · PnL {(weeklyReport.trading_pnl ?? 0) >= 0 ? '+' : ''}${Math.round(weeklyReport.trading_pnl ?? 0)}<br /></>
+            )}
             ✨ 最佳 {weeklyReport.best_hand_name}
             {weeklyReport.season_rank_hint ? ` · 约第 ${weeklyReport.season_rank_hint} 名` : ''}
           </div>
