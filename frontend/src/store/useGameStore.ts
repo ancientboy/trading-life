@@ -17,7 +17,7 @@ import {
 import {
   fetchLifeState, migrateLifeState, lifeIdleTick, lifeSessionStart,
   lifeActivityComplete, lifeDispatch, lifeClaimTask, lifeShopBuy, lifeSetZoneSkin,
-  lifeCreateAgent, lifeSaveAgentSoul, lifeSaveAgentAppearance, lifeAgentSpeak,
+  lifeCreateAgent, lifeQuickCreateAgent, lifeSaveAgentSoul, lifeSaveAgentAppearance, lifeAgentSpeak,
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
@@ -78,6 +78,8 @@ export type PokerHandResult = {
   tie?: boolean;
   winners_count?: number;
   highlight_broadcast?: { hand_name: string; won: number; pot: number } | null;
+  /** 首局扑克获胜 — 触发高价值分享卡 */
+  first_win?: boolean;
 };
 export type ZoneId = 'hall' | 'reception' | 'spa' | 'restaurant' | 'casino';
 
@@ -187,6 +189,8 @@ interface GameStore {
   sendAgentToFacility: (action: 'dine' | 'massage' | 'poker' | 'rest', opts?: { agentId?: string; nodeId?: string; cost?: number; skipCost?: boolean; tierId?: LeisureTierId }) => Promise<boolean>;
   sendAgentToDesk: (agentId?: string, seatNodeId?: string) => Promise<boolean>;
   createAgent: (draft: CustomAgentDraft) => Promise<boolean>;
+  /** 注册后一键养 Agent — 30 秒内地图走动 */
+  runQuickOnboarding: (displayName?: string) => Promise<boolean>;
   openModal: (id: Exclude<ModalId, null>) => void;
   openWorkshop: (mode?: 'list' | 'create') => void;
   closeModal: () => void;
@@ -729,6 +733,43 @@ export const useGameStore = create<GameStore>((set, get) => ({
     void get().tryPendingJoin();
     return true;
   },
+
+  runQuickOnboarding: async (displayName = '小企鹅') => {
+    const s = get();
+    const accountId = getStoredAccount()?.id;
+    const customMeta = loadCustomAgentMeta(accountId);
+    if (Object.keys(customMeta).length > 0) return false;
+
+    const apiRes = await lifeQuickCreateAgent(displayName, 'entertainment');
+    if (!apiRes.ok || !apiRes.agent) {
+      get().addMessage(apiRes.error || '自动创建 Agent 失败，可在工坊手动创建');
+      return false;
+    }
+
+    const meta = normalizeAgentMeta({ ...apiRes.agent, owner: 'user' });
+    const id = meta.id;
+    const slot = registerCustomAgentSlots(OfficePath, id, 'entertainment');
+    if (!slot) return false;
+    assignAgentSeatSlots(OfficePath);
+    saveCustomAgentMeta({ ...customMeta, [id]: meta }, accountId);
+    if (apiRes.state) get().applyLifeState(apiRes.state);
+    get().initAgents();
+    set({
+      selectedAgentId: id,
+      followAgentId: id,
+      activeZone: 'hall',
+      sidebarActive: 'hall',
+      rightTab: 'agent',
+      cameraLookAt: { x: ZONE_CAMERA.hall.x, z: ZONE_CAMERA.hall.z },
+      cameraZoom: WORLD_MAP.defaultZoom,
+    });
+    get().speakForAgent(id, 'greeting');
+    get().addMessage(`🐧 ${meta.name} 已诞生 · 正在大厅闲逛，点击跟随`);
+    void get().sendAgentToFacility('dine', { agentId: id, skipCost: true, tierId: 'a' });
+    await get().syncUserPortfolio();
+    return true;
+  },
+
   resetCamera: () => set({
     activeZone: 'hall',
     followAgentId: null,

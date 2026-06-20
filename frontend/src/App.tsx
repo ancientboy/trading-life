@@ -5,7 +5,7 @@ import { PublicJoinLanding, PublicLeaderboardView, PublicSpectateView } from './
 import { useGameStore } from './store/useGameStore';
 import { fetchOverview, fetchTicker } from './lib/api';
 import { lifeSessionStart } from './lib/lifeApi';
-import { isLoggedIn } from './lib/lifeAuth';
+import { isLoggedIn, getStoredAccount } from './lib/lifeAuth';
 import { syncMood } from './lib/lifeEngagementApi';
 import { clearUrlParams, parseDeepLink, persistDeepLink } from './lib/shareUtils';
 
@@ -31,7 +31,17 @@ export default function App() {
       return;
     }
     initAgents();
-    syncLifeState().then(() => {
+    syncLifeState().then(async () => {
+      const st = useGameStore.getState();
+      if (!sessionStorage.getItem('tl_onboarding_done')) {
+        const account = getStoredAccount();
+        const name = account?.display_name || account?.username || '小企鹅';
+        const created = await st.runQuickOnboarding(name);
+        sessionStorage.setItem('tl_onboarding_done', '1');
+        if (created) {
+          addMessage('欢迎来到交易人生 · 你的 Agent 已开始在大厅走动');
+        }
+      }
       useGameStore.getState().restorePokerRoom().catch(() => {});
       void processPendingDeepLink();
       clearUrlParams();

@@ -28,6 +28,7 @@ export function TopNavBar() {
   const overview = useGameStore(s => s.overview);
   const userPortfolio = useGameStore(s => s.userPortfolio);
   const points = useGameStore(s => s.points);
+  const openWorkshop = useGameStore(s => s.openWorkshop);
   const dailyAllowanceClaimed = useGameStore(s => s.dailyAllowanceClaimed);
   const dailyAllowanceAmount = useGameStore(s => s.dailyAllowanceAmount);
   const claimDailyAllowance = useGameStore(s => s.claimDailyAllowance);
@@ -52,6 +53,11 @@ export function TopNavBar() {
           <span className="brand-mark" aria-hidden>🐧</span>
           <span style={{ color: '#3d3530' }}>交易人生</span>
         </div>
+        {(overview.total_trades ?? 0) > 0 && (
+          <div style={{ fontSize: 10, color: '#6b8e4e', marginTop: 2 }}>
+            📈 模拟盘运行中 · {overview.total_trades} 笔成交
+          </div>
+        )}
       </div>
 
       <div className="top-nav-stats">
@@ -91,6 +97,10 @@ export function TopNavBar() {
         <div className="stat-card" style={{ minWidth: 80 }}>
           <div className="label">BTC</div>
           <div className="value mono" style={{ fontSize: 13 }}>{ticker.BTCUSDT ? '$' + Math.round(ticker.BTCUSDT).toLocaleString() : '--'}</div>
+          <button className="ui-btn" style={{ marginTop: 4, fontSize: 9, padding: '2px 4px', width: '100%' }}
+            onClick={() => openWorkshop('create')} title="创建交易 Agent">
+            + 模拟盘
+          </button>
         </div>
       </div>
 

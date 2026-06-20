@@ -1277,6 +1277,31 @@ def _migrate_poker_highlights() -> None:
         )
 
 
+def record_poker_game_meta(account_id: str, won_hand: bool) -> dict:
+    """记录总局数 / 首胜，返回 {first_game, first_win}"""
+    if not account_id or account_id.startswith(("npc_", "ai_")):
+        return {"first_game": False, "first_win": False}
+    out = {"first_game": False, "first_win": False}
+
+    def mut(stats: dict) -> None:
+        total = int(stats.get("poker_games_total", 0))
+        out["first_game"] = total == 0
+        stats["poker_games_total"] = total + 1
+        if won_hand and not stats.get("first_poker_win"):
+            stats["first_poker_win"] = True
+            stats["first_poker_win_at"] = datetime.now(CST).isoformat()
+            out["first_win"] = True
+
+    _mutate_user_stats(account_id, mut)
+    return out
+
+
+def is_first_poker_game(account_id: str) -> bool:
+    user = load_user(account_id)
+    stats = user.get("stats") or {}
+    return int(stats.get("poker_games_total", 0)) == 0
+
+
 def is_poker_highlight(hand_cat: int, won: int, buy_in: int) -> bool:
     if hand_cat >= HIGHLIGHT_MIN_HAND_CAT:
         return True

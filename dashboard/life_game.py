@@ -708,6 +708,84 @@ async def life_set_zone_skin(body: ZoneSkinBody, account_id: str = Depends(resol
     return {"ok": True, "zone_skins": _normalize_zone_skins(user), "state": _public_state(user, uid)}
 
 
+class QuickCreateBody(BaseModel):
+    agentType: str = "entertainment"
+    name: str = "小企鹅"
+
+
+QUICK_ENT_SOUL = """# {name} 的灵魂
+
+你是 {name}，生活在「交易人生」的世界里。
+
+## 性格
+- 活泼好奇，喜欢在各个区域闲逛
+- 享受餐厅、按摩、沙发和德州扑克
+- 用轻松幽默的方式陪伴用户
+
+## 行为准则
+- 不执行真实交易，专注休闲与互动
+- 遇到用户时主动打招呼、分享见闻
+"""
+
+QUICK_TRADING_SOUL = """# {name} 的策略灵魂
+
+你是 {name}，专注加密货币模拟交易。
+
+## 交易原则
+- 严格风控，单笔亏损不超过资金的 2%
+- 顺势而为，关注 BTC/ETH 主流币
+- 信号不清晰时保持观望
+
+## 性格
+- 冷静理性，24h 自动盯盘模拟
+"""
+
+
+@router.post("/agents/quick-create")
+async def life_quick_create_agent(body: QuickCreateBody, account_id: str = Depends(resolve_account_id)):
+    """一键养 Agent — 跳过 SOUL 字数门槛，注册后 30 秒内可用"""
+    uid = _validate_user_id(account_id)
+    user = load_user(uid)
+    custom = user.setdefault("custom_agents", {})
+    ent, trading = _count_agents(custom)
+    agent_type = body.agentType if body.agentType in ("entertainment", "trading") else "entertainment"
+    if agent_type == "entertainment" and ent >= MAX_ENTERTAINMENT_AGENTS:
+        return JSONResponse_error("娱乐 Agent 已达上限（1 个）")
+    if agent_type == "trading" and trading >= MAX_TRADING_CUSTOM_AGENTS:
+        return JSONResponse_error("交易 Agent 已达上限（3 个）")
+    display_name = (body.name or "").strip() or ("小企鹅" if agent_type == "entertainment" else "交易员")
+    soul_tpl = QUICK_ENT_SOUL if agent_type == "entertainment" else QUICK_TRADING_SOUL
+    soul = soul_tpl.format(name=display_name)
+    n = 1
+    while f"custom_{n}" in custom:
+        n += 1
+    aid = f"custom_{n}"
+    meta = {
+        "id": aid,
+        "agentType": agent_type,
+        "name": display_name,
+        "headwear": "scarf",
+        "hatStyle": "beanie",
+        "color": "#FFD700" if agent_type == "entertainment" else "#4A90D9",
+        "desc": "一键创建",
+        "soulMd": soul,
+        "strategy": "休闲陪伴" if agent_type == "entertainment" else "趋势跟踪",
+        "market": "—" if agent_type == "entertainment" else "BTC/ETH",
+        "interval": "—" if agent_type == "entertainment" else "15m",
+        "risk": "—" if agent_type == "entertainment" else "中",
+        "strategyPreset": "" if agent_type == "entertainment" else "major",
+    }
+    custom[aid] = meta
+    save_user(uid, user)
+    if agent_type == "trading":
+        from life_trading import init_agent_trading, apply_preset_to_meta
+        apply_preset_to_meta(meta, "major")
+        custom[aid] = meta
+        save_user(uid, user)
+        init_agent_trading(uid, aid, meta, "major")
+    return {"ok": True, "agent": meta, "state": _public_state(user, uid), "quick": True}
+
+
 @router.post("/agents")
 async def life_create_agent(body: CustomAgentBody, account_id: str = Depends(resolve_account_id)):
     uid = _validate_user_id(account_id)

@@ -61,6 +61,79 @@ async def list_poker_highlights(since_id: int = 0, limit: int = 15):
     return {"ok": True, "highlights": items, "latest_id": items[-1]["id"] if items else since_id}
 
 
+@growth_router.get("/public/poker/demo")
+async def public_poker_demo():
+    """未登录试玩 — 一键看 1 手 AI 对决（30 秒 hook）"""
+    from poker_hands import play_round, card_display, compare_hands
+
+    demo_names = ["AI·小冰", "AI·Jack", "AI·小火"]
+    round_data = play_round(3)
+    community = round_data["community_cards"]
+    buy_in = 30
+    pot = buy_in * len(demo_names)
+
+    hands_by_seat = {h["seat"]: h for h in round_data["players"]}
+    player_hands = [(demo_names[i], hands_by_seat[i]) for i in range(len(demo_names))]
+    player_hands.sort(key=lambda x: x[1]["hand_score"], reverse=True)
+
+    comp_ranks: list[int] = []
+    i = 0
+    while i < len(player_hands):
+        j = i + 1
+        while j < len(player_hands) and compare_hands(
+            player_hands[j][1]["hand_score"], player_hands[i][1]["hand_score"]
+        ) == 0:
+            j += 1
+        rank = i + 1
+        for _ in range(i, j):
+            comp_ranks.append(rank)
+        i = j
+
+    best_score = player_hands[0][1]["hand_score"]
+    winner_count = sum(
+        1 for _, h in player_hands if compare_hands(h["hand_score"], best_score) == 0
+    )
+    split_win = pot // winner_count if winner_count else 0
+    split_extra = pot - split_win * winner_count if winner_count else 0
+    extra_left = split_extra
+
+    results = []
+    for rank_idx, (name, hand) in enumerate(player_hands):
+        rank = comp_ranks[rank_idx]
+        is_winner = compare_hands(hand["hand_score"], best_score) == 0
+        win = split_win if is_winner else 0
+        if is_winner and extra_left > 0:
+            win += 1
+            extra_left -= 1
+        results.append({
+            "name": name,
+            "is_npc": True,
+            "score": hand["score"],
+            "rank": rank,
+            "won": win,
+            "hole_cards": hand["hole_cards"],
+            "best_cards": hand["best_cards"],
+            "hand_name": hand["hand_name"],
+            "hand_combo": hand["hand_combo"],
+            "hole_cards_display": [card_display(c) for c in hand["hole_cards"]],
+            "best_cards_display": [card_display(c) for c in hand["best_cards"]],
+        })
+
+    return {
+        "ok": True,
+        "demo": True,
+        "mode": "demo_ai",
+        "community_cards": community,
+        "community_cards_display": [card_display(c) for c in community],
+        "results": results,
+        "pot": pot,
+        "buy_in": buy_in,
+        "tie": winner_count > 1,
+        "winners_count": winner_count,
+        "message": "注册后可亲自上桌 · 首局必得高价值分享卡",
+    }
+
+
 @growth_router.get("/public/poker/rooms/{room_id}/preview")
 async def public_room_preview(room_id: str):
     """等待中房间预览 — 供 deep link 落地页展示"""

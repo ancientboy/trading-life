@@ -285,6 +285,7 @@ export async function pokerSolo(agentId: string, buyIn = 30) {
     error?: string; cost?: number;
     tie?: boolean; winners_count?: number;
     highlight_broadcast?: { hand_name: string; won: number; pot: number } | null;
+    first_win?: boolean;
   }>(`${API}/pvp/poker/solo`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId, buy_in: buyIn }),
   }, 45000);
@@ -590,6 +591,34 @@ export async function fetchGrowthNotifications() {
   const r = await fetch(`${API}/growth/notifications`, { headers: headers() });
   return parse<{ ok: boolean; messages?: string[] }>(r);
 }
+
+export async function fetchPublicPokerDemo() {
+  const r = await fetch(`${API}/public/poker/demo`);
+  return parse<PokerDemoResult>(r);
+}
+
+export type PokerDemoPlayer = {
+  name: string;
+  rank: number;
+  won: number;
+  is_npc?: boolean;
+  hole_cards?: string[];
+  best_cards?: string[];
+  hand_name?: string;
+  hand_combo?: string;
+};
+
+export type PokerDemoResult = {
+  ok: boolean;
+  demo?: boolean;
+  community_cards?: string[];
+  results?: PokerDemoPlayer[];
+  pot?: number;
+  buy_in?: number;
+  tie?: boolean;
+  message?: string;
+  error?: string;
+};
 
 export async function fetchPublicRoomPreview(roomCode: string) {
   const code = roomCode.replace(/\D/g, '').slice(0, 5);

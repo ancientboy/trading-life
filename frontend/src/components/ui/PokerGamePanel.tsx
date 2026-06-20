@@ -122,6 +122,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
     winnersCount?: number,
     buyIn = tier.buyIn,
     highlightBroadcast?: { hand_name: string; won: number; pot: number } | null,
+    firstWin?: boolean,
   ) => {
     if (balance != null) useGameStore.setState({ points: balance });
     showPokerResult({
@@ -135,7 +136,11 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
       tie,
       winners_count: winnersCount,
       highlight_broadcast: highlightBroadcast ?? null,
+      first_win: firstWin,
     });
+    if (firstWin) {
+      addMessage('🎁 首胜大礼包 · 高价值分享卡已解锁，快去保存海报！');
+    }
     if (highlightBroadcast) {
       addMessage(`📣 全服广播 · ${highlightBroadcast.hand_name} · +${highlightBroadcast.won}`);
     }
@@ -187,7 +192,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         return;
       }
       clearPokerRoom();
-      revealResults(r.results, r.won, r.pot, r.net, r.balance, r.community_cards, r.tie, r.winners_count, tier.buyIn, r.highlight_broadcast);
+      revealResults(r.results, r.won, r.pot, r.net, r.balance, r.community_cards, r.tie, r.winners_count, tier.buyIn, r.highlight_broadcast, r.first_win);
     } catch {
       addMessage('发牌失败，请重试');
     } finally {
@@ -235,6 +240,7 @@ export function PokerGamePanel({ showSitButton = true, compact = false }: PokerG
         (r as { winners_count?: number }).winners_count,
         roomBuyIn,
         r.highlight_broadcast,
+        (r as { first_win?: boolean }).first_win,
       );
     } finally {
       setPhase('idle');

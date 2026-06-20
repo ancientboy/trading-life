@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { useGameStore, type PokerHandResult, type PokerPlayerResult } from '../../store/useGameStore';
 import { PokerDealingCards } from './PokerDealingCards';
 import { PokerCardRow } from './PokerCard';
-import { appBaseUrl, buildPokerShareText, downloadPokerShareCard, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
+import { appBaseUrl, buildPokerShareText, downloadPokerShareCard, downloadPremiumPokerShareCard, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
 
 function formatHandLabel(r: PokerPlayerResult): string {
   if (r.hand_name) return r.hand_name;
@@ -106,6 +106,16 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
         <div style={{ fontSize: 11, color: '#8a7e72', marginTop: 4 }}>
           买入 {data.buyIn} · 奖池 {data.pot ?? '—'}（{isTie ? '平局平分' : '胜者通吃'}）
         </div>
+        {data.first_win && (
+          <div style={{
+            marginTop: 10, padding: '10px 12px', borderRadius: 8,
+            background: 'linear-gradient(135deg,#fff8e0,#ffe08233)',
+            border: '2px solid #ffd700',
+            fontSize: 12, fontWeight: 700, color: '#8a6e00',
+          }}>
+            🎁 首胜大礼包 · 高价值分享卡已解锁！
+          </div>
+        )}
         {data.highlight_broadcast && (
           <div style={{
             marginTop: 10, padding: '8px 10px', borderRadius: 8,
@@ -210,7 +220,25 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
         </>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+        {data.first_win && (
+          <button className="ui-btn" style={{ flex: '1 1 100%', padding: '10px 0', fontWeight: 700,
+            background: 'linear-gradient(135deg,#fff8e0,#ffe082)', border: '1px solid #ffd700' }}
+            disabled={!dealt || sharing}
+            onClick={async () => {
+              setSharing(true);
+              try {
+                await downloadPremiumPokerShareCard(data, appBaseUrl());
+                addMessage('🎁 首胜高价值分享卡已保存');
+              } catch {
+                addMessage('生成分享卡失败');
+              } finally {
+                setSharing(false);
+              }
+            }}>
+            🎁 首胜海报
+          </button>
+        )}
         <button className="ui-btn" style={{ flex: 1, padding: '10px 0' }}
           disabled={!dealt || sharing}
           onClick={async () => {

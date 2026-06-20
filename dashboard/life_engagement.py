@@ -840,15 +840,40 @@ async def _start_advanced_tournament(
     return state_out
 
 
+def _deal_poker_round(plist: list, account_id: str) -> dict:
+    """发牌；首局真人必进胜者组（先爽再深玩）。"""
+    from poker_hands import play_round, compare_hands
+
+    n = len(plist)
+    human_idx = next(
+        (
+            i for i, p in enumerate(plist)
+            if p["user_id"] == account_id and not str(p["user_id"]).startswith(("npc_", "ai_"))
+        ),
+        None,
+    )
+    rig_first = human_idx is not None and life_db.is_first_poker_game(account_id)
+    round_data = play_round(n)
+    if rig_first:
+        for _ in range(48):
+            round_data = play_round(n)
+            entries = round_data["players"]
+            best_score = max(e["hand_score"] for e in entries)
+            human = entries[human_idx]
+            if compare_hands(human["hand_score"], best_score) >= 0:
+                break
+    return round_data
+
+
 def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str) -> dict:
     from life_game import load_user, save_user, _earn
-    from poker_hands import play_round, card_display, compare_hands
+    from poker_hands import card_display, compare_hands
 
     plist = _sort_poker_players(players)
     if not plist:
         return {"ok": False, "error": "无玩家，无法开牌"}
 
-    round_data = play_round(len(plist))
+    round_data = _deal_poker_round(plist, account_id)
     community = round_data["community_cards"]
     pot = room["pot"]
     buy_in = room["buy_in"]
@@ -994,6 +1019,17 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
     human_win = next((r["won"] for r in results if r["user_id"] == account_id), 0)
     net = human_win - caller_cost if any(p["user_id"] == account_id for p in plist) else 0
 
+    first_win = False
+    for r in results:
+        if r.get("is_npc"):
+            continue
+        meta = life_db.record_poker_game_meta(
+            r["user_id"],
+            won_hand=bool(r.get("won", 0) > 0 or r.get("rank") == 1),
+        )
+        if r["user_id"] == account_id and meta.get("first_win"):
+            first_win = True
+
     return {
         "ok": True,
         "results": results,
@@ -1005,6 +1041,7 @@ def _settle_poker_room(room_id: str, room: dict, players: list, account_id: str)
         "tie": winner_count > 1,
         "winners_count": winner_count,
         "highlight_broadcast": highlight_broadcast,
+        "first_win": first_win,
     }
 
 

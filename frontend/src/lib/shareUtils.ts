@@ -380,6 +380,92 @@ export async function downloadPokerShareCard(data: PokerHandResult, linkUrl?: st
   URL.revokeObjectURL(url);
 }
 
+/** 首胜大礼包 — 高价值金色分享卡 */
+export async function renderPremiumPokerShareCard(data: PokerHandResult, linkUrl?: string): Promise<Blob> {
+  const me = data.results.find(r => !r.is_npc);
+  const w = 640;
+  const h = 400;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#3d2a0a');
+  grad.addColorStop(0.45, '#6b4f1a');
+  grad.addColorStop(1, '#1a1208');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = 'rgba(255,215,0,0.55)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(12, 12, w - 24, h - 24);
+
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 14px system-ui, sans-serif';
+  ctx.fillText('🎁 首胜大礼包', 28, 48);
+
+  ctx.font = 'bold 26px system-ui, sans-serif';
+  ctx.fillText('交易人生 · 德州首胜', 28, 88);
+
+  ctx.fillStyle = '#fff8e1';
+  ctx.font = 'bold 32px system-ui, sans-serif';
+  const headline = me ? `${me.name} 首局获胜 +${data.won}` : `首局获胜 +${data.won}`;
+  ctx.fillText(headline.slice(0, 22), 28, 136);
+
+  if (me?.hand_name || me?.hand_combo) {
+    ctx.fillStyle = '#ffe082';
+    ctx.font = '18px system-ui, sans-serif';
+    ctx.fillText(`${me.hand_name || me.hand_combo}`, 28, 172);
+  }
+
+  const community = data.community_cards ?? [];
+  if (community.length) {
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = '15px system-ui, sans-serif';
+    ctx.fillText(`公共牌 ${community.map(cardLabel).join(' ')}`, 28, 208);
+  }
+
+  ctx.fillStyle = 'rgba(255,215,0,0.85)';
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.fillText('注册即玩 · 首局必得高价值分享卡', 28, h - 52);
+
+  const footerUrl = linkUrl || appBaseUrl();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillText(footerUrl.length > 46 ? `${footerUrl.slice(0, 44)}…` : footerUrl, 28, h - 28);
+
+  try {
+    const QRCode = (await import('qrcode')).default;
+    const qrDataUrl = await QRCode.toDataURL(footerUrl, {
+      width: 96, margin: 1, color: { dark: '#3d2a0a', light: '#ffffff' },
+    });
+    const qrImg = new Image();
+    await new Promise<void>((resolve, reject) => {
+      qrImg.onload = () => resolve();
+      qrImg.onerror = () => reject(new Error('QR load failed'));
+      qrImg.src = qrDataUrl;
+    });
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(w - 118, h - 118, 104, 104);
+    ctx.drawImage(qrImg, w - 112, h - 112, 92, 92);
+  } catch { /* optional */ }
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('生成图片失败'))), 'image/png');
+  });
+}
+
+export async function downloadPremiumPokerShareCard(data: PokerHandResult, linkUrl?: string): Promise<void> {
+  const blob = await renderPremiumPokerShareCard(data, linkUrl);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `trading-life-first-win-${Date.now()}.png`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function shareResultMessage(result: 'shared' | 'copied' | 'failed', wechat = isWeChatBrowser()): string {
   if (result === 'shared') return '已分享';
   if (result === 'copied') {

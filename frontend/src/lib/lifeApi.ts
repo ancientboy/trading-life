@@ -185,6 +185,17 @@ export async function lifeSetZoneSkin(zone: string, skinId: string) {
   return parse<{ ok: boolean; zone_skins?: Record<string, string>; state?: LifeState; error?: string }>(r);
 }
 
+export async function lifeQuickCreateAgent(
+  name = '小企鹅',
+  agentType: 'entertainment' | 'trading' = 'entertainment',
+) {
+  const r = await fetch(`${API}/agents/quick-create`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ name, agentType }),
+  });
+  return parse<{ ok: boolean; agent?: AgentMeta; state?: LifeState; error?: string; quick?: boolean }>(r);
+}
+
 export async function lifeCreateAgent(draft: CustomAgentDraft) {
   const r = await fetch(`${API}/agents`, {
     method: 'POST', headers: headers(),
