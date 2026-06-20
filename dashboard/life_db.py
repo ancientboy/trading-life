@@ -1566,7 +1566,7 @@ def _migrate_trading_events_v2(c) -> None:
     if "signal_reason" not in entry_cols2:
         c.execute("ALTER TABLE arena_entries ADD COLUMN signal_reason TEXT NOT NULL DEFAULT ''")
 
-    c.execute("""
+    c.executescript("""
         CREATE TABLE IF NOT EXISTS arena_trade_legs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             round_id TEXT NOT NULL,
