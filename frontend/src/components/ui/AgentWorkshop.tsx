@@ -43,6 +43,7 @@ export function AgentWorkshop() {
   const canOperateAgent = useGameStore(s => s.canOperateAgent);
   const selectAgent = useGameStore(s => s.selectAgent);
   const createAgent = useGameStore(s => s.createAgent);
+  const syncLifeState = useGameStore(s => s.syncLifeState);
   const setProfile = useGameStore(s => s.setProfile);
   const schema = useGameStore(s => s.profileSchema);
   const config = useGameStore(s => s.profileConfig);
@@ -76,6 +77,7 @@ export function AgentWorkshop() {
   const shopUnlocks = useGameStore(s => s.shopUnlocks);
   const shopCatalog = useGameStore(s => s.shopCatalog);
   const customMeta = loadCustomAgentMeta(getStoredAccount()?.id);
+  const customMetaCount = Object.keys(customMeta).length;
   const limits = countCustomByType(customMeta);
 
   const current = editId ? agents[editId] : null;
@@ -89,6 +91,12 @@ export function AgentWorkshop() {
     if (workshopMode === 'create') setMode('create');
     else if (workshopMode === 'list') setMode('list');
   }, [workshopMode]);
+
+  useEffect(() => {
+    if (mode !== 'list' || myAgents.length > 0) return;
+    if (customMetaCount === 0) return;
+    void syncLifeState();
+  }, [mode, myAgents.length, customMetaCount, syncLifeState]);
 
   useEffect(() => {
     const fallback = (selectedAgentId && canOperateAgent(selectedAgentId) ? selectedAgentId : myAgents[0]?.agentId) ?? '';
@@ -353,7 +361,14 @@ export function AgentWorkshop() {
           创建 Agent
         </button>
         <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>我的 Agent ({myAgents.length})</div>
-        {myAgents.length === 0 && (
+        {myAgents.length === 0 && Object.keys(customMeta).length > 0 && (
+          <div style={{ fontSize: 11, color: '#c65a00', marginBottom: 8, lineHeight: 1.5 }}>
+            检测到 {Object.keys(customMeta).length} 个 Agent 记录，正在同步…
+            <button type="button" className="ui-btn" style={{ display: 'block', width: '100%', marginTop: 6, fontSize: 10 }}
+              onClick={() => void syncLifeState()}>立即同步</button>
+          </div>
+        )}
+        {myAgents.length === 0 && Object.keys(customMeta).length === 0 && (
           <p style={{ fontSize: 11, color: '#9a8b7a', lineHeight: 1.5 }}>还没有自己的 Agent，点击上方创建</p>
         )}
         {myAgents.map(a => (

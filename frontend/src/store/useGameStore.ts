@@ -379,7 +379,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   operableAgentIds: [],
   isAdmin: false,
 
-  canOperateAgent: (id) => get().operableAgentIds.includes(id),
+  canOperateAgent: (id) => {
+    if (get().operableAgentIds.includes(id)) return true;
+    if (!id.startsWith('custom_')) return false;
+    const local = loadCustomAgentMeta(getStoredAccount()?.id);
+    return !!local[id];
+  },
 
   setCameraMode: (m) => set({ cameraMode: m }),
   setQuality: (q) => set({ quality: q }),
@@ -993,26 +998,42 @@ export const useGameStore = create<GameStore>((set, get) => ({
       let state = await fetchLifeState();
       const localMeta = loadCustomAgentMeta(accountId);
       const localPoints = loadPoints();
-      if (Object.keys(localMeta).length && !Object.keys(state.custom_agents || {}).length) {
-        const migrated = await migrateLifeState({
-          points: localPoints,
-          last_idle_tick: loadLastIdleTick(),
-          custom_agents: localMeta,
-        });
-        state = migrated;
+      const serverEmpty = !Object.keys(state.custom_agents || {}).length;
+      if (Object.keys(localMeta).length && serverEmpty) {
+        try {
+          const migrated = await migrateLifeState({
+            points: localPoints,
+            last_idle_tick: loadLastIdleTick(),
+            custom_agents: localMeta,
+          });
+          state = migrated;
+        } catch {
+          /* 迁移失败时仍用本地 Agent 列表兜底 operable */
+        }
       }
       get().applyLifeState(state);
+      const mergedMeta = { ...localMeta };
       if (state.custom_agents && Object.keys(state.custom_agents).length) {
-        const owned = Object.fromEntries(
-          Object.entries(state.custom_agents).map(([k, v]) => [k, normalizeAgentMeta({ ...v, owner: 'user' })]),
-        );
-        saveCustomAgentMeta(owned, accountId);
+        Object.entries(state.custom_agents).forEach(([k, v]) => {
+          mergedMeta[k] = normalizeAgentMeta({ ...v, owner: 'user' });
+        });
+        saveCustomAgentMeta(mergedMeta, accountId);
+      } else if (Object.keys(localMeta).length) {
+        saveCustomAgentMeta(localMeta, accountId);
+        const operable = Object.keys(localMeta);
+        if (!get().operableAgentIds.length) {
+          set({ operableAgentIds: operable });
+        }
       }
       get().initAgents();
       await get().syncSeats();
       await get().syncUserPortfolio();
     } catch {
-      /* 离线时沿用本地缓存 */
+      const localMeta = loadCustomAgentMeta(accountId);
+      if (Object.keys(localMeta).length && !get().operableAgentIds.length) {
+        set({ operableAgentIds: Object.keys(localMeta) });
+        get().initAgents();
+      }
     }
   },
 
@@ -1243,7 +1264,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   applyLifeState: (state) => {
     const perms = state.permissions;
-    const operable = perms?.operable_agent_ids ?? [];
+    const serverCustom = Object.keys(state.custom_agents || {});
+    const operable = [...new Set([...(perms?.operable_agent_ids ?? []), ...serverCustom])];
+    const accountId = getStoredAccount()?.id;
+    const localMeta = loadCustomAgentMeta(accountId);
+    if (!operable.length && Object.keys(localMeta).length) {
+      operable.push(...Object.keys(localMeta));
+    }
     const shopUnlocks = state.shop_unlocks ?? get().shopUnlocks;
     const rawSkins = state.zone_skins ?? (state.stats?.zone_skins as Record<string, string> | undefined);
     const normalized = normalizeZoneSkins(rawSkins);

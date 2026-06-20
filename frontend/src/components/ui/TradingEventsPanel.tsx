@@ -14,7 +14,7 @@ const RANK_LABELS: Record<number, string> = { 1: '🥇 冠军', 2: '🥈 亚军'
 
 export function TradingEventsPanel() {
   const agents = useGameStore(s => s.agents);
-  const operableAgentIds = useGameStore(s => s.operableAgentIds);
+  const canOperateAgent = useGameStore(s => s.canOperateAgent);
   const selectedAgentId = useGameStore(s => s.selectedAgentId);
   const selectedArenaEntryId = useGameStore(s => s.selectedArenaEntryId);
   const setSelectedArenaEntryId = useGameStore(s => s.setSelectedArenaEntryId);
@@ -44,8 +44,8 @@ export function TradingEventsPanel() {
   const prevArenaLegsRef = useRef<Record<string, number>>({});
 
   const tradingAgents = useMemo(
-    () => operableAgentIds.filter(id => agents[id]?.data?.agentType !== 'entertainment'),
-    [operableAgentIds, agents],
+    () => Object.keys(agents).filter(id => canOperateAgent(id) && agents[id]?.data?.agentType !== 'entertainment'),
+    [agents, canOperateAgent],
   );
   const joinAgentId = selectedAgentId && tradingAgents.includes(selectedAgentId)
     ? selectedAgentId
