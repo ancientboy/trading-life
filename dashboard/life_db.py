@@ -255,6 +255,7 @@ def init_db(data_dir: Path) -> None:
     _migrate_referrals()
     _migrate_life_notifications()
     _migrate_poker_highlights()
+    _migrate_trading_events()
     _migrate_json_files(data_dir)
     _seed_engagement_data()
 
@@ -1275,6 +1276,74 @@ def _migrate_poker_highlights() -> None:
             "CREATE INDEX IF NOT EXISTS idx_poker_highlights_created "
             "ON poker_highlights(created_at DESC)"
         )
+
+
+def _migrate_trading_events() -> None:
+    with _lock:
+        with _conn() as c:
+            c.executescript("""
+                CREATE TABLE IF NOT EXISTS guess_rounds (
+                    id TEXT PRIMARY KEY,
+                    symbol TEXT NOT NULL DEFAULT 'BTCUSDT',
+                    start_price REAL NOT NULL DEFAULT 0,
+                    end_price REAL NOT NULL DEFAULT 0,
+                    starts_at INTEGER NOT NULL,
+                    ends_at INTEGER NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'open',
+                    pool_up INTEGER NOT NULL DEFAULT 0,
+                    pool_down INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE TABLE IF NOT EXISTS guess_bets (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    round_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    direction TEXT NOT NULL,
+                    stake INTEGER NOT NULL,
+                    payout INTEGER NOT NULL DEFAULT 0,
+                    created_at INTEGER NOT NULL,
+                    UNIQUE(round_id, user_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_guess_bets_round ON guess_bets(round_id);
+                CREATE TABLE IF NOT EXISTS arena_rounds (
+                    id TEXT PRIMARY KEY,
+                    symbol TEXT NOT NULL DEFAULT 'BTCUSDT',
+                    starts_at INTEGER NOT NULL,
+                    join_ends_at INTEGER NOT NULL,
+                    ends_at INTEGER NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'join',
+                    entry_fee INTEGER NOT NULL DEFAULT 30,
+                    prize_pool INTEGER NOT NULL DEFAULT 0,
+                    spectate_pool INTEGER NOT NULL DEFAULT 0,
+                    start_price REAL NOT NULL DEFAULT 0,
+                    end_price REAL NOT NULL DEFAULT 0
+                );
+                CREATE TABLE IF NOT EXISTS arena_entries (
+                    round_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    agent_id TEXT NOT NULL,
+                    agent_name TEXT NOT NULL DEFAULT '',
+                    strategy_preset TEXT NOT NULL DEFAULT 'major',
+                    is_npc INTEGER NOT NULL DEFAULT 0,
+                    entry_fee INTEGER NOT NULL DEFAULT 0,
+                    direction TEXT NOT NULL DEFAULT 'LONG',
+                    leverage REAL NOT NULL DEFAULT 5,
+                    entry_price REAL NOT NULL DEFAULT 0,
+                    return_pct REAL NOT NULL DEFAULT 0,
+                    rank INTEGER NOT NULL DEFAULT 0,
+                    prize INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (round_id, user_id)
+                );
+                CREATE TABLE IF NOT EXISTS arena_spectator_bets (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    round_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    pick_user_id TEXT NOT NULL,
+                    stake INTEGER NOT NULL,
+                    payout INTEGER NOT NULL DEFAULT 0,
+                    created_at INTEGER NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_arena_spectator_round ON arena_spectator_bets(round_id);
+            """)
 
 
 def record_poker_game_meta(account_id: str, won_hand: bool) -> dict:
