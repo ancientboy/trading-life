@@ -343,6 +343,18 @@ export async function tradingPk(defenderId = '', stake = 50) {
 
 export type GuessBetInfo = {
   direction: string; stake: number; payout?: number; won?: boolean; first_win?: boolean;
+  pending_leverage?: { profit: number; source_round_id?: string; expires_at?: number };
+};
+
+export type PkResultInfo = {
+  won: boolean;
+  my_direction: 'up' | 'down';
+  winner_side: string;
+  opponent_name: string;
+  stake: number;
+  won_amount: number;
+  streak?: number;
+  round_id?: string;
 };
 
 export type GuessRoundState = {
@@ -430,7 +442,9 @@ export async function fetchGuessRound() {
   const r = await fetch(`${API}/pvp/trading/guess`, { headers: headers() });
   return parse<{
     ok: boolean; current?: GuessRoundState;
-    last_settled?: Record<string, unknown>; last_my_bet?: GuessBetInfo & { won?: boolean; first_win?: boolean };
+    last_settled?: Record<string, unknown>;
+    last_my_bet?: GuessBetInfo;
+    last_pk_result?: PkResultInfo | null;
     error?: string;
   }>(r);
 }
@@ -474,6 +488,76 @@ export async function fetchPublicArenaLive() {
 export async function fetchArenaLeaderboard(limit = 10) {
   const r = await fetch(`${API}/pvp/trading/arena/leaderboard?limit=${limit}`, { headers: headers() });
   return parse<{ ok: boolean; highlights?: Array<Record<string, unknown>>; error?: string }>(r);
+}
+
+export type TradingModesState = {
+  pending_leverage?: { profit: number; source_round_id?: string; expires_at?: number } | null;
+  leverage_uses_left?: number;
+  leverage_10x_left?: number;
+  faction?: string | null;
+  faction_status?: {
+    day_key: string;
+    bull: { net_pnl: number; contrib: number; members: number; lead_pct: number };
+    bear: { net_pnl: number; contrib: number; members: number; lead_pct: number };
+    leading: string;
+    settle_hour: number;
+  };
+  comeback?: { active?: boolean; seed?: number; balance?: number; rounds_left?: number } | null;
+  personality?: {
+    title: string; primary: string; secondary: string; tier: string; score: number;
+    dimensions: Record<string, number>; chat_prefix?: string;
+  };
+  pk_streak?: number;
+  pk_best_streak?: number;
+  my_pk_room?: Record<string, unknown> | null;
+};
+
+export async function fetchTradingModes() {
+  const r = await fetch(`${API}/pvp/trading/modes`, { headers: headers() });
+  return parse<{ ok: boolean; error?: string } & TradingModesState>(r);
+}
+
+export async function placeLeverageBet(direction: 'up' | 'down', leverage: number, sourceRoundId = '') {
+  const r = await fetch(`${API}/pvp/trading/guess/leverage`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ direction, leverage, source_round_id: sourceRoundId }),
+  });
+  return parse<{ ok: boolean; message?: string; modes?: TradingModesState; error?: string }>(r);
+}
+
+export async function placePkBet(direction: 'up' | 'down', stake: number, vsAi = true) {
+  const r = await fetch(`${API}/pvp/trading/pk/bet`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake, vs_ai: vsAi }),
+  });
+  return parse<{ ok: boolean; message?: string; room_id?: string; modes?: TradingModesState; balance?: number; error?: string }>(r);
+}
+
+export async function joinFaction(faction: 'bull' | 'bear') {
+  const r = await fetch(`${API}/pvp/trading/faction/join`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ faction }),
+  });
+  return parse<{ ok: boolean; faction?: string; modes?: TradingModesState; error?: string }>(r);
+}
+
+export async function fetchFactionStatus() {
+  const r = await fetch(`${API}/pvp/trading/faction/status`, { headers: headers() });
+  return parse<{ ok: boolean; status?: TradingModesState['faction_status']; my_faction?: string; error?: string }>(r);
+}
+
+export async function fetchComebackStatus() {
+  const r = await fetch(`${API}/pvp/trading/comeback/status`, { headers: headers() });
+  return parse<{ ok: boolean; triggered?: boolean; modes?: TradingModesState; error?: string }>(r);
+}
+
+export async function placeComebackBet(direction: 'up' | 'down') {
+  const r = await fetch(`${API}/pvp/trading/comeback/bet`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ direction }),
+  });
+  return parse<{ ok: boolean; message?: string; modes?: TradingModesState; error?: string }>(r);
+}
+
+export async function fetchPkStreakBoard() {
+  const r = await fetch(`${API}/pvp/trading/pk/streak-board`, { headers: headers() });
+  return parse<{ ok: boolean; entries?: Array<{ user_id: string; display_name: string; wins: number; rank: number }>; error?: string }>(r);
 }
 
 export interface PokerRoomPlayer {

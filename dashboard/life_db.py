@@ -21,7 +21,10 @@ DAILY_TASK_DEFS = [
     {"id": "dine_2", "label": "用餐 2 次", "target": 2, "reward": 30, "kind": "activity", "activity": "dine", "icon": "🍽"},
     {"id": "dispatch_5", "label": "派遣 5 次", "target": 5, "reward": 35, "kind": "dispatch", "icon": "🚀"},
     {"id": "rest_2", "label": "休息 2 次", "target": 2, "reward": 25, "kind": "activity", "activity": "rest", "icon": "🛋"},
-    {"id": "poker_1", "label": "德州 1 局", "target": 1, "reward": 30, "kind": "activity", "activity": "poker", "icon": "🃏"},
+    {"id": "guess_1", "label": "猜涨跌 1 局", "target": 1, "reward": 20, "kind": "guess", "icon": "📊"},
+    {"id": "leverage_1", "label": "杠杆局 1 次", "target": 1, "reward": 30, "kind": "leverage", "icon": "🎰"},
+    {"id": "pk_1", "label": "PK 1 场", "target": 1, "reward": 35, "kind": "pk", "icon": "⚔️"},
+    {"id": "faction_100", "label": "阵营贡献 100", "target": 100, "reward": 40, "kind": "faction_contrib", "icon": "🛡"},
 ]
 
 DEFAULT_FREE_UNLOCKS = ["color_default", "hat_beanie", "hat_cap"]
@@ -537,6 +540,30 @@ def update_task(uid: str, task_id: str, progress: int, claimed: Optional[bool] =
                 c.execute(
                     "UPDATE daily_tasks SET progress=?, claimed=? WHERE user_id=? AND task_id=?",
                     (progress, 1 if claimed else 0, uid, task_id),
+                )
+
+
+def bump_daily_task(uid: str, kind: str, amount: int = 1) -> None:
+    """按 kind 推进每日任务进度（guess / leverage / pk / faction_contrib 等）。"""
+    if not uid or uid.startswith(("npc_", "ai_")):
+        return
+    with _lock:
+        with _conn() as c:
+            _reset_daily_if_needed(c, uid)
+            for tdef in DAILY_TASK_DEFS:
+                if tdef.get("kind") != kind:
+                    continue
+                tid = tdef["id"]
+                row = c.execute(
+                    "SELECT progress, claimed FROM daily_tasks WHERE user_id=? AND task_id=?",
+                    (uid, tid),
+                ).fetchone()
+                cur = int(row["progress"]) if row else 0
+                claimed = int(row["claimed"]) if row else 0
+                new_p = min(int(tdef["target"]), cur + amount)
+                c.execute(
+                    "INSERT OR REPLACE INTO daily_tasks (user_id, task_id, progress, claimed) VALUES (?,?,?,?)",
+                    (uid, tid, new_p, claimed),
                 )
 
 
@@ -1440,6 +1467,78 @@ def _migrate_trading_events() -> None:
                 CREATE INDEX IF NOT EXISTS idx_arena_spectator_round ON arena_spectator_bets(round_id);
             """)
             _migrate_trading_events_v2(c)
+            _migrate_trading_events_v3(c)
+
+
+def _migrate_trading_events_v3(c) -> None:
+    """v3: 杠杆/PK/阵营/逆袭"""
+    gr_cols = {r[1] for r in c.execute("PRAGMA table_info(guess_rounds)").fetchall()}
+    if "winner_side" not in gr_cols:
+        c.execute("ALTER TABLE guess_rounds ADD COLUMN winner_side TEXT NOT NULL DEFAULT ''")
+
+    bet_cols = {r[1] for r in c.execute("PRAGMA table_info(guess_bets)").fetchall()}
+    if "faction" not in bet_cols:
+        c.execute("ALTER TABLE guess_bets ADD COLUMN faction TEXT NOT NULL DEFAULT ''")
+
+    c.executescript("""
+        CREATE TABLE IF NOT EXISTS leverage_bets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            round_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            direction TEXT NOT NULL,
+            profit_stake INTEGER NOT NULL,
+            leverage INTEGER NOT NULL DEFAULT 2,
+            payout INTEGER NOT NULL DEFAULT 0,
+            source_round_id TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL,
+            UNIQUE(round_id, user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_leverage_bets_round ON leverage_bets(round_id);
+
+        CREATE TABLE IF NOT EXISTS guess_pk_rooms (
+            id TEXT PRIMARY KEY,
+            round_id TEXT NOT NULL,
+            user_a TEXT NOT NULL,
+            user_b TEXT NOT NULL,
+            dir_a TEXT NOT NULL,
+            dir_b TEXT NOT NULL,
+            stake INTEGER NOT NULL,
+            winner_id TEXT NOT NULL DEFAULT '',
+            is_npc_b INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'open',
+            created_at INTEGER NOT NULL,
+            settled_at INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS idx_pk_rooms_round ON guess_pk_rooms(round_id);
+
+        CREATE TABLE IF NOT EXISTS faction_daily (
+            day_key TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            faction TEXT NOT NULL,
+            contrib INTEGER NOT NULL DEFAULT 0,
+            net_pnl INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (day_key, user_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS faction_settlements (
+            day_key TEXT PRIMARY KEY,
+            winner_faction TEXT NOT NULL,
+            pool INTEGER NOT NULL DEFAULT 0,
+            settled_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS comeback_bets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            round_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            direction TEXT NOT NULL,
+            stake INTEGER NOT NULL,
+            leverage INTEGER NOT NULL DEFAULT 2,
+            payout INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            UNIQUE(round_id, user_id)
+        );
+    """)
 
 
 def _migrate_trading_events_v2(c) -> None:

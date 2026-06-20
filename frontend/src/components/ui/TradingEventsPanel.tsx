@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { LogicDrawer } from './LogicDrawer';
+import { TradingModesPanel } from './TradingModesPanel';
 import {
   fetchGuessRound, placeGuessBet, fetchArenaRound, joinArena, arenaSpectateBet,
   fetchArenaLeaderboard, fetchArenaWinRate,
   type GuessRoundState, type ArenaRoundState, type ArenaWinRateEntry, type ArenaEntry,
+  type PkResultInfo,
 } from '../../lib/lifeEngagementApi';
 import { shareOrCopy, shareResultMessage, appBaseUrl } from '../../lib/shareUtils';
 
@@ -19,6 +21,7 @@ export function TradingEventsPanel() {
   const setArenaLive = useGameStore(s => s.setArenaLive);
   const showGuessResult = useGameStore(s => s.showGuessResult);
   const showArenaResult = useGameStore(s => s.showArenaResult);
+  const showPkResult = useGameStore(s => s.showPkResult);
   const addMessage = useGameStore(s => s.addMessage);
   const points = useGameStore(s => s.points);
 
@@ -37,6 +40,7 @@ export function TradingEventsPanel() {
 
   const shownGuessRef = useRef<Set<string>>(new Set());
   const shownArenaRef = useRef<Set<string>>(new Set());
+  const shownPkRef = useRef<Set<string>>(new Set());
   const prevArenaLegsRef = useRef<Record<string, number>>({});
 
   const tradingAgents = useMemo(
@@ -64,8 +68,25 @@ export function TradingEventsPanel() {
       start_price: Number(settled.start_price) || 0,
       end_price: Number(settled.end_price) || 0,
       first_win: !!lastMy.first_win && won,
+      pending_leverage: lastMy.pending_leverage,
     });
   }, [showGuessResult]);
+
+  const maybeShowPkResult = useCallback((pk: PkResultInfo | null | undefined) => {
+    if (!pk?.round_id) return;
+    const rid = pk.round_id;
+    if (shownPkRef.current.has(rid)) return;
+    shownPkRef.current.add(rid);
+    showPkResult({
+      won: !!pk.won,
+      my_direction: pk.my_direction,
+      winner_side: pk.winner_side,
+      opponent_name: pk.opponent_name,
+      stake: pk.stake,
+      won_amount: pk.won_amount,
+      streak: pk.streak,
+    });
+  }, [showPkResult]);
 
   const maybeShowArenaResult = useCallback((lastSettled: ArenaRoundState | null | undefined) => {
     if (!lastSettled?.round_id) return;
@@ -91,6 +112,7 @@ export function TradingEventsPanel() {
         setGuess(r.current ?? null);
         setLastGuess(r.last_settled ?? null);
         maybeShowGuessResult(r.last_settled, r.last_my_bet);
+        maybeShowPkResult(r.last_pk_result);
       }
     } else {
       const [ar, lb, wr] = await Promise.all([
@@ -116,7 +138,7 @@ export function TradingEventsPanel() {
       if (lb.ok) setHighlights(lb.highlights ?? []);
       if (wr.ok) setWinRates(wr.entries ?? []);
     }
-  }, [tab, maybeShowGuessResult, maybeShowArenaResult, setArenaLive]);
+  }, [tab, maybeShowGuessResult, maybeShowArenaResult, maybeShowPkResult, setArenaLive]);
 
   useEffect(() => {
     void refresh();
@@ -429,6 +451,8 @@ export function TradingEventsPanel() {
           )}
         </>
       )}
+
+      <TradingModesPanel />
     </div>
   );
 }

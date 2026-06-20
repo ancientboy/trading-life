@@ -50,7 +50,7 @@ function scheduleSeatSync(fn: () => Promise<void>) {
 
 export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages' | 'tasks' | 'social' | 'events';
 export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs' | 'tasks' | 'events';
-export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'trading_win' | 'guess_result' | 'arena_result' | 'shop' | 'scene' | 'tasks' | null;
+export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'trading_win' | 'guess_result' | 'arena_result' | 'pk_result' | 'shop' | 'scene' | 'tasks' | null;
 
 export type PokerPlayerResult = {
   name: string;
@@ -98,6 +98,17 @@ export type GuessResultData = {
   start_price: number;
   end_price: number;
   first_win?: boolean;
+  pending_leverage?: { profit: number; source_round_id?: string; expires_at?: number };
+};
+
+export type PkResultData = {
+  won: boolean;
+  my_direction: 'up' | 'down';
+  winner_side: string;
+  opponent_name: string;
+  stake: number;
+  won_amount: number;
+  streak?: number;
 };
 
 export type ArenaResultData = {
@@ -175,6 +186,7 @@ interface GameStore {
   pokerHandResult: PokerHandResult | null;
   guessResultData: GuessResultData | null;
   arenaResultData: ArenaResultData | null;
+  pkResultData: PkResultData | null;
   tradingWinResult: import('../components/ui/TradingWinModal').TradingWinData | null;
   /** 竞技馆实时数据 — 驱动 Pod/K 线场景 */
   arenaLive: import('../lib/lifeEngagementApi').ArenaRoundState | null;
@@ -223,6 +235,8 @@ interface GameStore {
   showPokerResult: (result: PokerHandResult) => void;
   showGuessResult: (result: GuessResultData) => void;
   showArenaResult: (result: ArenaResultData) => void;
+  showPkResult: (result: PkResultData) => void;
+  triggerTradingReaction: (kind: 'leverage' | 'pk', leverage?: number) => void;
   setArenaLive: (state: import('../lib/lifeEngagementApi').ArenaRoundState | null) => void;
   setSelectedArenaEntryId: (id: string | null) => void;
   showTradingWin: (result: import('../components/ui/TradingWinModal').TradingWinData) => void;
@@ -354,6 +368,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pokerHandResult: null,
   guessResultData: null,
   arenaResultData: null,
+  pkResultData: null,
   tradingWinResult: null,
   arenaLive: null,
   selectedArenaEntryId: null,
@@ -484,7 +499,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: true }),
   closeModal: () => set({
     activeModal: null, workshopMode: 'list', pokerHandResult: null,
-    guessResultData: null, arenaResultData: null, tradingWinResult: null, pokerTableDealingUntil: 0,
+    guessResultData: null, arenaResultData: null, pkResultData: null, tradingWinResult: null, pokerTableDealingUntil: 0,
   }),
   showPokerResult: (result) => set({
     pokerHandResult: result, activeModal: 'poker_result', rightPanelCollapsed: true, pokerTableDealingUntil: 0,
@@ -495,6 +510,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
   showArenaResult: (result) => set({
     arenaResultData: result, activeModal: 'arena_result', rightPanelCollapsed: true,
   }),
+  showPkResult: (result) => set({
+    pkResultData: result, activeModal: 'pk_result', rightPanelCollapsed: true,
+  }),
+  triggerTradingReaction: (kind, leverage) => {
+    const s = get();
+    const agents = Object.values(s.agents);
+    const entertain = agents.filter(a => a.data.agentType === 'entertainment');
+    const name = entertain[0]?.data.name || '大厅 Agent';
+    if (kind === 'leverage') {
+      const label = (leverage ?? 2) >= 10 ? '我跟 10 倍梭哈！' : (leverage ?? 2) >= 5 ? '5 倍激进跟单！' : '保守 2 倍跟涨~';
+      s.addMessage(`🎰 ${name}：${label}`);
+      s.setNpcBubble('ava', label, performance.now() + 5000);
+      s.flyToZone('arena');
+    } else {
+      s.addMessage(`⚔️ 全厅围观 PK 对局 · ${name} 聚到竞技台边`);
+      s.setNpcBubble('ava', 'PK 对局开打！围观押注中～', performance.now() + 5000);
+      s.flyToZone('arena');
+    }
+  },
   setArenaLive: (state) => set({ arenaLive: state }),
   setSelectedArenaEntryId: (id) => set({ selectedArenaEntryId: id }),
   showTradingWin: (result) => set({

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore, type GuessResultData } from '../../store/useGameStore';
+import { placeLeverageBet } from '../../lib/lifeEngagementApi';
 import {
   appBaseUrl, buildGuessShareText, downloadGuessShareCard,
   shareOrCopy, shareResultMessage,
@@ -8,11 +9,15 @@ import {
 export function GuessResultModal({ data }: { data: GuessResultData }) {
   const closeModal = useGameStore(s => s.closeModal);
   const addMessage = useGameStore(s => s.addMessage);
+  const triggerTradingReaction = useGameStore(s => s.triggerTradingReaction);
+  const flyToZone = useGameStore(s => s.flyToZone);
   const [phase, setPhase] = useState(0);
   const [sharing, setSharing] = useState(false);
+  const [levBusy, setLevBusy] = useState(false);
   const autoShared = useRef(false);
 
   const won = data.won && (data.payout ?? 0) > 0;
+  const pl = data.pending_leverage;
   const chg = data.start_price
     ? ((data.end_price - data.start_price) / data.start_price) * 100
     : 0;
@@ -38,6 +43,24 @@ export function GuessResultModal({ data }: { data: GuessResultData }) {
       }
     })();
   }, [data, won, addMessage]);
+
+  const doLeverage = async (direction: 'up' | 'down', leverage: number) => {
+    if (!pl) return;
+    setLevBusy(true);
+    try {
+      const r = await placeLeverageBet(direction, leverage, pl.source_round_id || '');
+      if (!r.ok) {
+        addMessage(r.error || '杠杆押注失败');
+        return;
+      }
+      addMessage(r.message || `杠杆 ${leverage}x 已押`);
+      triggerTradingReaction('leverage', leverage);
+      flyToZone('arena');
+      closeModal();
+    } finally {
+      setLevBusy(false);
+    }
+  };
 
   return (
     <div style={{ color: '#3d3530', textAlign: 'center' }}>
@@ -80,6 +103,32 @@ export function GuessResultModal({ data }: { data: GuessResultData }) {
           )}
         </div>
       </div>
+
+      {phase >= 2 && won && pl && (
+        <div style={{
+          padding: 12, marginBottom: 12, borderRadius: 10,
+          background: '#fff8e8', border: '1px solid #ffb74d', textAlign: 'left',
+        }}>
+          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8 }}>🎰 翻倍出击 · 用 {pl.profit} 利润博下一根 K 线</div>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+            {[2, 5, 10].map(lev => (
+              <button key={`u${lev}`} type="button" className="ui-btn" style={{ flex: 1, fontSize: 10 }}
+                disabled={levBusy} onClick={() => void doLeverage('up', lev)}>
+                {lev}x 涨
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[2, 5, 10].map(lev => (
+              <button key={`d${lev}`} type="button" className="ui-btn" style={{ flex: 1, fontSize: 10, background: '#ffefef' }}
+                disabled={levBusy} onClick={() => void doLeverage('down', lev)}>
+                {lev}x 跌
+              </button>
+            ))}
+          </div>
+          <p style={{ fontSize: 9, color: '#9a8b7a', marginTop: 6, marginBottom: 0 }}>120 秒内有效 · 赢则利润×杠杆</p>
+        </div>
+      )}
 
       {phase >= 2 && (
         <div style={{ display: 'flex', gap: 8 }}>

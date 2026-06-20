@@ -43,7 +43,7 @@ echo "==> 上传前端静态资源..."
 RSYNC_RSH="$RSYNC_RSH" rsync -avz --delete "$OUT_DIR/" "$REMOTE:$REMOTE_STATIC/"
 
 echo "==> 上传后端 Python..."
-for f in api.py life_game.py life_db.py life_auth.py life_engagement.py life_growth.py life_trading.py trading_events.py agent_brain.py poker_hands.py poker_engine.py poker_bot.py poker_style.py poker_advanced.py; do
+for f in api.py life_game.py life_db.py life_auth.py life_engagement.py life_growth.py life_trading.py trading_events.py trading_modes.py agent_brain.py poker_hands.py poker_engine.py poker_bot.py poker_style.py poker_advanced.py; do
   if [ -f "$REPO_ROOT/dashboard/$f" ]; then
     RSYNC_RSH="$RSYNC_RSH" rsync -avz "$REPO_ROOT/dashboard/$f" "$REMOTE:$REMOTE_DASH/"
   fi

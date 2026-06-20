@@ -19,6 +19,7 @@ import { SceneSkinsPanel } from './SceneSkinsPanel';
 import { TradingWinModal } from './TradingWinModal';
 import { GuessResultModal } from './GuessResultModal';
 import { ArenaResultModal } from './ArenaResultModal';
+import { PkResultModal } from './PkResultModal';
 
 const TITLES: Record<Exclude<ModalId, null>, string> = {
   workshop: 'Agent 工坊',
@@ -34,6 +35,7 @@ const TITLES: Record<Exclude<ModalId, null>, string> = {
   trading_win: '模拟盘 · 首笔盈利',
   guess_result: '猜涨跌 · 结算',
   arena_result: '短线大赛 · 颁奖',
+  pk_result: '1v1 PK · 结算',
   shop: '积分商城',
   scene: '场景装扮',
   tasks: '每日任务',
@@ -75,6 +77,7 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
   const pokerHandResult = useGameStore(s => s.pokerHandResult);
   const guessResultData = useGameStore(s => s.guessResultData);
   const arenaResultData = useGameStore(s => s.arenaResultData);
+  const pkResultData = useGameStore(s => s.pkResultData);
   const tradingWinResult = useGameStore(s => s.tradingWinResult);
   const agent = selectedAgentId ? agents[selectedAgentId] : null;
   const d = agent?.data;
@@ -136,6 +139,8 @@ function ModalContent({ id }: { id: Exclude<ModalId, null> }) {
       return guessResultData ? <GuessResultModal data={guessResultData} /> : null;
     case 'arena_result':
       return arenaResultData ? <ArenaResultModal data={arenaResultData} /> : null;
+    case 'pk_result':
+      return pkResultData ? <PkResultModal data={pkResultData} /> : null;
     case 'shop':
       return <ShopPanel />;
     case 'scene':

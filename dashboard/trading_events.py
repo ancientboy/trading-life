@@ -169,6 +169,17 @@ async def _settle_guess_round(c, round_id: str) -> Optional[dict]:
     total_pool = int(rd["pool_up"]) + int(rd["pool_down"])
     distributable = int(total_pool * (1 - GUESS_RAKE))
 
+    rd["winner_side"] = winner_side
+    c.execute(
+        "UPDATE guess_rounds SET winner_side=? WHERE id=?",
+        (winner_side, round_id),
+    )
+
+    from trading_modes import (
+        set_pending_leverage, settle_leverage_bets, settle_pk_rooms,
+        update_faction_on_bet, settle_comeback_bets,
+    )
+
     if winner_side == "tie":
         for b in bets:
             user = load_user(b["user_id"])
@@ -176,6 +187,9 @@ async def _settle_guess_round(c, round_id: str) -> Optional[dict]:
             save_user(b["user_id"], user)
             c.execute("UPDATE guess_bets SET payout=? WHERE id=?", (b["stake"], b["id"]))
         rd["winner_side"] = "tie"
+        await settle_leverage_bets(c, round_id, "tie")
+        await settle_pk_rooms(c, round_id, "tie")
+        await settle_comeback_bets(c, round_id, "tie")
         return rd
 
     win_pool = int(rd["pool_up"]) if winner_side == "up" else int(rd["pool_down"])
@@ -190,9 +204,23 @@ async def _settle_guess_round(c, round_id: str) -> Optional[dict]:
             save_user(b["user_id"], user)
             life_db.add_season_points(b["user_id"], pvp_win=1, social=3)
             life_db.record_guess_result(b["user_id"], won=True, payout=payout)
+            profit = max(0, payout - int(b["stake"]))
+            if profit > 0:
+                set_pending_leverage(b["user_id"], profit, round_id)
+            update_faction_on_bet(c, b["user_id"], int(b["stake"]), payout, b.get("faction") or "")
+            if b.get("faction") and int(b["stake"]) > 0:
+                life_db.bump_daily_task(b["user_id"], "faction_contrib", int(b["stake"]))
         elif b["user_id"] and not str(b["user_id"]).startswith(("npc_", "ai_")):
             life_db.record_guess_result(b["user_id"], won=False, payout=0)
+            update_faction_on_bet(c, b["user_id"], int(b["stake"]), 0, b.get("faction") or "")
+            if b.get("faction") and int(b["stake"]) > 0:
+                life_db.bump_daily_task(b["user_id"], "faction_contrib", int(b["stake"]))
         c.execute("UPDATE guess_bets SET payout=? WHERE id=?", (payout, b["id"]))
+
+    await settle_leverage_bets(c, round_id, winner_side)
+    pk_broadcasts = await settle_pk_rooms(c, round_id, winner_side)
+    await settle_comeback_bets(c, round_id, winner_side)
+    rd["pk_broadcasts"] = pk_broadcasts
 
     rd["winner_side"] = winner_side
     rd["winners_count"] = len(winners)
@@ -480,6 +508,10 @@ def _guess_payload(c, rd: dict, account_id: str) -> dict:
     ts = life_db.now_ms()
     bets = [dict(b) for b in c.execute("SELECT * FROM guess_bets WHERE round_id=?", (rd["id"],)).fetchall()]
     my = next((b for b in bets if b["user_id"] == account_id), None) if account_id else None
+    modes_extra = {}
+    if account_id:
+        from trading_modes import modes_payload
+        modes_extra = modes_payload(account_id)
     return {
         "round_id": rd["id"],
         "symbol": rd["symbol"],
@@ -495,6 +527,7 @@ def _guess_payload(c, rd: dict, account_id: str) -> dict:
         "seconds_left": max(0, (rd["ends_at"] - ts) // 1000),
         "my_bet": my,
         "bets_count": len(bets),
+        **modes_extra,
     }
 
 
@@ -606,10 +639,48 @@ async def get_guess_round(account_id: str = Depends(resolve_account_id)):
                         from life_game import load_user
                         stats = (load_user(account_id).get("stats") or {})
                         last_my["first_win"] = _recent_first_flag(stats, "first_guess_win_at", prev["ends_at"])
+                        from trading_modes import get_pending_leverage
+                        pl = get_pending_leverage(stats)
+                        if pl:
+                            last_my["pending_leverage"] = pl
+            last_pk = None
+            if prev and account_id:
+                from trading_modes import PK_RAKE, _display_name as _pk_name
+                pk_row = c.execute(
+                    """SELECT * FROM guess_pk_rooms
+                       WHERE round_id=? AND status='settled'
+                       AND (user_a=? OR user_b=?)
+                       ORDER BY settled_at DESC LIMIT 1""",
+                    (prev["id"], account_id, account_id),
+                ).fetchone()
+                if pk_row:
+                    room = dict(pk_row)
+                    ws = prev["winner_side"] if "winner_side" in prev.keys() else ""
+                    if not ws and prev.get("end_price") and prev.get("start_price"):
+                        sp, ep = float(prev["start_price"]), float(prev["end_price"])
+                        ws = "tie" if abs(ep - sp) < 1e-9 else ("up" if ep > sp else "down")
+                    is_a = room["user_a"] == account_id
+                    my_dir = room["dir_a"] if is_a else room["dir_b"]
+                    won = room["winner_id"] == account_id
+                    opp_id = room["user_b"] if is_a else room["user_a"]
+                    opp_name = "AI 对手" if str(opp_id).startswith("npc_") else _pk_name(opp_id)
+                    from life_game import load_user
+                    stats = (load_user(account_id).get("stats") or {})
+                    streak = int(stats.get("daily_modes", {}).get("pk_streak", 0)) if won else 0
+                    last_pk = {
+                        "won": won,
+                        "my_direction": my_dir,
+                        "winner_side": ws,
+                        "opponent_name": opp_name,
+                        "stake": int(room["stake"]),
+                        "won_amount": int(room["stake"] * 2 * (1 - PK_RAKE)) if won else 0,
+                        "streak": streak,
+                        "round_id": room["round_id"],
+                    }
     last = dict(prev) if prev else None
     if last and last_my:
         last["my_bet"] = last_my
-    return {"ok": True, "current": payload, "last_settled": last, "last_my_bet": last_my}
+    return {"ok": True, "current": payload, "last_settled": last, "last_my_bet": last_my, "last_pk_result": last_pk}
 
 
 @events_router.post("/pvp/trading/guess/bet")
@@ -621,6 +692,8 @@ async def place_guess_bet(body: GuessBetBody, account_id: str = Depends(resolve_
         return {"ok": False, "error": "direction 须为 up 或 down"}
     stake = max(GUESS_MIN_STAKE, min(body.stake, GUESS_MAX_STAKE))
     user = load_user(account_id)
+    stats = user.get("stats") or {}
+    faction = stats.get("faction") or ""
     if not _spend(user, stake):
         save_user(account_id, user)
         return {"ok": False, "error": "积分不足", "balance": user["points"]}
@@ -644,8 +717,8 @@ async def place_guess_bet(body: GuessBetBody, account_id: str = Depends(resolve_
                 save_user(account_id, user)
                 return {"ok": False, "error": "本局已押注", "balance": user["points"]}
             c.execute(
-                "INSERT INTO guess_bets (round_id, user_id, direction, stake, created_at) VALUES (?,?,?,?,?)",
-                (rd["id"], account_id, direction, stake, ts),
+                "INSERT INTO guess_bets (round_id, user_id, direction, stake, faction, created_at) VALUES (?,?,?,?,?,?)",
+                (rd["id"], account_id, direction, stake, faction, ts),
             )
             col = "pool_up" if direction == "up" else "pool_down"
             c.execute(f"UPDATE guess_rounds SET {col}={col}+? WHERE id=?", (stake, rd["id"]))
@@ -653,6 +726,7 @@ async def place_guess_bet(body: GuessBetBody, account_id: str = Depends(resolve_
             payload = _guess_payload(c, row, account_id)
 
     life_db.add_season_points(account_id, social=2)
+    life_db.bump_daily_task(account_id, "guess")
     return {"ok": True, "current": payload, "balance": load_user(account_id)["points"]}
 
 
