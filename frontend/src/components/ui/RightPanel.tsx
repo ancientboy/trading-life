@@ -12,12 +12,14 @@ import { fetchAgentMemories } from '../../lib/lifeEngagementApi';
 import { brainModeLabel, getAgentBrainMode } from '../../lib/agentBrain';
 import { DailyTasksPanel } from './DailyTasksPanel';
 import { SocialPanel } from './SocialPanel';
+import { TradingEventsPanel } from './TradingEventsPanel';
 import { PokerGamePanel } from './PokerGamePanel';
 
 const TABS: { id: RightTab; label: string }[] = [
   { id: 'hall', label: '交易大厅' },
   { id: 'agent', label: '交易 Agent' },
   { id: 'tasks', label: '每日任务' },
+  { id: 'events', label: '交易竞技' },
   { id: 'social', label: '社交大厅' },
   { id: 'assets', label: '持仓交易' },
   { id: 'strategy', label: '策略预览' },
@@ -113,6 +115,7 @@ export function RightPanel() {
         {currentTab === 'hall' && renderHallPanel()}
         {currentTab === 'tasks' && <DailyTasksPanel compact />}
         {currentTab === 'social' && <SocialPanel />}
+        {currentTab === 'events' && <TradingEventsPanel />}
         {(currentTab === 'object' || currentTab === 'agent') && renderAgentPanel()}
         {currentTab === 'npc' && renderNpcPanel()}
         {currentTab === 'facility' && renderFacilityPanel()}

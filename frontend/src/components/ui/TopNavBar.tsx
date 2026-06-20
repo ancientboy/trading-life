@@ -29,6 +29,7 @@ export function TopNavBar() {
   const userPortfolio = useGameStore(s => s.userPortfolio);
   const points = useGameStore(s => s.points);
   const openWorkshop = useGameStore(s => s.openWorkshop);
+  const setRightTab = useGameStore(s => s.setRightTab);
   const dailyAllowanceClaimed = useGameStore(s => s.dailyAllowanceClaimed);
   const dailyAllowanceAmount = useGameStore(s => s.dailyAllowanceAmount);
   const claimDailyAllowance = useGameStore(s => s.claimDailyAllowance);
@@ -117,6 +118,10 @@ export function TopNavBar() {
             <span className="nav-icon-label">{b.label}</span>
           </button>
         ))}
+        <button className="ui-btn nav-icon-btn" title="猜涨跌 / 短线大赛"
+          onClick={() => { setRightTab('events'); useGameStore.setState({ rightPanelCollapsed: false }); }}>
+          <span className="nav-icon-label">🏆竞技</span>
+        </button>
         <a href="/trading/" className="ui-btn" style={{ textDecoration: 'none', marginLeft: 4, fontSize: 11 }}>Dashboard</a>
         {account && (
           <button className="ui-btn" onClick={logout} title={`${account.username} · 退出登录`}

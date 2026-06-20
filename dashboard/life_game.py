@@ -17,6 +17,7 @@ import life_db
 from life_auth import router as auth_router, resolve_account_id, ensure_admin_account
 from life_engagement import social_router, pvp_router, season_router
 from life_growth import growth_router
+from trading_events import events_router
 
 # life_trading 在模块末尾注册，避免循环导入
 
@@ -120,6 +121,7 @@ router.include_router(social_router)
 router.include_router(pvp_router)
 router.include_router(season_router)
 router.include_router(growth_router)
+router.include_router(events_router)
 
 _zhipu_key: str = ""
 

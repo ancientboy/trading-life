@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import {
   fetchChat, postChat, fetchNpcEvents, claimNpcEvent,
-  fetchMentorPairs, pairMentor, tradingPk, listGuilds, joinGuild, createGuild,
+  fetchMentorPairs, pairMentor, listGuilds, joinGuild, createGuild,
   type ChatMessage, type NpcEvent, type PokerHighlightItem,
 } from '../../lib/lifeEngagementApi';
 import { chatChannelForZone } from '../../lib/lifeEngagementApi';
@@ -93,11 +93,8 @@ export function SocialPanel() {
   };
 
   const doPk = async () => {
-    const res = await tradingPk('house', 50);
-    if (res.ok && res.won) addMessage(`交易 PK 获胜 +${res.won} 积分`);
-    else if (res.ok) addMessage(`交易 PK 落败（${res.challenger_score} vs ${res.defender_score}）`);
-    else addMessage(res.error || 'PK 失败');
-    if (res.balance != null) useGameStore.setState({ points: res.balance });
+    addMessage('试试新版「交易竞技」→ 猜涨跌 / 短线大赛');
+    useGameStore.getState().setRightTab('events');
   };
 
   return (
@@ -198,8 +195,8 @@ export function SocialPanel() {
         ))}
       </Section>
 
-      <Section title="⚔️ 交易 PK">
-        <button className="ui-btn" style={{ width: '100%' }} onClick={doPk}>挑战系统对手（50 积分）</button>
+      <Section title="⚔️ 交易竞技">
+        <button className="ui-btn" style={{ width: '100%' }} onClick={doPk}>猜涨跌 / 短线大赛 →</button>
       </Section>
 
       <Section title="🏰 公会">

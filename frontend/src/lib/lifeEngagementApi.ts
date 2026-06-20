@@ -341,6 +341,91 @@ export async function tradingPk(defenderId = '', stake = 50) {
   return parse<{ ok: boolean; winner_id?: string; won?: number; balance?: number; challenger_score?: number; defender_score?: number; error?: string }>(r);
 }
 
+export type GuessBetInfo = {
+  direction: string; stake: number; payout?: number;
+};
+
+export type GuessRoundState = {
+  round_id: string;
+  symbol: string;
+  start_price: number;
+  end_price?: number;
+  status: string;
+  pool_up: number;
+  pool_down: number;
+  total_pool: number;
+  betting_open: boolean;
+  seconds_left: number;
+  my_bet?: GuessBetInfo | null;
+  bets_count: number;
+};
+
+export type ArenaEntry = {
+  user_id: string;
+  agent_id: string;
+  agent_name: string;
+  strategy_preset: string;
+  is_npc?: number | boolean;
+  direction: string;
+  leverage: number;
+  return_pct?: number;
+  rank?: number;
+  prize?: number;
+};
+
+export type ArenaRoundState = {
+  round_id: string;
+  symbol: string;
+  status: string;
+  entry_fee: number;
+  prize_pool: number;
+  spectate_pool: number;
+  start_price: number;
+  end_price?: number;
+  seconds_left: number;
+  join_seconds_left: number;
+  entries: ArenaEntry[];
+  my_entry?: ArenaEntry | null;
+  can_join: boolean;
+  can_spectate_bet: boolean;
+};
+
+export async function fetchGuessRound() {
+  const r = await fetch(`${API}/pvp/trading/guess`, { headers: headers() });
+  return parse<{ ok: boolean; current?: GuessRoundState; last_settled?: Record<string, unknown>; error?: string }>(r);
+}
+
+export async function placeGuessBet(direction: 'up' | 'down', stake: number) {
+  const r = await fetch(`${API}/pvp/trading/guess/bet`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake }),
+  });
+  return parse<{ ok: boolean; current?: GuessRoundState; balance?: number; error?: string }>(r);
+}
+
+export async function fetchArenaRound() {
+  const r = await fetch(`${API}/pvp/trading/arena`, { headers: headers() });
+  return parse<{ ok: boolean; current?: ArenaRoundState; error?: string }>(r);
+}
+
+export async function joinArena(agentId: string) {
+  const r = await fetch(`${API}/pvp/trading/arena/join`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId }),
+  });
+  return parse<{ ok: boolean; current?: ArenaRoundState; balance?: number; message?: string; error?: string }>(r);
+}
+
+export async function arenaSpectateBet(pickUserId: string, stake: number) {
+  const r = await fetch(`${API}/pvp/trading/arena/spectate-bet`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ pick_user_id: pickUserId, stake }),
+  });
+  return parse<{ ok: boolean; current?: ArenaRoundState; balance?: number; error?: string }>(r);
+}
+
+export async function fetchArenaLeaderboard(limit = 10) {
+  const r = await fetch(`${API}/pvp/trading/arena/leaderboard?limit=${limit}`, { headers: headers() });
+  return parse<{ ok: boolean; highlights?: Array<Record<string, unknown>>; error?: string }>(r);
+}
+
 export interface PokerRoomPlayer {
   user_id: string; agent_id: string; seat_id: string; buy_in?: number; score?: number; rank?: number;
   display_name?: string; agent_name?: string; user_name?: string;

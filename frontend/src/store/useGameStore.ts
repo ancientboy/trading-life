@@ -48,7 +48,7 @@ function scheduleSeatSync(fn: () => Promise<void>) {
   seatSyncTimer = setTimeout(() => { fn().catch(() => {}); }, 2500);
 }
 
-export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages' | 'tasks' | 'social';
+export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'assets' | 'strategy' | 'messages' | 'tasks' | 'social' | 'events';
 export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs' | 'tasks';
 export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'trading_win' | 'shop' | 'scene' | 'tasks' | null;
 
@@ -429,7 +429,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         set({ ...expand, sidebarActive: 'warehouse', activeZone: 'hall', rightTab: 'assets' });
         break;
       case 'social':
-        set({ ...expand, sidebarActive: 'social', rightTab: 'social', rightPanelCollapsed: false });
+        set({ ...expand, sidebarActive: 'events', rightTab: 'events', rightPanelCollapsed: false });
         break;
       default:
         break;
