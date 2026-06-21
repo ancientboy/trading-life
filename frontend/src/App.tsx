@@ -126,6 +126,10 @@ export default function App() {
       if (!hot && Math.random() > 0.35) return;
       st.syncTradingLive().catch(() => {});
     }, 8000);
+    const tradingCountdown = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      store().tickTradingCountdown();
+    }, 1000);
     const onVis = () => {
       if (document.visibilityState === 'visible') {
         lifeSessionStart().catch(() => {});
@@ -135,7 +139,7 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', onVis);
     return () => {
-      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f); clearInterval(pokerPoll); clearInterval(tradingPoll);
+      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f); clearInterval(pokerPoll); clearInterval(tradingPoll); clearInterval(tradingCountdown);
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [loggedIn]);

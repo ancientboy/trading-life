@@ -524,6 +524,7 @@ def _guess_payload(c, rd: dict, account_id: str) -> dict:
         "starts_at": rd["starts_at"],
         "ends_at": rd["ends_at"],
         "betting_open": rd["status"] == "open" and ts < rd["starts_at"] + GUESS_BET_WINDOW_MS,
+        "bet_seconds_left": max(0, (rd["starts_at"] + GUESS_BET_WINDOW_MS - ts) // 1000) if rd["status"] == "open" else 0,
         "seconds_left": max(0, (rd["ends_at"] - ts) // 1000),
         "my_bet": my,
         "bets_count": len(bets),

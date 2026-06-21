@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { LogicDrawer } from './LogicDrawer';
 import { TradingModesPanel } from './TradingModesPanel';
-import { dedupeAsync } from '../../lib/pollGuard';
+import { guessPhaseLabel } from '../../lib/guessDisplay';
 import {
   placeGuessBet, joinArena, arenaSpectateBet, fetchGuessRoundFresh,
   fetchArenaLeaderboard, fetchArenaWinRate,
@@ -285,7 +285,13 @@ export function TradingEventsPanel() {
         <div style={{ padding: 12, background: '#faf6ef', borderRadius: 10, border: '1px solid #ebe4d8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: 700 }}>BTC 猜涨跌</span>
-            <span style={{ fontFamily: 'monospace', color: '#3a6bb5' }}>{guess.seconds_left}s</span>
+            <span style={{
+              fontFamily: 'monospace', fontWeight: 700, padding: '2px 8px', borderRadius: 6, fontSize: 12,
+              background: guess.betting_open ? '#eef8f0' : '#fff3e0',
+              color: guess.betting_open ? '#2ea872' : '#c65a00',
+            }}>
+              {guessPhaseLabel(guess)}
+            </span>
           </div>
           <div style={{ marginTop: 8, fontSize: 12 }}>
             开盘价 <b>${Math.round(Number(guess.start_price)).toLocaleString()}</b>
@@ -320,7 +326,15 @@ export function TradingEventsPanel() {
               </div>
             </>
           ) : (
-            <p style={{ marginTop: 10, fontSize: 11, color: '#9a8b7a' }}>封盘中… 等待 {guess.seconds_left}s 后结算</p>
+            <div style={{ marginTop: 10, padding: 10, background: '#fff3e0', borderRadius: 8, fontSize: 11, color: '#8a6e3a' }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>⏳ 封盘中 · {guess.seconds_left}s 后结算</div>
+              <div>本阶段不可押猜涨跌/PK（前 50s 为押注窗口）</div>
+              {arena?.can_join && !arena.my_entry && (
+                <div style={{ marginTop: 6, color: '#2e7d32' }}>
+                  大赛仍可报名 · 剩余 {arena.join_seconds_left}s · 点击场景空选手台可入座
+                </div>
+              )}
+            </div>
           )}
           {lastGuess && (
             <p style={{ marginTop: 10, fontSize: 10, color: '#9a8b7a' }}>

@@ -21,7 +21,9 @@ export interface ArenaDisplayData {
   bettingOpen?: boolean;
   poolUp?: number;
   poolDown?: number;
+  betSecondsLeft?: number;
   statusLabel?: string;
+  phaseLabel?: string;
   klineCloses?: number[];
 }
 
@@ -169,7 +171,7 @@ function drawKlineScreen(
 
   if (data?.statusLabel) {
     ctx.textAlign = 'right';
-    ctx.fillStyle = data.bettingOpen ? P.up : P.textMuted;
+    ctx.fillStyle = data.bettingOpen ? P.up : data.phaseLabel?.includes('封盘') ? '#ffb74d' : P.textMuted;
     ctx.fillText(data.statusLabel, c.x + sw / 2 - ws(12), c.y - sh / 2 + ws(18));
   }
 
@@ -254,8 +256,13 @@ function drawKlineScreen(
     ctx.fillStyle = P.textMuted;
     ctx.font = `${Math.max(7, ws(8))}px Inter,sans-serif`;
     ctx.textAlign = 'center';
+    const tail = data.bettingOpen
+      ? ` · 押注 ${data.betSecondsLeft ?? data.secondsLeft ?? 0}s`
+      : data.secondsLeft != null
+        ? ` · 封盘 ${data.secondsLeft}s 后结算`
+        : '';
     ctx.fillText(
-      `涨池 ${data.poolUp ?? 0} · 跌池 ${data.poolDown ?? 0}${data.secondsLeft != null ? ` · ${data.secondsLeft}s` : ''}`,
+      `涨池 ${data.poolUp ?? 0} · 跌池 ${data.poolDown ?? 0}${tail}`,
       c.x, c.y + sh / 2 - ws(8),
     );
   }

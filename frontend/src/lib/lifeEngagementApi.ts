@@ -369,6 +369,7 @@ export type GuessRoundState = {
   pool_down: number;
   total_pool: number;
   betting_open: boolean;
+  bet_seconds_left?: number;
   seconds_left: number;
   my_bet?: GuessBetInfo | null;
   bets_count: number;

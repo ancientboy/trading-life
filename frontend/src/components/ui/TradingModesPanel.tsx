@@ -6,7 +6,7 @@ import {
   fetchComebackStatus, placeComebackBet, fetchPkStreakBoard, fetchGuessRoundFresh,
   type TradingModesState,
 } from '../../lib/lifeEngagementApi';
-import { PersonalityCard } from './PersonalityCard';
+import { guessPhaseLabel } from '../../lib/guessDisplay';
 
 type ModeTab = 'leverage' | 'pk' | 'faction' | 'comeback';
 
@@ -25,6 +25,7 @@ export function TradingModesPanel() {
   const flyToZone = useGameStore(s => s.flyToZone);
   const setRightTab = useGameStore(s => s.setRightTab);
   const guess = useGameStore(s => s.guessRound);
+  const arenaLive = useGameStore(s => s.arenaLive);
   const setGuessRound = useGameStore(s => s.setGuessRound);
 
   const [tab, setTab] = useState<ModeTab>('pk');
@@ -173,13 +174,7 @@ export function TradingModesPanel() {
           background: guessOpen ? '#eef8f0' : '#faf6ef', color: '#6b5e4e',
           display: 'flex', justifyContent: 'space-between',
         }}>
-          <span>
-            猜涨跌 {guessOpen
-              ? `押注中 · ${guess.seconds_left}s`
-              : guess.status === 'locked'
-                ? `封盘 · ${guess.seconds_left}s 后结算`
-                : `封盘/进行中 · ${guess.seconds_left}s`}
-          </span>
+          <span>{guessPhaseLabel(guess)}</span>
           <span>BTC ${Math.round(Number(guess.start_price || 0)).toLocaleString()}</span>
         </div>
       )}
@@ -241,7 +236,10 @@ export function TradingModesPanel() {
             onChange={e => setPkStake(Number(e.target.value))} style={{ width: '100%' }} />
           <div style={{ fontSize: 10, color: '#9a8b7a', marginBottom: 8 }}>押注 {pkStake} · 积分 {points}</div>
           {!guessOpen && guessNeedsBet && (
-            <p style={{ fontSize: 9, color: '#c65a00', marginBottom: 8 }}>本局猜涨跌已封盘（前 50s 可押注），等待下一局</p>
+            <p style={{ fontSize: 9, color: '#c65a00', marginBottom: 8 }}>
+              猜涨跌封盘中 · {guess.seconds_left}s 后结算 · 押注/PK 暂不可用
+              {arenaLive?.can_join ? ' · 大赛报名仍开放' : ''}
+            </p>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="ui-btn" style={{ flex: 1 }} disabled={busy || !guessOpen}

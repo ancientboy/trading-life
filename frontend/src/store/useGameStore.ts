@@ -23,6 +23,7 @@ import {
 } from '../lib/lifeApi';
 import { throttleAsync } from '../lib/pollGuard';
 import { dismissPkResult, dismissGuessResult, dismissArenaResult } from '../lib/tradingResultDismiss';
+import { liveGuessRound, liveArenaRound } from '../lib/guessDisplay';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, ACTIVITY_ZONE, formatSeatCapacityMessage, type SeatMap } from '../lib/seatRegistry';
 import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
@@ -35,7 +36,7 @@ import {
   fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
   chatChannelForZone, fetchPokerRoom, fetchMyPokerRoom, joinPokerRoomByCode, fetchPublicRoomPreview,
   leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat,
-  fetchGuessRound, fetchArenaRound, fetchPublicArenaLive,
+  fetchGuessRound, fetchArenaRound, fetchPublicArenaLive, joinArena,
   type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
   type PokerRoom, type GuessRoundState, type PkResultInfo,
 } from '../lib/lifeEngagementApi';
@@ -223,6 +224,10 @@ interface GameStore {
   guessRound: GuessRoundState | null;
   guessPollMeta: GuessPollMeta | null;
   arenaPollMeta: ArenaPollMeta | null;
+  /** 竞技数据上次同步时间 — 用于本地 1s 倒计时 */
+  tradingLiveSyncedAt: number;
+  guessRoundServer: GuessRoundState | null;
+  arenaLiveServer: import('../lib/lifeEngagementApi').ArenaRoundState | null;
   /** 场景内选中的竞技选手 */
   selectedArenaEntryId: string | null;
   /** 牌桌发牌动画截止时间戳 */
@@ -273,6 +278,8 @@ interface GameStore {
   setArenaLive: (state: import('../lib/lifeEngagementApi').ArenaRoundState | null) => void;
   setGuessRound: (state: GuessRoundState | null) => void;
   syncTradingLive: () => Promise<void>;
+  tickTradingCountdown: () => void;
+  joinArenaQuick: (agentId?: string) => Promise<boolean>;
   setSelectedArenaEntryId: (id: string | null) => void;
   showTradingWin: (result: import('../components/ui/TradingWinModal').TradingWinData) => void;
   setPokerTableDealingUntil: (until: number) => void;
@@ -409,6 +416,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   guessRound: null,
   guessPollMeta: null,
   arenaPollMeta: null,
+  tradingLiveSyncedAt: 0,
+  guessRoundServer: null,
+  arenaLiveServer: null,
   selectedArenaEntryId: null,
   pokerTableDealingUntil: 0,
   pokerRoom: null,
@@ -584,28 +594,89 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!isLoggedIn()) return;
     return throttleAsync('sync-trading-live', 4500, async () => {
       try {
+        const syncedAt = Date.now();
         const [gr, ar] = await Promise.all([fetchGuessRound(), fetchArenaRound()]);
+        const patch: Partial<GameStore> = { tradingLiveSyncedAt: syncedAt };
         if (gr.ok) {
-          set({
-            guessRound: gr.current ?? null,
-            guessPollMeta: {
-              last_settled: gr.last_settled ?? null,
-              last_my_bet: gr.last_my_bet ?? null,
-              last_pk_result: gr.last_pk_result ?? null,
-            },
-          });
+          patch.guessRoundServer = gr.current ?? null;
+          patch.guessRound = gr.current ?? null;
+          patch.guessPollMeta = {
+            last_settled: gr.last_settled ?? null,
+            last_my_bet: gr.last_my_bet ?? null,
+            last_pk_result: gr.last_pk_result ?? null,
+          };
         }
         if (ar.ok) {
-          set({
-            arenaLive: ar.current ?? null,
-            arenaPollMeta: { last_settled: ar.last_settled ?? null },
-          });
+          patch.arenaLiveServer = ar.current ?? null;
+          patch.arenaLive = ar.current ?? null;
+          patch.arenaPollMeta = { last_settled: ar.last_settled ?? null };
         } else {
           const pr = await fetchPublicArenaLive().catch(() => null);
-          if (pr?.ok && pr.current) set({ arenaLive: pr.current });
+          if (pr?.ok && pr.current) {
+            patch.arenaLiveServer = pr.current;
+            patch.arenaLive = pr.current;
+          }
         }
+        set(patch);
       } catch { /* ignore */ }
     });
+  },
+  tickTradingCountdown: () => {
+    const s = get();
+    if (!s.tradingLiveSyncedAt) return;
+    const now = Date.now();
+    const patch: Partial<GameStore> = {};
+    if (s.guessRoundServer) {
+      patch.guessRound = liveGuessRound(s.guessRoundServer, s.tradingLiveSyncedAt, now);
+    }
+    if (s.arenaLiveServer) {
+      patch.arenaLive = liveArenaRound(s.arenaLiveServer, s.tradingLiveSyncedAt, now);
+    }
+    if (Object.keys(patch).length) set(patch);
+  },
+  joinArenaQuick: async (agentId) => {
+    const s = get();
+    const tradingIds = s.operableAgentIds.filter(id => s.agents[id]?.data?.agentType !== 'entertainment');
+    const id = agentId || s.selectedAgentId || tradingIds[0];
+    if (!id || !s.agents[id]) {
+      s.addMessage('请先创建交易 Agent');
+      return false;
+    }
+    if (!s.canOperateAgent(id)) {
+      s.addMessage(`${s.agents[id].data.name} 是系统 Agent，请前往工坊创建你自己的 Agent`);
+      return false;
+    }
+    if (!s.arenaLive?.can_join) {
+      s.addMessage('当前大赛不在报名阶段，请等待下一局');
+      return false;
+    }
+    if (s.arenaLive.my_entry) {
+      s.addMessage('你已报名本局大赛');
+      return false;
+    }
+    try {
+      const r = await joinArena(id);
+      if (!r.ok) {
+        s.addMessage(r.error || '报名失败');
+        return false;
+      }
+      const syncedAt = Date.now();
+      set({
+        arenaLive: r.current ?? null,
+        arenaLiveServer: r.current ?? null,
+        tradingLiveSyncedAt: syncedAt,
+        points: r.balance ?? s.points,
+        rightTab: 'events',
+        sidebarActive: 'events',
+        rightPanelCollapsed: false,
+      });
+      s.addMessage(r.message || `${s.agents[id].data.name} 已入座选手台 · 报名成功`);
+      void s.syncTradingLive();
+      return true;
+    } catch {
+      s.addMessage('网络错误，请稍后重试');
+      return false;
+    }
   },
   setSelectedArenaEntryId: (id) => set({ selectedArenaEntryId: id }),
   showTradingWin: (result) => set({
