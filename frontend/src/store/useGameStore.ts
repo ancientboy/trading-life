@@ -21,6 +21,7 @@ import {
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
+import { throttleAsync } from '../lib/pollGuard';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, type SeatMap } from '../lib/seatRegistry';
 import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
@@ -559,28 +560,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncTradingLive: async () => {
     if (!isLoggedIn()) return;
-    try {
-      const [gr, ar] = await Promise.all([fetchGuessRound(), fetchArenaRound()]);
-      if (gr.ok) {
-        set({
-          guessRound: gr.current ?? null,
-          guessPollMeta: {
-            last_settled: gr.last_settled ?? null,
-            last_my_bet: gr.last_my_bet ?? null,
-            last_pk_result: gr.last_pk_result ?? null,
-          },
-        });
-      }
-      if (ar.ok) {
-        set({
-          arenaLive: ar.current ?? null,
-          arenaPollMeta: { last_settled: ar.last_settled ?? null },
-        });
-      } else {
-        const pr = await fetchPublicArenaLive().catch(() => null);
-        if (pr?.ok && pr.current) set({ arenaLive: pr.current });
-      }
-    } catch { /* ignore */ }
+    return throttleAsync('sync-trading-live', 4500, async () => {
+      try {
+        const [gr, ar] = await Promise.all([fetchGuessRound(), fetchArenaRound()]);
+        if (gr.ok) {
+          set({
+            guessRound: gr.current ?? null,
+            guessPollMeta: {
+              last_settled: gr.last_settled ?? null,
+              last_my_bet: gr.last_my_bet ?? null,
+              last_pk_result: gr.last_pk_result ?? null,
+            },
+          });
+        }
+        if (ar.ok) {
+          set({
+            arenaLive: ar.current ?? null,
+            arenaPollMeta: { last_settled: ar.last_settled ?? null },
+          });
+        } else {
+          const pr = await fetchPublicArenaLive().catch(() => null);
+          if (pr?.ok && pr.current) set({ arenaLive: pr.current });
+        }
+      } catch { /* ignore */ }
+    });
   },
   setSelectedArenaEntryId: (id) => set({ selectedArenaEntryId: id }),
   showTradingWin: (result) => set({

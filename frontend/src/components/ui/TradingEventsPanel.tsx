@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { LogicDrawer } from './LogicDrawer';
 import { TradingModesPanel } from './TradingModesPanel';
+import { dedupeAsync } from '../../lib/pollGuard';
 import {
   placeGuessBet, joinArena, arenaSpectateBet,
   fetchArenaLeaderboard, fetchArenaWinRate,
@@ -137,13 +138,14 @@ export function TradingEventsPanel() {
   }, [arena]);
 
   const refreshExtras = useCallback(async () => {
-    if (tab === 'arena') {
+    if (document.visibilityState !== 'visible' || tab !== 'arena') return;
+    await dedupeAsync('arena-extras', async () => {
       const [lb, wr] = await Promise.all([
         fetchArenaLeaderboard(8), fetchArenaWinRate(12),
       ]);
       if (lb.ok) setHighlights(lb.highlights ?? []);
       if (wr.ok) setWinRates(wr.entries ?? []);
-    }
+    });
   }, [tab]);
 
   useEffect(() => {

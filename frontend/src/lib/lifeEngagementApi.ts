@@ -1,4 +1,5 @@
 import { getAuthToken } from './lifeAuth';
+import { dedupeAsync } from './pollGuard';
 
 const API = '/trading/api/life';
 
@@ -439,14 +440,14 @@ export type PublicArenaLive = {
 };
 
 export async function fetchGuessRound() {
-  const r = await fetch(`${API}/pvp/trading/guess`, { headers: headers() });
-  return parse<{
-    ok: boolean; current?: GuessRoundState;
-    last_settled?: Record<string, unknown>;
-    last_my_bet?: GuessBetInfo;
-    last_pk_result?: PkResultInfo | null;
-    error?: string;
-  }>(r);
+  return dedupeAsync('guess-round', () =>
+    fetchJson<{
+      ok: boolean; current?: GuessRoundState;
+      last_settled?: Record<string, unknown>;
+      last_my_bet?: GuessBetInfo;
+      last_pk_result?: PkResultInfo | null;
+      error?: string;
+    }>(`${API}/pvp/trading/guess`, { headers: headers() }, 15000));
 }
 
 export async function placeGuessBet(direction: 'up' | 'down', stake: number) {
@@ -457,8 +458,10 @@ export async function placeGuessBet(direction: 'up' | 'down', stake: number) {
 }
 
 export async function fetchArenaRound() {
-  const r = await fetch(`${API}/pvp/trading/arena`, { headers: headers() });
-  return parse<{ ok: boolean; current?: ArenaRoundState; last_settled?: ArenaRoundState; error?: string }>(r);
+  return dedupeAsync('arena-round', () =>
+    fetchJson<{ ok: boolean; current?: ArenaRoundState; last_settled?: ArenaRoundState; error?: string }>(
+      `${API}/pvp/trading/arena`, { headers: headers() }, 15000,
+    ));
 }
 
 export async function joinArena(agentId: string) {
@@ -481,8 +484,8 @@ export async function fetchArenaWinRate(limit = 15) {
 }
 
 export async function fetchPublicArenaLive() {
-  const r = await fetch(`${API}/public/trading/arena/live`);
-  return parse<PublicArenaLive>(r);
+  return dedupeAsync('arena-public-live', () =>
+    fetchJson<PublicArenaLive>(`${API}/public/trading/arena/live`, undefined, 15000));
 }
 
 export async function fetchArenaLeaderboard(limit = 10) {
