@@ -29,6 +29,11 @@ DAILY_TASK_DEFS = [
 
 DEFAULT_FREE_UNLOCKS = ["color_default", "hat_beanie", "hat_cap"]
 STARTING_POINTS = 10000
+MIGRATE_POINTS_CAP = 50_000
+SEAT_MIN_TTL_MS = 30_000
+SEAT_MAX_TTL_MS = 24 * 60 * 60 * 1000
+DESK_SEAT_TTL_MS = 8 * 60 * 60 * 1000
+SYSTEM_AGENT_IDS = ("xau", "major", "altcoin", "newcoin", "momentum")
 DEFAULT_PORTFOLIO_USDT = 50000.0
 DEFAULT_AGENT_ALLOC_USDT = 10000.0
 
@@ -629,23 +634,107 @@ def save_user_data(uid: str, data: dict) -> None:
                 )
 
 
-def migrate_user(uid: str, points: int, last_idle_tick: int, custom_agents: dict, shop_unlocks: list) -> None:
+def _adjust_points_cursor(c, uid: str, delta: int, min_balance: int = 0) -> tuple[bool, int]:
+    row = c.execute("SELECT points FROM life_users WHERE id=?", (uid,)).fetchone()
+    if not row:
+        return False, 0
+    current = int(row["points"])
+    new_balance = current + int(delta)
+    if new_balance < min_balance:
+        return False, current
+    c.execute("UPDATE life_users SET points=? WHERE id=?", (new_balance, uid))
+    return True, new_balance
+
+
+def adjust_points(uid: str, delta: int, min_balance: int = 0) -> tuple[bool, int]:
+    """原子调整积分，返回 (成功与否, 新余额)。"""
     ensure_user(uid)
-    user = load_user(uid)
     with _lock:
         with _conn() as c:
-            if not user["custom_agents"] and custom_agents:
-                for aid, meta in custom_agents.items():
-                    c.execute(
-                        "INSERT OR REPLACE INTO custom_agents (user_id, agent_id, meta_json) VALUES (?,?,?)",
-                        (uid, aid, json.dumps(meta, ensure_ascii=False)),
-                    )
-            if user["points"] == STARTING_POINTS and points != STARTING_POINTS:
-                c.execute("UPDATE life_users SET points=? WHERE id=?", (points, uid))
+            return _adjust_points_cursor(c, uid, delta, min_balance)
+
+
+def spend_points(uid: str, amount: int) -> tuple[bool, int]:
+    amount = max(0, int(amount))
+    if amount == 0:
+        with _lock:
+            with _conn() as c:
+                row = c.execute("SELECT points FROM life_users WHERE id=?", (uid,)).fetchone()
+                return True, int(row["points"]) if row else 0
+    ok, balance = adjust_points(uid, -amount)
+    return ok, balance
+
+
+def _user_can_operate_agent(c, user_id: str, agent_id: str) -> bool:
+    if agent_id in SYSTEM_AGENT_IDS:
+        acc = c.execute(
+            "SELECT username FROM life_accounts WHERE id=?", (user_id,)
+        ).fetchone()
+        return bool(acc and str(acc["username"]).lower() == "admin")
+    return bool(
+        c.execute(
+            "SELECT 1 FROM custom_agents WHERE user_id=? AND agent_id=?",
+            (user_id, agent_id),
+        ).fetchone()
+    )
+
+
+def _normalize_seat_until_ts(activity: str, until_ts: int, now_ms: int) -> tuple[Optional[int], Optional[str]]:
+    if until_ts <= 0:
+        if activity == "desk":
+            return now_ms + DESK_SEAT_TTL_MS, None
+        return None, "invalid_until_ts"
+    if until_ts < now_ms + SEAT_MIN_TTL_MS:
+        until_ts = now_ms + SEAT_MIN_TTL_MS
+    if until_ts > now_ms + SEAT_MAX_TTL_MS:
+        until_ts = now_ms + SEAT_MAX_TTL_MS
+    return until_ts, None
+
+
+def migrate_user(uid: str, points: int, last_idle_tick: int, custom_agents: dict, shop_unlocks: list) -> dict:
+    """一次性 localStorage → 服务端迁移（不可刷积分/解锁）。"""
+    ensure_user(uid)
+    user = load_user(uid)
+    stats = user.get("stats") or {}
+    if stats.get("local_migrated"):
+        return {"ok": False, "error": "already_migrated"}
+    if user.get("custom_agents"):
+        return {"ok": False, "error": "server_has_agents"}
+
+    ent = sum(1 for a in (custom_agents or {}).values() if a.get("agentType") == "entertainment")
+    trading = sum(1 for a in (custom_agents or {}).values() if a.get("agentType") != "entertainment")
+    if ent > 1 or trading > 3:
+        return {"ok": False, "error": "agent_limit_exceeded"}
+
+    safe_points = STARTING_POINTS
+    if user["points"] == STARTING_POINTS and points != STARTING_POINTS:
+        safe_points = max(STARTING_POINTS, min(int(points), MIGRATE_POINTS_CAP))
+
+    allowed_unlocks = set(DEFAULT_FREE_UNLOCKS)
+    safe_unlocks = [i for i in (shop_unlocks or []) if i in allowed_unlocks]
+
+    with _lock:
+        with _conn() as c:
+            if user["custom_agents"]:
+                return {"ok": False, "error": "server_has_agents"}
+            for aid, meta in (custom_agents or {}).items():
+                if not isinstance(meta, dict):
+                    continue
+                c.execute(
+                    "INSERT OR REPLACE INTO custom_agents (user_id, agent_id, meta_json) VALUES (?,?,?)",
+                    (uid, aid, json.dumps(meta, ensure_ascii=False)),
+                )
+            c.execute("UPDATE life_users SET points=? WHERE id=?", (safe_points, uid))
             if last_idle_tick:
                 c.execute("UPDATE life_users SET last_idle_tick=? WHERE id=?", (last_idle_tick, uid))
-            for item in shop_unlocks or []:
+            for item in safe_unlocks:
                 c.execute("INSERT OR IGNORE INTO shop_unlocks (user_id, item_id) VALUES (?,?)", (uid, item))
+            stats["local_migrated"] = True
+            c.execute(
+                "UPDATE life_users SET stats_json=? WHERE id=?",
+                (json.dumps(stats, ensure_ascii=False), uid),
+            )
+    return {"ok": True, "points": safe_points}
 
 
 def purge_expired_seats(now_ms: Optional[int] = None) -> None:
@@ -674,8 +763,13 @@ def get_all_seats() -> dict[str, dict]:
 def claim_seat(seat_id: str, user_id: str, agent_id: str, activity: str, until_ts: int) -> dict:
     purge_expired_seats()
     now_ms = int(datetime.now(CST).timestamp() * 1000)
+    until_ts, err = _normalize_seat_until_ts(activity, until_ts, now_ms)
+    if err:
+        return {"ok": False, "error": err}
     with _lock:
         with _conn() as c:
+            if not _user_can_operate_agent(c, user_id, agent_id):
+                return {"ok": False, "error": "agent_not_owned"}
             auc = c.execute("SELECT * FROM seat_auctions WHERE seat_id=?", (seat_id,)).fetchone()
             if auc and auc["ends_at"] > now_ms and auc["high_bidder"] and auc["high_bidder"] != user_id:
                 return {"ok": False, "error": "auction_active", "high_bidder": auc["high_bidder"]}
@@ -683,7 +777,7 @@ def claim_seat(seat_id: str, user_id: str, agent_id: str, activity: str, until_t
                 return {"ok": False, "error": "auction_won_by_other", "winner": auc["high_bidder"]}
             row = c.execute("SELECT * FROM seat_occupancy WHERE seat_id=?", (seat_id,)).fetchone()
             if row:
-                if row["until_ts"] > now_ms and row["agent_id"] != agent_id:
+                if row["until_ts"] > now_ms and row["user_id"] != user_id and row["agent_id"] != agent_id:
                     return {"ok": False, "error": "occupied", "occupied_by": row["agent_id"]}
                 c.execute(
                     "UPDATE seat_occupancy SET user_id=?, agent_id=?, activity=?, until_ts=? WHERE seat_id=?",
@@ -694,16 +788,16 @@ def claim_seat(seat_id: str, user_id: str, agent_id: str, activity: str, until_t
                     "INSERT INTO seat_occupancy (seat_id, user_id, agent_id, activity, until_ts) VALUES (?,?,?,?,?)",
                     (seat_id, user_id, agent_id, activity, until_ts),
                 )
-    return {"ok": True, "seat_id": seat_id}
+    return {"ok": True, "seat_id": seat_id, "until_ts": until_ts}
 
 
-def release_seat(seat_id: str, agent_id: str) -> dict:
+def release_seat(seat_id: str, user_id: str, agent_id: str) -> dict:
     with _lock:
         with _conn() as c:
-            row = c.execute("SELECT agent_id FROM seat_occupancy WHERE seat_id=?", (seat_id,)).fetchone()
+            row = c.execute("SELECT user_id, agent_id FROM seat_occupancy WHERE seat_id=?", (seat_id,)).fetchone()
             if not row:
                 return {"ok": True}
-            if row["agent_id"] != agent_id:
+            if row["user_id"] != user_id or row["agent_id"] != agent_id:
                 return {"ok": False, "error": "not_owner"}
             c.execute("DELETE FROM seat_occupancy WHERE seat_id=?", (seat_id,))
     return {"ok": True}

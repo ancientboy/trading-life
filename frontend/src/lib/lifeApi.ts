@@ -157,9 +157,9 @@ export async function authMe() {
   }>(r);
 }
 
-export async function lifeDispatch(action: string, cost?: number) {
+export async function lifeDispatch(action: string, _cost?: number, tierId = 'a') {
   const r = await fetch(`${API}/dispatch`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ action, cost }),
+    method: 'POST', headers: headers(), body: JSON.stringify({ action, tier_id: tierId }),
   });
   return parse<{ ok: boolean; balance: number; cost?: number; error?: string }>(r);
 }
