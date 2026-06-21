@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { useGameStore, type PokerHandResult, type PokerPlayerResult } from '../../store/useGameStore';
 import { PokerDealingCards } from './PokerDealingCards';
 import { PokerCardRow } from './PokerCard';
-import { appBaseUrl, buildPokerShareText, downloadPokerShareCard, downloadPremiumPokerShareCard, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
+import { appBaseUrl, buildPokerShareText, renderPokerShareCard, renderPremiumPokerShareCard, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
+import { SharePosterPreview } from './SharePosterPreview';
 
 function formatHandLabel(r: PokerPlayerResult): string {
   if (r.hand_name) return r.hand_name;
@@ -86,6 +87,7 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
   const addMessage = useGameStore(s => s.addMessage);
   const [dealt, setDealt] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [posterBlob, setPosterBlob] = useState<Blob | null>(null);
   const autoShared = useRef(false);
 
   useEffect(() => {
@@ -96,12 +98,25 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
         const text = buildPokerShareText(data);
         const r = await shareOrCopy({ title: '交易人生 · 德州首胜', text, url: appBaseUrl() });
         addMessage(`🎁 首胜大礼包 · ${shareResultMessage(r)}`);
-        await downloadPremiumPokerShareCard(data, appBaseUrl());
       } catch {
         /* 用户可手动分享 */
       }
     })();
   }, [dealt, data, addMessage]);
+
+  const openPoster = async (premium: boolean) => {
+    setSharing(true);
+    try {
+      const blob = premium
+        ? await renderPremiumPokerShareCard(data, appBaseUrl())
+        : await renderPokerShareCard(data, appBaseUrl());
+      setPosterBlob(blob);
+    } catch {
+      addMessage('生成分享卡失败');
+    } finally {
+      setSharing(false);
+    }
+  };
 
   const me = data.results.find(r => !r.is_npc);
   const won = data.won > 0;
@@ -112,6 +127,7 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
   const winnerNames = winners.map(r => r.name).join('、');
 
   return (
+    <>
     <div style={{ color: '#3d3530', maxHeight: '70vh', overflowY: 'auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>
@@ -241,17 +257,7 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
           <button className="ui-btn" style={{ flex: '1 1 100%', padding: '10px 0', fontWeight: 700,
             background: 'linear-gradient(135deg,#fff8e0,#ffe082)', border: '1px solid #ffd700' }}
             disabled={!dealt || sharing}
-            onClick={async () => {
-              setSharing(true);
-              try {
-                await downloadPremiumPokerShareCard(data, appBaseUrl());
-                addMessage('🎁 首胜高价值分享卡已保存');
-              } catch {
-                addMessage('生成分享卡失败');
-              } finally {
-                setSharing(false);
-              }
-            }}>
+            onClick={() => void openPoster(true)}>
             🎁 首胜海报
           </button>
         )}
@@ -272,17 +278,7 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
         </button>
         <button className="ui-btn" style={{ flex: 1, padding: '10px 0' }}
           disabled={!dealt || sharing}
-          onClick={async () => {
-            setSharing(true);
-            try {
-              await downloadPokerShareCard(data, appBaseUrl());
-              addMessage('分享卡已保存');
-            } catch {
-              addMessage('生成分享卡失败');
-            } finally {
-              setSharing(false);
-            }
-          }}>
+          onClick={() => void openPoster(false)}>
           🖼 海报
         </button>
         <button className="ui-btn" style={{ flex: 1, padding: '10px 0' }}
@@ -291,5 +287,12 @@ export function PokerResultModal({ data }: { data: PokerHandResult }) {
         </button>
       </div>
     </div>
+    <SharePosterPreview
+      blob={posterBlob}
+      filename={`trading-life-poker-${Date.now()}.png`}
+      onClose={() => setPosterBlob(null)}
+      onSaved={() => addMessage('分享卡已保存')}
+    />
+    </>
   );
 }

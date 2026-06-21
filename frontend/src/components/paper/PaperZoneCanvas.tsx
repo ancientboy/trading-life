@@ -4,7 +4,7 @@ import { tickCharacterSim } from '../../lib/characterSimLoop';
 import { WORLD_MAP, ZONE_CAMERA } from '../../lib/worldMap';
 import { hitTestPaperFacilities, getAgentPaperPos, ZONE_NPCS } from '../../lib/zoneFurniture';
 import { ARENA_PIT, hitTestArenaPod, type ArenaDisplayData } from './arenaDraw';
-import { fetchMarketKlines } from '../../lib/lifeApi';
+import { guessPhaseLabel } from '../../lib/guessDisplay';
 import { ZONE_LAYOUTS } from '../../lib/zoneLayouts';
 import { PAPER, agentVisibleInZone } from '../../lib/zoneProjection';
 import {
@@ -42,6 +42,8 @@ export function PaperZoneCanvas() {
   const setRightTab = useGameStore(s => s.setRightTab);
   const toggleRightPanel = useGameStore(s => s.toggleRightPanel);
   const rightPanelCollapsed = useGameStore(s => s.rightPanelCollapsed);
+  const joinArenaQuick = useGameStore(s => s.joinArenaQuick);
+  const addMessage = useGameStore(s => s.addMessage);
 
   const prevLegsRef = useRef<Record<string, number>>({});
   const [arenaPulseSlots, setArenaPulseSlots] = useState<Set<number>>(new Set());
@@ -127,12 +129,12 @@ export function PaperZoneCanvas() {
         endPrice: end,
         pctChange: price && start ? ((price - start) / start) * 100 : undefined,
         secondsLeft: guessRound?.seconds_left,
+        betSecondsLeft: guessRound?.bet_seconds_left,
         bettingOpen: guessRound?.betting_open,
         poolUp: guessRound?.pool_up,
         poolDown: guessRound?.pool_down,
-        statusLabel: guessRound
-          ? (guessRound.betting_open ? '押注中' : guessRound.status === 'locked' ? '封盘中' : '进行中')
-          : (btc ? 'LIVE' : undefined),
+        statusLabel: guessRound ? guessPhaseLabel(guessRound) : (btc ? 'LIVE' : undefined),
+        phaseLabel: guessRound ? guessPhaseLabel(guessRound) : undefined,
         klineCloses: klineCloses.length >= 4 ? klineCloses : undefined,
       };
     }
@@ -168,7 +170,9 @@ export function PaperZoneCanvas() {
 
   useEffect(() => {
     let last = performance.now();
+    let running = !document.hidden;
     const loop = (now: number) => {
+      if (!running) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       bobRef.current += dt;
@@ -186,8 +190,20 @@ export function PaperZoneCanvas() {
       paint();
       rafRef.current = requestAnimationFrame(loop);
     };
+    const onVisibility = () => {
+      running = !document.hidden;
+      if (running) {
+        last = performance.now();
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(loop);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
     rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      cancelAnimationFrame(rafRef.current);
+    };
   }, [paused, followAgentId, agents, activeZone, paint, setCameraLookAt, followAgentZone]);
 
   useEffect(() => {
@@ -285,7 +301,15 @@ export function PaperZoneCanvas() {
     else if (hit.type === 'arena_pod' || hit.type === 'arena_pit') {
       if (hit.type === 'arena_pod') {
         const entry = arenaLive?.entries?.[hit.slot];
-        if (entry) setSelectedArenaEntryId(entry.user_id);
+        if (entry) {
+          setSelectedArenaEntryId(entry.user_id);
+        } else if (arenaLive?.can_join && !arenaLive?.my_entry) {
+          void joinArenaQuick();
+        } else if (arenaLive?.status === 'running') {
+          addMessage('本局大赛进行中，点击有选手的台位可查看交易逻辑');
+        } else {
+          addMessage('当前不可报名，请等待下一局大赛');
+        }
       }
       if (rightPanelCollapsed) toggleRightPanel();
       setRightTab('events');

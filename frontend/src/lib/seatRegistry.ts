@@ -54,8 +54,43 @@ function isSeatFree(seatId: string, agentId: string, occupied: SeatMap, nowMs: n
   const occ = occupied[seatId];
   if (!occ) return true;
   if (occ.agent_id === agentId) return true;
-  if (occ.until_ts > 0 && occ.until_ts < nowMs) return true;
+  // until_ts<=0 为过期/脏数据（服务端 purge 亦只删 until_ts>0 且已过期）
+  if (occ.until_ts <= 0 || occ.until_ts < nowMs) return true;
   return false;
+}
+
+/** 某活动当前可用座位数（用于失败提示） */
+export function countFreeSeats(
+  activity: string,
+  agentId: string,
+  occupied: SeatMap,
+  nowMs = seatNowMs(),
+): { free: number; total: number } {
+  const candidates = seatsForActivity(activity);
+  const free = candidates.filter(id => isSeatFree(id, agentId, occupied, nowMs)).length;
+  return { free, total: candidates.length };
+}
+
+export const ACTIVITY_SEAT_LABEL: Record<string, string> = {
+  massage: '按摩床',
+  dine: '餐厅座位',
+  poker: '德州牌桌',
+  rest: '休息沙发',
+  desk: '工位',
+};
+
+export const ACTIVITY_ZONE: Record<string, import('../store/useGameStore').ZoneId> = {
+  rest: 'hall',
+  desk: 'hall',
+  dine: 'restaurant',
+  massage: 'spa',
+  poker: 'casino',
+};
+
+/** 座位已满时的提示文案（避免「0/4 空位」被误解为「0 人占用」） */
+export function formatSeatCapacityMessage(label: string, free: number, total: number): string {
+  if (free <= 0) return `${label}已满（共 ${total} 座，均已占用）`;
+  return `${label}剩余 ${free} 个空位（共 ${total} 座）`;
 }
 
 /** 仅分配指定工位/座位，被占则返回 null（不自动换座） */
@@ -97,19 +132,36 @@ export function hasFreeSeat(activity: string, agentId: string, occupied: SeatMap
 
 const LOCAL_SEAT_ACTIVITIES = new Set(['dine', 'massage', 'poker', 'rest', 'desk']);
 
+const VALID_SEAT_IDS = new Set(allSeatIds());
+
+function agentOccupiesSeat(char: CharState): boolean {
+  if (char.isWalking || char.inTransit) return false;
+  if (char.travelIntent && !char.activity) return false;
+  if (!char.destNode) return false;
+  const activity = char.activity ?? (char.activityPose === 'desk' ? 'desk' : null);
+  if (!activity || !LOCAL_SEAT_ACTIVITIES.has(activity)) return false;
+  return allSeatIds().includes(char.destNode);
+}
+
 /** 合并服务端占座与本地 Agent 当前占用，避免多人叠坐 */
 export function mergeLocalSeatOccupancy(
   serverSeats: SeatMap,
   agents: Record<string, CharState>,
   nowMs = seatNowMs(),
 ): SeatMap {
-  const merged: SeatMap = { ...serverSeats };
+  const localAgentIds = new Set(Object.keys(agents));
+  const merged: SeatMap = {};
+  for (const [seatId, occ] of Object.entries(serverSeats)) {
+    if (!VALID_SEAT_IDS.has(seatId)) continue;
+    if (occ.until_ts <= 0 || occ.until_ts < nowMs) continue;
+    // 服务端残留占座：本地已无该 Agent 时忽略（避免「视觉空座但 0/4 满」）
+    if (occ.agent_id && !localAgentIds.has(occ.agent_id)) continue;
+    merged[seatId] = occ;
+  }
   for (const char of Object.values(agents)) {
-    if (!char.destNode) continue;
-    const seatId = char.destNode;
-    const activity = char.activity ?? (char.activityPose === 'desk' ? 'desk' : null);
-    if (!activity || !LOCAL_SEAT_ACTIVITIES.has(activity)) continue;
-    if (!allSeatIds().includes(seatId)) continue;
+    if (!agentOccupiesSeat(char)) continue;
+    const seatId = char.destNode!;
+    const activity = char.activity ?? (char.activityPose === 'desk' ? 'desk' : null)!;
     merged[seatId] = {
       user_id: 'local',
       agent_id: char.agentId,

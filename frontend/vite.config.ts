@@ -13,6 +13,15 @@ export default defineConfig({
     emptyOutDir: true,
     assetsDir: 'assets',
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'vendor-react';
+          if (id.includes('node_modules/three') || id.includes('@react-three')) return 'vendor-three';
+          if (id.includes('lightweight-charts')) return 'vendor-charts';
+        },
+      },
+    },
   },
   server: {
     port: 5174,

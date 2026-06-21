@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useGameStore, type GuessResultData } from '../../store/useGameStore';
 import { placeLeverageBet } from '../../lib/lifeEngagementApi';
 import {
-  appBaseUrl, buildGuessShareText, downloadGuessShareCard,
+  appBaseUrl, buildGuessShareText, renderGuessShareCard,
   shareOrCopy, shareResultMessage,
 } from '../../lib/shareUtils';
+import { SharePosterPreview } from './SharePosterPreview';
 
 export function GuessResultModal({ data }: { data: GuessResultData }) {
   const closeModal = useGameStore(s => s.closeModal);
@@ -13,6 +14,7 @@ export function GuessResultModal({ data }: { data: GuessResultData }) {
   const flyToZone = useGameStore(s => s.flyToZone);
   const [phase, setPhase] = useState(0);
   const [sharing, setSharing] = useState(false);
+  const [posterBlob, setPosterBlob] = useState<Blob | null>(null);
   const [levBusy, setLevBusy] = useState(false);
   const autoShared = useRef(false);
 
@@ -36,8 +38,6 @@ export function GuessResultModal({ data }: { data: GuessResultData }) {
         const text = buildGuessShareText(data);
         const r = await shareOrCopy({ title: '交易人生 · 猜涨跌首胜', text, url: appBaseUrl() });
         addMessage(`🎁 猜涨跌首胜 · ${shareResultMessage(r)}`);
-        await downloadGuessShareCard(data, appBaseUrl());
-        addMessage('猜涨跌首胜分享卡已保存');
       } catch {
         addMessage('自动分享未完成，可手动点下方按钮');
       }
@@ -63,6 +63,7 @@ export function GuessResultModal({ data }: { data: GuessResultData }) {
   };
 
   return (
+    <>
     <div style={{ color: '#3d3530', textAlign: 'center' }}>
       <div style={{
         padding: 20, borderRadius: 12, marginBottom: 16,
@@ -137,8 +138,10 @@ export function GuessResultModal({ data }: { data: GuessResultData }) {
               onClick={async () => {
                 setSharing(true);
                 try {
-                  await downloadGuessShareCard(data, appBaseUrl());
-                  addMessage('分享卡已保存');
+                  const blob = await renderGuessShareCard(data, appBaseUrl());
+                  setPosterBlob(blob);
+                } catch {
+                  addMessage('生成分享卡失败');
                 } finally { setSharing(false); }
               }}>
               保存分享卡
@@ -148,5 +151,12 @@ export function GuessResultModal({ data }: { data: GuessResultData }) {
         </div>
       )}
     </div>
+    <SharePosterPreview
+      blob={posterBlob}
+      filename={`trading-life-guess-${Date.now()}.png`}
+      onClose={() => setPosterBlob(null)}
+      onSaved={() => addMessage('分享卡已保存')}
+    />
+    </>
   );
 }

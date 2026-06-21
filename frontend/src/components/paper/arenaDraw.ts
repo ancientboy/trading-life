@@ -21,7 +21,9 @@ export interface ArenaDisplayData {
   bettingOpen?: boolean;
   poolUp?: number;
   poolDown?: number;
+  betSecondsLeft?: number;
   statusLabel?: string;
+  phaseLabel?: string;
   klineCloses?: number[];
 }
 
@@ -169,7 +171,7 @@ function drawKlineScreen(
 
   if (data?.statusLabel) {
     ctx.textAlign = 'right';
-    ctx.fillStyle = data.bettingOpen ? P.up : P.textMuted;
+    ctx.fillStyle = data.bettingOpen ? P.up : data.phaseLabel?.includes('封盘') ? '#ffb74d' : P.textMuted;
     ctx.fillText(data.statusLabel, c.x + sw / 2 - ws(12), c.y - sh / 2 + ws(18));
   }
 
@@ -254,8 +256,13 @@ function drawKlineScreen(
     ctx.fillStyle = P.textMuted;
     ctx.font = `${Math.max(7, ws(8))}px Inter,sans-serif`;
     ctx.textAlign = 'center';
+    const tail = data.bettingOpen
+      ? ` · 押注 ${data.betSecondsLeft ?? data.secondsLeft ?? 0}s`
+      : data.secondsLeft != null
+        ? ` · 封盘 ${data.secondsLeft}s 后结算`
+        : '';
     ctx.fillText(
-      `涨池 ${data.poolUp ?? 0} · 跌池 ${data.poolDown ?? 0}${data.secondsLeft != null ? ` · ${data.secondsLeft}s` : ''}`,
+      `涨池 ${data.poolUp ?? 0} · 跌池 ${data.poolDown ?? 0}${tail}`,
       c.x, c.y + sh / 2 - ws(8),
     );
   }
@@ -291,7 +298,7 @@ function drawArenaPod(
   ws: (v: number) => number,
   t: number,
   P: ArenaPalette,
-  opts?: { label?: string; returnPct?: number; direction?: string; pulse?: boolean; hover?: boolean; rank?: number },
+  opts?: { label?: string; returnPct?: number; direction?: string; pulse?: boolean; hover?: boolean; rank?: number; emptyLabel?: string },
 ) {
   const p = toScreen(pod.px, pod.py);
   const pulseScale = opts?.pulse ? 1 + 0.05 * Math.sin(t * 8) : 1;
@@ -334,10 +341,11 @@ function drawArenaPod(
     ctx.textAlign = 'center';
     ctx.fillText(isUp ? '▲ LONG' : '▼ SHORT', p.x, p.y - rh - monH / 2 + ws(2));
   } else {
-    ctx.fillStyle = P.textMuted;
+    const emptyLabel = opts?.emptyLabel || 'READY';
+    ctx.fillStyle = emptyLabel === '报名' ? P.accent : P.textMuted;
     ctx.font = `${Math.max(6, ws(7))}px Inter,sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('READY', p.x, p.y - rh - monH / 2 + ws(2));
+    ctx.fillText(emptyLabel, p.x, p.y - rh - monH / 2 + ws(2));
   }
 
   if (opts?.label) {
@@ -369,6 +377,7 @@ export function drawArenaScene(
     hoverPodId?: string | null;
     entries?: Array<{ user_id: string; agent_name: string; direction: string; return_pct?: number; rank?: number; recent_legs?: Array<{ direction: string }> }>;
     status?: string;
+    canJoin?: boolean;
     display?: ArenaDisplayData;
     pulseSlots?: Set<number>;
   },
@@ -412,6 +421,9 @@ export function drawArenaScene(
       pulse,
       hover: opts?.hoverPodId === pod.id,
       rank: entry?.rank,
+      emptyLabel: !entry
+        ? (opts?.canJoin ? '报名' : '空位')
+        : undefined,
     });
   });
 

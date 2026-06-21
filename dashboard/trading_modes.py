@@ -517,7 +517,6 @@ async def place_leverage_bet(body: LeverageBetBody, account_id: str = Depends(re
 
 @modes_router.post("/pvp/trading/pk/bet")
 async def place_pk_bet(body: PkBetBody, account_id: str = Depends(resolve_account_id)):
-    from life_game import load_user, save_user, _spend
     from trading_events import _ensure_guess_round, GUESS_BET_WINDOW_MS
     import random
 
@@ -525,54 +524,59 @@ async def place_pk_bet(body: PkBetBody, account_id: str = Depends(resolve_accoun
     if direction not in ("up", "down"):
         return {"ok": False, "error": "direction 须为 up 或 down"}
     stake = max(PK_MIN_STAKE, min(body.stake, PK_MAX_STAKE))
-    user = load_user(account_id)
-    if not _spend(user, stake):
-        save_user(account_id, user)
-        return {"ok": False, "error": "积分不足", "balance": user["points"]}
-    save_user(account_id, user)
-
-    opp_dir = "down" if direction == "up" else "up"
-    opp_id = f"npc_pk_{uuid.uuid4().hex[:6]}"
-    waiting = None
-    if not body.vs_ai:
-        with life_db._lock:
-            with life_db._conn() as c:
-                waiting = c.execute(
-                    """SELECT * FROM guess_pk_rooms WHERE status='waiting' AND user_a!=? AND stake=? LIMIT 1""",
-                    (account_id, stake),
-                ).fetchone()
-                if waiting:
-                    room = dict(waiting)
-                    opp_id = room["user_a"]
-                    opp_dir = room["dir_a"]
-                    direction = "down" if opp_dir == "up" else "up"
+    rid = ""
+    matched = False
 
     with life_db._lock:
         with life_db._conn() as c:
             rd = await _ensure_guess_round(c)
             ts = life_db.now_ms()
             if rd["status"] != "open" or ts >= rd["starts_at"] + GUESS_BET_WINDOW_MS:
-                user = load_user(account_id)
-                user["points"] = user.get("points", 0) + stake
-                save_user(account_id, user)
-                return {"ok": False, "error": "本局已封盘", "balance": user["points"]}
-            rid = f"pk_{uuid.uuid4().hex[:10]}"
-            if body.vs_ai and random.random() < PK_AI_WIN_RATE:
-                opp_dir = direction
-            c.execute(
-                """INSERT INTO guess_pk_rooms (id, round_id, user_a, user_b, dir_a, dir_b, stake, is_npc_b, status, created_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                (rid, rd["id"], account_id, opp_id, direction, opp_dir, stake,
-                 1 if body.vs_ai or str(opp_id).startswith("npc_") else 0, "open", ts),
-            )
-            if not body.vs_ai and waiting:
-                c.execute("UPDATE guess_pk_rooms SET status='cancelled' WHERE id=?", (waiting["id"],))
+                return {"ok": False, "error": "本局已封盘"}
+            ok, balance = life_db._adjust_points_cursor(c, account_id, -stake)
+            if not ok:
+                return {"ok": False, "error": "积分不足", "balance": balance}
+
+            if body.vs_ai:
+                opp_id = f"npc_pk_{uuid.uuid4().hex[:6]}"
+                opp_dir = "down" if direction == "up" else "up"
+                if random.random() < PK_AI_WIN_RATE:
+                    opp_dir = direction
+                rid = f"pk_{uuid.uuid4().hex[:10]}"
+                c.execute(
+                    """INSERT INTO guess_pk_rooms (id, round_id, user_a, user_b, dir_a, dir_b, stake, is_npc_b, status, created_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                    (rid, rd["id"], account_id, opp_id, direction, opp_dir, stake, 1, "open", ts),
+                )
+            else:
+                waiting = c.execute(
+                    """SELECT * FROM guess_pk_rooms WHERE status='waiting' AND user_a!=? AND stake=? LIMIT 1""",
+                    (account_id, stake),
+                ).fetchone()
+                if waiting:
+                    room = dict(waiting)
+                    matched_dir = "down" if room["dir_a"] == "up" else "up"
+                    c.execute(
+                        """UPDATE guess_pk_rooms SET user_b=?, dir_b=?, status='open' WHERE id=?""",
+                        (account_id, matched_dir, room["id"]),
+                    )
+                    rid = room["id"]
+                    matched = True
+                else:
+                    rid = f"pk_{uuid.uuid4().hex[:10]}"
+                    c.execute(
+                        """INSERT INTO guess_pk_rooms (id, round_id, user_a, user_b, dir_a, dir_b, stake, is_npc_b, status, created_at)
+                           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                        (rid, rd["id"], account_id, "", direction, "", stake, 0, "waiting", ts),
+                    )
 
     life_db.bump_daily_task(account_id, "pk")
+    msg = f"PK {'匹配成功' if matched else ('等待对手' if not body.vs_ai else '已开局')} · 押{'涨' if direction == 'up' else '跌'} · {stake} 积分"
     return {
         "ok": True,
-        "message": f"PK 已开局 · 押{'涨' if direction == 'up' else '跌'} · {stake} 积分",
+        "message": msg,
         "room_id": rid,
+        "matched": matched,
         "modes": modes_payload(account_id),
     }
 
@@ -582,9 +586,9 @@ async def pk_streak_board():
     with life_db._lock:
         with life_db._conn() as c:
             rows = c.execute(
-                """SELECT user_id, COUNT(*) AS wins FROM guess_pk_rooms
-                   WHERE status='settled' AND winner_id=user_a AND created_at > ?
-                   GROUP BY user_id ORDER BY wins DESC LIMIT 10""",
+                """SELECT winner_id AS user_id, COUNT(*) AS wins FROM guess_pk_rooms
+                   WHERE status='settled' AND winner_id != '' AND created_at > ?
+                   GROUP BY winner_id ORDER BY wins DESC LIMIT 10""",
                 (life_db.now_ms() - 7 * 86400_000,),
             ).fetchall()
     items = []

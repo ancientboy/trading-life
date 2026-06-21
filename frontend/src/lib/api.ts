@@ -1,13 +1,19 @@
+import { dedupeAsync } from './pollGuard';
+
 const API = '/trading';
 
 export async function fetchOverview() {
-  const r = await fetch(`${API}/api/overview`);
-  return r.json();
+  return dedupeAsync('overview', async () => {
+    const r = await fetch(`${API}/api/overview`);
+    return r.json();
+  });
 }
 
 export async function fetchTicker() {
-  const r = await fetch(`${API}/api/ticker`);
-  return r.json();
+  return dedupeAsync('ticker', async () => {
+    const r = await fetch(`${API}/api/ticker`);
+    return r.json();
+  });
 }
 
 export async function fetchAgentProfile(agentId: string) {

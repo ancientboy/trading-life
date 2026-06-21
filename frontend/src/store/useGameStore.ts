@@ -21,7 +21,11 @@ import {
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
-import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, type SeatMap } from '../lib/seatRegistry';
+import { throttleAsync } from '../lib/pollGuard';
+import { dismissPkResult, dismissGuessResult, dismissArenaResult } from '../lib/tradingResultDismiss';
+import { liveGuessRound, liveArenaRound } from '../lib/guessDisplay';
+import { inferMessageScope, pauseBackgroundAgentAi, type MessageScope } from '../lib/messageScope';
+import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, ACTIVITY_ZONE, formatSeatCapacityMessage, type SeatMap } from '../lib/seatRegistry';
 import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
@@ -33,7 +37,7 @@ import {
   fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
   chatChannelForZone, fetchPokerRoom, fetchMyPokerRoom, joinPokerRoomByCode, fetchPublicRoomPreview,
   leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat,
-  fetchGuessRound, fetchArenaRound, fetchPublicArenaLive,
+  fetchGuessRound, fetchArenaRound, fetchPublicArenaLive, joinArena,
   type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
   type PokerRoom, type GuessRoundState, type PkResultInfo,
 } from '../lib/lifeEngagementApi';
@@ -115,6 +119,7 @@ const LEISURE_FACILITY: Record<'restaurant' | 'spa' | 'casino' | 'arena', string
 };
 
 export type GuessResultData = {
+  round_id?: string;
   won: boolean;
   direction: 'up' | 'down';
   stake: number;
@@ -126,6 +131,7 @@ export type GuessResultData = {
 };
 
 export type PkResultData = {
+  round_id?: string;
   won: boolean;
   my_direction: 'up' | 'down';
   winner_side: string;
@@ -136,6 +142,7 @@ export type PkResultData = {
 };
 
 export type ArenaResultData = {
+  round_id?: string;
   duration_label?: string;
   entries: import('../lib/lifeEngagementApi').ArenaEntry[];
   my_entry?: import('../lib/lifeEngagementApi').ArenaEntry | null;
@@ -180,7 +187,7 @@ interface GameStore {
   profileSchema: { key: string; label: string; type: string; min?: number; max?: number; step?: number }[];
   profileConfig: Record<string, unknown>;
   soulMd: string;
-  messages: { text: string; time: string }[];
+  messages: { text: string; time: string; scope?: MessageScope }[];
   npcBubble: { npcId: string; text: string; until: number } | null;
   /** 用户积分 — 后端持久化 */
   points: number;
@@ -218,6 +225,10 @@ interface GameStore {
   guessRound: GuessRoundState | null;
   guessPollMeta: GuessPollMeta | null;
   arenaPollMeta: ArenaPollMeta | null;
+  /** 竞技数据上次同步时间 — 用于本地 1s 倒计时 */
+  tradingLiveSyncedAt: number;
+  guessRoundServer: GuessRoundState | null;
+  arenaLiveServer: import('../lib/lifeEngagementApi').ArenaRoundState | null;
   /** 场景内选中的竞技选手 */
   selectedArenaEntryId: string | null;
   /** 牌桌发牌动画截止时间戳 */
@@ -268,6 +279,8 @@ interface GameStore {
   setArenaLive: (state: import('../lib/lifeEngagementApi').ArenaRoundState | null) => void;
   setGuessRound: (state: GuessRoundState | null) => void;
   syncTradingLive: () => Promise<void>;
+  tickTradingCountdown: () => void;
+  joinArenaQuick: (agentId?: string) => Promise<boolean>;
   setSelectedArenaEntryId: (id: string | null) => void;
   showTradingWin: (result: import('../components/ui/TradingWinModal').TradingWinData) => void;
   setPokerTableDealingUntil: (until: number) => void;
@@ -297,7 +310,7 @@ interface GameStore {
   setTicker: (t: Record<string, number>) => void;
   setProfile: (schema: GameStore['profileSchema'], config: Record<string, unknown>, soul: string) => void;
   patchChar: (id: string, patch: Partial<CharState>) => void;
-  addMessage: (text: string) => void;
+  addMessage: (text: string, scope?: MessageScope) => void;
   setNpcBubble: (npcId: string | null, text: string, until: number) => void;
   earnPoints: (amount: number, reason?: string) => void;
   trySpendPoints: (amount: number) => { ok: boolean; balance: number };
@@ -404,6 +417,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   guessRound: null,
   guessPollMeta: null,
   arenaPollMeta: null,
+  tradingLiveSyncedAt: 0,
+  guessRoundServer: null,
+  arenaLiveServer: null,
   selectedArenaEntryId: null,
   pokerTableDealingUntil: 0,
   pokerRoom: null,
@@ -522,10 +538,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   openModal: (id) => set({ activeModal: id, rightPanelCollapsed: true }),
   openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: true }),
-  closeModal: () => set({
-    activeModal: null, workshopMode: 'list', pokerHandResult: null,
-    guessResultData: null, arenaResultData: null, pkResultData: null, tradingWinResult: null, pokerTableDealingUntil: 0,
-  }),
+  closeModal: () => {
+    const s = get();
+    const modal = s.activeModal;
+    const restorePanel = modal === 'pk_result' || modal === 'guess_result' || modal === 'arena_result';
+    let guessPollMeta = s.guessPollMeta;
+    if (modal === 'pk_result' && s.pkResultData?.round_id) {
+      dismissPkResult(s.pkResultData.round_id);
+      if (guessPollMeta) guessPollMeta = { ...guessPollMeta, last_pk_result: null };
+    }
+    if (modal === 'guess_result' && s.guessResultData?.round_id) {
+      dismissGuessResult(s.guessResultData.round_id);
+    }
+    if (modal === 'arena_result' && s.arenaResultData?.round_id) {
+      dismissArenaResult(s.arenaResultData.round_id);
+    }
+    set({
+      activeModal: null, workshopMode: 'list', pokerHandResult: null,
+      guessResultData: null, arenaResultData: null, pkResultData: null, tradingWinResult: null, pokerTableDealingUntil: 0,
+      ...(restorePanel ? { rightPanelCollapsed: false } : {}),
+      ...(guessPollMeta !== s.guessPollMeta ? { guessPollMeta } : {}),
+    });
+  },
   showPokerResult: (result) => set({
     pokerHandResult: result, activeModal: 'poker_result', rightPanelCollapsed: true, pokerTableDealingUntil: 0,
   }),
@@ -559,28 +593,91 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncTradingLive: async () => {
     if (!isLoggedIn()) return;
-    try {
-      const [gr, ar] = await Promise.all([fetchGuessRound(), fetchArenaRound()]);
-      if (gr.ok) {
-        set({
-          guessRound: gr.current ?? null,
-          guessPollMeta: {
+    return throttleAsync('sync-trading-live', 4500, async () => {
+      try {
+        const syncedAt = Date.now();
+        const [gr, ar] = await Promise.all([fetchGuessRound(), fetchArenaRound()]);
+        const patch: Partial<GameStore> = { tradingLiveSyncedAt: syncedAt };
+        if (gr.ok) {
+          patch.guessRoundServer = gr.current ?? null;
+          patch.guessRound = gr.current ?? null;
+          patch.guessPollMeta = {
             last_settled: gr.last_settled ?? null,
             last_my_bet: gr.last_my_bet ?? null,
             last_pk_result: gr.last_pk_result ?? null,
-          },
-        });
+          };
+        }
+        if (ar.ok) {
+          patch.arenaLiveServer = ar.current ?? null;
+          patch.arenaLive = ar.current ?? null;
+          patch.arenaPollMeta = { last_settled: ar.last_settled ?? null };
+        } else {
+          const pr = await fetchPublicArenaLive().catch(() => null);
+          if (pr?.ok && pr.current) {
+            patch.arenaLiveServer = pr.current;
+            patch.arenaLive = pr.current;
+          }
+        }
+        set(patch);
+      } catch { /* ignore */ }
+    });
+  },
+  tickTradingCountdown: () => {
+    const s = get();
+    if (!s.tradingLiveSyncedAt) return;
+    const now = Date.now();
+    const patch: Partial<GameStore> = {};
+    if (s.guessRoundServer) {
+      patch.guessRound = liveGuessRound(s.guessRoundServer, s.tradingLiveSyncedAt, now);
+    }
+    if (s.arenaLiveServer) {
+      patch.arenaLive = liveArenaRound(s.arenaLiveServer, s.tradingLiveSyncedAt, now);
+    }
+    if (Object.keys(patch).length) set(patch);
+  },
+  joinArenaQuick: async (agentId) => {
+    const s = get();
+    const tradingIds = s.operableAgentIds.filter(id => s.agents[id]?.data?.agentType !== 'entertainment');
+    const id = agentId || s.selectedAgentId || tradingIds[0];
+    if (!id || !s.agents[id]) {
+      s.addMessage('请先创建交易 Agent');
+      return false;
+    }
+    if (!s.canOperateAgent(id)) {
+      s.addMessage(`${s.agents[id].data.name} 是系统 Agent，请前往工坊创建你自己的 Agent`);
+      return false;
+    }
+    if (!s.arenaLive?.can_join) {
+      s.addMessage('当前大赛不在报名阶段，请等待下一局');
+      return false;
+    }
+    if (s.arenaLive.my_entry) {
+      s.addMessage('你已报名本局大赛');
+      return false;
+    }
+    try {
+      const r = await joinArena(id);
+      if (!r.ok) {
+        s.addMessage(r.error || '报名失败');
+        return false;
       }
-      if (ar.ok) {
-        set({
-          arenaLive: ar.current ?? null,
-          arenaPollMeta: { last_settled: ar.last_settled ?? null },
-        });
-      } else {
-        const pr = await fetchPublicArenaLive().catch(() => null);
-        if (pr?.ok && pr.current) set({ arenaLive: pr.current });
-      }
-    } catch { /* ignore */ }
+      const syncedAt = Date.now();
+      set({
+        arenaLive: r.current ?? null,
+        arenaLiveServer: r.current ?? null,
+        tradingLiveSyncedAt: syncedAt,
+        points: r.balance ?? s.points,
+        rightTab: 'events',
+        sidebarActive: 'events',
+        rightPanelCollapsed: false,
+      });
+      s.addMessage(r.message || `${s.agents[id].data.name} 已入座选手台 · 报名成功`, 'arena');
+      void s.syncTradingLive();
+      return true;
+    } catch {
+      s.addMessage('网络错误，请稍后重试');
+      return false;
+    }
   },
   setSelectedArenaEntryId: (id) => set({ selectedArenaEntryId: id }),
   showTradingWin: (result) => set({
@@ -590,7 +687,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
   flyToZone: (zone) => {
     const cam = ZONE_CAMERA[zone];
     const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino' || zone === 'arena';
+    const s = get();
+    let agents = s.agents;
+    if (zone !== 'hall') {
+      agents = Object.fromEntries(Object.entries(s.agents).map(([id, char]) => {
+        if (char.userDispatched) return [id, char];
+        if (char.travelIntent || (char.isWalking && !char.activity)) {
+          return [id, { ...char, travelIntent: null, isWalking: false, pathQueue: [], pathIndex: 0, destNode: null }];
+        }
+        return [id, char];
+      }));
+    }
     set({
+      agents,
       activeZone: zone,
       sidebarActive: zone === 'hall' ? 'hall' : zone === 'arena' ? 'events' : zone,
       rightTab: ZONE_TO_RIGHT_TAB[zone],
@@ -698,7 +807,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cameraZoom: WORLD_MAP.zoneZoom,
       mapOverview: false,
     });
-    get().addMessage(`${char.data.name} 已派遣至 ${deskLabel}（免费）`);
+    get().addMessage(`${char.data.name} 已派遣至 ${deskLabel}（免费）`, 'hall');
     return true;
   },
 
@@ -734,7 +843,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       if (alreadyAtService || enRouteToService) {
         if (!skipCost && cost > 0) {
-          const disp = await lifeDispatch(action, cost);
+          const disp = await lifeDispatch(action, cost, tierId);
           if (!disp.ok) {
             get().addMessage(`积分不足，需要 ${cost} 积分（当前 ${disp.balance}）`);
             return false;
@@ -783,7 +892,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           cameraZoom: WORLD_MAP.zoneZoom,
           mapOverview: false,
         });
-        get().addMessage(`${char.data.name} 已切换「${tierDef.name}」${!skipCost && cost > 0 ? ` · -${cost} 积分` : ''}`);
+        get().addMessage(`${char.data.name} 已切换「${tierDef.name}」${!skipCost && cost > 0 ? ` · -${cost} 积分` : ''}`, zone);
         get().speakForAgent(id, action, action);
         return true;
       }
@@ -792,14 +901,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const mergedForSeat = mergeLocalSeatOccupancy(get().seatOccupancy, get().agents, wallNow);
 
       if (!hasFreeSeat(action, id, mergedForSeat, wallNow)) {
+        const actZone = ACTIVITY_ZONE[action];
+        if (actZone && s.activeZone !== actZone) {
+          get().addMessage(`请前往${actZone === 'hall' ? '交易大厅' : actZone === 'spa' ? '按摩馆' : actZone === 'restaurant' ? '餐厅' : '德州厅'}再派遣 Agent`, actZone);
+          return false;
+        }
         const queueCost = skipCost ? 0 : (cost > 0 ? cost : (FACILITY_BASE_COST[action] ?? 0));
-        await enqueueDispatch(id, action, opts?.nodeId || '', queueCost);
-        get().addMessage(`${char0.data.name} 座位已满，已加入派遣队列（未扣积分）`);
+        await enqueueDispatch(id, action, opts?.nodeId || '', queueCost, tierId);
+        get().addMessage(`${char0.data.name} 座位已满，已加入派遣队列（未扣积分）`, zone);
         return true;
       }
 
       if (!skipCost && cost > 0) {
-        const disp = await lifeDispatch(action, cost);
+        const disp = await lifeDispatch(action, cost, tierId);
         if (!disp.ok) {
           get().addMessage(`积分不足，需要 ${cost} 积分（当前 ${disp.balance}）`);
           return false;
@@ -835,7 +949,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         cameraZoom: WORLD_MAP.zoneZoom,
         mapOverview: false,
       });
-      get().addMessage(`${char.data.name} 已抵达${cam.label}${!skipCost && cost > 0 ? ` · -${cost} 积分` : ' · 免费'}`);
+      get().addMessage(`${char.data.name} 已抵达${cam.label}${!skipCost && cost > 0 ? ` · -${cost} 积分` : ' · 免费'}`, zone);
       get().speakForAgent(id, action, action);
       return true;
     } catch {
@@ -1470,10 +1584,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncUserPortfolio: async () => {
     if (!isLoggedIn()) return;
-    try {
-      const data = await fetchPortfolio();
-      if (data.ok) get().applyUserPortfolio(data);
-    } catch { /* ignore */ }
+    return throttleAsync('sync-portfolio', 8000, async () => {
+      try {
+        const data = await fetchPortfolio();
+        if (data.ok) get().applyUserPortfolio(data);
+      } catch { /* ignore */ }
+    });
   },
 
   resetUserPortfolio: async () => {
@@ -1540,7 +1656,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setTicker: (t) => set({ ticker: t }),
   setProfile: (schema, config, soul) => set({ profileSchema: schema, profileConfig: config, soulMd: soul }),
   patchChar: (id, patch) => set(s => ({ agents: { ...s.agents, [id]: { ...s.agents[id], ...patch } } })),
-  addMessage: (text) => set(s => ({ messages: [...s.messages.slice(-49), { text, time: new Date().toLocaleTimeString() }] })),
+  addMessage: (text, scope) => {
+    const msgScope = scope ?? inferMessageScope(text);
+    set(st => ({
+      messages: [...st.messages.slice(-49), { text, time: new Date().toLocaleTimeString(), scope: msgScope }],
+    }));
+  },
   setNpcBubble: (npcId, text, until) => set({
     npcBubble: npcId && text ? { npcId, text, until } : null,
   }),
@@ -1714,7 +1835,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         context,
         activity,
       });
-      if (res.line) {
+      if (res?.line) {
         get().setAgentBubble(agentId, res.line, performance.now() + 4500);
       }
     } catch { /* ignore */ }
@@ -1858,6 +1979,8 @@ export function onPathComplete(char: CharState, now: number): CharState {
   return { ...char, destNode: null, isWalking: false, pathQueue: [] };
 }
 
+const seatFailMsgAt = new Map<string, number>();
+
 function startActivity(char: CharState, activity: CharState['activity'], now: number, dur: number): CharState {
   const seatMap: Record<string, Record<string, string>> = {
     rest: OfficePath.boothByAgent, massage: OfficePath.massageByAgent,
@@ -1868,13 +1991,26 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   const zone = activity ? zoneMap[activity] : null;
 
   const store = useGameStore.getState();
+  const activityZone = activity ? ACTIVITY_ZONE[activity] : null;
+  if (activity && activityZone && store.activeZone !== activityZone && !char.userDispatched) {
+    return { ...char, travelIntent: null, isWalking: false, pathQueue: [], destNode: null };
+  }
+
   const wallNow = seatNowMs();
   const mergedSeats = mergeLocalSeatOccupancy(store.seatOccupancy, store.agents, wallNow);
   const seatId = activity
     ? resolveAvailableSeat(activity, nodeId, char.agentId, mergedSeats, wallNow)
     : null;
   if (activity && !seatId) {
-    store.addMessage(`${char.data.name} 找不到空座位，活动取消`);
+    const { free, total } = countFreeSeats(activity, char.agentId, mergedSeats, wallNow);
+    const label = ACTIVITY_SEAT_LABEL[activity] ?? '座位';
+    const msgKey = `${char.agentId}:${activity}`;
+    const lastMsg = seatFailMsgAt.get(msgKey) ?? 0;
+    const showMsg = char.userDispatched || (activityZone != null && store.activeZone === activityZone);
+    if (showMsg && wallNow - lastMsg > 12_000) {
+      seatFailMsgAt.set(msgKey, wallNow);
+      store.addMessage(`${char.data.name}：${formatSeatCapacityMessage(label, free, total)}，活动取消`, activityZone ?? 'hall');
+    }
     return { ...char, travelIntent: null, isWalking: false, pathQueue: [], destNode: null };
   }
 
@@ -1899,7 +2035,7 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     const greet = greetingForActivity(zone);
     const npc = npcForZone(zone);
     if (greet && npc) {
-      if (char.userDispatched) store.addMessage(`🐧 ${npc.name}：${greet}`);
+      if (char.userDispatched) store.addMessage(`🐧 ${npc.name}：${greet}`, zone);
       store.setNpcBubble(npc?.id ?? null, greet ?? '', now + 4500);
     }
   }

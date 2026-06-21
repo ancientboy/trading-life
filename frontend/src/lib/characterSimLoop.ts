@@ -3,10 +3,13 @@ import { tickAgentBrain, brainDispatchLeisure, executeBrainSpeak, tickSocialEven
 import { homeNodeForAgent } from '../lib/agentHome';
 import { OfficePath } from './pathfinding';
 import { moveWithCollision } from './collision';
+import { pauseBackgroundAgentAi } from './messageScope';
 
 const WALK_SPEED = 2.8;
 const STUCK_SKIP_FRAMES = 24;
+const ARRIVAL_RETRY_MS = 2500;
 const stuckFrames = new Map<string, number>();
+const arrivalRetryAt = new Map<string, number>();
 
 /** 单帧角色模拟（供 Canvas 2D 引擎调用，不依赖 Three.js） */
 const ACTIVITY_END_LABEL: Record<string, string> = {
@@ -62,8 +65,17 @@ export function tickCharacterSim(dt: number) {
       return;
     }
 
-    if (c.activity && now < c.activityUntil) return;
-    if (c.activity && now >= c.activityUntil) {
+    if (c.activity && c.activityUntil <= 0) {
+      useGameStore.getState().releaseAgentSeat(c.agentId, c.destNode);
+      c = {
+        ...c, activity: null, activityUntil: 0, activityPose: undefined,
+        travelIntent: null, destNode: null, isWalking: false, pathQueue: [],
+      };
+      patchChar(c.agentId, c);
+      return;
+    }
+    if (c.activity && c.activityUntil > 0 && now < c.activityUntil) return;
+    if (c.activity && (c.activityUntil <= 0 || now >= c.activityUntil)) {
       const finished = c.activity;
       const seatId = c.destNode;
       const userDispatched = c.userDispatched;
@@ -73,7 +85,11 @@ export function tickCharacterSim(dt: number) {
       const label = ACTIVITY_END_LABEL[finished ?? ''] ?? '休闲';
       const dest = c.data.agentType === 'entertainment' ? '休息区' : '工位';
       if (userDispatched) {
-        useGameStore.getState().addMessage(`${c.data.name} 结束${label}，返回${dest}`);
+        const actZone = finished === 'massage' ? 'spa' as const
+          : finished === 'dine' ? 'restaurant' as const
+          : finished === 'poker' ? 'casino' as const
+          : 'hall' as const;
+        useGameStore.getState().addMessage(`${c.data.name} 结束${label}，返回${dest}`, actZone);
       } else {
         void executeBrainSpeak(c, {
           mode: 'self_care',
@@ -91,17 +107,26 @@ export function tickCharacterSim(dt: number) {
       return;
     }
     if (!c.isWalking && !c.inTransit && c.travelIntent && !c.activity) {
+      const retryAt = arrivalRetryAt.get(c.agentId) ?? 0;
+      if (now < retryAt) return;
       const node = c.destNode
         || (c.travelIntent === 'massage' ? OfficePath.massageByAgent[c.agentId]
           : c.travelIntent === 'dine' ? OfficePath.dineByAgent[c.agentId]
           : c.travelIntent === 'poker' ? OfficePath.pokerByAgent[c.agentId]
           : OfficePath.boothByAgent[c.agentId]);
-      if (node) c = teleportAgentToDestination(c, node, now);
-      else c = { ...c, travelIntent: null };
+      if (node) {
+        arrivalRetryAt.set(c.agentId, now + ARRIVAL_RETRY_MS);
+        c = teleportAgentToDestination(c, node, now);
+      } else {
+        c = { ...c, travelIntent: null };
+      }
     }
     if (!c.isWalking && !c.travelIntent && !c.activity && !c.inTransit) {
-      c = brainDispatchLeisure(c, now);
-      if (!c.isWalking && !c.travelIntent) c = tickAgentBrain(c, now);
+      const focusZone = useGameStore.getState().activeZone;
+      if (!pauseBackgroundAgentAi(focusZone) || c.userDispatched) {
+        c = brainDispatchLeisure(c, now);
+        if (!c.isWalking && !c.travelIntent) c = tickAgentBrain(c, now);
+      }
     }
     if (c.state === 'panic' && !c.isWalking && !c.travelIntent && !c.inTransit) c = assignPath(c, 'scr_ctr');
     if (c.isWalking && c.pathQueue.length) {

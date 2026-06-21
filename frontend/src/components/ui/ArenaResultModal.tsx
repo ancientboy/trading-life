@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore, type ArenaResultData } from '../../store/useGameStore';
 import {
-  appBaseUrl, buildArenaShareText, downloadArenaShareCard,
+  appBaseUrl, buildArenaShareText, renderArenaShareCard,
   shareOrCopy, shareResultMessage,
 } from '../../lib/shareUtils';
+import { SharePosterPreview } from './SharePosterPreview';
 
 const RANK_MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
@@ -12,6 +13,7 @@ export function ArenaResultModal({ data }: { data: ArenaResultData }) {
   const addMessage = useGameStore(s => s.addMessage);
   const [step, setStep] = useState(0);
   const [sharing, setSharing] = useState(false);
+  const [posterBlob, setPosterBlob] = useState<Blob | null>(null);
   const autoShared = useRef(false);
 
   const my = data.my_entry;
@@ -32,8 +34,6 @@ export function ArenaResultModal({ data }: { data: ArenaResultData }) {
         const text = buildArenaShareText(data);
         const r = await shareOrCopy({ title: '交易人生 · 短线大赛', text, url: appBaseUrl() });
         addMessage(`🏆 竞技领奖 · ${shareResultMessage(r)}`);
-        await downloadArenaShareCard(data, appBaseUrl());
-        addMessage('竞技分享卡已保存');
       } catch {
         addMessage('自动分享未完成，可手动保存');
       }
@@ -41,6 +41,7 @@ export function ArenaResultModal({ data }: { data: ArenaResultData }) {
   }, [data, highlight, addMessage]);
 
   return (
+    <>
     <div style={{ color: '#3d3530' }}>
       <div style={{
         textAlign: 'center', padding: 16, borderRadius: 12, marginBottom: 14,
@@ -110,8 +111,10 @@ export function ArenaResultModal({ data }: { data: ArenaResultData }) {
             onClick={async () => {
               setSharing(true);
               try {
-                await downloadArenaShareCard(data, appBaseUrl());
-                addMessage('竞技分享卡已保存');
+                const blob = await renderArenaShareCard(data, appBaseUrl());
+                setPosterBlob(blob);
+              } catch {
+                addMessage('生成分享卡失败');
               } finally { setSharing(false); }
             }}>
             分享战报
@@ -120,5 +123,12 @@ export function ArenaResultModal({ data }: { data: ArenaResultData }) {
         </div>
       )}
     </div>
+    <SharePosterPreview
+      blob={posterBlob}
+      filename={`trading-life-arena-${Date.now()}.png`}
+      onClose={() => setPosterBlob(null)}
+      onSaved={() => addMessage('竞技分享卡已保存')}
+    />
+    </>
   );
 }

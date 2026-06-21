@@ -524,6 +524,7 @@ def _guess_payload(c, rd: dict, account_id: str) -> dict:
         "starts_at": rd["starts_at"],
         "ends_at": rd["ends_at"],
         "betting_open": rd["status"] == "open" and ts < rd["starts_at"] + GUESS_BET_WINDOW_MS,
+        "bet_seconds_left": max(0, (rd["starts_at"] + GUESS_BET_WINDOW_MS - ts) // 1000) if rd["status"] == "open" else 0,
         "seconds_left": max(0, (rd["ends_at"] - ts) // 1000),
         "my_bet": my,
         "bets_count": len(bets),
@@ -755,13 +756,17 @@ async def get_arena_round(account_id: str = Depends(resolve_account_id)):
 
 @events_router.post("/pvp/trading/arena/join")
 async def join_arena(body: ArenaJoinBody, account_id: str = Depends(resolve_account_id)):
-    from life_game import load_user, save_user, _spend
+    from life_game import load_user
 
     agent_id = (body.agent_id or "").strip()
     user = load_user(account_id)
     meta = (user.get("custom_agents") or {}).get(agent_id)
     if not meta or meta.get("agentType") == "entertainment":
         return {"ok": False, "error": "请选择你的交易 Agent"}
+
+    preset = meta.get("strategyPreset") or meta.get("strategy_preset") or "major"
+    direction, lev, reason = await _decide_agent_direction(preset, meta)
+    summary = _signal_summary(preset, direction, lev, reason)
 
     with life_db._lock:
         with life_db._conn() as c:
@@ -777,20 +782,13 @@ async def join_arena(body: ArenaJoinBody, account_id: str = Depends(resolve_acco
             cnt = c.execute("SELECT COUNT(*) FROM arena_entries WHERE round_id=?", (rd["id"],)).fetchone()[0]
             if cnt >= ARENA_MAX_ENTRIES:
                 return {"ok": False, "error": "名额已满"}
-
-    fee = int(rd.get("entry_fee") or ARENA_ENTRY_FEE)
-    if not _spend(user, fee):
-        save_user(account_id, user)
-        return {"ok": False, "error": f"积分不足（报名费 {fee}）", "balance": user["points"]}
-    save_user(account_id, user)
-
-    preset = meta.get("strategyPreset") or meta.get("strategy_preset") or "major"
-    direction, lev, reason = await _decide_agent_direction(preset, meta)
-    summary = _signal_summary(preset, direction, lev, reason)
-    price = float(rd.get("start_price") or await _fetch_btc_price())
-
-    with life_db._lock:
-        with life_db._conn() as c:
+            fee = int(rd.get("entry_fee") or ARENA_ENTRY_FEE)
+            ok, balance = life_db._adjust_points_cursor(c, account_id, -fee)
+            if not ok:
+                return {"ok": False, "error": f"积分不足（报名费 {fee}）", "balance": balance}
+            price = float(rd.get("start_price") or 0)
+            if price <= 0:
+                price = await _fetch_btc_price()
             c.execute(
                 """INSERT INTO arena_entries
                    (round_id, user_id, agent_id, agent_name, strategy_preset, is_npc, entry_fee,
@@ -805,13 +803,16 @@ async def join_arena(body: ArenaJoinBody, account_id: str = Depends(resolve_acco
             rd2 = dict(c.execute("SELECT * FROM arena_rounds WHERE id=?", (rd["id"],)).fetchone())
             payload = _arena_payload(c, rd2, account_id)
 
+    user = load_user(account_id)
+    user["points"] = balance
+    life_db.save_user_points(account_id, balance)
     life_db.add_season_points(account_id, social=3)
     mode_label = (ARENA_MODES.get(rd.get("duration_mode") or "classic") or {}).get("label", "")
     return {
         "ok": True,
         "message": f"{meta.get('name')} 已报名 · {mode_label} · AI 判定 {direction} · {lev}x · 30s 多轮短线",
         "current": payload,
-        "balance": load_user(account_id)["points"],
+        "balance": balance,
     }
 
 

@@ -2,12 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { LogicDrawer } from './LogicDrawer';
 import { TradingModesPanel } from './TradingModesPanel';
+import { guessPhaseLabel } from '../../lib/guessDisplay';
 import {
-  placeGuessBet, joinArena, arenaSpectateBet,
+  placeGuessBet, joinArena, arenaSpectateBet, fetchGuessRoundFresh,
   fetchArenaLeaderboard, fetchArenaWinRate,
   type ArenaRoundState, type ArenaWinRateEntry, type ArenaEntry,
   type PkResultInfo,
 } from '../../lib/lifeEngagementApi';
+import {
+  shouldShowGuessResult, markGuessResultShown,
+  shouldShowPkResult, markPkResultShown,
+  shouldShowArenaResult, markArenaResultShown,
+} from '../../lib/tradingResultDismiss';
 import { shareOrCopy, shareResultMessage, appBaseUrl } from '../../lib/shareUtils';
 
 const RANK_LABELS: Record<number, string> = { 1: '🥇 冠军', 2: '🥈 亚军', 3: '🥉 季军' };
@@ -43,9 +49,6 @@ export function TradingEventsPanel() {
   const [busy, setBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
 
-  const shownGuessRef = useRef<Set<string>>(new Set());
-  const shownArenaRef = useRef<Set<string>>(new Set());
-  const shownPkRef = useRef<Set<string>>(new Set());
   const prevArenaLegsRef = useRef<Record<string, number>>({});
 
   const tradingAgents = useMemo(
@@ -62,10 +65,11 @@ export function TradingEventsPanel() {
   ) => {
     if (!settled || !lastMy?.direction) return;
     const rid = String(settled.id || settled.round_id || '');
-    if (!rid || shownGuessRef.current.has(rid)) return;
-    shownGuessRef.current.add(rid);
+    if (!rid || !shouldShowGuessResult(rid)) return;
+    markGuessResultShown(rid);
     const won = !!lastMy.won && (lastMy.payout ?? 0) > 0;
     showGuessResult({
+      round_id: rid,
       won,
       direction: lastMy.direction as 'up' | 'down',
       stake: Number(lastMy.stake) || 0,
@@ -80,9 +84,10 @@ export function TradingEventsPanel() {
   const maybeShowPkResult = useCallback((pk: PkResultInfo | null | undefined) => {
     if (!pk?.round_id) return;
     const rid = pk.round_id;
-    if (shownPkRef.current.has(rid)) return;
-    shownPkRef.current.add(rid);
+    if (!shouldShowPkResult(rid)) return;
+    markPkResultShown(rid);
     showPkResult({
+      round_id: rid,
       won: !!pk.won,
       my_direction: pk.my_direction,
       winner_side: pk.winner_side,
@@ -96,12 +101,13 @@ export function TradingEventsPanel() {
   const maybeShowArenaResult = useCallback((lastSettled: ArenaRoundState | null | undefined) => {
     if (!lastSettled?.round_id) return;
     const rid = lastSettled.round_id;
-    if (shownArenaRef.current.has(rid)) return;
+    if (!shouldShowArenaResult(rid)) return;
     const my = lastSettled.my_entry;
     const specHits = (lastSettled.my_spectator_bets || []).some(b => (b.payout ?? 0) > 0);
     if (!my && !specHits) return;
-    shownArenaRef.current.add(rid);
+    markArenaResultShown(rid);
     showArenaResult({
+      round_id: rid,
       duration_label: lastSettled.duration_label,
       entries: lastSettled.entries || [],
       my_entry: my,
@@ -137,13 +143,14 @@ export function TradingEventsPanel() {
   }, [arena]);
 
   const refreshExtras = useCallback(async () => {
-    if (tab === 'arena') {
+    if (document.visibilityState !== 'visible' || tab !== 'arena') return;
+    await dedupeAsync('arena-extras', async () => {
       const [lb, wr] = await Promise.all([
         fetchArenaLeaderboard(8), fetchArenaWinRate(12),
       ]);
       if (lb.ok) setHighlights(lb.highlights ?? []);
       if (wr.ok) setWinRates(wr.entries ?? []);
-    }
+    });
   }, [tab]);
 
   useEffect(() => {
@@ -163,6 +170,14 @@ export function TradingEventsPanel() {
   const betGuess = async (direction: 'up' | 'down') => {
     setBusy(true);
     try {
+      const gr = await fetchGuessRoundFresh();
+      if (gr.ok && gr.current) {
+        setGuessRound(gr.current);
+        if (!gr.current.betting_open) {
+          addMessage('当前猜涨跌局已封盘，请等待下一局（约 60s 一轮）');
+          return;
+        }
+      }
       const r = await placeGuessBet(direction, guessStake);
       if (!r.ok) {
         addMessage(r.error || '押注失败');
@@ -270,7 +285,13 @@ export function TradingEventsPanel() {
         <div style={{ padding: 12, background: '#faf6ef', borderRadius: 10, border: '1px solid #ebe4d8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: 700 }}>BTC 猜涨跌</span>
-            <span style={{ fontFamily: 'monospace', color: '#3a6bb5' }}>{guess.seconds_left}s</span>
+            <span style={{
+              fontFamily: 'monospace', fontWeight: 700, padding: '2px 8px', borderRadius: 6, fontSize: 12,
+              background: guess.betting_open ? '#eef8f0' : '#fff3e0',
+              color: guess.betting_open ? '#2ea872' : '#c65a00',
+            }}>
+              {guessPhaseLabel(guess)}
+            </span>
           </div>
           <div style={{ marginTop: 8, fontSize: 12 }}>
             开盘价 <b>${Math.round(Number(guess.start_price)).toLocaleString()}</b>
@@ -305,7 +326,15 @@ export function TradingEventsPanel() {
               </div>
             </>
           ) : (
-            <p style={{ marginTop: 10, fontSize: 11, color: '#9a8b7a' }}>封盘中… 等待 {guess.seconds_left}s 后结算</p>
+            <div style={{ marginTop: 10, padding: 10, background: '#fff3e0', borderRadius: 8, fontSize: 11, color: '#8a6e3a' }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>⏳ 封盘中 · {guess.seconds_left}s 后结算</div>
+              <div>本阶段不可押猜涨跌/PK（前 50s 为押注窗口）</div>
+              {arena?.can_join && !arena.my_entry && (
+                <div style={{ marginTop: 6, color: '#2e7d32' }}>
+                  大赛仍可报名 · 剩余 {arena.join_seconds_left}s · 点击场景空选手台可入座
+                </div>
+              )}
+            </div>
           )}
           {lastGuess && (
             <p style={{ marginTop: 10, fontSize: 10, color: '#9a8b7a' }}>

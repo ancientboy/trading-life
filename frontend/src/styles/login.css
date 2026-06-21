@@ -19,6 +19,20 @@
   box-shadow: 0 12px 40px rgba(61, 53, 48, 0.08);
 }
 
+.login-box-scroll {
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.login-submit-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .login-input {
   width: 100%;
   padding: 10px 12px;

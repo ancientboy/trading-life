@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -18,6 +18,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import aiofiles
 import aiohttp
+
+from life_auth import require_admin
 
 # ============================================================
 # 配置
@@ -431,7 +433,7 @@ async def ticker():
 # Agent 控制 API
 # ============================================================
 @app.post("/api/agent/{name}/start")
-async def agent_start(name: str):
+async def agent_start(name: str, _admin: str = Depends(require_admin)):
     """启动 Agent（通过 OpenClaw 发指令）"""
     aid = name.lower()
     if aid not in AGENTS:
@@ -451,7 +453,7 @@ async def agent_start(name: str):
         return {"status": "error", "message": str(e)}
 
 @app.post("/api/agent/{name}/stop")
-async def agent_stop(name: str):
+async def agent_stop(name: str, _admin: str = Depends(require_admin)):
     """停止 Agent"""
     aid = name.lower()
     if aid not in AGENTS:
@@ -658,7 +660,7 @@ async def agent_profile(name: str):
 
 
 @app.put("/api/agent/{name}/config")
-async def update_agent_config(name: str, body: AgentConfigUpdate):
+async def update_agent_config(name: str, body: AgentConfigUpdate, _admin: str = Depends(require_admin)):
     aid = name.lower()
     if aid not in AGENTS:
         return JSONResponse({"error": f"Unknown agent: {name}"}, status_code=404)
@@ -700,7 +702,7 @@ async def update_agent_config(name: str, body: AgentConfigUpdate):
 
 
 @app.put("/api/agent/{name}/soul")
-async def update_agent_soul(name: str, body: AgentSoulUpdate):
+async def update_agent_soul(name: str, body: AgentSoulUpdate, _admin: str = Depends(require_admin)):
     aid = name.lower()
     if aid not in AGENTS:
         return JSONResponse({"error": f"Unknown agent: {name}"}, status_code=404)

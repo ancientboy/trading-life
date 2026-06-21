@@ -7,6 +7,7 @@ export function TradingArenaPublicHook() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
+    if (document.visibilityState !== 'visible') return;
     setBusy(true);
     setError('');
     try {
@@ -25,7 +26,7 @@ export function TradingArenaPublicHook() {
 
   useEffect(() => {
     void load();
-    const id = setInterval(() => void load(), 8000);
+    const id = setInterval(() => void load(), 12000);
     return () => clearInterval(id);
   }, [load]);
 

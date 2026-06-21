@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
+import { dedupeAsync } from '../../lib/pollGuard';
 import {
   fetchTradingModes, placeLeverageBet, placePkBet, joinFaction,
-  fetchComebackStatus, placeComebackBet, fetchPkStreakBoard,
+  fetchComebackStatus, placeComebackBet, fetchPkStreakBoard, fetchGuessRoundFresh,
   type TradingModesState,
 } from '../../lib/lifeEngagementApi';
-import { PersonalityCard } from './PersonalityCard';
+import { guessPhaseLabel } from '../../lib/guessDisplay';
 
 type ModeTab = 'leverage' | 'pk' | 'faction' | 'comeback';
 
@@ -24,6 +25,8 @@ export function TradingModesPanel() {
   const flyToZone = useGameStore(s => s.flyToZone);
   const setRightTab = useGameStore(s => s.setRightTab);
   const guess = useGameStore(s => s.guessRound);
+  const arenaLive = useGameStore(s => s.arenaLive);
+  const setGuessRound = useGameStore(s => s.setGuessRound);
 
   const [tab, setTab] = useState<ModeTab>('pk');
   const [modes, setModes] = useState<TradingModesState | null>(null);
@@ -41,11 +44,13 @@ export function TradingModesPanel() {
   };
 
   const refresh = useCallback(async () => {
+    if (document.visibilityState !== 'visible') return;
     setLoading(true);
     setLoadError(null);
     try {
       const [m, sb] = await Promise.all([
-        fetchTradingModes(), fetchPkStreakBoard(),
+        dedupeAsync('trading-modes', () => fetchTradingModes()),
+        dedupeAsync('pk-streak', () => fetchPkStreakBoard()),
       ]);
       if (m.ok) setModes(m);
       else setLoadError(m.error || '玩法数据加载失败');
@@ -59,7 +64,7 @@ export function TradingModesPanel() {
 
   useEffect(() => {
     void refresh();
-    const id = setInterval(() => void refresh(), 6000);
+    const id = setInterval(() => void refresh(), 12000);
     return () => clearInterval(id);
   }, [refresh]);
 
@@ -67,16 +72,23 @@ export function TradingModesPanel() {
   const fs = modes?.faction_status ?? EMPTY_FACTION;
   const cb = modes?.comeback;
   const guessOpen = !!guess?.betting_open;
+  const guessNeedsBet = tab === 'pk' || tab === 'leverage' || tab === 'comeback';
 
-  const guardGuessOpen = () => {
-    if (guessOpen) return true;
+  const ensureGuessOpen = async (): Promise<boolean> => {
+    try {
+      const gr = await fetchGuessRoundFresh();
+      if (gr.ok && gr.current) {
+        setGuessRound(gr.current);
+        if (gr.current.betting_open) return true;
+      }
+    } catch { /* fall through */ }
     toast('当前猜涨跌局已封盘，请等待下一局（约 60s 一轮）');
     return false;
   };
 
   const doLeverage = async (direction: 'up' | 'down', leverage: number) => {
     if (!pl) { toast('需先赢得一局普通猜涨跌，解锁利润后再杠杆'); return; }
-    if (!guardGuessOpen()) return;
+    if (!await ensureGuessOpen()) return;
     setBusy(true);
     try {
       const r = await placeLeverageBet(direction, leverage, pl.source_round_id || '');
@@ -89,7 +101,7 @@ export function TradingModesPanel() {
   };
 
   const doPk = async (direction: 'up' | 'down') => {
-    if (!guardGuessOpen()) return;
+    if (!await ensureGuessOpen()) return;
     if (pkStake > points) { toast(`积分不足，需要 ${pkStake} 积分`); return; }
     setBusy(true);
     try {
@@ -115,7 +127,7 @@ export function TradingModesPanel() {
   };
 
   const doComeback = async (direction: 'up' | 'down') => {
-    if (!guardGuessOpen()) return;
+    if (!await ensureGuessOpen()) return;
     setBusy(true);
     try {
       const r = await placeComebackBet(direction);
@@ -162,7 +174,7 @@ export function TradingModesPanel() {
           background: guessOpen ? '#eef8f0' : '#faf6ef', color: '#6b5e4e',
           display: 'flex', justifyContent: 'space-between',
         }}>
-          <span>猜涨跌 {guessOpen ? '押注中' : '封盘/进行中'} · {guess.seconds_left}s</span>
+          <span>{guessPhaseLabel(guess)}</span>
           <span>BTC ${Math.round(Number(guess.start_price || 0)).toLocaleString()}</span>
         </div>
       )}
@@ -197,7 +209,7 @@ export function TradingModesPanel() {
           <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
             {[2, 5, 10].map(lev => (
               <button key={lev} type="button" className="ui-btn" style={{ flex: 1, fontSize: 10 }}
-                disabled={busy}
+                disabled={busy || !guessOpen}
                 onClick={() => void (pl ? doLeverage('up', lev) : toast('需先赢得一局猜涨跌'))}>
                 {lev}x 涨
               </button>
@@ -206,7 +218,7 @@ export function TradingModesPanel() {
           <div style={{ display: 'flex', gap: 6 }}>
             {[2, 5, 10].map(lev => (
               <button key={lev} type="button" className="ui-btn" style={{ flex: 1, fontSize: 10, background: '#ffefef' }}
-                disabled={busy}
+                disabled={busy || !guessOpen}
                 onClick={() => void (pl ? doLeverage('down', lev) : toast('需先赢得一局猜涨跌'))}>
                 {lev}x 跌
               </button>
@@ -223,10 +235,16 @@ export function TradingModesPanel() {
           <input type="range" min={20} max={300} step={10} value={pkStake}
             onChange={e => setPkStake(Number(e.target.value))} style={{ width: '100%' }} />
           <div style={{ fontSize: 10, color: '#9a8b7a', marginBottom: 8 }}>押注 {pkStake} · 积分 {points}</div>
+          {!guessOpen && guessNeedsBet && (
+            <p style={{ fontSize: 9, color: '#c65a00', marginBottom: 8 }}>
+              猜涨跌封盘中 · {guess.seconds_left}s 后结算 · 押注/PK 暂不可用
+              {arenaLive?.can_join ? ' · 大赛报名仍开放' : ''}
+            </p>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" className="ui-btn" style={{ flex: 1 }} disabled={busy}
+            <button type="button" className="ui-btn" style={{ flex: 1 }} disabled={busy || !guessOpen}
               onClick={() => void doPk('up')}>📈 押涨 PK</button>
-            <button type="button" className="ui-btn" style={{ flex: 1, background: '#ffefef' }} disabled={busy}
+            <button type="button" className="ui-btn" style={{ flex: 1, background: '#ffefef' }} disabled={busy || !guessOpen}
               onClick={() => void doPk('down')}>📉 押跌 PK</button>
           </div>
           {streakBoard.length > 0 && (
@@ -276,9 +294,9 @@ export function TradingModesPanel() {
                 逆袭金 <b>{cb.balance ?? cb.seed ?? 100}</b> · 剩余 {cb.rounds_left ?? 0} 局
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="ui-btn" style={{ flex: 1 }} disabled={busy || (cb.rounds_left ?? 0) <= 0}
+                <button type="button" className="ui-btn" style={{ flex: 1 }} disabled={busy || (cb.rounds_left ?? 0) <= 0 || !guessOpen}
                   onClick={() => void doComeback('up')}>📈 2x 押涨</button>
-                <button type="button" className="ui-btn" style={{ flex: 1, background: '#ffefef' }} disabled={busy || (cb.rounds_left ?? 0) <= 0}
+                <button type="button" className="ui-btn" style={{ flex: 1, background: '#ffefef' }} disabled={busy || (cb.rounds_left ?? 0) <= 0 || !guessOpen}
                   onClick={() => void doComeback('down')}>📉 2x 押跌</button>
               </div>
             </>

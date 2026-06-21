@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { authLogin, authRegister } from '../../lib/lifeApi';
 import { setAuthSession } from '../../lib/lifeAuth';
 import { useGameStore } from '../../store/useGameStore';
@@ -20,7 +20,9 @@ export function LoginPanel({ initialInvite = '' }: { initialInvite?: string }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [authed, setAuthed] = useState(false);
+  const [showDemos, setShowDemos] = useState(false);
   const [ticker, setTicker] = useState<Record<string, number>>({});
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const load = () => fetchTicker().then(setTicker).catch(() => {});
@@ -80,15 +82,15 @@ export function LoginPanel({ initialInvite = '' }: { initialInvite?: string }) {
 
   return (
     <div className="login-overlay">
-      <div className="login-box" style={{ maxWidth: 420 }}>
-        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+      <div className="login-box login-box-scroll">
+        <div style={{ textAlign: 'center', marginBottom: 12 }}>
           <div style={{ fontSize: 36 }}>🐧</div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#3d3530', margin: '8px 0 4px' }}>交易人生</h1>
           <p style={{ fontSize: 13, color: '#8a7e72' }}>AI 模拟交易 + Agent 生活 · 先爽再深玩</p>
         </div>
 
         <div style={{
-          display: 'flex', gap: 8, marginBottom: 14, padding: '8px 10px',
+          display: 'flex', gap: 8, marginBottom: 12, padding: '6px 10px',
           background: '#faf6ef', borderRadius: 8, border: '1px solid #ebe4d8',
           fontSize: 10, color: '#7a6e62', flexWrap: 'wrap', justifyContent: 'center',
         }}>
@@ -98,56 +100,73 @@ export function LoginPanel({ initialInvite = '' }: { initialInvite?: string }) {
               {k.replace('USDT', '')} {ticker[k] != null ? fmtPrice(k, ticker[k]) : '—'}
             </span>
           ))}
-          <span style={{ color: '#9a8b7a' }}>· Agent 24h 自动盯盘</span>
         </div>
 
-        <TradingDemoHook />
-        <TradingArenaPublicHook />
-        <PokerDemoHook />
+        {/* 登录表单优先 — 移动端不被试玩区块挤出屏幕 */}
+        <form
+          onSubmit={e => { e.preventDefault(); void submit(); }}
+          style={{ marginBottom: 12 }}
+        >
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button type="button" className="ui-btn" style={{ flex: 1, opacity: mode === 'login' ? 1 : 0.55 }}
+              onClick={() => { setMode('login'); setError(''); passwordRef.current?.focus(); }}>
+              登录
+            </button>
+            <button type="button" className="ui-btn" style={{ flex: 1, opacity: mode === 'register' ? 1 : 0.55 }}
+              onClick={() => { setMode('register'); setError(''); }}>
+              注册
+            </button>
+          </div>
 
-        <div style={{ display: 'flex', gap: 8, margin: '16px 0' }}>
-          <button className="ui-btn" style={{ flex: 1, opacity: mode === 'login' ? 1 : 0.55 }}
-            onClick={() => { setMode('login'); setError(''); }}>登录</button>
-          <button className="ui-btn" style={{ flex: 1, opacity: mode === 'register' ? 1 : 0.55 }}
-            onClick={() => { setMode('register'); setError(''); }}>注册</button>
-        </div>
+          <label style={{ fontSize: 12, color: '#7a6e62', display: 'block', marginBottom: 4 }}>用户名</label>
+          <input className="login-input" value={username} onChange={e => setUsername(e.target.value)}
+            placeholder="3-20 位字母、数字或下划线" autoComplete="username" />
 
-        <label style={{ fontSize: 12, color: '#7a6e62', display: 'block', marginBottom: 4 }}>用户名</label>
-        <input className="login-input" value={username} onChange={e => setUsername(e.target.value)}
-          placeholder="3-20 位字母、数字或下划线" autoComplete="username" />
-
-        {mode === 'register' && (
-          <>
-            <label style={{ fontSize: 12, color: '#7a6e62', display: 'block', margin: '10px 0 4px' }}>昵称（可选）</label>
-            <input className="login-input" value={displayName} onChange={e => setDisplayName(e.target.value)}
-              placeholder="显示名称 · 将作为你的 Agent 名字" />
-            <label style={{ fontSize: 12, color: '#7a6e62', display: 'block', margin: '10px 0 4px' }}>邀请码（可选 · 双方得积分）</label>
-            <input className="login-input" value={inviteCode} onChange={e => setInviteCode(e.target.value.toUpperCase())}
-              placeholder="6 位邀请码" maxLength={8} />
-          </>
-        )}
-
-        <label style={{ fontSize: 12, color: '#7a6e62', display: 'block', margin: '10px 0 4px' }}>密码</label>
-        <input className="login-input" type="password" value={password} onChange={e => setPassword(e.target.value)}
-          placeholder={mode === 'register' ? '至少 6 位' : '请输入密码'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-          onKeyDown={e => e.key === 'Enter' && submit()} />
-
-        {error && <p style={{ color: '#e55', fontSize: 12, marginTop: 10 }}>{error}</p>}
-
-        <button className="ui-btn" style={{ width: '100%', marginTop: 16, padding: '10px 0' }}
-          disabled={busy || !username.trim() || !password} onClick={submit}>
-          {busy ? '请稍候…' : mode === 'register' ? '🐧 注册 · 30 秒养 Agent' : '登录'}
-        </button>
-
-        <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
-          注册后自动创建娱乐 Agent · 地图走动 + 模拟盘同步开启
-          {sessionStorage.getItem('tl_pending_join') && (
+          {mode === 'register' && (
             <>
-              <br />
-              <span style={{ color: '#3a6bb5' }}>注册后将自动尝试加入好友牌桌</span>
+              <label style={{ fontSize: 12, color: '#7a6e62', display: 'block', margin: '10px 0 4px' }}>昵称（可选）</label>
+              <input className="login-input" value={displayName} onChange={e => setDisplayName(e.target.value)}
+                placeholder="显示名称 · 将作为你的 Agent 名字" />
+              <label style={{ fontSize: 12, color: '#7a6e62', display: 'block', margin: '10px 0 4px' }}>邀请码（可选）</label>
+              <input className="login-input" value={inviteCode} onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                placeholder="6 位邀请码" maxLength={8} />
             </>
           )}
-        </p>
+
+          <label style={{ fontSize: 12, color: '#7a6e62', display: 'block', margin: '10px 0 4px' }}>密码</label>
+          <input ref={passwordRef} className="login-input" type="password" value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder={mode === 'register' ? '至少 6 位' : '请输入密码'}
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+
+          {error && <p style={{ color: '#e55', fontSize: 12, marginTop: 10 }}>{error}</p>}
+
+          <button type="submit" className="ui-btn login-submit-btn"
+            disabled={busy || !username.trim() || !password}>
+            {busy ? '请稍候…' : mode === 'register' ? '🐧 注册 · 30 秒养 Agent' : '登录进入游戏'}
+          </button>
+
+          <p style={{ fontSize: 11, color: '#9a8b7a', marginTop: 10, lineHeight: 1.5, textAlign: 'center' }}>
+            {mode === 'login'
+              ? '上方「登录」为切换模式 · 填好密码后点「登录进入游戏」'
+              : '注册后自动创建娱乐 Agent · 模拟盘同步开启'}
+          </p>
+        </form>
+
+        <button type="button" className="ui-btn" style={{
+          width: '100%', fontSize: 12, padding: '8px 0', marginBottom: showDemos ? 10 : 0,
+          background: '#faf6ef', borderColor: '#ebe4d8',
+        }} onClick={() => setShowDemos(v => !v)}>
+          {showDemos ? '▲ 收起试玩' : '▼ 未登录试玩（模拟盘 / 竞技 / 德州）'}
+        </button>
+
+        {showDemos && (
+          <>
+            <TradingDemoHook />
+            <TradingArenaPublicHook />
+            <PokerDemoHook />
+          </>
+        )}
       </div>
     </div>
   );

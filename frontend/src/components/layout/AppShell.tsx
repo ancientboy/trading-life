@@ -5,6 +5,7 @@ import { RightPanel } from '../ui/RightPanel';
 import { CanvasControls } from '../ui/CanvasControls';
 import { Modals } from '../ui/Modals';
 import { GameCanvas } from '../scene/GameCanvas';
+import { filterMessagesForZone, messageVisibleInZone, resolveMessageScope } from '../../lib/messageScope';
 import { useGameStore } from '../../store/useGameStore';
 import { createPortal } from 'react-dom';
 
@@ -91,7 +92,10 @@ function ArenaFloatCTA() {
 
 function MessageToast() {
   const messages = useGameStore(s => s.messages);
-  const last = messages[messages.length - 1];
+  const activeZone = useGameStore(s => s.activeZone);
+  const last = [...messages].reverse().find(m =>
+    messageVisibleInZone(resolveMessageScope(m), activeZone),
+  );
   if (!last) return null;
   return createPortal(
     <div className="message-toast" key={last.time + last.text}>{last.text}</div>,

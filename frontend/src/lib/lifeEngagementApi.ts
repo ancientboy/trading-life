@@ -1,3 +1,4 @@
+import { dedupeAsync, throttleAsync } from './pollGuard';
 import { getAuthToken } from './lifeAuth';
 
 const API = '/trading/api/life';
@@ -124,13 +125,14 @@ export async function agentBrainSpeak(opts: {
   post_to_chat?: boolean;
   remember?: boolean;
 }) {
-  const r = await fetch(`${API}/social/agent-brain/speak`, {
-    method: 'POST', headers: headers(), body: JSON.stringify(opts),
-  });
-  return parse<{
-    ok: boolean; line?: string;
-    chat?: { id: number; body: string; agent_id: string; created_at: number };
-  }>(r);
+  return throttleAsync(`brain-speak:${opts.agent_id}`, 8000, () =>
+    dedupeAsync(`brain-speak:${opts.agent_id}`, () =>
+      fetchJson<{
+        ok: boolean; line?: string;
+        chat?: { id: number; body: string; agent_id: string; created_at: number };
+      }>(`${API}/social/agent-brain/speak`, {
+        method: 'POST', headers: headers(), body: JSON.stringify(opts),
+      }, 12000)));
 }
 
 export async function agentBrainDialogue(opts: {
@@ -316,10 +318,10 @@ export async function bidSeat(seatId: string, amount: number) {
   return parse<{ ok: boolean; bid?: number; balance?: number; error?: string }>(r);
 }
 
-export async function enqueueDispatch(agentId: string, action: string, nodeId = '', cost = 0) {
+export async function enqueueDispatch(agentId: string, action: string, nodeId = '', _cost = 0, tierId = 'a') {
   const r = await fetch(`${API}/pvp/dispatch/enqueue`, {
     method: 'POST', headers: headers(),
-    body: JSON.stringify({ agent_id: agentId, action, node_id: nodeId, cost }),
+    body: JSON.stringify({ agent_id: agentId, action, node_id: nodeId, tier_id: tierId }),
   });
   return parse<{ ok: boolean; queue_id?: number }>(r);
 }
@@ -367,6 +369,7 @@ export type GuessRoundState = {
   pool_down: number;
   total_pool: number;
   betting_open: boolean;
+  bet_seconds_left?: number;
   seconds_left: number;
   my_bet?: GuessBetInfo | null;
   bets_count: number;
@@ -438,27 +441,37 @@ export type PublicArenaLive = {
   error?: string;
 };
 
+type GuessRoundResponse = {
+  ok: boolean; current?: GuessRoundState;
+  last_settled?: Record<string, unknown>;
+  last_my_bet?: GuessBetInfo;
+  last_pk_result?: PkResultInfo | null;
+  error?: string;
+};
+
 export async function fetchGuessRound() {
-  const r = await fetch(`${API}/pvp/trading/guess`, { headers: headers() });
-  return parse<{
-    ok: boolean; current?: GuessRoundState;
-    last_settled?: Record<string, unknown>;
-    last_my_bet?: GuessBetInfo;
-    last_pk_result?: PkResultInfo | null;
-    error?: string;
-  }>(r);
+  return dedupeAsync('guess-round', () =>
+    fetchJson<GuessRoundResponse>(`${API}/pvp/trading/guess`, { headers: headers() }, 15000));
+}
+
+/** 押注/PK 前拉最新局状态，避免轮询节流导致 betting_open 过期 */
+export async function fetchGuessRoundFresh() {
+  return fetchJson<GuessRoundResponse>(`${API}/pvp/trading/guess`, { headers: headers() }, 15000);
 }
 
 export async function placeGuessBet(direction: 'up' | 'down', stake: number) {
-  const r = await fetch(`${API}/pvp/trading/guess/bet`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake }),
-  });
-  return parse<{ ok: boolean; current?: GuessRoundState; balance?: number; error?: string }>(r);
+  return fetchJson<{ ok: boolean; current?: GuessRoundState; balance?: number; error?: string }>(
+    `${API}/pvp/trading/guess/bet`,
+    { method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake }) },
+    15000,
+  );
 }
 
 export async function fetchArenaRound() {
-  const r = await fetch(`${API}/pvp/trading/arena`, { headers: headers() });
-  return parse<{ ok: boolean; current?: ArenaRoundState; last_settled?: ArenaRoundState; error?: string }>(r);
+  return dedupeAsync('arena-round', () =>
+    fetchJson<{ ok: boolean; current?: ArenaRoundState; last_settled?: ArenaRoundState; error?: string }>(
+      `${API}/pvp/trading/arena`, { headers: headers() }, 15000,
+    ));
 }
 
 export async function joinArena(agentId: string) {
@@ -481,8 +494,8 @@ export async function fetchArenaWinRate(limit = 15) {
 }
 
 export async function fetchPublicArenaLive() {
-  const r = await fetch(`${API}/public/trading/arena/live`);
-  return parse<PublicArenaLive>(r);
+  return dedupeAsync('arena-public-live', () =>
+    fetchJson<PublicArenaLive>(`${API}/public/trading/arena/live`, undefined, 15000));
 }
 
 export async function fetchArenaLeaderboard(limit = 10) {
@@ -525,10 +538,11 @@ export async function placeLeverageBet(direction: 'up' | 'down', leverage: numbe
 }
 
 export async function placePkBet(direction: 'up' | 'down', stake: number, vsAi = true) {
-  const r = await fetch(`${API}/pvp/trading/pk/bet`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake, vs_ai: vsAi }),
-  });
-  return parse<{ ok: boolean; message?: string; room_id?: string; modes?: TradingModesState; balance?: number; error?: string }>(r);
+  return fetchJson<{ ok: boolean; message?: string; room_id?: string; modes?: TradingModesState; balance?: number; error?: string }>(
+    `${API}/pvp/trading/pk/bet`,
+    { method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake, vs_ai: vsAi }) },
+    15000,
+  );
 }
 
 export async function joinFaction(faction: 'bull' | 'bear') {

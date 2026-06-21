@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { CharState } from './constants';
-import { activityWallExpiry, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs } from './seatRegistry';
+import {
+  activityWallExpiry, countFreeSeats, formatSeatCapacityMessage, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs,
+} from './seatRegistry';
 
 function mockChar(overrides: Partial<CharState> = {}): CharState {
   return {
@@ -40,6 +42,14 @@ describe('mergeLocalSeatOccupancy', () => {
     expect(hasFreeSeat('massage', 'custom_1', server, wall)).toBe(true);
   });
 
+  it('treats until_ts=0 server rows as stale / free', () => {
+    const wall = seatNowMs();
+    const server = {
+      bed_1: { user_id: 'u2', agent_id: 'custom_2', activity: 'massage', until_ts: 0 },
+    };
+    expect(hasFreeSeat('massage', 'custom_1', server, wall)).toBe(true);
+  });
+
   it('merges local agent with wall expiry from perf timers', () => {
     const wall = 1_700_000_000_000;
     const char = mockChar({
@@ -49,5 +59,45 @@ describe('mergeLocalSeatOccupancy', () => {
     });
     const merged = mergeLocalSeatOccupancy({}, { custom_1: char }, wall);
     expect(merged.bed_1.until_ts).toBe(wall + 10_000);
+  });
+
+  it('does not count walking agents as occupying seats', () => {
+    const wall = seatNowMs();
+    const walking = mockChar({
+      agentId: 'xau',
+      destNode: 'bed_1',
+      activity: null,
+      isWalking: true,
+      travelIntent: 'massage',
+    });
+    const merged = mergeLocalSeatOccupancy({}, { xau: walking }, wall);
+    expect(merged.bed_1).toBeUndefined();
+    expect(countFreeSeats('massage', 'custom_1', merged, wall).free).toBe(6);
+  });
+
+  it('does not count in-transit agents as occupying seats', () => {
+    const wall = seatNowMs();
+    const transit = mockChar({
+      agentId: 'xau',
+      destNode: 'bed_2',
+      activity: null,
+      inTransit: true,
+      travelIntent: 'massage',
+    });
+    const merged = mergeLocalSeatOccupancy({}, { xau: transit }, wall);
+    expect(merged.bed_2).toBeUndefined();
+  });
+
+  it('ignores stale server seats when agent is not loaded locally', () => {
+    const wall = seatNowMs();
+    const server = {
+      rest_l_1_s1: { user_id: 'u1', agent_id: 'ghost_agent', activity: 'rest', until_ts: wall + 600_000 },
+    };
+    expect(hasFreeSeat('rest', 'newcoin', server, wall)).toBe(true);
+  });
+
+  it('formats full seats clearly', () => {
+    expect(formatSeatCapacityMessage('休息沙发', 0, 4)).toBe('休息沙发已满（共 4 座，均已占用）');
+    expect(formatSeatCapacityMessage('按摩床', 2, 6)).toBe('按摩床剩余 2 个空位（共 6 座）');
   });
 });
