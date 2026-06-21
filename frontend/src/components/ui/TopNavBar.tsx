@@ -147,7 +147,6 @@ export function TopNavBar() {
                   <button type="button" className="top-nav-dropdown-item" onClick={() => { openModal('settings'); closeMenus(); }}>
                     <NavIcon outline={Cog6ToothIcon} solid={CogSolid} size="nav" /> 设置
                   </button>
-                  <a href="/trading/" className="top-nav-dropdown-item" onClick={closeMenus}>Dashboard</a>
                   {account && (
                     <button type="button" className="top-nav-dropdown-item" onClick={() => { closeMenus(); void logout(); }}>
                       {account.display_name || account.username} · 退出
@@ -171,7 +170,6 @@ export function TopNavBar() {
                   <button type="button" className="top-nav-dropdown-item" onClick={() => { openModal('settings'); closeMenus(); }}>
                     <NavIcon outline={Cog6ToothIcon} solid={CogSolid} size="nav" /> 设置
                   </button>
-                  <a href="/trading/" className="top-nav-dropdown-item" onClick={closeMenus}>Dashboard</a>
                   {account && (
                     <button type="button" className="top-nav-dropdown-item" onClick={() => { closeMenus(); void logout(); }}>
                       退出登录
