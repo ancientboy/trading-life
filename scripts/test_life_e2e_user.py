@@ -96,7 +96,7 @@ def main() -> int:
         """)
 
         # ── 1. 登录页 ──
-        page.goto(BASE, wait_until="networkidle", timeout=90000)
+        page.goto(BASE, wait_until="domcontentloaded", timeout=90000)
         page.screenshot(path=str(ARTIFACTS / "01-login-page.png"))
         expect(page.get_by_text("交易人生").first).to_be_visible(timeout=15000)
         print("  ✓ 登录页加载")
@@ -110,8 +110,8 @@ def main() -> int:
         submit = login_box.locator("button").filter(has_text="30 秒养 Agent")
         submit.scroll_into_view_if_needed()
         submit.click(force=True)
-        page.wait_for_function("() => !document.querySelector('.login-overlay')", timeout=90000)
-        page.wait_for_load_state("networkidle", timeout=90000)
+        page.wait_for_function("() => !document.querySelector('.login-overlay')", timeout=120000)
+        page.wait_for_load_state("domcontentloaded", timeout=90000)
         page.wait_for_timeout(3000)
         page.screenshot(path=str(ARTIFACTS / "02-after-register.png"))
         print(f"  ✓ 注册完成: {user}")

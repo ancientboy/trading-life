@@ -259,6 +259,16 @@ async def handle_advanced_tick(client: WsClient, data: dict) -> None:
         await notify_advanced_peers(room_id, client.client_id)
 
 
+async def push_guess_snapshot(client: WsClient) -> None:
+    payload = await _build_guess_payload(client.account_id)
+    await hub.send_json(client, "guess.current", payload)
+
+
+async def push_arena_snapshot(client: WsClient) -> None:
+    payload = await _build_arena_payload(client.account_id)
+    await hub.send_json(client, "arena.live", payload)
+
+
 async def push_advanced_snapshot(client: WsClient, room_id: str) -> None:
     since = client.advanced_since.get(room_id, 0)
     await _push_advanced_state(client, room_id, since, False, 0, push=True)
@@ -293,13 +303,17 @@ async def broadcast_poker_advanced(room_id: str) -> None:
 
 
 async def _build_arena_payload(account_id: str) -> dict:
-    from trading_events import _arena_payload, _ensure_arena_round, _recent_first_flag
+    from trading_events import _arena_payload, _recent_first_flag
 
     last_settled_payload = None
+    payload = None
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_arena_round(c)
-            payload = _arena_payload(c, rd, account_id)
+            row = c.execute(
+                "SELECT * FROM arena_rounds WHERE status IN ('join','running') ORDER BY starts_at DESC LIMIT 1"
+            ).fetchone()
+            if row:
+                payload = _arena_payload(c, dict(row), account_id)
             prev = c.execute(
                 "SELECT * FROM arena_rounds WHERE status='settled' ORDER BY ends_at DESC LIMIT 1"
             ).fetchone()
@@ -325,12 +339,18 @@ async def broadcast_arena_live() -> None:
 
 
 async def _build_guess_payload(account_id: str) -> dict:
-    from trading_events import _ensure_guess_round, _guess_payload, _recent_first_flag
+    from trading_events import _guess_payload, _recent_first_flag
 
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_guess_round(c)
-            payload = _guess_payload(c, rd, account_id)
+            row = c.execute(
+                "SELECT * FROM guess_rounds WHERE status IN ('open','running') ORDER BY starts_at DESC LIMIT 1"
+            ).fetchone()
+            if not row:
+                row = c.execute(
+                    "SELECT * FROM guess_rounds ORDER BY starts_at DESC LIMIT 1"
+                ).fetchone()
+            payload = _guess_payload(c, dict(row), account_id) if row else None
             prev = c.execute(
                 "SELECT * FROM guess_rounds WHERE status='settled' ORDER BY ends_at DESC LIMIT 1"
             ).fetchone()
@@ -459,7 +479,11 @@ async def life_websocket(websocket: WebSocket, token: str = Query("")):
                 for ch in data.get("channels") or []:
                     if isinstance(ch, str) and ch:
                         hub.subscribe(client.client_id, ch)
-                        if ch.startswith("poker:advanced:"):
+                        if ch == "arena:live":
+                            asyncio.create_task(push_arena_snapshot(client))
+                        elif ch == "guess:current":
+                            asyncio.create_task(push_guess_snapshot(client))
+                        elif ch.startswith("poker:advanced:"):
                             adv_room = ch[len("poker:advanced:"):]
                             if adv_room:
                                 asyncio.create_task(push_advanced_snapshot(client, adv_room))
