@@ -15,6 +15,7 @@ import {
   assignPath, useGameStore,
 } from '../store/useGameStore';
 import { ACTIVITY_ZONE } from './seatRegistry';
+import { pauseBackgroundAgentAi } from './messageScope';
 import { chatChannelForZone, agentBrainDialogue, agentBrainTeaParty, type ChatMessage } from './lifeEngagementApi';
 import { agentBrainSpeak } from './lifeEngagementApi';
 
@@ -296,6 +297,7 @@ export function decideAgentAction(perception: AgentPerception, mem: BrainMemory)
 
 function applyTravelIntent(char: CharState, decision: BrainDecision): CharState {
   const focus = useGameStore.getState().activeZone;
+  if (!char.userDispatched && pauseBackgroundAgentAi(focus)) return char;
   if (!char.userDispatched && decision.travelIntent) {
     const targetZone = ACTIVITY_ZONE[decision.travelIntent];
     if (targetZone && targetZone !== focus) return char;

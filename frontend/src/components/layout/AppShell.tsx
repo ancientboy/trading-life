@@ -5,7 +5,7 @@ import { RightPanel } from '../ui/RightPanel';
 import { CanvasControls } from '../ui/CanvasControls';
 import { Modals } from '../ui/Modals';
 import { GameCanvas } from '../scene/GameCanvas';
-import { inferMessageScope, messageVisibleInZone } from '../../lib/messageScope';
+import { filterMessagesForZone, messageVisibleInZone, resolveMessageScope } from '../../lib/messageScope';
 import { useGameStore } from '../../store/useGameStore';
 import { createPortal } from 'react-dom';
 
@@ -94,7 +94,7 @@ function MessageToast() {
   const messages = useGameStore(s => s.messages);
   const activeZone = useGameStore(s => s.activeZone);
   const last = [...messages].reverse().find(m =>
-    messageVisibleInZone(m.scope ?? inferMessageScope(m.text), activeZone),
+    messageVisibleInZone(resolveMessageScope(m), activeZone),
   );
   if (!last) return null;
   return createPortal(

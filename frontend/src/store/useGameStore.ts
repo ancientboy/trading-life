@@ -24,7 +24,7 @@ import {
 import { throttleAsync } from '../lib/pollGuard';
 import { dismissPkResult, dismissGuessResult, dismissArenaResult } from '../lib/tradingResultDismiss';
 import { liveGuessRound, liveArenaRound } from '../lib/guessDisplay';
-import { inferMessageScope, messageVisibleInZone, type MessageScope } from '../lib/messageScope';
+import { inferMessageScope, pauseBackgroundAgentAi, type MessageScope } from '../lib/messageScope';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, ACTIVITY_ZONE, formatSeatCapacityMessage, type SeatMap } from '../lib/seatRegistry';
 import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
@@ -671,7 +671,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         sidebarActive: 'events',
         rightPanelCollapsed: false,
       });
-      s.addMessage(r.message || `${s.agents[id].data.name} 已入座选手台 · 报名成功`);
+      s.addMessage(r.message || `${s.agents[id].data.name} 已入座选手台 · 报名成功`, 'arena');
       void s.syncTradingLive();
       return true;
     } catch {
@@ -689,7 +689,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino' || zone === 'arena';
     const s = get();
     let agents = s.agents;
-    if (zone === 'arena') {
+    if (zone !== 'hall') {
       agents = Object.fromEntries(Object.entries(s.agents).map(([id, char]) => {
         if (char.userDispatched) return [id, char];
         if (char.travelIntent || (char.isWalking && !char.activity)) {
@@ -807,7 +807,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cameraZoom: WORLD_MAP.zoneZoom,
       mapOverview: false,
     });
-    get().addMessage(`${char.data.name} 已派遣至 ${deskLabel}（免费）`);
+    get().addMessage(`${char.data.name} 已派遣至 ${deskLabel}（免费）`, 'hall');
     return true;
   },
 
@@ -892,7 +892,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           cameraZoom: WORLD_MAP.zoneZoom,
           mapOverview: false,
         });
-        get().addMessage(`${char.data.name} 已切换「${tierDef.name}」${!skipCost && cost > 0 ? ` · -${cost} 积分` : ''}`);
+        get().addMessage(`${char.data.name} 已切换「${tierDef.name}」${!skipCost && cost > 0 ? ` · -${cost} 积分` : ''}`, zone);
         get().speakForAgent(id, action, action);
         return true;
       }
@@ -903,12 +903,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (!hasFreeSeat(action, id, mergedForSeat, wallNow)) {
         const actZone = ACTIVITY_ZONE[action];
         if (actZone && s.activeZone !== actZone) {
-          get().addMessage(`请前往${actZone === 'hall' ? '交易大厅' : actZone === 'spa' ? '按摩馆' : actZone === 'restaurant' ? '餐厅' : '德州厅'}再派遣 Agent`);
+          get().addMessage(`请前往${actZone === 'hall' ? '交易大厅' : actZone === 'spa' ? '按摩馆' : actZone === 'restaurant' ? '餐厅' : '德州厅'}再派遣 Agent`, actZone);
           return false;
         }
         const queueCost = skipCost ? 0 : (cost > 0 ? cost : (FACILITY_BASE_COST[action] ?? 0));
         await enqueueDispatch(id, action, opts?.nodeId || '', queueCost, tierId);
-        get().addMessage(`${char0.data.name} 座位已满，已加入派遣队列（未扣积分）`);
+        get().addMessage(`${char0.data.name} 座位已满，已加入派遣队列（未扣积分）`, zone);
         return true;
       }
 
@@ -949,7 +949,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         cameraZoom: WORLD_MAP.zoneZoom,
         mapOverview: false,
       });
-      get().addMessage(`${char.data.name} 已抵达${cam.label}${!skipCost && cost > 0 ? ` · -${cost} 积分` : ' · 免费'}`);
+      get().addMessage(`${char.data.name} 已抵达${cam.label}${!skipCost && cost > 0 ? ` · -${cost} 积分` : ' · 免费'}`, zone);
       get().speakForAgent(id, action, action);
       return true;
     } catch {
@@ -1657,9 +1657,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setProfile: (schema, config, soul) => set({ profileSchema: schema, profileConfig: config, soulMd: soul }),
   patchChar: (id, patch) => set(s => ({ agents: { ...s.agents, [id]: { ...s.agents[id], ...patch } } })),
   addMessage: (text, scope) => {
-    const s = get();
     const msgScope = scope ?? inferMessageScope(text);
-    if (!messageVisibleInZone(msgScope, s.activeZone)) return;
     set(st => ({
       messages: [...st.messages.slice(-49), { text, time: new Date().toLocaleTimeString(), scope: msgScope }],
     }));
@@ -2037,7 +2035,7 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     const greet = greetingForActivity(zone);
     const npc = npcForZone(zone);
     if (greet && npc) {
-      if (char.userDispatched) store.addMessage(`🐧 ${npc.name}：${greet}`);
+      if (char.userDispatched) store.addMessage(`🐧 ${npc.name}：${greet}`, zone);
       store.setNpcBubble(npc?.id ?? null, greet ?? '', now + 4500);
     }
   }

@@ -10,6 +10,7 @@ import { PenguinAvatar } from './PenguinAvatar';
 import { BrainModeBadge } from './BrainModeBadge';
 import { fetchAgentMemories } from '../../lib/lifeEngagementApi';
 import { brainModeLabel, getAgentBrainMode } from '../../lib/agentBrain';
+import { filterMessagesForZone } from '../../lib/messageScope';
 import { DailyTasksPanel } from './DailyTasksPanel';
 import { SocialPanel } from './SocialPanel';
 import { TradingEventsPanel } from './TradingEventsPanel';
@@ -54,6 +55,7 @@ export function RightPanel() {
   const userPortfolio = useGameStore(s => s.userPortfolio);
   const resetUserPortfolio = useGameStore(s => s.resetUserPortfolio);
   const messages = useGameStore(s => s.messages);
+  const activeZone = useGameStore(s => s.activeZone);
   const tradeFeed = useGameStore(s => s.tradeFeed);
   const panelTab = useGameStore(s => s.panelTab);
   const setPanelTab = useGameStore(s => s.setPanelTab);
@@ -64,7 +66,6 @@ export function RightPanel() {
   const openModal = useGameStore(s => s.openModal);
   const setFollowAgent = useGameStore(s => s.setFollowAgent);
   const flyToZone = useGameStore(s => s.flyToZone);
-  const activeZone = useGameStore(s => s.activeZone);
   const navigateSidebar = useGameStore(s => s.navigateSidebar);
   const sendAgentToLeisure = useGameStore(s => s.sendAgentToLeisure);
   const canOperateAgent = useGameStore(s => s.canOperateAgent);
@@ -349,16 +350,19 @@ export function RightPanel() {
   }
 
   function renderMessagesPanel() {
+    const zoneMessages = filterMessagesForZone(messages, activeZone);
     return (
       <>
-        <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>系统消息 + 历史成交记录</div>
-        {messages.slice().reverse().map((m, i) => (
+        <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>
+          当前区域播报 · {zoneMessages.length} 条
+        </div>
+        {zoneMessages.slice().reverse().map((m, i) => (
           <div key={'m' + i} style={{ marginBottom: 6, padding: '6px 8px', background: '#faf6ef', borderRadius: 6, fontSize: 12 }}>
             <span style={{ color: '#9a8b7a', fontSize: 10 }}>{m.time}</span>
             <div>{m.text}</div>
           </div>
         ))}
-        {tradeFeed.length === 0 && messages.length === 0 && <p style={{ color: '#999' }}>暂无记录</p>}
+        {tradeFeed.length === 0 && zoneMessages.length === 0 && <p style={{ color: '#999' }}>暂无本区记录</p>}
         {tradeFeed.map(({ agentId, agentName, trade }, i) => (
           <TradeRow key={agentId + i} agentName={agentName} trade={trade} onClick={() => selectAgent(agentId)} />
         ))}

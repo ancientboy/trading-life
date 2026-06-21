@@ -3,6 +3,7 @@ import { tickAgentBrain, brainDispatchLeisure, executeBrainSpeak, tickSocialEven
 import { homeNodeForAgent } from '../lib/agentHome';
 import { OfficePath } from './pathfinding';
 import { moveWithCollision } from './collision';
+import { pauseBackgroundAgentAi } from './messageScope';
 
 const WALK_SPEED = 2.8;
 const STUCK_SKIP_FRAMES = 24;
@@ -84,7 +85,11 @@ export function tickCharacterSim(dt: number) {
       const label = ACTIVITY_END_LABEL[finished ?? ''] ?? '休闲';
       const dest = c.data.agentType === 'entertainment' ? '休息区' : '工位';
       if (userDispatched) {
-        useGameStore.getState().addMessage(`${c.data.name} 结束${label}，返回${dest}`);
+        const actZone = finished === 'massage' ? 'spa' as const
+          : finished === 'dine' ? 'restaurant' as const
+          : finished === 'poker' ? 'casino' as const
+          : 'hall' as const;
+        useGameStore.getState().addMessage(`${c.data.name} 结束${label}，返回${dest}`, actZone);
       } else {
         void executeBrainSpeak(c, {
           mode: 'self_care',
@@ -118,7 +123,7 @@ export function tickCharacterSim(dt: number) {
     }
     if (!c.isWalking && !c.travelIntent && !c.activity && !c.inTransit) {
       const focusZone = useGameStore.getState().activeZone;
-      if (focusZone !== 'arena' || c.userDispatched) {
+      if (!pauseBackgroundAgentAi(focusZone) || c.userDispatched) {
         c = brainDispatchLeisure(c, now);
         if (!c.isWalking && !c.travelIntent) c = tickAgentBrain(c, now);
       }
