@@ -44,15 +44,22 @@ function PokerFloatCTA() {
   const agents = useGameStore(s => s.agents);
   const canOperateAgent = useGameStore(s => s.canOperateAgent);
   const activeModal = useGameStore(s => s.activeModal);
-  const openModal = useGameStore(s => s.openModal);
+  const flyToZone = useGameStore(s => s.flyToZone);
+  const setRightTab = useGameStore(s => s.setRightTab);
+  const toggleRightPanel = useGameStore(s => s.toggleRightPanel);
+  const rightCollapsed = useGameStore(s => s.rightPanelCollapsed);
 
   if (activeZone !== 'casino' || activeModal === 'poker' || activeModal === 'poker_result') return null;
   const seated = Object.values(agents).find(a => a.activity === 'poker' && canOperateAgent(a.agentId));
   if (!seated) return null;
 
   return createPortal(
-    <button type="button" className="poker-float-cta" onClick={() => openModal('poker')}>
-      🃏 {seated.data.name} 已入座 · 点我开始牌局
+    <button type="button" className="poker-float-cta" onClick={() => {
+      if (rightCollapsed) toggleRightPanel();
+      flyToZone('casino');
+      setRightTab('facility');
+    }}>
+      🃏 {seated.data.name} 已入座 · 点我在右栏开局
     </button>,
     document.body,
   );

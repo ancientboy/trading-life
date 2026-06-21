@@ -76,6 +76,12 @@ export type RightTab = 'hall' | 'object' | 'agent' | 'npc' | 'facility' | 'asset
 export type SidebarAction = 'hall' | 'agents' | 'strategy' | 'positions' | 'restaurant' | 'spa' | 'casino' | 'warehouse' | 'social' | 'logs' | 'tasks' | 'events';
 export type ModalId = 'workshop' | 'strategy' | 'market' | 'rank' | 'settings' | 'help' | 'dine' | 'massage' | 'poker' | 'poker_result' | 'trading_win' | 'guess_result' | 'arena_result' | 'pk_result' | 'shop' | 'scene' | 'tasks' | null;
 
+/** 打开时需收起右栏的全屏/强打断弹窗 */
+const PANEL_COLLAPSING_MODALS: Exclude<ModalId, null>[] = [
+  'workshop', 'strategy', 'dine', 'massage', 'poker', 'poker_result',
+  'trading_win', 'guess_result', 'arena_result', 'pk_result',
+];
+
 export type PokerPlayerResult = {
   name: string;
   score: number;
@@ -495,23 +501,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
       case 'strategy': {
         const firstId = s.selectedAgentId || Object.keys(s.agents)[0] || 'xau';
         set({
-          rightPanelCollapsed: false,
+          ...expand,
           sidebarActive: 'strategy',
           activeZone: 'hall',
           rightTab: 'strategy',
           selectedAgentId: firstId,
-          activeModal: 'strategy',
         });
         break;
       }
       case 'positions':
+      case 'warehouse':
         set({ ...expand, sidebarActive: 'positions', activeZone: 'hall', rightTab: 'assets' });
         break;
       case 'logs':
         set({ ...expand, sidebarActive: 'logs', activeZone: 'hall', rightTab: 'messages' });
         break;
-      case 'warehouse':
-        set({ ...expand, sidebarActive: 'warehouse', activeZone: 'hall', rightTab: 'assets' });
+      case 'tasks':
+        set({ ...expand, sidebarActive: 'tasks', activeZone: 'hall', rightTab: 'tasks' });
         break;
       case 'social':
         set({ ...expand, sidebarActive: 'social', rightTab: 'social', rightPanelCollapsed: false });
@@ -520,7 +526,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
         break;
     }
   },
-  openModal: (id) => set({ activeModal: id, rightPanelCollapsed: true }),
+  openModal: (id) => set(s => ({
+    activeModal: id,
+    rightPanelCollapsed: PANEL_COLLAPSING_MODALS.includes(id) ? true : s.rightPanelCollapsed,
+  })),
   openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: true }),
   closeModal: () => set({
     activeModal: null, workshopMode: 'list', pokerHandResult: null,
@@ -594,6 +603,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       activeZone: zone,
       sidebarActive: zone === 'hall' ? 'hall' : zone === 'arena' ? 'events' : zone,
       rightTab: ZONE_TO_RIGHT_TAB[zone],
+      rightPanelCollapsed: false,
       followAgentId: null,
       activeModal: null,
       selectedFacility: isLeisure ? LEISURE_FACILITY[zone as keyof typeof LEISURE_FACILITY] ?? null : null,
@@ -944,7 +954,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().speakForAgent(tradingId, 'greeting');
       sessionStorage.setItem('tl_trading_onboard', tradingId);
     }
-    void get().sendAgentToFacility('dine', { agentId: entId, skipCost: true, tierId: 'a' });
     await get().syncUserPortfolio();
     return true;
   },
@@ -1673,12 +1682,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         await get().setZoneSkin(parsed.zone, parsed.skinId);
         if (parsed.zone === 'arena') {
           get().flyToZone('arena');
-          get().addMessage(`竞技馆皮肤「${res.item.label}」已应用 · 可在「🎨场景装扮」切换`);
+          get().addMessage(`竞技馆皮肤「${res.item.label}」已应用 · 可在商城「场景装扮」切换`);
         } else {
-          get().addMessage('可在顶部「🎨场景装扮」切换各区域风格');
+          get().addMessage('可在顶部「商城」→「场景装扮」切换各区域风格');
         }
       } else {
-        get().openModal('scene');
+        get().openModal('shop');
       }
     }
     return true;

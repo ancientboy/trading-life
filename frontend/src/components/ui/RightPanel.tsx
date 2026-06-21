@@ -14,19 +14,8 @@ import { DailyTasksPanel } from './DailyTasksPanel';
 import { SocialPanel } from './SocialPanel';
 import { TradingEventsPanel } from './TradingEventsPanel';
 import { PokerGamePanel } from './PokerGamePanel';
-
-const TABS: { id: RightTab; label: string }[] = [
-  { id: 'hall', label: '交易大厅' },
-  { id: 'agent', label: '交易 Agent' },
-  { id: 'tasks', label: '每日任务' },
-  { id: 'events', label: '交易竞技' },
-  { id: 'social', label: '社交大厅' },
-  { id: 'assets', label: '持仓交易' },
-  { id: 'strategy', label: '策略预览' },
-  { id: 'messages', label: '交易日志' },
-  { id: 'npc', label: '接待 NPC' },
-  { id: 'facility', label: '休闲设施' },
-];
+import { OnboardingGuide } from './OnboardingGuide';
+import { getRightTabsForContext, RIGHT_TAB_LABELS } from '../../lib/zoneRightTabs';
 
 const NPC_INFO: Record<string, { name: string; role: string; desc: string; buff: string }> = {
   reception: { name: '迎宾 Gugu', role: '前厅接待', desc: '新 Agent 创建、每日任务、新手引导', buff: '无' },
@@ -65,6 +54,7 @@ export function RightPanel() {
   const setFollowAgent = useGameStore(s => s.setFollowAgent);
   const flyToZone = useGameStore(s => s.flyToZone);
   const activeZone = useGameStore(s => s.activeZone);
+  const sidebarActive = useGameStore(s => s.sidebarActive);
   const navigateSidebar = useGameStore(s => s.navigateSidebar);
   const sendAgentToLeisure = useGameStore(s => s.sendAgentToLeisure);
   const canOperateAgent = useGameStore(s => s.canOperateAgent);
@@ -72,6 +62,21 @@ export function RightPanel() {
   const brainVersion = useGameStore(s => s.brainVersion);
   const [msg, setMsg] = useState('');
   const [portfolioResetting, setPortfolioResetting] = useState(false);
+  const [, setGuideTick] = useState(0);
+
+  useEffect(() => {
+    const onGuide = () => setGuideTick(t => t + 1);
+    window.addEventListener('tl-guide-update', onGuide);
+    return () => window.removeEventListener('tl-guide-update', onGuide);
+  }, []);
+
+  const visibleTabs = getRightTabsForContext(activeZone, sidebarActive);
+
+  useEffect(() => {
+    if (!visibleTabs.includes(currentTab)) {
+      setRightTab(visibleTabs[0]);
+    }
+  }, [visibleTabs, currentTab, setRightTab]);
 
   useEffect(() => {
     if (!selectedAgentId) return;
@@ -107,17 +112,24 @@ export function RightPanel() {
       </div>
 
       <div className="panel-tabs">
-        {TABS.map(t => (
-          <button key={t.id} className={`panel-tab ${currentTab === t.id ? 'active' : ''}`} onClick={() => {
-            setRightTab(t.id);
-            if (t.id === 'hall') navigateSidebar('hall');
+        {visibleTabs.map(tabId => (
+          <button key={tabId} className={`panel-tab ${currentTab === tabId ? 'active' : ''}`} onClick={() => {
+            setRightTab(tabId);
+            if (tabId === 'hall') navigateSidebar('hall');
+            if (tabId === 'assets') navigateSidebar('positions');
+            if (tabId === 'messages') navigateSidebar('logs');
+            if (tabId === 'tasks') navigateSidebar('tasks');
+            if (tabId === 'social') navigateSidebar('social');
+            if (tabId === 'events') navigateSidebar('events');
+            if (tabId === 'strategy') navigateSidebar('strategy');
           }}>
-            {t.label}
+            {RIGHT_TAB_LABELS[tabId]}
           </button>
         ))}
       </div>
 
       <div className="panel-body">
+        <OnboardingGuide />
         {activeZone === 'arena' && currentTab !== 'events' && (
           <div style={{ marginBottom: 10, padding: 8, background: '#eef4ff', borderRadius: 8, fontSize: 11 }}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>🏆 交易竞技馆</div>
@@ -227,10 +239,10 @@ export function RightPanel() {
         <Row k="说明" v={npc.desc} />
         <Row k="Buff" v={npc.buff} />
         <button className="ui-btn" style={{ width: '100%', marginTop: 12 }} onClick={() => {
-          if (selectedNpcId === 'lily') openModal('dine');
-          else if (selectedNpcId === 'masseur') openModal('massage');
-          else if (selectedNpcId === 'dealer') openModal('poker');
-        }}>开始交互</button>
+          if (selectedNpcId === 'lily') { flyToZone('restaurant'); setRightTab('facility'); }
+          else if (selectedNpcId === 'masseur') { flyToZone('spa'); setRightTab('facility'); }
+          else if (selectedNpcId === 'dealer') { flyToZone('casino'); setRightTab('facility'); }
+        }}>前往设施面板</button>
       </>
     );
   }
@@ -272,9 +284,11 @@ export function RightPanel() {
             <button className="ui-btn" style={{ width: '100%', marginBottom: 8 }} onClick={() => sendAgentToLeisure(f.leisure, selectedAgentId || undefined)}>
               {f.leisure === 'poker' ? '① 免费入座' : '派遣 Agent 前往'}
             </button>
-            <button className="ui-btn" style={{ width: '100%' }} onClick={() => openModal(f.modal)}>
-              {f.leisure === 'poker' ? '打开牌局面板' : '打开详细交互'}
-            </button>
+            {(f.leisure === 'dine' || f.leisure === 'massage') && (
+              <button className="ui-btn" style={{ width: '100%' }} onClick={() => openModal(f.modal)}>
+                打开点餐 / 套餐详情
+              </button>
+            )}
           </>
         )}
       </>

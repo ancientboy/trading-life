@@ -122,7 +122,6 @@ export function WorldScene() {
   const selectNpc = useGameStore(s => s.selectNpc);
   const selectFacility = useGameStore(s => s.selectFacility);
   const effectsOn = useGameStore(s => s.effectsOn);
-  const openModal = useGameStore(s => s.openModal);
   const flyToZone = useGameStore(s => s.flyToZone);
 
   const deskPos: [number, number, number][] = [
@@ -183,13 +182,13 @@ export function WorldScene() {
         <Gugugaga role="waiter" accentColor="#e879a9" label="服务员 Lily" status="餐厅服务" scale={1.05} onClick={() => selectNpc('lily')} />
       </group>
 
-      <mesh position={[12, 0.5, 18.5]} onClick={(e) => { e.stopPropagation(); selectFacility('table'); openModal('dine'); flyToZone('restaurant'); }}>
+      <mesh position={[12, 0.5, 18.5]} onClick={(e) => { e.stopPropagation(); selectFacility('table'); flyToZone('restaurant'); }}>
         <boxGeometry args={[2.5, 0.1, 2.5]} /><meshBasicMaterial visible={false} />
       </mesh>
-      <mesh position={[30, 0.5, 11.8]} onClick={(e) => { e.stopPropagation(); selectFacility('bed'); openModal('massage'); flyToZone('spa'); }}>
+      <mesh position={[30, 0.5, 11.8]} onClick={(e) => { e.stopPropagation(); selectFacility('bed'); flyToZone('spa'); }}>
         <boxGeometry args={[2, 0.1, 1.2]} /><meshBasicMaterial visible={false} />
       </mesh>
-      <mesh position={[36, 0.5, 21]} onClick={(e) => { e.stopPropagation(); selectFacility('poker'); openModal('poker'); flyToZone('casino'); }}>
+      <mesh position={[36, 0.5, 21]} onClick={(e) => { e.stopPropagation(); selectFacility('poker'); flyToZone('casino'); }}>
         <cylinderGeometry args={[2.2, 2.2, 0.1, 16]} /><meshBasicMaterial visible={false} />
       </mesh>
 

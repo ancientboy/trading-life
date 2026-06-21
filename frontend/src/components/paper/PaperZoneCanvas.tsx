@@ -53,7 +53,6 @@ export function PaperZoneCanvas() {
   const selectNpc = useGameStore(s => s.selectNpc);
   const sendAgentToFacility = useGameStore(s => s.sendAgentToFacility);
   const sendAgentToDesk = useGameStore(s => s.sendAgentToDesk);
-  const openModal = useGameStore(s => s.openModal);
   const setNpcBubble = useGameStore(s => s.setNpcBubble);
   const panCamera = useGameStore(s => s.panCamera);
   const setCameraZoom = useGameStore(s => s.setCameraZoom);
@@ -294,21 +293,29 @@ export function PaperZoneCanvas() {
     else if (hit.type === 'agent') selectAgent(hit.id);
     else if (hit.type === 'npc') {
       if (hit.id === 'dealer') {
-        openModal('poker');
-        setNpcBubble('dealer', '欢迎！入座后点「开始牌局」发牌 🃏', performance.now() + 5000);
+        flyToZone('casino');
+        setRightTab('facility');
+        setNpcBubble('dealer', '欢迎！入座后在右栏点「开始牌局」发牌 🃏', performance.now() + 5000);
       } else if (hit.id === 'ava') {
         if (rightPanelCollapsed) toggleRightPanel();
         setRightTab('events');
         setNpcBubble('ava', '欢迎来到交易竞技馆！猜涨跌 / 短线大赛 / 押冠亚季军 🏆', performance.now() + 6000);
-      } else if (hit.id === 'lily') openModal('dine');
-      else if (hit.id === 'masseur') openModal('massage');
-      else selectNpc(hit.id);
-    }     else if (hit.type === 'facility') {
+      } else if (hit.id === 'lily') {
+        flyToZone('restaurant');
+        setRightTab('facility');
+      } else if (hit.id === 'masseur') {
+        flyToZone('spa');
+        setRightTab('facility');
+      } else selectNpc(hit.id);
+    } else if (hit.type === 'facility') {
       if (hit.action === 'desk') {
         void sendAgentToDesk(undefined, hit.nodeId);
       } else if (hit.action === 'poker') {
         void sendAgentToFacility('poker', { nodeId: hit.nodeId, skipCost: true }).then(ok => {
-          if (ok) openModal('poker');
+          if (ok) {
+            flyToZone('casino');
+            setRightTab('facility');
+          }
         });
       } else {
         void sendAgentToFacility(hit.action, { nodeId: hit.nodeId, skipCost: true });

@@ -3,9 +3,7 @@ import { authLogin, authRegister } from '../../lib/lifeApi';
 import { setAuthSession } from '../../lib/lifeAuth';
 import { useGameStore } from '../../store/useGameStore';
 import { fetchTicker } from '../../lib/api';
-import { PokerDemoHook } from './PokerDemoHook';
 import { TradingDemoHook } from './TradingDemoHook';
-import { TradingArenaPublicHook } from './TradingArenaPublicHook';
 
 const TICKER_KEYS = ['BTCUSDT', 'ETHUSDT', 'XAUUSDT'] as const;
 
@@ -58,6 +56,8 @@ export function LoginPanel({ initialInvite = '' }: { initialInvite?: string }) {
       }
       if (mode === 'register') {
         sessionStorage.removeItem('tl_onboarding_done');
+        sessionStorage.removeItem('tl_onboarding_guide_done');
+        sessionStorage.removeItem('tl_guide_step');
       }
       setAuthSession(res.token, res.account);
       if (res.state) applyLifeState(res.state);
@@ -102,8 +102,6 @@ export function LoginPanel({ initialInvite = '' }: { initialInvite?: string }) {
         </div>
 
         <TradingDemoHook />
-        <TradingArenaPublicHook />
-        <PokerDemoHook />
 
         <div style={{ display: 'flex', gap: 8, margin: '16px 0' }}>
           <button className="ui-btn" style={{ flex: 1, opacity: mode === 'login' ? 1 : 0.55 }}

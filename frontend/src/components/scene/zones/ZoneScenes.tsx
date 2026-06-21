@@ -185,8 +185,12 @@ export function HallZone() {
 
 export function RestaurantZone() {
   const selectNpc = useGameStore(s => s.selectNpc);
-  const openModal = useGameStore(s => s.openModal);
   const selectFacility = useGameStore(s => s.selectFacility);
+  const setRightTab = useGameStore(s => s.setRightTab);
+  const openFacilityPanel = () => {
+    setRightTab('facility');
+    useGameStore.setState({ rightPanelCollapsed: false });
+  };
   return (
     <group>
       <Floor color="#fff8eb" w={20} d={14} />
@@ -203,7 +207,7 @@ export function RestaurantZone() {
         <SceneSprite id="tray" position={[0, 2.2, 0]} scale={0.4} />
         <Gugugaga role="waiter" accentColor="#e879a9" label="服务员 Lily" status="餐厅服务" onClick={() => selectNpc('lily')} />
       </group>
-      <mesh position={[0, 0.5, 1]} onClick={(e) => { e.stopPropagation(); selectFacility('table'); openModal('dine'); }}>
+      <mesh position={[0, 0.5, 1]} onClick={(e) => { e.stopPropagation(); selectFacility('table'); openFacilityPanel(); }}>
         <boxGeometry args={[8, 0.1, 6]} /><meshBasicMaterial visible={false} />
       </mesh>
       <ZoneAgents zone="restaurant" />
@@ -213,13 +217,17 @@ export function RestaurantZone() {
 
 export function SpaZone() {
   const selectNpc = useGameStore(s => s.selectNpc);
-  const openModal = useGameStore(s => s.openModal);
   const selectFacility = useGameStore(s => s.selectFacility);
+  const setRightTab = useGameStore(s => s.setRightTab);
+  const openFacilityPanel = () => {
+    setRightTab('facility');
+    useGameStore.setState({ rightPanelCollapsed: false });
+  };
   return (
     <group>
       <SpaLounge
         onSelectTherapist={() => selectNpc('masseur')}
-        onSelectBed={() => { selectFacility('bed'); openModal('massage'); }}
+        onSelectBed={() => { selectFacility('bed'); openFacilityPanel(); }}
       />
       <ZoneAgents zone="spa" />
     </group>
@@ -228,13 +236,17 @@ export function SpaZone() {
 
 export function CasinoZone() {
   const selectNpc = useGameStore(s => s.selectNpc);
-  const openModal = useGameStore(s => s.openModal);
   const selectFacility = useGameStore(s => s.selectFacility);
+  const setRightTab = useGameStore(s => s.setRightTab);
+  const openFacilityPanel = () => {
+    setRightTab('facility');
+    useGameStore.setState({ rightPanelCollapsed: false });
+  };
   return (
     <group>
       <CasinoLounge
         onSelectDealer={() => selectNpc('dealer')}
-        onSelectTable={() => { selectFacility('poker'); openModal('poker'); }}
+        onSelectTable={() => { selectFacility('poker'); openFacilityPanel(); }}
       />
       <ZoneAgents zone="casino" />
     </group>

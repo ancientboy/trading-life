@@ -7,7 +7,7 @@ const MAIN: { id: SidebarAction; label: string }[] = [
   { id: 'hall', label: '交易大厅' },
   { id: 'agents', label: 'Agent 工坊' },
   { id: 'strategy', label: '策略编辑器' },
-  { id: 'positions', label: '持仓交易' },
+  { id: 'positions', label: '资产持仓' },
 ];
 const LEISURE: { id: SidebarAction; label: string }[] = [
   { id: 'restaurant', label: '餐厅' },
@@ -17,7 +17,6 @@ const LEISURE: { id: SidebarAction; label: string }[] = [
 const OTHER: { id: SidebarAction; label: string; highlight?: boolean }[] = [
   { id: 'events', label: '🏆 交易竞技', highlight: true },
   { id: 'tasks', label: '每日任务' },
-  { id: 'warehouse', label: '资产仓库' },
   { id: 'social', label: '社交大厅' },
   { id: 'logs', label: '交易日志' },
 ];
@@ -27,8 +26,6 @@ export function LeftSidebar() {
   const setExpanded = useGameStore(s => s.setLeftSidebarExpanded);
   const active = useGameStore(s => s.sidebarActive);
   const navigateSidebar = useGameStore(s => s.navigateSidebar);
-  const setRightTab = useGameStore(s => s.setRightTab);
-  const openModal = useGameStore(s => s.openModal);
   const toggleMinimalUi = useGameStore(s => s.toggleMinimalUi);
   const agents = useGameStore(s => s.agents);
   const [hover, setHover] = useState<string | null>(null);
@@ -67,7 +64,7 @@ export function LeftSidebar() {
       >
         {MAIN.map(item => (
           <SidebarBtn key={item.id} id={item.id} label={item.label} expanded={expanded || isMobile}
-            active={active === item.id} hover={hover === item.id}
+            active={active === item.id || (item.id === 'positions' && active === 'warehouse')} hover={hover === item.id}
             onHover={setHover} onClick={() => handleNav(item.id)} />
         ))}
         <div className="sidebar-divider" />
@@ -81,15 +78,7 @@ export function LeftSidebar() {
         {OTHER.map(item => (
           <SidebarBtn key={item.id} id={item.id} label={item.label} expanded={expanded || isMobile}
             active={active === item.id} hover={hover === item.id} badge={item.highlight}
-            onHover={setHover} onClick={() => {
-              if (isMobile) setExpanded(false);
-              if (item.id === 'tasks') {
-                setRightTab('tasks');
-                openModal('tasks');
-              } else {
-                navigateSidebar(item.id);
-              }
-            }} />
+            onHover={setHover} onClick={() => handleNav(item.id)} />
         ))}
       </div>
       <div className="left-sidebar-footer">

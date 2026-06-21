@@ -11,6 +11,7 @@ import {
   ClipboardDocumentListIcon,
   ComputerDesktopIcon,
   GiftIcon,
+  TrophyIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeSolid,
@@ -25,6 +26,7 @@ import {
   ClipboardDocumentListIcon as ClipboardSolid,
   ComputerDesktopIcon as DesktopSolid,
   GiftIcon as GiftSolid,
+  TrophyIcon as TrophySolid,
 } from '@heroicons/react/24/solid';
 import type { SidebarAction } from '../../store/useGameStore';
 import type { ComponentType, SVGProps } from 'react';
@@ -43,5 +45,6 @@ export const SIDEBAR_ICONS: Record<SidebarAction | 'minimal', Pair> = {
   social: { outline: UsersIcon, solid: UsersSolid },
   logs: { outline: ClipboardDocumentListIcon, solid: ClipboardSolid },
   tasks: { outline: GiftIcon, solid: GiftSolid },
+  events: { outline: TrophyIcon, solid: TrophySolid },
   minimal: { outline: ComputerDesktopIcon, solid: DesktopSolid },
 };

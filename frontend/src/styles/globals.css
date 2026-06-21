@@ -435,8 +435,77 @@ html, body, #root {
 .detail-row span:last-child { font-weight: 600; text-align: right; word-break: break-all; }
 
 @media (max-width: 1024px) {
-  .app-shell { --right-w: var(--right-w-collapsed); }
-  .right-panel .panel-body, .right-panel .panel-tabs, .right-panel .panel-footer { display: none; }
+  .app-shell { --right-w: min(280px, 32vw); }
+}
+
+.coach-marks-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  pointer-events: auto;
+}
+.coach-marks-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 24, 20, 0.45);
+}
+.coach-marks-highlight {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(30, 24, 20, 0.45);
+  border: 2px solid #ffb74d;
+  pointer-events: none;
+  z-index: 1;
+}
+.coach-marks-card {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px));
+  padding: 16px 18px;
+  background: #fffdf8;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  z-index: 2;
+}
+
+.top-nav-user-wrap,
+.top-nav-more-wrap {
+  position: relative;
+}
+.top-nav-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 160px;
+  padding: 6px;
+  background: #fffdf8;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.top-nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  text-align: left;
+}
+.top-nav-dropdown-item:hover {
+  background: #faf6ef;
 }
 
 .disclaimer-bar {

@@ -31,7 +31,7 @@ export function TradingEventsPanel() {
   const addMessage = useGameStore(s => s.addMessage);
   const points = useGameStore(s => s.points);
 
-  const [tab, setTab] = useState<'guess' | 'arena'>('arena');
+  const [tab, setTab] = useState<'guess' | 'arena' | 'modes'>('arena');
   const [lastGuess, setLastGuess] = useState<Record<string, unknown> | null>(null);
   const arena = arenaLive;
   const [highlights, setHighlights] = useState<Array<Record<string, unknown>>>([]);
@@ -245,15 +245,17 @@ export function TradingEventsPanel() {
         padding: '10px 12px', marginBottom: 10, borderRadius: 10,
         background: 'linear-gradient(135deg,#fff3e0,#eef4ff)', border: '2px solid #ffb74d',
       }}>
-        <div style={{ fontWeight: 800, fontSize: 14, color: '#c65a00', marginBottom: 4 }}>🏆 交易竞技中心</div>
-        <div style={{ fontSize: 11, color: '#7a6e62' }}>猜涨跌 60s · 大赛极速/标准 · AI 30s 多轮 · 押前三名</div>
+        <div style={{ fontWeight: 800, fontSize: 14, color: '#c65a00', marginBottom: 4 }}>🏆 交易竞技馆</div>
+        <div style={{ fontSize: 11, color: '#7a6e62' }}>猜涨跌 · 短线大赛 · PK / 杠杆 / 阵营 / 逆袭</div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        <button className="ui-btn" style={{ flex: 1, opacity: tab === 'guess' ? 1 : 0.55 }}
-          onClick={() => setTab('guess')}>📊 猜涨跌 · 60s</button>
-        <button className="ui-btn" style={{ flex: 1, opacity: tab === 'arena' ? 1 : 0.55 }}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
+        <button className="ui-btn" style={{ flex: '1 1 30%', minWidth: 88, opacity: tab === 'guess' ? 1 : 0.55 }}
+          onClick={() => setTab('guess')}>📊 猜涨跌</button>
+        <button className="ui-btn" style={{ flex: '1 1 30%', minWidth: 88, opacity: tab === 'arena' ? 1 : 0.55 }}
           onClick={() => setTab('arena')}>🏆 短线大赛</button>
+        <button className="ui-btn" style={{ flex: '1 1 30%', minWidth: 88, opacity: tab === 'modes' ? 1 : 0.55 }}
+          onClick={() => setTab('modes')}>⚡ 进阶玩法</button>
       </div>
 
       <div style={{ fontSize: 11, color: '#8a7e72', marginBottom: 10, display: 'flex', justifyContent: 'space-between' }}>
@@ -459,7 +461,7 @@ export function TradingEventsPanel() {
         </>
       )}
 
-      <TradingModesPanel />
+      {tab === 'modes' && <TradingModesPanel />}
     </div>
   );
 }
