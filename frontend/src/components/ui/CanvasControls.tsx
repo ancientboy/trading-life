@@ -1,6 +1,6 @@
 import {
   ArrowPathIcon, MagnifyingGlassPlusIcon, MagnifyingGlassMinusIcon,
-  PauseIcon, PlayIcon, EyeSlashIcon, EyeIcon,
+  PauseIcon, PlayIcon,
 } from '@heroicons/react/24/outline';
 import { useGameStore } from '../../store/useGameStore';
 import { AppIcon } from '../icons/AppIcon';
@@ -16,8 +16,6 @@ export function CanvasControls() {
   const setSimSpeed = useGameStore(s => s.setSimSpeed);
   const paused = useGameStore(s => s.paused);
   const togglePause = useGameStore(s => s.togglePause);
-  const effectsOn = useGameStore(s => s.effectsOn);
-  const setEffectsOn = useGameStore(s => s.setEffectsOn);
   const dayMode = useGameStore(s => s.dayMode);
   const setDayMode = useGameStore(s => s.setDayMode);
   return (
@@ -33,7 +31,6 @@ export function CanvasControls() {
       <Ctl label="20x" active={simSpeed === 20 && !paused} onClick={() => setSimSpeed(20)} />
       <IconCtl icon={paused ? PlayIcon : PauseIcon} title={paused ? '播放' : '暂停'} active={paused} onClick={togglePause} />
       <span className="ctl-sep" />
-      <IconCtl icon={effectsOn ? EyeIcon : EyeSlashIcon} title="特效" active={effectsOn} onClick={() => setEffectsOn(!effectsOn)} />
       <Ctl label={dayMode === 'day' ? '日' : '夜'} onClick={() => setDayMode(dayMode === 'day' ? 'night' : 'day')} />
     </div>
   );

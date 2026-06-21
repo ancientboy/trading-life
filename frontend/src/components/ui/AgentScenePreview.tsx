@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { drawAgent } from '../paper/paperDraw';
 import { appearanceSummary, resolveAppearance, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
 import type { OutfitId } from '../../lib/agentOutfits';
 import type { SpeciesId, NiumaSkinId, HairStyleId } from '../../lib/agentSpecies';
+import { useAgentCanvas } from '../../hooks/useAgentCanvas';
 
 const PREVIEW_W = 260;
 const PREVIEW_H = 210;
@@ -64,38 +65,15 @@ function paintPreview(
 
 /** 创建页场景预览 — 单角色居中，与游戏内 2D 渲染一致 */
 export function AgentScenePreview(props: AgentScenePreviewProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const propsRef = useRef(props);
   propsRef.current = props;
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = PREVIEW_W * dpr;
-    canvas.height = PREVIEW_H * dpr;
-    canvas.style.width = `${PREVIEW_W}px`;
-    canvas.style.height = `${PREVIEW_H}px`;
-
-    let raf = 0;
-    let alive = true;
-    const t0 = performance.now();
-
-    const draw = (now: number) => {
-      if (!alive) return;
-      paintPreview(ctx, dpr, propsRef.current, (now - t0) / 1000);
-      raf = requestAnimationFrame(draw);
-    };
-
-    raf = requestAnimationFrame(draw);
-    return () => {
-      alive = false;
-      cancelAnimationFrame(raf);
-    };
-  }, []);
+  const canvasRef = useAgentCanvas({
+    width: PREVIEW_W,
+    height: PREVIEW_H,
+    animate: true,
+    paint: (ctx, dpr, t) => paintPreview(ctx, dpr, propsRef.current, t),
+  });
 
   const summary = appearanceSummary(props);
 
@@ -114,7 +92,7 @@ export function AgentScenePreview(props: AgentScenePreviewProps) {
         display: 'flex', justifyContent: 'center', alignItems: 'center',
         background: '#f5f0e8', borderRadius: 8, overflow: 'hidden',
       }}>
-        <canvas ref={canvasRef} style={{ display: 'block' }} />
+        <canvas ref={canvasRef} width={PREVIEW_W} height={PREVIEW_H} style={{ display: 'block', width: PREVIEW_W, height: PREVIEW_H }} />
       </div>
       <div style={{ marginTop: 10, textAlign: 'center' }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: '#3d3530', marginBottom: 4 }}>

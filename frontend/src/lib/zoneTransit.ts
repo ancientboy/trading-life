@@ -3,9 +3,7 @@ import { OfficePath } from './pathfinding';
 import { ZONES } from './pathfinding';
 import { zoneAtPosition } from './collision';
 
-const INTENT_ZONE: Record<string, ZoneId> = {
-  dine: 'restaurant', massage: 'spa', poker: 'casino', rest: 'hall',
-};
+import { zoneForActivity } from './activityZones';
 
 /** 推断 Agent 当前所在分区（跟随镜头 / 跨区导航） */
 export function resolveAgentZone(char: {
@@ -16,8 +14,10 @@ export function resolveAgentZone(char: {
   inTransit?: boolean;
 }): ZoneId {
   if (char.inTransit && char.transitZone) return char.transitZone;
-  if (char.activity && INTENT_ZONE[char.activity]) return INTENT_ZONE[char.activity];
-  if (char.travelIntent && INTENT_ZONE[char.travelIntent]) return INTENT_ZONE[char.travelIntent];
+  const actZone = zoneForActivity(char.activity);
+  if (actZone) return actZone;
+  const intentZone = zoneForActivity(char.travelIntent);
+  if (intentZone) return intentZone;
   return zoneAtPosition(char.x, char.z);
 }
 
@@ -38,7 +38,7 @@ export function zoneForNode(nodeId: string | null): ZoneId | null {
 }
 
 export function zoneForIntent(intent: string | null | undefined): ZoneId | null {
-  return intent ? INTENT_ZONE[intent] ?? null : null;
+  return zoneForActivity(intent);
 }
 
 export function isCrossZoneTravel(
