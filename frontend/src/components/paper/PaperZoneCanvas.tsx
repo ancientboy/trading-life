@@ -168,7 +168,9 @@ export function PaperZoneCanvas() {
 
   useEffect(() => {
     let last = performance.now();
+    let running = !document.hidden;
     const loop = (now: number) => {
+      if (!running) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       bobRef.current += dt;
@@ -186,8 +188,20 @@ export function PaperZoneCanvas() {
       paint();
       rafRef.current = requestAnimationFrame(loop);
     };
+    const onVisibility = () => {
+      running = !document.hidden;
+      if (running) {
+        last = performance.now();
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(loop);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
     rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      cancelAnimationFrame(rafRef.current);
+    };
   }, [paused, followAgentId, agents, activeZone, paint, setCameraLookAt, followAgentZone]);
 
   useEffect(() => {

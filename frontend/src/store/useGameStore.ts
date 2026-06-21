@@ -21,7 +21,7 @@ import {
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
-import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, type SeatMap } from '../lib/seatRegistry';
+import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, type SeatMap } from '../lib/seatRegistry';
 import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
@@ -1874,7 +1874,9 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     ? resolveAvailableSeat(activity, nodeId, char.agentId, mergedSeats, wallNow)
     : null;
   if (activity && !seatId) {
-    store.addMessage(`${char.data.name} 找不到空座位，活动取消`);
+    const { free, total } = countFreeSeats(activity, char.agentId, mergedSeats, wallNow);
+    const label = ACTIVITY_SEAT_LABEL[activity] ?? '座位';
+    store.addMessage(`${char.data.name}：${label}已满（${free}/${total} 空位），活动取消`);
     return { ...char, travelIntent: null, isWalking: false, pathQueue: [], destNode: null };
   }
 

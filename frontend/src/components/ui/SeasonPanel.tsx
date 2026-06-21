@@ -6,7 +6,8 @@ import {
   fetchArenaWinRate,
   type LeaderboardEntry, type SeasonCosmetic, type SeatAuction, type ArenaWinRateEntry,
 } from '../../lib/lifeEngagementApi';
-import { buildLeaderboardLink, shareOrCopy, shareResultMessage, buildWeeklyReportLink, buildWeeklyReportShareText, downloadWeeklyReportCard } from '../../lib/shareUtils';
+import { buildLeaderboardLink, shareOrCopy, shareResultMessage, buildWeeklyReportLink, buildWeeklyReportShareText, renderWeeklyReportCard } from '../../lib/shareUtils';
+import { SharePosterPreview } from './SharePosterPreview';
 import { fetchWeeklyReport, type WeeklyReportData } from '../../lib/lifeEngagementApi';
 
 export function SeasonPanel() {
@@ -32,6 +33,7 @@ export function SeasonPanel() {
   const [bidAmount, setBidAmount] = useState(20);
   const [weeklyReport, setWeeklyReport] = useState<WeeklyReportData | null>(null);
   const [weeklyBusy, setWeeklyBusy] = useState(false);
+  const [weeklyPosterBlob, setWeeklyPosterBlob] = useState<Blob | null>(null);
   const [arenaWinRates, setArenaWinRates] = useState<ArenaWinRateEntry[]>([]);
 
   useEffect(() => { syncEngagement(); }, [syncEngagement]);
@@ -52,6 +54,7 @@ export function SeasonPanel() {
   const tabLabel: Record<string, string> = { rank: '排行榜', season: '赛季', pvp: '德州说明', auction: '座位拍卖' };
 
   return (
+    <>
     <div style={{ color: '#3d3530' }}>
       <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
         {(['rank', 'season', 'pvp', 'auction'] as const).map(t => (
@@ -106,8 +109,8 @@ export function SeasonPanel() {
               onClick={async () => {
                 setWeeklyBusy(true);
                 try {
-                  await downloadWeeklyReportCard(weeklyReport, buildWeeklyReportLink());
-                  addMessage('战报海报已保存');
+                  const blob = await renderWeeklyReportCard(weeklyReport, buildWeeklyReportLink());
+                  setWeeklyPosterBlob(blob);
                 } catch { addMessage('生成海报失败'); }
                 finally { setWeeklyBusy(false); }
               }}>
@@ -223,5 +226,12 @@ export function SeasonPanel() {
         </>
       )}
     </div>
+    <SharePosterPreview
+      blob={weeklyPosterBlob}
+      filename={`trading-life-weekly-${Date.now()}.png`}
+      onClose={() => setWeeklyPosterBlob(null)}
+      onSaved={() => addMessage('战报海报已保存')}
+    />
+    </>
   );
 }
