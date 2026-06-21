@@ -9,9 +9,6 @@ import { isLoggedIn, getStoredAccount } from './lib/lifeAuth';
 import { syncMood } from './lib/lifeEngagementApi';
 import { clearUrlParams, parseDeepLink, persistDeepLink } from './lib/shareUtils';
 
-import { preloadAllSprites } from './lib/spriteTextures';
-import { preloadNiumaSprites } from './lib/characterSprites';
-
 export default function App() {
   const loggedIn = isLoggedIn();
   const deepLink = parseDeepLink();
@@ -23,7 +20,11 @@ export default function App() {
     }
     const store = () => useGameStore.getState();
     store().initAgents();
-    store().syncLifeState().then(async () => {
+    const runAfterPaint = (fn: () => void, delayMs = 0) => {
+      window.setTimeout(fn, delayMs);
+    };
+    runAfterPaint(() => {
+      store().syncLifeState().then(async () => {
       const st = store();
       if (!sessionStorage.getItem('tl_onboarding_done')) {
         const account = getStoredAccount();
@@ -57,9 +58,31 @@ export default function App() {
       }
       void store().processPendingDeepLink();
       clearUrlParams();
-    });
-    preloadAllSprites().catch(() => {});
-    preloadNiumaSprites();
+      });
+    }, 0);
+    runAfterPaint(() => {
+      if (document.visibilityState !== 'visible') return;
+      fetchOverview().then(data => store().updateFromOverview(data)).catch(() => {});
+    }, 400);
+    runAfterPaint(() => {
+      if (document.visibilityState !== 'visible') return;
+      store().syncUserPortfolio().catch(() => {});
+    }, 600);
+    runAfterPaint(() => {
+      if (document.visibilityState !== 'visible') return;
+      fetchTicker().then(store().setTicker).catch(() => {});
+    }, 200);
+    runAfterPaint(() => {
+      if (document.visibilityState !== 'visible') return;
+      store().syncTradingLive().catch(() => {});
+    }, 800);
+    const flashInvite = sessionStorage.getItem('tl_flash_invite');
+    if (flashInvite) {
+      sessionStorage.removeItem('tl_flash_invite');
+      store().addMessage(flashInvite);
+    } else {
+      store().addMessage('欢迎来到交易人生 · 登录后开始挂机与派遣');
+    }
     const pollSystem = () => {
       if (document.visibilityState !== 'visible') return;
       fetchOverview().then(data => store().updateFromOverview(data)).catch(() => {});
@@ -72,15 +95,6 @@ export default function App() {
       if (document.visibilityState !== 'visible') return;
       fetchTicker().then(store().setTicker).catch(() => {});
     };
-    pollSystem(); pollPortfolio(); tick();
-    store().syncTradingLive().catch(() => {});
-    const flashInvite = sessionStorage.getItem('tl_flash_invite');
-    if (flashInvite) {
-      sessionStorage.removeItem('tl_flash_invite');
-      store().addMessage(flashInvite);
-    } else {
-      store().addMessage('欢迎来到交易人生 · 登录后开始挂机与派遣');
-    }
     const a = setInterval(pollSystem, 15000);
     const g = setInterval(pollPortfolio, 45000);
     const b = setInterval(tick, 15000);
