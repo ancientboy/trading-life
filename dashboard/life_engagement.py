@@ -29,6 +29,14 @@ def _ws_notify_poker_room(room_id: str) -> None:
         pass
 
 
+def _ws_notify_advanced(room_id: str) -> None:
+    try:
+        from life_ws import schedule_advanced_broadcast
+        schedule_advanced_broadcast(room_id)
+    except Exception:
+        pass
+
+
 # ─── Phase 1: Social ───────────────────────────────────────────
 
 class ChatPostBody(BaseModel):
@@ -1473,6 +1481,7 @@ async def start_poker_room(room_id: str, account_id: str = Depends(resolve_accou
         if not out.get("balance"):
             out["balance"] = load_user(account_id)["points"]
         _ws_notify_poker_room(room_id)
+        _ws_notify_advanced(room_id)
         return out
 
     with life_db._lock:
@@ -1595,6 +1604,7 @@ async def start_ai_spectator(body: PokerAiSpectatorBody, account_id: str = Depen
     out["buy_in"] = buy_in
     out["balance"] = load_user(account_id)["points"]
     out["message"] = f"观赛开始 · {num} 人桌 · 买入 {buy_in}"
+    _ws_notify_advanced(rid)
     return out
 
 

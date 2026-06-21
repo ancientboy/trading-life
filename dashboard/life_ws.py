@@ -27,6 +27,7 @@ class WsClient:
     client_id: int
     subscriptions: set[str] = field(default_factory=set)
     last_pong: float = field(default_factory=time.time)
+    advanced_since: dict[str, int] = field(default_factory=dict)
 
 
 class LifeWsHub:
@@ -37,6 +38,7 @@ class LifeWsHub:
         self._seq = 0
         self._broadcast_task: Optional[asyncio.Task] = None
         self._pending_poker: set[str] = set()
+        self._pending_advanced: set[str] = set()
         self._pending_arena = False
         self._pending_guess = False
 
@@ -116,6 +118,11 @@ class LifeWsHub:
             self._pending_poker.add(room_id)
             self._ensure_broadcast_task()
 
+    def schedule_advanced(self, room_id: str) -> None:
+        if room_id:
+            self._pending_advanced.add(room_id)
+            self._ensure_broadcast_task()
+
     def schedule_arena(self) -> None:
         self._pending_arena = True
         self._ensure_broadcast_task()
@@ -148,6 +155,11 @@ class LifeWsHub:
         self._pending_poker.clear()
         for rid in poker_ids:
             await broadcast_poker_room(rid)
+
+        advanced_ids = list(self._pending_advanced)
+        self._pending_advanced.clear()
+        for rid in advanced_ids:
+            await broadcast_poker_advanced(rid)
 
         if self._pending_arena:
             self._pending_arena = False
@@ -195,6 +207,89 @@ async def broadcast_poker_room(room_id: str) -> None:
         return await _build_poker_payload(room_id, account_id)
 
     await hub.broadcast_channel(channel, "poker.room.state", build)
+
+
+async def _push_advanced_state(
+    client: WsClient,
+    room_id: str,
+    since_seq: int,
+    auto_run: bool,
+    max_steps: int,
+    request_id: str = "",
+    push: bool = False,
+) -> dict:
+    from poker_advanced import get_advanced_state
+
+    client.advanced_since[room_id] = since_seq
+    cap = 80
+    out = await get_advanced_state(
+        room_id,
+        client.account_id,
+        since_seq=since_seq,
+        auto_run=auto_run,
+        max_steps=max(0, min(max_steps, cap)),
+    )
+    payload = {**out, "request_id": request_id, "push": push}
+    await hub.send_json(client, "poker.advanced.state", payload)
+    return out
+
+
+async def handle_advanced_tick(client: WsClient, data: dict) -> None:
+    room_id = str(data.get("room_id") or "").strip()
+    if not room_id:
+        await hub.send_json(client, "poker.advanced.state", {
+            "ok": False,
+            "error": "缺少 room_id",
+            "request_id": data.get("request_id", ""),
+        })
+        return
+
+    since_seq = int(data.get("since_seq") or 0)
+    auto_run = data.get("auto_run", True)
+    if isinstance(auto_run, str):
+        auto_run = auto_run.lower() not in ("false", "0", "no")
+    max_steps = int(data.get("max_steps") if data.get("max_steps") is not None else 1)
+    request_id = str(data.get("request_id") or "")
+
+    await _push_advanced_state(
+        client, room_id, since_seq, bool(auto_run), max_steps, request_id=request_id,
+    )
+
+    if auto_run and max_steps > 0:
+        await notify_advanced_peers(room_id, client.client_id)
+
+
+async def push_advanced_snapshot(client: WsClient, room_id: str) -> None:
+    since = client.advanced_since.get(room_id, 0)
+    await _push_advanced_state(client, room_id, since, False, 0, push=True)
+
+
+async def notify_advanced_peers(room_id: str, driver_client_id: int) -> None:
+    channel = f"poker:advanced:{room_id}"
+    for cid in list(hub._channel_map.get(channel, ())):
+        if cid == driver_client_id:
+            continue
+        peer = hub._clients.get(cid)
+        if not peer:
+            continue
+        since = peer.advanced_since.get(room_id, 0)
+        try:
+            await _push_advanced_state(peer, room_id, since, False, 0, push=True)
+        except Exception:
+            pass
+
+
+async def broadcast_poker_advanced(room_id: str) -> None:
+    channel = f"poker:advanced:{room_id}"
+    for cid in list(hub._channel_map.get(channel, ())):
+        client = hub._clients.get(cid)
+        if not client:
+            continue
+        since = client.advanced_since.get(room_id, 0)
+        try:
+            await _push_advanced_state(client, room_id, since, False, 0, push=True)
+        except Exception:
+            pass
 
 
 async def _build_arena_payload(account_id: str) -> dict:
@@ -322,6 +417,10 @@ def schedule_poker_room_broadcast(room_id: str) -> None:
     hub.schedule_poker_room(room_id)
 
 
+def schedule_advanced_broadcast(room_id: str) -> None:
+    hub.schedule_advanced(room_id)
+
+
 def schedule_arena_broadcast() -> None:
     hub.schedule_arena()
 
@@ -360,10 +459,19 @@ async def life_websocket(websocket: WebSocket, token: str = Query("")):
                 for ch in data.get("channels") or []:
                     if isinstance(ch, str) and ch:
                         hub.subscribe(client.client_id, ch)
+                        if ch.startswith("poker:advanced:"):
+                            adv_room = ch[len("poker:advanced:"):]
+                            if adv_room:
+                                asyncio.create_task(push_advanced_snapshot(client, adv_room))
             elif action == "unsubscribe":
                 for ch in data.get("channels") or []:
                     if isinstance(ch, str) and ch:
                         hub.unsubscribe(client.client_id, ch)
+                        if ch.startswith("poker:advanced:"):
+                            adv_room = ch[len("poker:advanced:"):]
+                            client.advanced_since.pop(adv_room, None)
+            elif action == "advanced.tick":
+                await handle_advanced_tick(client, data)
             elif action == "ping":
                 client.last_pong = time.time()
                 await hub.send_json(client, "pong", {})

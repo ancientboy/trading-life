@@ -1,15 +1,45 @@
 import { getAuthToken, isLoggedIn } from './lifeAuth';
 import { useGameStore } from '../store/useGameStore';
-import type { ArenaRoundState, GuessRoundState, PokerRoom } from './lifeEngagementApi';
+import type {
+  AdvancedPokerGame, ArenaRoundState, GuessRoundState, PokerRoom,
+} from './lifeEngagementApi';
+import { fetchAdvancedPokerState } from './lifeEngagementApi';
 
 const WS_PATH = '/trading/api/life/ws';
 const RECONNECT_MS = 3000;
+const ADVANCED_TICK_TIMEOUT_MS = 45000;
+
+export type AdvancedPokerStateResponse = {
+  ok: boolean;
+  room_id?: string;
+  game?: AdvancedPokerGame;
+  status?: string;
+  settlement?: {
+    results: Array<{ name: string; stack: number; rank: number; won: number; eliminated: boolean }>;
+    winner?: { name: string };
+    balance?: number;
+    net?: number;
+    won?: number;
+  };
+  error?: string;
+  timedOut?: boolean;
+  request_id?: string;
+  push?: boolean;
+};
+
+type AdvancedPushListener = (payload: AdvancedPokerStateResponse) => void;
 
 type WsEnvelope = {
   type: string;
   seq?: number;
   ts?: number;
   payload?: unknown;
+};
+
+type PendingAdvanced = {
+  resolve: (value: AdvancedPokerStateResponse) => void;
+  reject: (reason?: unknown) => void;
+  timer: ReturnType<typeof setTimeout>;
 };
 
 class LifeSocket {
@@ -19,6 +49,8 @@ class LifeSocket {
   private subscribed = new Set<string>();
   private lastSeq = 0;
   private _connected = false;
+  private pendingAdvanced = new Map<string, PendingAdvanced>();
+  private advancedPushListeners = new Map<string, Set<AdvancedPushListener>>();
 
   isConnected(): boolean {
     return this._connected;
@@ -70,6 +102,11 @@ class LifeSocket {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    for (const pending of this.pendingAdvanced.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error('WebSocket closed'));
+    }
+    this.pendingAdvanced.clear();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -88,6 +125,42 @@ class LifeSocket {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     }
+  }
+
+  onAdvancedPush(roomId: string, listener: AdvancedPushListener): () => void {
+    const set = this.advancedPushListeners.get(roomId) ?? new Set();
+    set.add(listener);
+    this.advancedPushListeners.set(roomId, set);
+    return () => {
+      set.delete(listener);
+      if (!set.size) this.advancedPushListeners.delete(roomId);
+    };
+  }
+
+  requestAdvancedTick(
+    roomId: string,
+    sinceSeq = 0,
+    opts?: { autoRun?: boolean; maxSteps?: number },
+  ): Promise<AdvancedPokerStateResponse> {
+    if (!this.isConnected()) {
+      return Promise.reject(new Error('WebSocket not connected'));
+    }
+    const requestId = `adv_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pendingAdvanced.delete(requestId);
+        resolve({ ok: false, error: '同步超时，请重试', timedOut: true });
+      }, ADVANCED_TICK_TIMEOUT_MS);
+      this.pendingAdvanced.set(requestId, { resolve, reject, timer });
+      this.send({
+        action: 'advanced.tick',
+        request_id: requestId,
+        room_id: roomId,
+        since_seq: sinceSeq,
+        auto_run: opts?.autoRun !== false,
+        max_steps: opts?.maxSteps ?? 1,
+      });
+    });
   }
 
   syncSubscriptions(want: string[]): void {
@@ -132,12 +205,21 @@ class LifeSocket {
   }
 
   private handleMessage(msg: WsEnvelope): void {
-    if (msg.seq && msg.seq <= this.lastSeq) return;
-    if (msg.seq) this.lastSeq = msg.seq;
+    const advPayload = msg.type === 'poker.advanced.state'
+      ? msg.payload as AdvancedPokerStateResponse | undefined
+      : undefined;
+    const isAdvancedReply = !!(advPayload?.request_id && this.pendingAdvanced.has(advPayload.request_id));
+    if (!isAdvancedReply) {
+      if (msg.seq && msg.seq <= this.lastSeq) return;
+      if (msg.seq) this.lastSeq = msg.seq;
+    }
 
     switch (msg.type) {
       case 'poker.room.state':
         this.applyPokerState(msg.payload);
+        break;
+      case 'poker.advanced.state':
+        this.applyAdvancedState(msg.payload as AdvancedPokerStateResponse);
         break;
       case 'arena.live':
         this.applyArenaState(msg.payload);
@@ -166,6 +248,23 @@ class LifeSocket {
       return;
     }
     store.applyPokerRoom(room);
+  }
+
+  private applyAdvancedState(payload: AdvancedPokerStateResponse): void {
+    const requestId = payload.request_id;
+    if (requestId && this.pendingAdvanced.has(requestId)) {
+      const pending = this.pendingAdvanced.get(requestId)!;
+      this.pendingAdvanced.delete(requestId);
+      clearTimeout(pending.timer);
+      pending.resolve(payload);
+      return;
+    }
+    if (!payload.push || !payload.room_id) return;
+    const listeners = this.advancedPushListeners.get(payload.room_id);
+    if (!listeners?.size) return;
+    listeners.forEach(fn => {
+      try { fn(payload); } catch { /* ignore */ }
+    });
   }
 
   private applyArenaState(payload: unknown): void {
@@ -215,7 +314,25 @@ export function syncLifeSocketSubscriptions(): void {
   if (st.pokerRoom?.id && st.pokerRoom.status === 'waiting' && !st.pokerSpectateRoom) {
     want.push(`poker:room:${st.pokerRoom.id}`);
   }
+  if (st.pokerSpectateRoom?.id) {
+    want.push(`poker:advanced:${st.pokerSpectateRoom.id}`);
+  }
   lifeSocket.syncSubscriptions(want);
+}
+
+export async function fetchAdvancedPokerStateSmart(
+  roomId: string,
+  sinceSeq = 0,
+  opts?: { autoRun?: boolean; maxSteps?: number },
+): Promise<AdvancedPokerStateResponse> {
+  if (lifeSocket.isConnected()) {
+    try {
+      return await lifeSocket.requestAdvancedTick(roomId, sinceSeq, opts);
+    } catch {
+      /* fallback */
+    }
+  }
+  return fetchAdvancedPokerState(roomId, sinceSeq, opts);
 }
 
 /** WS 断开时的 REST 兜底同步 */
