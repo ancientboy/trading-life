@@ -9,6 +9,11 @@ import {
   type ArenaRoundState, type ArenaWinRateEntry, type ArenaEntry,
   type PkResultInfo,
 } from '../../lib/lifeEngagementApi';
+import {
+  shouldShowGuessResult, markGuessResultShown,
+  shouldShowPkResult, markPkResultShown,
+  shouldShowArenaResult, markArenaResultShown,
+} from '../../lib/tradingResultDismiss';
 import { shareOrCopy, shareResultMessage, appBaseUrl } from '../../lib/shareUtils';
 
 const RANK_LABELS: Record<number, string> = { 1: '🥇 冠军', 2: '🥈 亚军', 3: '🥉 季军' };
@@ -44,9 +49,6 @@ export function TradingEventsPanel() {
   const [busy, setBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
 
-  const shownGuessRef = useRef<Set<string>>(new Set());
-  const shownArenaRef = useRef<Set<string>>(new Set());
-  const shownPkRef = useRef<Set<string>>(new Set());
   const prevArenaLegsRef = useRef<Record<string, number>>({});
 
   const tradingAgents = useMemo(
@@ -63,10 +65,11 @@ export function TradingEventsPanel() {
   ) => {
     if (!settled || !lastMy?.direction) return;
     const rid = String(settled.id || settled.round_id || '');
-    if (!rid || shownGuessRef.current.has(rid)) return;
-    shownGuessRef.current.add(rid);
+    if (!rid || !shouldShowGuessResult(rid)) return;
+    markGuessResultShown(rid);
     const won = !!lastMy.won && (lastMy.payout ?? 0) > 0;
     showGuessResult({
+      round_id: rid,
       won,
       direction: lastMy.direction as 'up' | 'down',
       stake: Number(lastMy.stake) || 0,
@@ -81,9 +84,10 @@ export function TradingEventsPanel() {
   const maybeShowPkResult = useCallback((pk: PkResultInfo | null | undefined) => {
     if (!pk?.round_id) return;
     const rid = pk.round_id;
-    if (shownPkRef.current.has(rid)) return;
-    shownPkRef.current.add(rid);
+    if (!shouldShowPkResult(rid)) return;
+    markPkResultShown(rid);
     showPkResult({
+      round_id: rid,
       won: !!pk.won,
       my_direction: pk.my_direction,
       winner_side: pk.winner_side,
@@ -97,12 +101,13 @@ export function TradingEventsPanel() {
   const maybeShowArenaResult = useCallback((lastSettled: ArenaRoundState | null | undefined) => {
     if (!lastSettled?.round_id) return;
     const rid = lastSettled.round_id;
-    if (shownArenaRef.current.has(rid)) return;
+    if (!shouldShowArenaResult(rid)) return;
     const my = lastSettled.my_entry;
     const specHits = (lastSettled.my_spectator_bets || []).some(b => (b.payout ?? 0) > 0);
     if (!my && !specHits) return;
-    shownArenaRef.current.add(rid);
+    markArenaResultShown(rid);
     showArenaResult({
+      round_id: rid,
       duration_label: lastSettled.duration_label,
       entries: lastSettled.entries || [],
       my_entry: my,

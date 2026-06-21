@@ -22,6 +22,7 @@ import {
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
 import { throttleAsync } from '../lib/pollGuard';
+import { dismissPkResult, dismissGuessResult, dismissArenaResult } from '../lib/tradingResultDismiss';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, type SeatMap } from '../lib/seatRegistry';
 import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
@@ -116,6 +117,7 @@ const LEISURE_FACILITY: Record<'restaurant' | 'spa' | 'casino' | 'arena', string
 };
 
 export type GuessResultData = {
+  round_id?: string;
   won: boolean;
   direction: 'up' | 'down';
   stake: number;
@@ -127,6 +129,7 @@ export type GuessResultData = {
 };
 
 export type PkResultData = {
+  round_id?: string;
   won: boolean;
   my_direction: 'up' | 'down';
   winner_side: string;
@@ -137,6 +140,7 @@ export type PkResultData = {
 };
 
 export type ArenaResultData = {
+  round_id?: string;
   duration_label?: string;
   entries: import('../lib/lifeEngagementApi').ArenaEntry[];
   my_entry?: import('../lib/lifeEngagementApi').ArenaEntry | null;
@@ -523,10 +527,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   openModal: (id) => set({ activeModal: id, rightPanelCollapsed: true }),
   openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: true }),
-  closeModal: () => set({
-    activeModal: null, workshopMode: 'list', pokerHandResult: null,
-    guessResultData: null, arenaResultData: null, pkResultData: null, tradingWinResult: null, pokerTableDealingUntil: 0,
-  }),
+  closeModal: () => {
+    const s = get();
+    const modal = s.activeModal;
+    const restorePanel = modal === 'pk_result' || modal === 'guess_result' || modal === 'arena_result';
+    let guessPollMeta = s.guessPollMeta;
+    if (modal === 'pk_result' && s.pkResultData?.round_id) {
+      dismissPkResult(s.pkResultData.round_id);
+      if (guessPollMeta) guessPollMeta = { ...guessPollMeta, last_pk_result: null };
+    }
+    if (modal === 'guess_result' && s.guessResultData?.round_id) {
+      dismissGuessResult(s.guessResultData.round_id);
+    }
+    if (modal === 'arena_result' && s.arenaResultData?.round_id) {
+      dismissArenaResult(s.arenaResultData.round_id);
+    }
+    set({
+      activeModal: null, workshopMode: 'list', pokerHandResult: null,
+      guessResultData: null, arenaResultData: null, pkResultData: null, tradingWinResult: null, pokerTableDealingUntil: 0,
+      ...(restorePanel ? { rightPanelCollapsed: false } : {}),
+      ...(guessPollMeta !== s.guessPollMeta ? { guessPollMeta } : {}),
+    });
+  },
   showPokerResult: (result) => set({
     pokerHandResult: result, activeModal: 'poker_result', rightPanelCollapsed: true, pokerTableDealingUntil: 0,
   }),
