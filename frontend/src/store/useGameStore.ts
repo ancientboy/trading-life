@@ -5,7 +5,7 @@ import { normalizeAgentMeta } from '../lib/agentAppearance';
 import type { AgentMeta } from '../lib/constants';
 import { OfficePath } from '../lib/pathfinding';
 import { WORLD_MAP, ZONE_CAMERA } from '../lib/worldMap';
-import { SIDEBAR_TO_ZONE, ZONE_TO_RIGHT_TAB } from '../lib/zones';
+import { SIDEBAR_TO_ZONE, ZONE_TO_RIGHT_TAB } from '../lib/zoneRegistry';
 import { ensureHallPathGraph, deskDisplayLabel } from '../lib/hallLayout';
 import { rebuildNavGraph, assignAgentSeatSlots } from '../lib/navGraph';
 import { paperToWorld } from '../lib/zoneProjection';
@@ -146,7 +146,6 @@ export type ArenaResultData = {
 interface GameStore {
   cameraMode: CameraMode;
   quality: QualityTier;
-  effectsOn: boolean;
   simSpeed: 1 | 5 | 20;
   paused: boolean;
   dayMode: 'day' | 'night';
@@ -236,7 +235,6 @@ interface GameStore {
 
   setCameraMode: (m: CameraMode) => void;
   setQuality: (q: QualityTier) => void;
-  setEffectsOn: (v: boolean) => void;
   setSimSpeed: (s: 1 | 5 | 20) => void;
   togglePause: () => void;
   setDayMode: (d: 'day' | 'night') => void;
@@ -343,7 +341,6 @@ interface GameStore {
 export const useGameStore = create<GameStore>((set, get) => ({
   cameraMode: 'ortho',
   quality: 'medium',
-  effectsOn: true,
   simSpeed: 1,
   paused: false,
   dayMode: 'day',
@@ -416,7 +413,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setCameraMode: (m) => set({ cameraMode: m }),
   setQuality: (q) => set({ quality: q }),
-  setEffectsOn: (v) => set({ effectsOn: v }),
   setSimSpeed: (s) => set({ simSpeed: s }),
   togglePause: () => set(s => ({ paused: !s.paused })),
   setDayMode: (d) => set({ dayMode: d }),

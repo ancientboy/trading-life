@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
-import { tickCharacterSim } from '../../lib/characterSimLoop';
+import { tickCharacterSim } from '../../lib/characterSimLoop'; // 唯一玩法 tick 入口
 import { WORLD_MAP, ZONE_CAMERA } from '../../lib/worldMap';
 import { hitTestPaperFacilities, getAgentPaperPos, ZONE_NPCS } from '../../lib/zoneFurniture';
 import { ARENA_PIT, hitTestArenaPod, type ArenaDisplayData } from './arenaDraw';

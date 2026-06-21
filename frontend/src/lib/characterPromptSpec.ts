@@ -145,7 +145,7 @@ export function buildCharacterPromptPack(opts: BuildCharacterPromptOpts) {
   };
 }
 
-/** 资产路径约定 — 与 characterSprites.ts 对齐 */
+/** 资产路径约定 — 场景内 Canvas 2D 程序化绘制 */
 export function assetPathFor(
   species: CharacterSpeciesId,
   skinId: string,

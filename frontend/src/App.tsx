@@ -9,9 +9,6 @@ import { isLoggedIn, getStoredAccount } from './lib/lifeAuth';
 import { syncMood } from './lib/lifeEngagementApi';
 import { clearUrlParams, parseDeepLink, persistDeepLink } from './lib/shareUtils';
 
-import { preloadAllSprites } from './lib/spriteTextures';
-import { preloadNiumaSprites } from './lib/characterSprites';
-
 export default function App() {
   const initAgents = useGameStore(s => s.initAgents);
   const syncLifeState = useGameStore(s => s.syncLifeState);
@@ -66,8 +63,6 @@ export default function App() {
       void processPendingDeepLink();
       clearUrlParams();
     });
-    preloadAllSprites().catch(() => {});
-    preloadNiumaSprites();
     const pollSystem = () => fetchOverview().then(data => {
       updateFromOverview(data);
     }).catch(() => {});

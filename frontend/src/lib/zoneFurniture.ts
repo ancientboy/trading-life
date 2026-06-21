@@ -113,7 +113,7 @@ export const HALL_REST_BOOTHS: RestBoothDef[] = [
   },
 ];
 
-import { ARENA_PIT, ARENA_PODS } from '../components/paper/arenaDraw';
+import { ARENA_PIT, ARENA_PODS } from './arenaLayout';
 import type { NpcRole } from './npcOutfits';
 
 export interface ZoneNpcDef {

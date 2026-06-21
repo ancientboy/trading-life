@@ -4,7 +4,7 @@ import { LeftSidebar } from '../ui/LeftSidebar';
 import { RightPanel } from '../ui/RightPanel';
 import { CanvasControls } from '../ui/CanvasControls';
 import { Modals } from '../ui/Modals';
-import { GameCanvas } from '../scene/GameCanvas';
+import { GameCanvas } from '../paper/GameCanvas';
 import { useGameStore } from '../../store/useGameStore';
 import { createPortal } from 'react-dom';
 

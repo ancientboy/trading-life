@@ -1,4 +1,5 @@
 import type { ZoneId } from '../store/useGameStore';
+import { ZONE_CAMERA as REGISTRY_CAMERA } from './zoneRegistry';
 
 /** 大地图 — 默认聚焦交易大厅，纯俯视 2D */
 export const WORLD_MAP = {
@@ -14,14 +15,7 @@ export const WORLD_MAP = {
   panBounds: { minX: 2, maxX: 52, minZ: 0, maxZ: 28 },
 };
 
-export const ZONE_CAMERA: Record<ZoneId, { x: number; z: number; label: string }> = {
-  hall: { x: 14, z: 7.5, label: '交易大厅' },
-  reception: { x: 14, z: 26, label: '前厅接待' },
-  spa: { x: 42, z: 7.5, label: '按摩放松区' },
-  restaurant: { x: 14, z: 20, label: '餐厅' },
-  casino: { x: 42, z: 20, label: '德州扑克' },
-  arena: { x: 42, z: 26, label: '交易竞技馆' },
-};
+export { REGISTRY_CAMERA as ZONE_CAMERA };
 
 /** 区域导航悬浮箭头（点击切换视角） */
 export const ZONE_NAV_ARROWS: {

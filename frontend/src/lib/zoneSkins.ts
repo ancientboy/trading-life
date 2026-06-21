@@ -3,6 +3,27 @@ import type { ZoneId } from '../store/useGameStore';
 /** 可换肤区域（含前厅、竞技馆） */
 export type SkinZone = 'hall' | 'restaurant' | 'spa' | 'casino' | 'reception' | 'arena';
 
+export type DayMode = 'day' | 'night';
+
+/** 场景皮肤渲染上下文 — 减少 draw 函数散落参数 */
+export interface SkinRenderContext {
+  zone: SkinZone;
+  skinKey: string;
+  dayMode: DayMode;
+}
+
+export function skinRenderContext(zone: SkinZone, skinKey: string, dayMode: DayMode): SkinRenderContext {
+  return { zone, skinKey, dayMode };
+}
+
+export function skinIsPremium(skinKey: string): boolean {
+  return skinKey === 'gold' || skinKey === 'premium';
+}
+
+export function skinIsNeon(skinKey: string): boolean {
+  return skinKey === 'neon';
+}
+
 export const SKIN_ZONES: SkinZone[] = ['hall', 'restaurant', 'spa', 'casino', 'reception', 'arena'];
 
 export const SKIN_ZONE_LABELS: Record<SkinZone, string> = {

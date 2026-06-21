@@ -404,6 +404,53 @@ export function drawNiumaAccessories2d(
   drawNiumaHair2d(ctx, py, hairStyle, hairColor, view, flip);
 }
 
+// ─── 企鹅物种 Canvas 2D ─────────────────────────────────────────
+
+export const PENGUIN_PALETTE = {
+  black: '#1a1a1a',
+  white: '#f7f7f7',
+  belly: '#f2f2f2',
+  beak: '#f5a623',
+  foot: '#f5a623',
+};
+
+export function drawPenguinBody(
+  ctx: CanvasRenderingContext2D, py: number, profile = false, showBelly = true,
+) {
+  ctx.fillStyle = PENGUIN_PALETTE.black;
+  ctx.beginPath(); ctx.ellipse(profile ? 2 : 0, py + 2, profile ? 12 : 15, profile ? 17 : 19, 0, 0, Math.PI * 2); ctx.fill();
+  if (showBelly) {
+    ctx.fillStyle = PENGUIN_PALETTE.belly;
+    ctx.beginPath(); ctx.ellipse(profile ? 4 : 0, py + 7, profile ? 7 : 10, profile ? 9 : 11, 0, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+export function drawPenguinFace(
+  ctx: CanvasRenderingContext2D, py: number, profile = false, flip = 1,
+) {
+  if (profile) {
+    ctx.fillStyle = PENGUIN_PALETTE.white;
+    ctx.beginPath(); ctx.ellipse(flip * 5, py - 2, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PENGUIN_PALETTE.black;
+    ctx.beginPath(); ctx.arc(flip * 5, py - 2, 2, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.fillStyle = PENGUIN_PALETTE.white;
+    ctx.beginPath(); ctx.ellipse(-5, py - 2, 4.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5, py - 2, 4.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PENGUIN_PALETTE.black;
+    ctx.beginPath(); ctx.arc(-5, py - 2, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5, py - 2, 2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = PENGUIN_PALETTE.beak;
+  ctx.beginPath();
+  if (profile) {
+    ctx.moveTo(flip * 8, py + 1); ctx.lineTo(flip * 12, py + 4); ctx.lineTo(flip * 8, py + 6);
+  } else {
+    ctx.moveTo(0, py + 2); ctx.lineTo(-3, py + 7); ctx.lineTo(3, py + 7);
+  }
+  ctx.closePath(); ctx.fill();
+}
+
 // ─── 旧名兼容 ───────────────────────────────────────────────────
 export type ManiuSkinId = NiumaSkinId;
 export const MANIU_SKIN_IDS = NIUMa_SKIN_IDS;

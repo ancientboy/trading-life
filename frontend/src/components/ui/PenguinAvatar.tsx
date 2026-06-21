@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
 import { drawAgent } from '../paper/paperDraw';
 import { resolveAppearance, type AgentHeadwear, type HatStyleId } from '../../lib/agentAppearance';
 import type { OutfitId } from '../../lib/agentOutfits';
+import { useAgentCanvas } from '../../hooks/useAgentCanvas';
 
 export interface PenguinAvatarProps {
   color: string;
@@ -29,19 +29,13 @@ export function PenguinAvatar({
   size = 48,
   selected,
 }: PenguinAvatarProps) {
-  const ref = useRef<HTMLCanvasElement>(null);
   const ap = resolveAppearance({ color, headwear, hatStyle, speciesId, outfitId, hairStyle, scarfEnabled, hatEnabled });
 
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const paint = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = size * dpr;
-      canvas.height = size * dpr;
+  const canvasRef = useAgentCanvas({
+    width: size,
+    height: size,
+    deps: [ap.color, ap.speciesId, ap.outfitId, ap.hairStyle, ap.scarfEnabled, ap.hatEnabled, ap.headwear, ap.hatStyle, size],
+    paint: (ctx, dpr) => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, size, size);
       ctx.fillStyle = '#faf6ef';
@@ -65,14 +59,12 @@ export function PenguinAvatar({
         t: 0,
       });
       ctx.restore();
-    };
-
-    paint();
-  }, [ap.color, ap.speciesId, ap.outfitId, ap.hairStyle, ap.scarfEnabled, ap.hatEnabled, ap.headwear, ap.hatStyle, size]);
+    },
+  });
 
   return (
     <canvas
-      ref={ref}
+      ref={canvasRef}
       width={size}
       height={size}
       style={{

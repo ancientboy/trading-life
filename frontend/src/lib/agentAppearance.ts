@@ -211,7 +211,7 @@ export function drawAgentHat2d(
   }
 }
 
-function drawScarfStripes(
+export function drawScarfStripes(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
+import { ZONE_LIST } from '../../lib/zoneRegistry';
 import { ZONE_CAMERA } from '../../lib/worldMap';
-import { PaperZoneCanvas } from '../paper/PaperZoneCanvas';
+import { PaperZoneCanvas } from './PaperZoneCanvas';
 
 export function GameCanvas() {
   const dayMode = useGameStore(s => s.dayMode);
@@ -19,14 +20,7 @@ export function GameCanvas() {
   const [zoneOpen, setZoneOpen] = useState(false);
 
   const bgColor = dayMode === 'day' ? '#e8e4dc' : '#2a2838';
-  const zones: { id: typeof activeZone; label: string }[] = [
-    { id: 'hall', label: '交易大厅' },
-    { id: 'reception', label: '前厅接待' },
-    { id: 'restaurant', label: '餐厅' },
-    { id: 'spa', label: '按摩区' },
-    { id: 'casino', label: '德州扑克' },
-    { id: 'arena', label: '交易竞技馆' },
-  ];
+  const zones = ZONE_LIST;
 
   return (
     <div
