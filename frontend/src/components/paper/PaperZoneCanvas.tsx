@@ -4,7 +4,6 @@ import { tickCharacterSim } from '../../lib/characterSimLoop';
 import { WORLD_MAP, ZONE_CAMERA } from '../../lib/worldMap';
 import { hitTestPaperFacilities, getAgentPaperPos, ZONE_NPCS } from '../../lib/zoneFurniture';
 import { ARENA_PIT, hitTestArenaPod, type ArenaDisplayData } from './arenaDraw';
-import { fetchArenaRound, fetchGuessRound, fetchPublicArenaLive, type GuessRoundState } from '../../lib/lifeEngagementApi';
 import { fetchMarketKlines } from '../../lib/lifeApi';
 import { ZONE_LAYOUTS } from '../../lib/zoneLayouts';
 import { PAPER, agentVisibleInZone } from '../../lib/zoneProjection';
@@ -38,7 +37,7 @@ export function PaperZoneCanvas() {
   const pokerRoom = useGameStore(s => s.pokerRoom);
   const zoneSkins = useGameStore(s => s.zoneSkins);
   const arenaLive = useGameStore(s => s.arenaLive);
-  const setArenaLive = useGameStore(s => s.setArenaLive);
+  const guessRound = useGameStore(s => s.guessRound);
   const setSelectedArenaEntryId = useGameStore(s => s.setSelectedArenaEntryId);
   const setRightTab = useGameStore(s => s.setRightTab);
   const toggleRightPanel = useGameStore(s => s.toggleRightPanel);
@@ -47,7 +46,6 @@ export function PaperZoneCanvas() {
   const prevLegsRef = useRef<Record<string, number>>({});
   const [arenaPulseSlots, setArenaPulseSlots] = useState<Set<number>>(new Set());
   const [hoverPodId, setHoverPodId] = useState<string | null>(null);
-  const [guessRound, setGuessRound] = useState<GuessRoundState | null>(null);
   const [klineCloses, setKlineCloses] = useState<number[]>([]);
 
   const flyToZone = useGameStore(s => s.flyToZone);
@@ -72,35 +70,13 @@ export function PaperZoneCanvas() {
 
   useEffect(() => {
     if (activeZone !== 'arena') return;
-    const pollArena = () => fetchArenaRound().then(r => {
-      if (r.ok && r.current) setArenaLive(r.current);
-      else {
-        fetchPublicArenaLive().then(pr => {
-          if (pr.ok && pr.current) setArenaLive(pr.current);
-        }).catch(() => {});
-      }
-    }).catch(() => {
-      fetchPublicArenaLive().then(pr => {
-        if (pr.ok && pr.current) setArenaLive(pr.current);
-      }).catch(() => {});
-    });
-    pollArena();
-    const id = setInterval(pollArena, 4000);
-    return () => clearInterval(id);
-  }, [activeZone, setArenaLive]);
-
-  useEffect(() => {
-    if (activeZone !== 'arena') return;
-    const pollDisplay = () => {
-      fetchGuessRound().then(r => {
-        if (r.ok && r.current) setGuessRound(r.current);
-      }).catch(() => {});
+    const pollKlines = () => {
       fetchMarketKlines('BTCUSDT', '1m', 48).then(r => {
         if (r.ok && r.candles?.length) setKlineCloses(r.candles.map(c => c.close));
       }).catch(() => {});
     };
-    pollDisplay();
-    const id = setInterval(pollDisplay, 4000);
+    pollKlines();
+    const id = setInterval(pollKlines, 8000);
     return () => clearInterval(id);
   }, [activeZone]);
 

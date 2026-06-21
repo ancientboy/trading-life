@@ -21,7 +21,7 @@ import {
   fetchSeats, claimSeat, releaseSeat, claimDailyAllowance, type LifeState,
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
-import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, type SeatMap } from '../lib/seatRegistry';
+import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, type SeatMap } from '../lib/seatRegistry';
 import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
@@ -32,8 +32,10 @@ import { isLoggedIn, getStoredAccount } from '../lib/lifeAuth';
 import {
   fetchSeasonCurrent, fetchNpcEvents, syncMood, tableSpeak, enqueueDispatch,
   chatChannelForZone, fetchPokerRoom, fetchMyPokerRoom, joinPokerRoomByCode, fetchPublicRoomPreview,
-  leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat, type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
-  type PokerRoom,
+  leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat,
+  fetchGuessRound, fetchArenaRound, fetchPublicArenaLive,
+  type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
+  type PokerRoom, type GuessRoundState, type PkResultInfo,
 } from '../lib/lifeEngagementApi';
 import { zoneAtPosition, invalidateCollisionCache } from '../lib/collision';
 import { isCrossZoneTravel, zoneForNode, zoneForIntent, resolveAgentZone } from '../lib/zoneTransit';
@@ -43,6 +45,28 @@ import {
 } from '../lib/zoneSkins';
 
 let seatSyncTimer: ReturnType<typeof setTimeout> | null = null;
+
+export type GuessPollMeta = {
+  last_settled?: Record<string, unknown> | null;
+  last_my_bet?: { direction?: string; stake?: number; payout?: number; won?: boolean; first_win?: boolean; pending_leverage?: unknown } | null;
+  last_pk_result?: PkResultInfo | null;
+};
+
+export type ArenaPollMeta = {
+  last_settled?: import('../lib/lifeEngagementApi').ArenaRoundState | null;
+};
+
+function persistCustomAgentsFromServer(
+  customAgents: Record<string, AgentMeta> | undefined,
+  accountId?: string | null,
+): Record<string, AgentMeta> {
+  if (!customAgents || !Object.keys(customAgents).length) return {};
+  const owned = Object.fromEntries(
+    Object.entries(customAgents).map(([k, v]) => [k, normalizeAgentMeta({ ...v, owner: 'user' })]),
+  );
+  saveCustomAgentMeta(owned, accountId);
+  return owned;
+}
 function scheduleSeatSync(fn: () => Promise<void>) {
   if (seatSyncTimer) clearTimeout(seatSyncTimer);
   seatSyncTimer = setTimeout(() => { fn().catch(() => {}); }, 2500);
@@ -190,6 +214,10 @@ interface GameStore {
   tradingWinResult: import('../components/ui/TradingWinModal').TradingWinData | null;
   /** 竞技馆实时数据 — 驱动 Pod/K 线场景 */
   arenaLive: import('../lib/lifeEngagementApi').ArenaRoundState | null;
+  /** 猜涨跌当前局 — 全局轮询，供竞技面板/Canvas 共享 */
+  guessRound: GuessRoundState | null;
+  guessPollMeta: GuessPollMeta | null;
+  arenaPollMeta: ArenaPollMeta | null;
   /** 场景内选中的竞技选手 */
   selectedArenaEntryId: string | null;
   /** 牌桌发牌动画截止时间戳 */
@@ -238,6 +266,8 @@ interface GameStore {
   showPkResult: (result: PkResultData) => void;
   triggerTradingReaction: (kind: 'leverage' | 'pk', leverage?: number) => void;
   setArenaLive: (state: import('../lib/lifeEngagementApi').ArenaRoundState | null) => void;
+  setGuessRound: (state: GuessRoundState | null) => void;
+  syncTradingLive: () => Promise<void>;
   setSelectedArenaEntryId: (id: string | null) => void;
   showTradingWin: (result: import('../components/ui/TradingWinModal').TradingWinData) => void;
   setPokerTableDealingUntil: (until: number) => void;
@@ -371,6 +401,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pkResultData: null,
   tradingWinResult: null,
   arenaLive: null,
+  guessRound: null,
+  guessPollMeta: null,
+  arenaPollMeta: null,
   selectedArenaEntryId: null,
   pokerTableDealingUntil: 0,
   pokerRoom: null,
@@ -379,12 +412,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   operableAgentIds: [],
   isAdmin: false,
 
-  canOperateAgent: (id) => {
-    if (get().operableAgentIds.includes(id)) return true;
-    if (!id.startsWith('custom_')) return false;
-    const local = loadCustomAgentMeta(getStoredAccount()?.id);
-    return !!local[id];
-  },
+  canOperateAgent: (id) => get().operableAgentIds.includes(id),
 
   setCameraMode: (m) => set({ cameraMode: m }),
   setQuality: (q) => set({ quality: q }),
@@ -527,6 +555,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
   setArenaLive: (state) => set({ arenaLive: state }),
+  setGuessRound: (state) => set({ guessRound: state }),
+
+  syncTradingLive: async () => {
+    if (!isLoggedIn()) return;
+    try {
+      const [gr, ar] = await Promise.all([fetchGuessRound(), fetchArenaRound()]);
+      if (gr.ok) {
+        set({
+          guessRound: gr.current ?? null,
+          guessPollMeta: {
+            last_settled: gr.last_settled ?? null,
+            last_my_bet: gr.last_my_bet ?? null,
+            last_pk_result: gr.last_pk_result ?? null,
+          },
+        });
+      }
+      if (ar.ok) {
+        set({
+          arenaLive: ar.current ?? null,
+          arenaPollMeta: { last_settled: ar.last_settled ?? null },
+        });
+      } else {
+        const pr = await fetchPublicArenaLive().catch(() => null);
+        if (pr?.ok && pr.current) set({ arenaLive: pr.current });
+      }
+    } catch { /* ignore */ }
+  },
   setSelectedArenaEntryId: (id) => set({ selectedArenaEntryId: id }),
   showTradingWin: (result) => set({
     tradingWinResult: result, activeModal: 'trading_win', rightPanelCollapsed: true,
@@ -584,7 +639,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().addMessage('未找到可用工位');
       return false;
     }
-    const now = performance.now();
+    const wallNow = seatNowMs();
     let char: CharState = {
       ...s.agents[id],
       travelIntent: null,
@@ -596,8 +651,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pathIndex: 0,
       inTransit: false,
     };
-    const mergedSeats = mergeLocalSeatOccupancy(s.seatOccupancy, s.agents, now);
-    const seatId = resolvePreferredSeat('desk', node, id, mergedSeats, now);
+    const mergedSeats = mergeLocalSeatOccupancy(s.seatOccupancy, s.agents, wallNow);
+    const seatId = resolvePreferredSeat('desk', node, id, mergedSeats, wallNow);
     if (!seatId) {
       const label = deskDisplayLabel(node);
       get().addMessage(`${label} 已被占用，请选择其他工位`);
@@ -608,7 +663,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().addMessage('未找到可用工位');
       return false;
     }
-    claimSeat(seatId, id, 'desk', 0).then(() => get().syncSeats()).catch(() => {});
+    try {
+      const claim = await claimSeat(seatId, id, 'desk', 0);
+      if (!claim.ok) {
+        get().addMessage(`${char.data.name} 占座失败，工位可能已被占用`);
+        return false;
+      }
+      void get().syncSeats();
+    } catch {
+      get().addMessage('占座失败，请稍后重试');
+      return false;
+    }
     char = {
       ...char,
       destNode: seatId,
@@ -723,6 +788,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return true;
       }
 
+      const wallNow = seatNowMs();
+      const mergedForSeat = mergeLocalSeatOccupancy(get().seatOccupancy, get().agents, wallNow);
+
+      if (!hasFreeSeat(action, id, mergedForSeat, wallNow)) {
+        const queueCost = skipCost ? 0 : (cost > 0 ? cost : (FACILITY_BASE_COST[action] ?? 0));
+        await enqueueDispatch(id, action, opts?.nodeId || '', queueCost);
+        get().addMessage(`${char0.data.name} 座位已满，已加入派遣队列（未扣积分）`);
+        return true;
+      }
+
       if (!skipCost && cost > 0) {
         const disp = await lifeDispatch(action, cost);
         if (!disp.ok) {
@@ -732,14 +807,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         set({ points: disp.balance });
       }
 
-      if (!hasFreeSeat(action, id, mergeLocalSeatOccupancy(get().seatOccupancy, get().agents))) {
-        const queueCost = cost > 0 ? cost : (FACILITY_BASE_COST[action] ?? 0);
-        await enqueueDispatch(id, action, opts?.nodeId || '', queueCost);
-        get().addMessage(`${char0.data.name} 座位已满，已加入派遣队列`);
-        return false;
-      }
-
-      const mergedSeats = mergeLocalSeatOccupancy(get().seatOccupancy, get().agents);
+      const mergedSeats = mergedForSeat;
       const forcedPokerSeat = action === 'poker' && opts?.nodeId?.startsWith('poker_s') ? opts.nodeId : null;
       const resolvedSeat = forcedPokerSeat || resolveAvailableSeat(action, node, id, mergedSeats) || node;
 
@@ -794,13 +862,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const meta = normalizeAgentMeta({ ...apiRes.agent, owner: 'user' });
     const id = meta.id;
     const slot = registerCustomAgentSlots(OfficePath, id, draft.agentType);
+    saveCustomAgentMeta({ ...customMeta, [id]: meta }, accountId);
+    if (apiRes.state) get().applyLifeState(apiRes.state);
     if (!slot) {
-      get().addMessage(createLimitMessage(draft.agentType));
+      get().initAgents();
+      get().addMessage(`${meta.name} 已在服务器创建；工位分配失败，请刷新页面`);
       return false;
     }
     assignAgentSeatSlots(OfficePath);
-    saveCustomAgentMeta({ ...customMeta, [id]: meta }, accountId);
-    if (apiRes.state) get().applyLifeState(apiRes.state);
 
     const pos = OfficePath.nodes[slot];
     const char: CharState = {
@@ -831,6 +900,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   runQuickOnboarding: async (displayName = '小企鹅') => {
     const accountId = getStoredAccount()?.id;
+    if (get().operableAgentIds.length > 0) return false;
     const customMeta = loadCustomAgentMeta(accountId);
     if (Object.keys(customMeta).length > 0) return false;
 
@@ -1008,32 +1078,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
           });
           state = migrated;
         } catch {
-          /* 迁移失败时仍用本地 Agent 列表兜底 operable */
+          get().addMessage('本地 Agent 同步到服务器失败，请检查网络后刷新');
         }
       }
       get().applyLifeState(state);
-      const mergedMeta = { ...localMeta };
       if (state.custom_agents && Object.keys(state.custom_agents).length) {
-        Object.entries(state.custom_agents).forEach(([k, v]) => {
-          mergedMeta[k] = normalizeAgentMeta({ ...v, owner: 'user' });
-        });
-        saveCustomAgentMeta(mergedMeta, accountId);
-      } else if (Object.keys(localMeta).length) {
-        saveCustomAgentMeta(localMeta, accountId);
-        const operable = Object.keys(localMeta);
-        if (!get().operableAgentIds.length) {
-          set({ operableAgentIds: operable });
-        }
+        persistCustomAgentsFromServer(state.custom_agents, accountId);
+      } else if (serverEmpty && Object.keys(localMeta).length) {
+        /* 迁移失败且服务器仍为空 — 不写入 operable，避免 ghost Agent */
       }
       get().initAgents();
       await get().syncSeats();
       await get().syncUserPortfolio();
+      await get().syncTradingLive();
     } catch {
-      const localMeta = loadCustomAgentMeta(accountId);
-      if (Object.keys(localMeta).length && !get().operableAgentIds.length) {
-        set({ operableAgentIds: Object.keys(localMeta) });
-        get().initAgents();
-      }
+      get().addMessage('账户状态同步失败，请刷新页面');
     }
   },
 
@@ -1215,12 +1274,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   leavePokerRoom: async () => {
     const rid = get().pokerRoom?.id;
-    set({ pokerRoom: null });
     if (!rid) return;
     try {
       const r = await apiLeavePokerRoom(rid);
+      set({ pokerRoom: null });
       if (r.message) get().addMessage(r.message);
-    } catch { /* ignore */ }
+    } catch {
+      get().addMessage('离开房间失败，请稍后重试');
+    }
   },
 
   changePokerRoomSeat: async (seatId) => {
@@ -1780,14 +1841,15 @@ export function onPathComplete(char: CharState, now: number): CharState {
   }
   if (node?.startsWith('seat_')) {
     const store = useGameStore.getState();
-    const mergedSeats = mergeLocalSeatOccupancy(store.seatOccupancy, store.agents, now);
-    const seatId = resolvePreferredSeat('desk', node, char.agentId, mergedSeats, now);
+    const wallNow = seatNowMs();
+    const mergedSeats = mergeLocalSeatOccupancy(store.seatOccupancy, store.agents, wallNow);
+    const seatId = resolvePreferredSeat('desk', node, char.agentId, mergedSeats, wallNow);
     if (!seatId) {
       const label = deskDisplayLabel(node);
       store.addMessage(`${char.data.name}：${label} 已被占用`);
       return { ...char, destNode: null, isWalking: false, pathQueue: [] };
     }
-    claimSeat(seatId, char.agentId, 'desk', 0).then(() => store.syncSeats()).catch(() => {});
+    void claimSeat(seatId, char.agentId, 'desk', 0).then(() => store.syncSeats()).catch(() => {});
     return {
       ...char, destNode: seatId, isWalking: false, pathQueue: [],
       activityPose: 'desk', facing: 'n' as const,
@@ -1806,9 +1868,10 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   const zone = activity ? zoneMap[activity] : null;
 
   const store = useGameStore.getState();
-  const mergedSeats = mergeLocalSeatOccupancy(store.seatOccupancy, store.agents, now);
+  const wallNow = seatNowMs();
+  const mergedSeats = mergeLocalSeatOccupancy(store.seatOccupancy, store.agents, wallNow);
   const seatId = activity
-    ? resolveAvailableSeat(activity, nodeId, char.agentId, mergedSeats, now)
+    ? resolveAvailableSeat(activity, nodeId, char.agentId, mergedSeats, wallNow)
     : null;
   if (activity && !seatId) {
     store.addMessage(`${char.data.name} 找不到空座位，活动取消`);
@@ -1825,9 +1888,10 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     facing = slot.facing;
     activityPose = slot.pose;
   }
-  const until = now + dur + Math.random() * 5000;
+  const untilPerf = now + dur + Math.random() * 5000;
+  const untilWall = wallNow + dur + Math.floor(Math.random() * 5000);
   if (seatId && activity) {
-    claimSeat(seatId, char.agentId, activity, Math.round(until)).then(res => {
+    void claimSeat(seatId, char.agentId, activity, untilWall).then(res => {
       if (!res.ok && char.userDispatched) store.addMessage(`${char.data.name} 占座失败，座位可能已被占用`);
     }).catch(() => {});
   }
@@ -1843,7 +1907,7 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     : activity === 'massage' ? stressReliefFor('massage', char.leisureTier)
     : activity === 'rest' ? 0.2 : 0;
   const started = {
-    ...char, activity, activityUntil: until, activityStartedAt: now,
+    ...char, activity, activityUntil: untilPerf, activityStartedAt: now,
     travelIntent: null, isWalking: false, pathQueue: [], destNode: slot?.slotId ?? seatId ?? nodeId,
     x: wx, z: wz, facing, activityPose,
     stress: relief > 0 ? Math.max(0, char.stress * (1 - relief))

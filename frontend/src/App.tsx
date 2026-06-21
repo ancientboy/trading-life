@@ -6,7 +6,7 @@ import { useGameStore } from './store/useGameStore';
 import { fetchOverview, fetchTicker } from './lib/api';
 import { lifeSessionStart } from './lib/lifeApi';
 import { isLoggedIn, getStoredAccount } from './lib/lifeAuth';
-import { syncMood, fetchArenaRound } from './lib/lifeEngagementApi';
+import { syncMood } from './lib/lifeEngagementApi';
 import { clearUrlParams, parseDeepLink, persistDeepLink } from './lib/shareUtils';
 
 import { preloadAllSprites } from './lib/spriteTextures';
@@ -37,7 +37,9 @@ export default function App() {
         const account = getStoredAccount();
         const name = account?.display_name || account?.username || '小企鹅';
         const created = await st.runQuickOnboarding(name);
-        sessionStorage.setItem('tl_onboarding_done', '1');
+        if (created || useGameStore.getState().operableAgentIds.length > 0) {
+          sessionStorage.setItem('tl_onboarding_done', '1');
+        }
         if (created) {
           addMessage('欢迎来到交易人生 · 娱乐 Agent 在大厅走动，交易 Agent 已入驻工位');
           const tid = sessionStorage.getItem('tl_trading_onboard');
@@ -72,6 +74,7 @@ export default function App() {
     const pollPortfolio = () => syncUserPortfolio().catch(() => {});
     const tick = () => fetchTicker().then(setTicker).catch(() => {});
     pollSystem(); pollPortfolio(); tick();
+    useGameStore.getState().syncTradingLive().catch(() => {});
     const flashInvite = sessionStorage.getItem('tl_flash_invite');
     if (flashInvite) {
       sessionStorage.removeItem('tl_flash_invite');
@@ -106,12 +109,10 @@ export default function App() {
         st.restorePokerRoom().catch(() => {});
       }
     }, 4000);
-    const arenaPoll = setInterval(() => {
-      const st = useGameStore.getState();
-      if (st.activeZone !== 'arena') return;
-      fetchArenaRound().then(r => {
-        if (r.ok && r.current) st.setArenaLive(r.current);
-      }).catch(() => {});
+    const tradingPoll = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        useGameStore.getState().syncTradingLive().catch(() => {});
+      }
     }, 5000);
     const onVis = () => {
       if (document.visibilityState === 'visible') {
@@ -121,7 +122,7 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', onVis);
     return () => {
-      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f); clearInterval(pokerPoll); clearInterval(arenaPoll);
+      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f); clearInterval(pokerPoll); clearInterval(tradingPoll);
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [loggedIn, initAgents, syncLifeState, syncSeats, syncEngagement, updateFromOverview, syncUserPortfolio, setTicker, addMessage, processPendingDeepLink]);

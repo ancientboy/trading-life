@@ -3,9 +3,9 @@ import { useGameStore } from '../../store/useGameStore';
 import { LogicDrawer } from './LogicDrawer';
 import { TradingModesPanel } from './TradingModesPanel';
 import {
-  fetchGuessRound, placeGuessBet, fetchArenaRound, joinArena, arenaSpectateBet,
+  placeGuessBet, joinArena, arenaSpectateBet,
   fetchArenaLeaderboard, fetchArenaWinRate,
-  type GuessRoundState, type ArenaRoundState, type ArenaWinRateEntry, type ArenaEntry,
+  type ArenaRoundState, type ArenaWinRateEntry, type ArenaEntry,
   type PkResultInfo,
 } from '../../lib/lifeEngagementApi';
 import { shareOrCopy, shareResultMessage, appBaseUrl } from '../../lib/shareUtils';
@@ -18,7 +18,13 @@ export function TradingEventsPanel() {
   const selectedAgentId = useGameStore(s => s.selectedAgentId);
   const selectedArenaEntryId = useGameStore(s => s.selectedArenaEntryId);
   const setSelectedArenaEntryId = useGameStore(s => s.setSelectedArenaEntryId);
+  const arenaLive = useGameStore(s => s.arenaLive);
+  const guess = useGameStore(s => s.guessRound);
+  const guessPollMeta = useGameStore(s => s.guessPollMeta);
+  const arenaPollMeta = useGameStore(s => s.arenaPollMeta);
+  const setGuessRound = useGameStore(s => s.setGuessRound);
   const setArenaLive = useGameStore(s => s.setArenaLive);
+  const syncTradingLive = useGameStore(s => s.syncTradingLive);
   const showGuessResult = useGameStore(s => s.showGuessResult);
   const showArenaResult = useGameStore(s => s.showArenaResult);
   const showPkResult = useGameStore(s => s.showPkResult);
@@ -26,9 +32,8 @@ export function TradingEventsPanel() {
   const points = useGameStore(s => s.points);
 
   const [tab, setTab] = useState<'guess' | 'arena'>('arena');
-  const [guess, setGuess] = useState<GuessRoundState | null>(null);
   const [lastGuess, setLastGuess] = useState<Record<string, unknown> | null>(null);
-  const [arena, setArena] = useState<ArenaRoundState | null>(null);
+  const arena = arenaLive;
   const [highlights, setHighlights] = useState<Array<Record<string, unknown>>>([]);
   const [winRates, setWinRates] = useState<ArenaWinRateEntry[]>([]);
   const [guessStake, setGuessStake] = useState(50);
@@ -105,46 +110,47 @@ export function TradingEventsPanel() {
     });
   }, [showArenaResult]);
 
-  const refresh = useCallback(async () => {
-    if (tab === 'guess') {
-      const r = await fetchGuessRound();
-      if (r.ok) {
-        setGuess(r.current ?? null);
-        setLastGuess(r.last_settled ?? null);
-        maybeShowGuessResult(r.last_settled, r.last_my_bet);
-        maybeShowPkResult(r.last_pk_result);
+  useEffect(() => {
+    if (!guessPollMeta) return;
+    setLastGuess(guessPollMeta.last_settled ?? null);
+    maybeShowGuessResult(guessPollMeta.last_settled, guessPollMeta.last_my_bet);
+    maybeShowPkResult(guessPollMeta.last_pk_result);
+  }, [guessPollMeta, maybeShowGuessResult, maybeShowPkResult]);
+
+  useEffect(() => {
+    if (!arenaPollMeta?.last_settled) return;
+    maybeShowArenaResult(arenaPollMeta.last_settled);
+  }, [arenaPollMeta, maybeShowArenaResult]);
+
+  useEffect(() => {
+    const cur = arena;
+    if (!cur?.entries) return;
+    cur.entries.forEach(e => {
+      const prevLegs = prevArenaLegsRef.current[e.user_id] ?? 0;
+      const nowLegs = e.legs_count ?? e.recent_legs?.length ?? 0;
+      if (cur.status === 'running' && nowLegs > prevLegs) {
+        prevArenaLegsRef.current[e.user_id] = nowLegs;
+      } else if (!prevArenaLegsRef.current[e.user_id]) {
+        prevArenaLegsRef.current[e.user_id] = nowLegs;
       }
-    } else {
-      const [ar, lb, wr] = await Promise.all([
-        fetchArenaRound(), fetchArenaLeaderboard(8), fetchArenaWinRate(12),
+    });
+  }, [arena]);
+
+  const refreshExtras = useCallback(async () => {
+    if (tab === 'arena') {
+      const [lb, wr] = await Promise.all([
+        fetchArenaLeaderboard(8), fetchArenaWinRate(12),
       ]);
-      if (ar.ok) {
-        setArena(ar.current ?? null);
-        setArenaLive(ar.current ?? null);
-        maybeShowArenaResult(ar.last_settled);
-        const cur = ar.current;
-        if (cur?.entries) {
-          cur.entries.forEach(e => {
-            const prevLegs = prevArenaLegsRef.current[e.user_id] ?? 0;
-            const nowLegs = e.legs_count ?? e.recent_legs?.length ?? 0;
-            if (cur.status === 'running' && nowLegs > prevLegs) {
-              prevArenaLegsRef.current[e.user_id] = nowLegs;
-            } else if (!prevArenaLegsRef.current[e.user_id]) {
-              prevArenaLegsRef.current[e.user_id] = nowLegs;
-            }
-          });
-        }
-      }
       if (lb.ok) setHighlights(lb.highlights ?? []);
       if (wr.ok) setWinRates(wr.entries ?? []);
     }
-  }, [tab, maybeShowGuessResult, maybeShowArenaResult, maybeShowPkResult, setArenaLive]);
+  }, [tab]);
 
   useEffect(() => {
-    void refresh();
-    const id = setInterval(() => void refresh(), 5000);
+    void refreshExtras();
+    const id = setInterval(() => void refreshExtras(), 15000);
     return () => clearInterval(id);
-  }, [refresh]);
+  }, [refreshExtras]);
 
   const selectedEntry: ArenaEntry | null = useMemo(() => {
     if (!arena?.entries?.length) return null;
@@ -162,9 +168,10 @@ export function TradingEventsPanel() {
         addMessage(r.error || '押注失败');
         return;
       }
-      setGuess(r.current ?? null);
+      setGuessRound(r.current ?? null);
       if (r.balance != null) useGameStore.setState({ points: r.balance });
       addMessage(`已押 ${direction === 'up' ? '涨' : '跌'} · ${guessStake} 积分`);
+      void syncTradingLive();
     } finally {
       setBusy(false);
     }
@@ -182,10 +189,10 @@ export function TradingEventsPanel() {
         addMessage(r.error || '报名失败');
         return;
       }
-      setArena(r.current ?? null);
       setArenaLive(r.current ?? null);
       if (r.balance != null) useGameStore.setState({ points: r.balance });
       addMessage(r.message || '已报名短线大赛');
+      void syncTradingLive();
     } finally {
       setBusy(false);
     }
@@ -203,10 +210,10 @@ export function TradingEventsPanel() {
         addMessage(r.error || '押注失败');
         return;
       }
-      setArena(r.current ?? null);
       setArenaLive(r.current ?? null);
       if (r.balance != null) useGameStore.setState({ points: r.balance });
       addMessage(r.message || `已押 ${RANK_LABELS[specRank] || specRank} · ${specStake} 积分`);
+      void syncTradingLive();
     } finally {
       setBusy(false);
     }

@@ -11,6 +11,23 @@ export interface SeatOccupant {
 
 export type SeatMap = Record<string, SeatOccupant>;
 
+/** 与服务端 seat_occupancy.until_ts 对齐的 wall-clock 毫秒 */
+export function seatNowMs(): number {
+  return Date.now();
+}
+
+/** activityUntil 使用 performance.now()；换算为 Unix 毫秒供占座合并 */
+export function activityWallExpiry(char: CharState, wallNowMs = seatNowMs()): number {
+  const until = char.activityUntil;
+  if (until <= 0) return wallNowMs + 60_000;
+  if (until > 1e12) return until;
+  const started = char.activityStartedAt ?? 0;
+  if (started > 0 && started < 1e12 && until > started) {
+    return wallNowMs + (until - started);
+  }
+  return wallNowMs + 60_000;
+}
+
 /** 所有可坐位置（每座同时最多一人） */
 export function allSeatIds(): string[] {
   const seats: string[] = [];
@@ -47,7 +64,7 @@ export function resolvePreferredSeat(
   preferredNodeId: string | null,
   agentId: string,
   occupied: SeatMap,
-  nowMs = Date.now(),
+  nowMs = seatNowMs(),
 ): string | null {
   const slot = resolveActivitySlot(activity, preferredNodeId, agentId);
   if (!slot) return null;
@@ -60,7 +77,7 @@ export function resolveAvailableSeat(
   preferredNodeId: string | null,
   agentId: string,
   occupied: SeatMap,
-  nowMs = Date.now(),
+  nowMs = seatNowMs(),
 ): string | null {
   const preferred = resolvePreferredSeat(activity, preferredNodeId, agentId, occupied, nowMs);
   if (preferred) return preferred;
@@ -74,7 +91,7 @@ export function resolveAvailableSeat(
   return null;
 }
 
-export function hasFreeSeat(activity: string, agentId: string, occupied: SeatMap, nowMs = Date.now()): boolean {
+export function hasFreeSeat(activity: string, agentId: string, occupied: SeatMap, nowMs = seatNowMs()): boolean {
   return resolveAvailableSeat(activity, null, agentId, occupied, nowMs) !== null;
 }
 
@@ -84,7 +101,7 @@ const LOCAL_SEAT_ACTIVITIES = new Set(['dine', 'massage', 'poker', 'rest', 'desk
 export function mergeLocalSeatOccupancy(
   serverSeats: SeatMap,
   agents: Record<string, CharState>,
-  nowMs = Date.now(),
+  nowMs = seatNowMs(),
 ): SeatMap {
   const merged: SeatMap = { ...serverSeats };
   for (const char of Object.values(agents)) {
@@ -97,7 +114,7 @@ export function mergeLocalSeatOccupancy(
       user_id: 'local',
       agent_id: char.agentId,
       activity,
-      until_ts: char.activityUntil > nowMs ? char.activityUntil : nowMs + 60_000,
+      until_ts: activityWallExpiry(char, nowMs),
     };
   }
   return merged;

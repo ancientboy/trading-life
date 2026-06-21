@@ -68,16 +68,22 @@ export function RightPanel() {
   const navigateSidebar = useGameStore(s => s.navigateSidebar);
   const sendAgentToLeisure = useGameStore(s => s.sendAgentToLeisure);
   const canOperateAgent = useGameStore(s => s.canOperateAgent);
+  const saveCustomAgentSoul = useGameStore(s => s.saveCustomAgentSoul);
   const brainVersion = useGameStore(s => s.brainVersion);
   const [msg, setMsg] = useState('');
   const [portfolioResetting, setPortfolioResetting] = useState(false);
 
   useEffect(() => {
     if (!selectedAgentId) return;
+    if (selectedAgentId.startsWith('custom_')) {
+      const d = agents[selectedAgentId]?.data;
+      if (d?.soulMd != null) setProfile([], {}, d.soulMd);
+      return;
+    }
     fetchAgentProfile(selectedAgentId).then(data => {
       if (!data.error) setProfile(data.schema?.fields || [], data.config || {}, data.soul_md || '');
     });
-  }, [selectedAgentId, setProfile]);
+  }, [selectedAgentId, setProfile, agents]);
 
   if (collapsed) {
     return (
@@ -204,6 +210,7 @@ export function RightPanel() {
             brainVersion={brainVersion}
             onToggle={() => selectAgent(a.agentId)}
             onFollow={() => setFollowAgent(a.agentId)}
+            onSaveSoul={saveCustomAgentSoul}
           />
         ))}
       </>
@@ -394,6 +401,7 @@ function AgentAccordionItem({
   brainVersion = 0,
   onToggle,
   onFollow,
+  onSaveSoul,
 }: {
   char: CharState;
   expanded: boolean;
@@ -409,10 +417,12 @@ function AgentAccordionItem({
   brainVersion?: number;
   onToggle: () => void;
   onFollow?: () => void;
+  onSaveSoul?: (agentId: string, content: string) => Promise<boolean>;
 }) {
   const d = char.data;
   const pnl = d.pnl || 0;
   const agentId = char.agentId;
+  const isCustom = agentId.startsWith('custom_');
   void brainVersion;
   const mode = getAgentBrainMode(agentId);
 
@@ -486,7 +496,7 @@ function AgentAccordionItem({
                   <AgentMemoryList agentId={agentId} operable={operable} brainVersion={brainVersion} />
                 </>
               )}
-              {panelTab === 'config' && schema && config && setMsg && (
+              {panelTab === 'config' && !isCustom && schema && config && setMsg && (
                 <>
                   {operable && schema.length === 0 && <p style={{ color: '#999', fontSize: 12 }}>加载参数中…</p>}
                   {operable && schema.map(f => (
@@ -517,14 +527,20 @@ function AgentAccordionItem({
                 <>
                   <textarea
                     key={agentId}
-                    defaultValue={soulMd}
+                    defaultValue={isCustom ? (d.soulMd ?? soulMd) : soulMd}
                     id={`soul-ed-${agentId}`}
                     readOnly={!operable}
                     style={{ width: '100%', minHeight: 120, padding: 8, borderRadius: 6, border: '1px solid #d4c8b8', fontFamily: 'monospace', fontSize: 12, opacity: operable ? 1 : 0.7 }}
                   />
                   {operable && (
                     <button className="ui-btn" style={{ width: '100%', marginTop: 6 }} onClick={async () => {
-                      const r = await saveAgentSoul(agentId, (document.getElementById(`soul-ed-${agentId}`) as HTMLTextAreaElement).value);
+                      const content = (document.getElementById(`soul-ed-${agentId}`) as HTMLTextAreaElement).value;
+                      if (isCustom && onSaveSoul) {
+                        const ok = await onSaveSoul(agentId, content);
+                        setMsg(ok ? '已保存' : '保存失败');
+                        return;
+                      }
+                      const r = await saveAgentSoul(agentId, content);
                       setMsg(r.message || (r.ok ? '已保存' : '保存失败'));
                     }}>保存 SOUL</button>
                   )}

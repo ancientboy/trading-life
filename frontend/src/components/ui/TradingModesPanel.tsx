@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import {
   fetchTradingModes, placeLeverageBet, placePkBet, joinFaction,
-  fetchComebackStatus, placeComebackBet, fetchPkStreakBoard, fetchGuessRound,
-  type TradingModesState, type GuessRoundState,
+  fetchComebackStatus, placeComebackBet, fetchPkStreakBoard,
+  type TradingModesState,
 } from '../../lib/lifeEngagementApi';
 import { PersonalityCard } from './PersonalityCard';
 
@@ -23,10 +23,10 @@ export function TradingModesPanel() {
   const triggerTradingReaction = useGameStore(s => s.triggerTradingReaction);
   const flyToZone = useGameStore(s => s.flyToZone);
   const setRightTab = useGameStore(s => s.setRightTab);
+  const guess = useGameStore(s => s.guessRound);
 
   const [tab, setTab] = useState<ModeTab>('pk');
   const [modes, setModes] = useState<TradingModesState | null>(null);
-  const [guess, setGuess] = useState<GuessRoundState | null>(null);
   const [pkStake, setPkStake] = useState(50);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -44,13 +44,12 @@ export function TradingModesPanel() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [m, sb, gr] = await Promise.all([
-        fetchTradingModes(), fetchPkStreakBoard(), fetchGuessRound(),
+      const [m, sb] = await Promise.all([
+        fetchTradingModes(), fetchPkStreakBoard(),
       ]);
       if (m.ok) setModes(m);
       else setLoadError(m.error || '玩法数据加载失败');
       if (sb.ok) setStreakBoard(sb.entries ?? []);
-      if (gr.ok) setGuess(gr.current ?? null);
     } catch {
       setLoadError('网络错误，请稍后重试');
     } finally {
