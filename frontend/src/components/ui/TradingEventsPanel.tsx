@@ -4,7 +4,7 @@ import { LogicDrawer } from './LogicDrawer';
 import { TradingModesPanel } from './TradingModesPanel';
 import { dedupeAsync } from '../../lib/pollGuard';
 import {
-  placeGuessBet, joinArena, arenaSpectateBet,
+  placeGuessBet, joinArena, arenaSpectateBet, fetchGuessRoundFresh,
   fetchArenaLeaderboard, fetchArenaWinRate,
   type ArenaRoundState, type ArenaWinRateEntry, type ArenaEntry,
   type PkResultInfo,
@@ -165,6 +165,14 @@ export function TradingEventsPanel() {
   const betGuess = async (direction: 'up' | 'down') => {
     setBusy(true);
     try {
+      const gr = await fetchGuessRoundFresh();
+      if (gr.ok && gr.current) {
+        setGuessRound(gr.current);
+        if (!gr.current.betting_open) {
+          addMessage('当前猜涨跌局已封盘，请等待下一局（约 60s 一轮）');
+          return;
+        }
+      }
       const r = await placeGuessBet(direction, guessStake);
       if (!r.ok) {
         addMessage(r.error || '押注失败');

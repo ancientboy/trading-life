@@ -291,7 +291,7 @@ function drawArenaPod(
   ws: (v: number) => number,
   t: number,
   P: ArenaPalette,
-  opts?: { label?: string; returnPct?: number; direction?: string; pulse?: boolean; hover?: boolean; rank?: number },
+  opts?: { label?: string; returnPct?: number; direction?: string; pulse?: boolean; hover?: boolean; rank?: number; emptyLabel?: string },
 ) {
   const p = toScreen(pod.px, pod.py);
   const pulseScale = opts?.pulse ? 1 + 0.05 * Math.sin(t * 8) : 1;
@@ -334,10 +334,11 @@ function drawArenaPod(
     ctx.textAlign = 'center';
     ctx.fillText(isUp ? '▲ LONG' : '▼ SHORT', p.x, p.y - rh - monH / 2 + ws(2));
   } else {
-    ctx.fillStyle = P.textMuted;
+    const emptyLabel = opts?.emptyLabel || 'READY';
+    ctx.fillStyle = emptyLabel === '报名' ? P.accent : P.textMuted;
     ctx.font = `${Math.max(6, ws(7))}px Inter,sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('READY', p.x, p.y - rh - monH / 2 + ws(2));
+    ctx.fillText(emptyLabel, p.x, p.y - rh - monH / 2 + ws(2));
   }
 
   if (opts?.label) {
@@ -369,6 +370,7 @@ export function drawArenaScene(
     hoverPodId?: string | null;
     entries?: Array<{ user_id: string; agent_name: string; direction: string; return_pct?: number; rank?: number; recent_legs?: Array<{ direction: string }> }>;
     status?: string;
+    canJoin?: boolean;
     display?: ArenaDisplayData;
     pulseSlots?: Set<number>;
   },
@@ -412,6 +414,9 @@ export function drawArenaScene(
       pulse,
       hover: opts?.hoverPodId === pod.id,
       rank: entry?.rank,
+      emptyLabel: !entry
+        ? (opts?.canJoin ? '报名' : '空位')
+        : undefined,
     });
   });
 

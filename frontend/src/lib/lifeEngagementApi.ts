@@ -440,22 +440,30 @@ export type PublicArenaLive = {
   error?: string;
 };
 
+type GuessRoundResponse = {
+  ok: boolean; current?: GuessRoundState;
+  last_settled?: Record<string, unknown>;
+  last_my_bet?: GuessBetInfo;
+  last_pk_result?: PkResultInfo | null;
+  error?: string;
+};
+
 export async function fetchGuessRound() {
   return dedupeAsync('guess-round', () =>
-    fetchJson<{
-      ok: boolean; current?: GuessRoundState;
-      last_settled?: Record<string, unknown>;
-      last_my_bet?: GuessBetInfo;
-      last_pk_result?: PkResultInfo | null;
-      error?: string;
-    }>(`${API}/pvp/trading/guess`, { headers: headers() }, 15000));
+    fetchJson<GuessRoundResponse>(`${API}/pvp/trading/guess`, { headers: headers() }, 15000));
+}
+
+/** 押注/PK 前拉最新局状态，避免轮询节流导致 betting_open 过期 */
+export async function fetchGuessRoundFresh() {
+  return fetchJson<GuessRoundResponse>(`${API}/pvp/trading/guess`, { headers: headers() }, 15000);
 }
 
 export async function placeGuessBet(direction: 'up' | 'down', stake: number) {
-  const r = await fetch(`${API}/pvp/trading/guess/bet`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake }),
-  });
-  return parse<{ ok: boolean; current?: GuessRoundState; balance?: number; error?: string }>(r);
+  return fetchJson<{ ok: boolean; current?: GuessRoundState; balance?: number; error?: string }>(
+    `${API}/pvp/trading/guess/bet`,
+    { method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake }) },
+    15000,
+  );
 }
 
 export async function fetchArenaRound() {
@@ -529,10 +537,11 @@ export async function placeLeverageBet(direction: 'up' | 'down', leverage: numbe
 }
 
 export async function placePkBet(direction: 'up' | 'down', stake: number, vsAi = true) {
-  const r = await fetch(`${API}/pvp/trading/pk/bet`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake, vs_ai: vsAi }),
-  });
-  return parse<{ ok: boolean; message?: string; room_id?: string; modes?: TradingModesState; balance?: number; error?: string }>(r);
+  return fetchJson<{ ok: boolean; message?: string; room_id?: string; modes?: TradingModesState; balance?: number; error?: string }>(
+    `${API}/pvp/trading/pk/bet`,
+    { method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake, vs_ai: vsAi }) },
+    15000,
+  );
 }
 
 export async function joinFaction(faction: 'bull' | 'bear') {

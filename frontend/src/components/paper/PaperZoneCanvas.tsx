@@ -42,6 +42,7 @@ export function PaperZoneCanvas() {
   const setRightTab = useGameStore(s => s.setRightTab);
   const toggleRightPanel = useGameStore(s => s.toggleRightPanel);
   const rightPanelCollapsed = useGameStore(s => s.rightPanelCollapsed);
+  const addMessage = useGameStore(s => s.addMessage);
 
   const prevLegsRef = useRef<Record<string, number>>({});
   const [arenaPulseSlots, setArenaPulseSlots] = useState<Set<number>>(new Set());
@@ -299,7 +300,15 @@ export function PaperZoneCanvas() {
     else if (hit.type === 'arena_pod' || hit.type === 'arena_pit') {
       if (hit.type === 'arena_pod') {
         const entry = arenaLive?.entries?.[hit.slot];
-        if (entry) setSelectedArenaEntryId(entry.user_id);
+        if (entry) {
+          setSelectedArenaEntryId(entry.user_id);
+        } else if (arenaLive?.can_join && !arenaLive?.my_entry) {
+          addMessage('这是大赛选手台，不是休闲座位。请在右侧「短线大赛」点「派 Agent 参赛」报名');
+        } else if (arenaLive?.status === 'running') {
+          addMessage('本局大赛进行中，点击有选手的台位可查看交易逻辑');
+        } else {
+          addMessage('当前不可报名，请等待下一局大赛');
+        }
       }
       if (rightPanelCollapsed) toggleRightPanel();
       setRightTab('events');

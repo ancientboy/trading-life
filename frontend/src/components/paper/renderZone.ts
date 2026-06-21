@@ -351,6 +351,7 @@ export function renderZone(
           hoverPodId: opts.hoverPodId,
           entries: live?.entries,
           status: live?.status,
+          canJoin: live?.can_join,
           display: opts.arenaDisplay ?? undefined,
           pulseSlots: opts.arenaPulseSlots,
         },
