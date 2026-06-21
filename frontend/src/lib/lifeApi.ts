@@ -186,10 +186,20 @@ export async function lifeShopBuy(itemId: string) {
 }
 
 export async function lifeSetZoneSkin(zone: string, skinId: string) {
-  const r = await fetch(`${API}/zone-skins`, {
-    method: 'PUT', headers: headers(), body: JSON.stringify({ zone, skinId }),
-  });
-  return parse<{ ok: boolean; zone_skins?: Record<string, string>; state?: LifeState; error?: string }>(r);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const r = await fetch(`${API}/zone-skins`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify({ zone, skinId }), signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    return parse<{ ok: boolean; zone_skins?: Record<string, string>; state?: LifeState; error?: string }>(r);
+  } catch (e) {
+    clearTimeout(timer);
+    const err = e as Error;
+    if (err.name === 'AbortError') return { ok: false, error: '切换皮肤超时，请重试' };
+    return { ok: false, error: '网络错误' };
+  }
 }
 
 export async function lifeQuickCreateAgent(

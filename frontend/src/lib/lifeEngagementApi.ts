@@ -439,26 +439,29 @@ export type PublicArenaLive = {
 };
 
 export async function fetchGuessRound() {
-  const r = await fetch(`${API}/pvp/trading/guess`, { headers: headers() });
-  return parse<{
+  return fetchJson<{
     ok: boolean; current?: GuessRoundState;
     last_settled?: Record<string, unknown>;
     last_my_bet?: GuessBetInfo;
     last_pk_result?: PkResultInfo | null;
     error?: string;
-  }>(r);
+  }>(`${API}/pvp/trading/guess`, { headers: headers() }, 12000);
 }
 
 export async function placeGuessBet(direction: 'up' | 'down', stake: number) {
-  const r = await fetch(`${API}/pvp/trading/guess/bet`, {
-    method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake }),
-  });
-  return parse<{ ok: boolean; current?: GuessRoundState; balance?: number; error?: string }>(r);
+  return fetchJson<{ ok: boolean; current?: GuessRoundState; balance?: number; error?: string }>(
+    `${API}/pvp/trading/guess/bet`,
+    { method: 'POST', headers: headers(), body: JSON.stringify({ direction, stake }) },
+    15000,
+  );
 }
 
 export async function fetchArenaRound() {
-  const r = await fetch(`${API}/pvp/trading/arena`, { headers: headers() });
-  return parse<{ ok: boolean; current?: ArenaRoundState; last_settled?: ArenaRoundState; error?: string }>(r);
+  return fetchJson<{ ok: boolean; current?: ArenaRoundState; last_settled?: ArenaRoundState; error?: string }>(
+    `${API}/pvp/trading/arena`,
+    { headers: headers() },
+    12000,
+  );
 }
 
 export async function joinArena(agentId: string) {
@@ -513,8 +516,11 @@ export type TradingModesState = {
 };
 
 export async function fetchTradingModes() {
-  const r = await fetch(`${API}/pvp/trading/modes`, { headers: headers() });
-  return parse<{ ok: boolean; error?: string } & TradingModesState>(r);
+  return fetchJson<{ ok: boolean; error?: string } & TradingModesState>(
+    `${API}/pvp/trading/modes`,
+    { headers: headers() },
+    12000,
+  );
 }
 
 export async function placeLeverageBet(direction: 'up' | 'down', leverage: number, sourceRoundId = '') {

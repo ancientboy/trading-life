@@ -225,6 +225,8 @@ interface GameStore {
   guessRound: GuessRoundState | null;
   guessPollMeta: GuessPollMeta | null;
   arenaPollMeta: ArenaPollMeta | null;
+  tradingLiveError: string | null;
+  tradingLiveSyncing: boolean;
   /** 场景内选中的竞技选手 */
   selectedArenaEntryId: string | null;
   /** 牌桌发牌动画截止时间戳 */
@@ -411,6 +413,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   guessRound: null,
   guessPollMeta: null,
   arenaPollMeta: null,
+  tradingLiveError: null,
+  tradingLiveSyncing: false,
   selectedArenaEntryId: null,
   pokerTableDealingUntil: 0,
   pokerRoom: null,
@@ -574,8 +578,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncTradingLive: async () => {
     if (!isLoggedIn()) return;
+    set({ tradingLiveSyncing: true });
     try {
       const [gr, ar] = await Promise.all([fetchGuessRound(), fetchArenaRound()]);
+      const err = (!gr.ok && gr.error) || (!ar.ok && ar.error) || null;
       if (gr.ok) {
         set({
           guessRound: gr.current ?? null,
@@ -595,7 +601,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const pr = await fetchPublicArenaLive().catch(() => null);
         if (pr?.ok && pr.current) set({ arenaLive: pr.current });
       }
-    } catch { /* ignore */ }
+      set({ tradingLiveError: err });
+    } catch {
+      set({ tradingLiveError: '竞技数据同步失败' });
+    } finally {
+      set({ tradingLiveSyncing: false });
+    }
   },
   setSelectedArenaEntryId: (id) => set({ selectedArenaEntryId: id }),
   showTradingWin: (result) => set({
@@ -1700,8 +1711,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   setZoneSkin: async (zone, skinId) => {
+    const prev = get().zoneSkins[zone];
+    set({ zoneSkins: { ...get().zoneSkins, [zone]: skinId } });
     const res = await lifeSetZoneSkin(zone, skinId);
     if (!res.ok) {
+      set({ zoneSkins: { ...get().zoneSkins, [zone]: prev } });
       get().addMessage(res.error ?? '切换皮肤失败');
       return false;
     }

@@ -115,7 +115,101 @@ def _leg_return(direction: str, entry: float, exit_price: float, leverage: float
     return (exit_price - entry) / entry * 100 * leverage
 
 
+def _read_guess_row(c) -> Optional[dict]:
+    """只读当前猜涨跌回合，不结算、不建局。"""
+    row = c.execute(
+        "SELECT * FROM guess_rounds WHERE status IN ('open','locked') ORDER BY starts_at DESC LIMIT 1"
+    ).fetchone()
+    if row:
+        return dict(row)
+    row = c.execute(
+        "SELECT * FROM guess_rounds WHERE status='settled' ORDER BY ends_at DESC LIMIT 1"
+    ).fetchone()
+    if row:
+        ts = life_db.now_ms()
+        if ts - int(row["ends_at"]) < 12_000:
+            return dict(row)
+    return None
+
+
+def _read_arena_row(c) -> Optional[dict]:
+    """只读当前短线大赛回合，不推进赛段、不结算。"""
+    row = c.execute(
+        "SELECT * FROM arena_rounds WHERE status IN ('join','running') ORDER BY starts_at DESC LIMIT 1"
+    ).fetchone()
+    if row:
+        return dict(row)
+    row = c.execute(
+        "SELECT * FROM arena_rounds WHERE status='settled' ORDER BY ends_at DESC LIMIT 1"
+    ).fetchone()
+    if row:
+        ts = life_db.now_ms()
+        if ts - int(row["ends_at"]) < 15_000:
+            return dict(row)
+    return None
+
+
+def _spawn_guess_round(c, price: float) -> dict:
+    ts = life_db.now_ms()
+    rid = f"guess_{uuid.uuid4().hex[:10]}"
+    starts = ts
+    ends = ts + GUESS_DURATION_MS
+    c.execute(
+        """INSERT INTO guess_rounds (id, symbol, start_price, starts_at, ends_at, status, pool_up, pool_down)
+           VALUES (?,?,?,?,?,?,?,?)""",
+        (rid, GUESS_SYMBOL, price, starts, ends, "open", 0, 0),
+    )
+    return dict(c.execute("SELECT * FROM guess_rounds WHERE id=?", (rid,)).fetchone())
+
+
+async def ensure_guess_round() -> dict:
+    """推进并返回当前猜涨跌回合；外盘价在锁外拉取，避免阻塞读请求。"""
+    while True:
+        settle_id: Optional[str] = None
+        need_spawn = False
+
+        with life_db._lock:
+            with life_db._conn() as c:
+                ts = life_db.now_ms()
+                row = c.execute(
+                    "SELECT * FROM guess_rounds WHERE status IN ('open','locked') ORDER BY starts_at DESC LIMIT 1"
+                ).fetchone()
+                if row:
+                    rd = dict(row)
+                    if ts >= rd["ends_at"]:
+                        settle_id = rd["id"]
+                    else:
+                        if ts >= rd["starts_at"] + GUESS_BET_WINDOW_MS and rd["status"] == "open":
+                            c.execute("UPDATE guess_rounds SET status='locked' WHERE id=?", (rd["id"],))
+                            rd["status"] = "locked"
+                        return rd
+                else:
+                    need_spawn = True
+
+        if settle_id:
+            price = await _fetch_btc_price()
+            with life_db._lock:
+                with life_db._conn() as c:
+                    await _settle_guess_round(c, settle_id, end_price=price)
+            need_spawn = True
+
+        if need_spawn:
+            price = await _fetch_btc_price()
+            with life_db._lock:
+                with life_db._conn() as c:
+                    existing = c.execute(
+                        "SELECT * FROM guess_rounds WHERE status IN ('open','locked') ORDER BY starts_at DESC LIMIT 1"
+                    ).fetchone()
+                    if existing:
+                        continue
+                    return _spawn_guess_round(c, price)
+        break
+
+    raise RuntimeError("ensure_guess_round unreachable")
+
+
 async def _ensure_guess_round(c) -> dict:
+    """兼容旧调用：仅在已持锁的写路径使用；优先改用 ensure_guess_round()。"""
     ts = life_db.now_ms()
     row = c.execute(
         "SELECT * FROM guess_rounds WHERE status IN ('open','locked') ORDER BY starts_at DESC LIMIT 1"
@@ -131,25 +225,18 @@ async def _ensure_guess_round(c) -> dict:
             return rd
 
     price = await _fetch_btc_price()
-    rid = f"guess_{uuid.uuid4().hex[:10]}"
-    starts = ts
-    ends = ts + GUESS_DURATION_MS
-    c.execute(
-        """INSERT INTO guess_rounds (id, symbol, start_price, starts_at, ends_at, status, pool_up, pool_down)
-           VALUES (?,?,?,?,?,?,?,?)""",
-        (rid, GUESS_SYMBOL, price, starts, ends, "open", 0, 0),
-    )
-    return dict(c.execute("SELECT * FROM guess_rounds WHERE id=?", (rid,)).fetchone())
+    return _spawn_guess_round(c, price)
 
 
-async def _settle_guess_round(c, round_id: str) -> Optional[dict]:
+async def _settle_guess_round(c, round_id: str, *, end_price: float | None = None) -> Optional[dict]:
     from life_game import load_user, save_user, _earn
 
     row = c.execute("SELECT * FROM guess_rounds WHERE id=?", (round_id,)).fetchone()
     if not row or row["status"] == "settled":
         return None
     rd = dict(row)
-    end_price = await _fetch_btc_price()
+    if end_price is None:
+        end_price = await _fetch_btc_price()
     start_price = float(rd["start_price"])
     c.execute(
         "UPDATE guess_rounds SET end_price=?, status='settled' WHERE id=?",
@@ -342,6 +429,22 @@ async def _advance_arena_legs(c, rd: dict) -> None:
     rd["last_leg_index"] = leg_index
 
 
+async def ensure_arena_round() -> dict:
+    """推进并返回当前短线大赛回合（仅供 tick / 写操作）。"""
+    with life_db._lock:
+        with life_db._conn() as c:
+            return await _ensure_arena_round(c)
+
+
+async def tick_trading_rounds() -> None:
+    """后台推进猜涨跌结算与短线大赛赛段，避免 GET 轮询触发重逻辑。"""
+    try:
+        await ensure_guess_round()
+        await ensure_arena_round()
+    except Exception:
+        pass
+
+
 async def _ensure_arena_round(c) -> dict:
     ts = life_db.now_ms()
     row = c.execute(
@@ -508,10 +611,6 @@ def _guess_payload(c, rd: dict, account_id: str) -> dict:
     ts = life_db.now_ms()
     bets = [dict(b) for b in c.execute("SELECT * FROM guess_bets WHERE round_id=?", (rd["id"],)).fetchall()]
     my = next((b for b in bets if b["user_id"] == account_id), None) if account_id else None
-    modes_extra = {}
-    if account_id:
-        from trading_modes import modes_payload
-        modes_extra = modes_payload(account_id)
     return {
         "round_id": rd["id"],
         "symbol": rd["symbol"],
@@ -527,7 +626,6 @@ def _guess_payload(c, rd: dict, account_id: str) -> dict:
         "seconds_left": max(0, (rd["ends_at"] - ts) // 1000),
         "my_bet": my,
         "bets_count": len(bets),
-        **modes_extra,
     }
 
 
@@ -617,8 +715,8 @@ def _arena_win_rate_rows(c, limit: int = 15) -> list[dict]:
 async def get_guess_round(account_id: str = Depends(resolve_account_id)):
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_guess_round(c)
-            payload = _guess_payload(c, rd, account_id)
+            rd = _read_guess_row(c)
+            payload = _guess_payload(c, rd, account_id) if rd else None
             prev = c.execute(
                 "SELECT * FROM guess_rounds WHERE status='settled' ORDER BY ends_at DESC LIMIT 1"
             ).fetchone()
@@ -699,9 +797,9 @@ async def place_guess_bet(body: GuessBetBody, account_id: str = Depends(resolve_
         return {"ok": False, "error": "积分不足", "balance": user["points"]}
     save_user(account_id, user)
 
+    rd = await ensure_guess_round()
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_guess_round(c)
             ts = life_db.now_ms()
             if rd["status"] != "open" or ts >= rd["starts_at"] + GUESS_BET_WINDOW_MS:
                 user = load_user(account_id)
@@ -735,8 +833,8 @@ async def get_arena_round(account_id: str = Depends(resolve_account_id)):
     last_settled_payload = None
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_arena_round(c)
-            payload = _arena_payload(c, rd, account_id)
+            rd = _read_arena_row(c)
+            payload = _arena_payload(c, rd, account_id) if rd else None
             prev = c.execute(
                 "SELECT * FROM arena_rounds WHERE status='settled' ORDER BY ends_at DESC LIMIT 1"
             ).fetchone()
@@ -763,9 +861,9 @@ async def join_arena(body: ArenaJoinBody, account_id: str = Depends(resolve_acco
     if not meta or meta.get("agentType") == "entertainment":
         return {"ok": False, "error": "请选择你的交易 Agent"}
 
+    rd = await ensure_arena_round()
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_arena_round(c)
             ts = life_db.now_ms()
             if rd["status"] != "join" or ts >= rd["join_ends_at"]:
                 return {"ok": False, "error": "报名已截止"}
@@ -825,9 +923,9 @@ async def arena_spectate_bet(body: ArenaSpectateBetBody, account_id: str = Depen
     if not pick:
         return {"ok": False, "error": "请选择押注选手"}
 
+    rd = await ensure_arena_round()
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_arena_round(c)
             ts = life_db.now_ms()
             if rd["status"] != "join" or ts >= rd["join_ends_at"]:
                 return {"ok": False, "error": "押注已截止"}
@@ -900,11 +998,11 @@ async def arena_win_rate(limit: int = 15):
 
 
 async def public_arena_snapshot() -> dict:
-    """未登录观赛 — 当前大赛 + 三甲 + 胜率榜。"""
+    """未登录观赛 — 当前大赛 + 三甲 + 胜率榜（只读快照）。"""
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_arena_round(c)
-            current = _arena_payload(c, rd, "")
+            rd = _read_arena_row(c)
+            current = _arena_payload(c, rd, "") if rd else None
             highlights = []
             rows = c.execute(
                 """SELECT e.agent_name, e.user_id, e.return_pct, e.rank, e.prize, e.legs_count,

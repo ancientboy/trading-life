@@ -69,6 +69,10 @@ export function TradingModesPanel() {
   const guessOpen = !!guess?.betting_open;
 
   const guardGuessOpen = () => {
+    if (!guess) {
+      toast('猜涨跌数据加载中，请稍候再试');
+      return false;
+    }
     if (guessOpen) return true;
     toast('当前猜涨跌局已封盘，请等待下一局（约 60s 一轮）');
     return false;
@@ -164,6 +168,11 @@ export function TradingModesPanel() {
         }}>
           <span>猜涨跌 {guessOpen ? '押注中' : '封盘/进行中'} · {guess.seconds_left}s</span>
           <span>BTC ${Math.round(Number(guess.start_price || 0)).toLocaleString()}</span>
+        </div>
+      )}
+      {!guess && !loading && (
+        <div style={{ marginBottom: 10, padding: 8, background: '#fff8e8', borderRadius: 8, fontSize: 10, color: '#8a6a28' }}>
+          猜涨跌数据加载中… PK / 杠杆 / 逆袭需等当前局同步后再押注
         </div>
       )}
 

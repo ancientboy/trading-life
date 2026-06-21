@@ -721,6 +721,19 @@ from life_game import router as life_router, init_life_game
 init_life_game(DATA_DIR, ZHIPU_API_KEY)
 app.include_router(life_router, prefix="/api/life", tags=["life"])
 
+
+@app.on_event("startup")
+async def _start_trading_tick_loop() -> None:
+    from trading_events import tick_trading_rounds
+
+    async def _loop() -> None:
+        await tick_trading_rounds()
+        while True:
+            await asyncio.sleep(18)
+            await tick_trading_rounds()
+
+    asyncio.create_task(_loop())
+
 # ============================================================
 # 静态文件
 # ============================================================

@@ -5,6 +5,7 @@ import { WORLD_MAP, ZONE_CAMERA } from '../../lib/worldMap';
 import { hitTestPaperFacilities, getAgentPaperPos, ZONE_NPCS } from '../../lib/zoneFurniture';
 import { ARENA_PIT, hitTestArenaPod, type ArenaDisplayData } from './arenaDraw';
 import { fetchMarketKlines } from '../../lib/lifeApi';
+import { joinArena } from '../../lib/lifeEngagementApi';
 import { ZONE_LAYOUTS } from '../../lib/zoneLayouts';
 import { PAPER, agentVisibleInZone } from '../../lib/zoneProjection';
 import {
@@ -284,7 +285,31 @@ export function PaperZoneCanvas() {
     else if (hit.type === 'arena_pod' || hit.type === 'arena_pit') {
       if (hit.type === 'arena_pod') {
         const entry = arenaLive?.entries?.[hit.slot];
-        if (entry) setSelectedArenaEntryId(entry.user_id);
+        if (entry) {
+          setSelectedArenaEntryId(entry.user_id);
+        } else if (arenaLive?.can_join && !arenaLive?.my_entry) {
+          const st = useGameStore.getState();
+          const tradingAgents = Object.keys(st.agents).filter(
+            id => st.canOperateAgent(id) && st.agents[id]?.data?.agentType !== 'entertainment',
+          );
+          const joinId = st.selectedAgentId && tradingAgents.includes(st.selectedAgentId)
+            ? st.selectedAgentId
+            : tradingAgents[0];
+          if (joinId) {
+            void joinArena(joinId).then(r => {
+              if (r.ok) {
+                st.setArenaLive(r.current ?? null);
+                if (r.balance != null) useGameStore.setState({ points: r.balance });
+                st.addMessage(r.message || '已报名短线大赛');
+                void st.syncTradingLive();
+              } else {
+                st.addMessage(r.error || '报名失败');
+              }
+            });
+          } else {
+            st.addMessage('请先创建交易 Agent，再点击选手位参赛');
+          }
+        }
       }
       if (rightPanelCollapsed) toggleRightPanel();
       setRightTab('events');

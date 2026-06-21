@@ -103,7 +103,7 @@ export default function App() {
       if (document.visibilityState === 'visible') {
         useGameStore.getState().syncTradingLive().catch(() => {});
       }
-    }, 5000);
+    }, 8000);
     const onVis = () => {
       if (document.visibilityState === 'visible') {
         lifeSessionStart().catch(() => {});

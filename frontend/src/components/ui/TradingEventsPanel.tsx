@@ -25,6 +25,8 @@ export function TradingEventsPanel() {
   const setGuessRound = useGameStore(s => s.setGuessRound);
   const setArenaLive = useGameStore(s => s.setArenaLive);
   const syncTradingLive = useGameStore(s => s.syncTradingLive);
+  const tradingLiveSyncing = useGameStore(s => s.tradingLiveSyncing);
+  const tradingLiveError = useGameStore(s => s.tradingLiveError);
   const showGuessResult = useGameStore(s => s.showGuessResult);
   const showArenaResult = useGameStore(s => s.showArenaResult);
   const showPkResult = useGameStore(s => s.showPkResult);
@@ -109,6 +111,10 @@ export function TradingEventsPanel() {
       first_podium: !!lastSettled.first_podium && !!my?.rank && my.rank <= 3,
     });
   }, [showArenaResult]);
+
+  useEffect(() => {
+    void syncTradingLive();
+  }, [syncTradingLive]);
 
   useEffect(() => {
     if (!guessPollMeta) return;
@@ -268,6 +274,26 @@ export function TradingEventsPanel() {
         )}
       </div>
 
+      {(tradingLiveSyncing || tradingLiveError) && (
+        <div style={{
+          marginBottom: 10, padding: '8px 10px', borderRadius: 8, fontSize: 11,
+          background: tradingLiveError ? '#fff8e8' : '#f5f5f5', color: '#6b5e4e',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span>{tradingLiveError || '正在同步竞技数据…'}</span>
+          <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '2px 8px' }}
+            disabled={tradingLiveSyncing} onClick={() => void syncTradingLive()}>
+            刷新
+          </button>
+        </div>
+      )}
+
+      {tab === 'guess' && !guess && (
+        <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: '#9a8b7a' }}>
+          {tradingLiveSyncing ? '加载猜涨跌…' : '暂无猜涨跌数据，请点刷新或稍候'}
+        </div>
+      )}
+
       {tab === 'guess' && guess && (
         <div style={{ padding: 12, background: '#faf6ef', borderRadius: 10, border: '1px solid #ebe4d8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -315,6 +341,18 @@ export function TradingEventsPanel() {
               · ${Math.round(Number(lastGuess.start_price))} → ${Math.round(Number(lastGuess.end_price))}
             </p>
           )}
+        </div>
+      )}
+
+      {tab === 'arena' && !arena && (
+        <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: '#9a8b7a' }}>
+          {tradingLiveSyncing ? '加载短线大赛…' : '暂无大赛数据，后台约 20 秒内自动开局'}
+          <div style={{ marginTop: 8 }}>
+            <button type="button" className="ui-btn" style={{ fontSize: 11 }}
+              disabled={tradingLiveSyncing} onClick={() => void syncTradingLive()}>
+              立即刷新
+            </button>
+          </div>
         </div>
       )}
 

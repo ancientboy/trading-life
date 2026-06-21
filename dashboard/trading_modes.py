@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 import life_db
 from life_auth import resolve_account_id
+from trading_events import ensure_guess_round, GUESS_BET_WINDOW_MS
 
 modes_router = APIRouter()
 
@@ -465,7 +466,6 @@ async def get_trading_modes(account_id: str = Depends(resolve_account_id)):
 @modes_router.post("/pvp/trading/guess/leverage")
 async def place_leverage_bet(body: LeverageBetBody, account_id: str = Depends(resolve_account_id)):
     from life_game import load_user, save_user
-    from trading_events import _ensure_guess_round, GUESS_BET_WINDOW_MS
 
     direction = (body.direction or "").lower()
     if direction not in ("up", "down"):
@@ -483,9 +483,9 @@ async def place_leverage_bet(body: LeverageBetBody, account_id: str = Depends(re
         return {"ok": False, "error": "今日 10x 已用完"}
 
     profit = int(pl["profit"])
+    rd = await ensure_guess_round()
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_guess_round(c)
             ts = life_db.now_ms()
             if rd["status"] != "open" or ts >= rd["starts_at"] + GUESS_BET_WINDOW_MS:
                 return {"ok": False, "error": "本局已封盘，等待下一局"}
@@ -518,7 +518,6 @@ async def place_leverage_bet(body: LeverageBetBody, account_id: str = Depends(re
 @modes_router.post("/pvp/trading/pk/bet")
 async def place_pk_bet(body: PkBetBody, account_id: str = Depends(resolve_account_id)):
     from life_game import load_user, save_user, _spend
-    from trading_events import _ensure_guess_round, GUESS_BET_WINDOW_MS
     import random
 
     direction = (body.direction or "").lower()
@@ -547,9 +546,9 @@ async def place_pk_bet(body: PkBetBody, account_id: str = Depends(resolve_accoun
                     opp_dir = room["dir_a"]
                     direction = "down" if opp_dir == "up" else "up"
 
+    rd = await ensure_guess_round()
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_guess_round(c)
             ts = life_db.now_ms()
             if rd["status"] != "open" or ts >= rd["starts_at"] + GUESS_BET_WINDOW_MS:
                 user = load_user(account_id)
@@ -634,8 +633,6 @@ async def comeback_status(account_id: str = Depends(resolve_account_id)):
 
 @modes_router.post("/pvp/trading/comeback/bet")
 async def comeback_bet(body: ComebackBetBody, account_id: str = Depends(resolve_account_id)):
-    from trading_events import _ensure_guess_round, GUESS_BET_WINDOW_MS
-
     direction = (body.direction or "").lower()
     if direction not in ("up", "down"):
         return {"ok": False, "error": "direction 须为 up 或 down"}
@@ -647,9 +644,9 @@ async def comeback_bet(body: ComebackBetBody, account_id: str = Depends(resolve_
     if seed <= 0:
         return {"ok": False, "error": "逆袭金已耗尽"}
 
+    rd = await ensure_guess_round()
     with life_db._lock:
         with life_db._conn() as c:
-            rd = await _ensure_guess_round(c)
             ts = life_db.now_ms()
             if rd["status"] != "open" or ts >= rd["starts_at"] + GUESS_BET_WINDOW_MS:
                 return {"ok": False, "error": "本局已封盘"}
