@@ -79,6 +79,20 @@ export const ACTIVITY_SEAT_LABEL: Record<string, string> = {
   desk: '工位',
 };
 
+export const ACTIVITY_ZONE: Record<string, import('../store/useGameStore').ZoneId> = {
+  rest: 'hall',
+  desk: 'hall',
+  dine: 'restaurant',
+  massage: 'spa',
+  poker: 'casino',
+};
+
+/** 座位已满时的提示文案（避免「0/4 空位」被误解为「0 人占用」） */
+export function formatSeatCapacityMessage(label: string, free: number, total: number): string {
+  if (free <= 0) return `${label}已满（共 ${total} 座，均已占用）`;
+  return `${label}剩余 ${free} 个空位（共 ${total} 座）`;
+}
+
 /** 仅分配指定工位/座位，被占则返回 null（不自动换座） */
 export function resolvePreferredSeat(
   activity: string,

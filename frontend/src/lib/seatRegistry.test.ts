@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CharState } from './constants';
 import {
-  activityWallExpiry, countFreeSeats, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs,
+  activityWallExpiry, countFreeSeats, formatSeatCapacityMessage, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs,
 } from './seatRegistry';
 
 function mockChar(overrides: Partial<CharState> = {}): CharState {
@@ -94,5 +94,10 @@ describe('mergeLocalSeatOccupancy', () => {
       rest_l_1_s1: { user_id: 'u1', agent_id: 'ghost_agent', activity: 'rest', until_ts: wall + 600_000 },
     };
     expect(hasFreeSeat('rest', 'newcoin', server, wall)).toBe(true);
+  });
+
+  it('formats full seats clearly', () => {
+    expect(formatSeatCapacityMessage('休息沙发', 0, 4)).toBe('休息沙发已满（共 4 座，均已占用）');
+    expect(formatSeatCapacityMessage('按摩床', 2, 6)).toBe('按摩床剩余 2 个空位（共 6 座）');
   });
 });

@@ -23,7 +23,7 @@ import {
 } from '../lib/lifeApi';
 import { throttleAsync } from '../lib/pollGuard';
 import { dismissPkResult, dismissGuessResult, dismissArenaResult } from '../lib/tradingResultDismiss';
-import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, type SeatMap } from '../lib/seatRegistry';
+import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, ACTIVITY_ZONE, formatSeatCapacityMessage, type SeatMap } from '../lib/seatRegistry';
 import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
 import { FACILITY_BASE_COST } from '../lib/facilityCosts';
@@ -817,6 +817,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const mergedForSeat = mergeLocalSeatOccupancy(get().seatOccupancy, get().agents, wallNow);
 
       if (!hasFreeSeat(action, id, mergedForSeat, wallNow)) {
+        const actZone = ACTIVITY_ZONE[action];
+        if (actZone && s.activeZone !== actZone) {
+          get().addMessage(`请前往${actZone === 'hall' ? '交易大厅' : actZone === 'spa' ? '按摩馆' : actZone === 'restaurant' ? '餐厅' : '德州厅'}再派遣 Agent`);
+          return false;
+        }
         const queueCost = skipCost ? 0 : (cost > 0 ? cost : (FACILITY_BASE_COST[action] ?? 0));
         await enqueueDispatch(id, action, opts?.nodeId || '', queueCost, tierId);
         get().addMessage(`${char0.data.name} 座位已满，已加入派遣队列（未扣积分）`);
@@ -1897,6 +1902,11 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   const zone = activity ? zoneMap[activity] : null;
 
   const store = useGameStore.getState();
+  const activityZone = activity ? ACTIVITY_ZONE[activity] : null;
+  if (activity && activityZone && store.activeZone !== activityZone && !char.userDispatched) {
+    return { ...char, travelIntent: null, isWalking: false, pathQueue: [], destNode: null };
+  }
+
   const wallNow = seatNowMs();
   const mergedSeats = mergeLocalSeatOccupancy(store.seatOccupancy, store.agents, wallNow);
   const seatId = activity
@@ -1907,9 +1917,10 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     const label = ACTIVITY_SEAT_LABEL[activity] ?? '座位';
     const msgKey = `${char.agentId}:${activity}`;
     const lastMsg = seatFailMsgAt.get(msgKey) ?? 0;
-    if (wallNow - lastMsg > 12_000) {
+    const showMsg = char.userDispatched || (activityZone != null && store.activeZone === activityZone);
+    if (showMsg && wallNow - lastMsg > 12_000) {
       seatFailMsgAt.set(msgKey, wallNow);
-      store.addMessage(`${char.data.name}：${label}已满（${free}/${total} 空位），活动取消`);
+      store.addMessage(`${char.data.name}：${formatSeatCapacityMessage(label, free, total)}，活动取消`);
     }
     return { ...char, travelIntent: null, isWalking: false, pathQueue: [], destNode: null };
   }
