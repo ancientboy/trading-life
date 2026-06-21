@@ -316,10 +316,10 @@ export async function bidSeat(seatId: string, amount: number) {
   return parse<{ ok: boolean; bid?: number; balance?: number; error?: string }>(r);
 }
 
-export async function enqueueDispatch(agentId: string, action: string, nodeId = '', cost = 0) {
+export async function enqueueDispatch(agentId: string, action: string, nodeId = '', _cost = 0, tierId = 'a') {
   const r = await fetch(`${API}/pvp/dispatch/enqueue`, {
     method: 'POST', headers: headers(),
-    body: JSON.stringify({ agent_id: agentId, action, node_id: nodeId, cost }),
+    body: JSON.stringify({ agent_id: agentId, action, node_id: nodeId, tier_id: tierId }),
   });
   return parse<{ ok: boolean; queue_id?: number }>(r);
 }

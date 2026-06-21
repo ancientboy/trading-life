@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 import life_db
-from life_auth import resolve_account_id
+from life_auth import resolve_account_id, require_admin
 
 social_router = APIRouter()
 pvp_router = APIRouter()
@@ -416,28 +416,41 @@ async def active_events(account_id: str = Depends(resolve_account_id)):
 
 @social_router.post("/social/events/{event_id}/claim")
 async def claim_event(event_id: str, account_id: str = Depends(resolve_account_id)):
-    from life_game import load_user, save_user, _earn
+    from life_game import load_user, _earn
 
     ts = life_db.now_ms()
+    reward = 0
+    buff_type = ""
+    buff_value = 0
+    balance = 0
     with life_db._lock:
         with life_db._conn() as c:
-            ev = c.execute("SELECT * FROM npc_events WHERE id=? AND starts_at<=? AND ends_at>?", (event_id, ts, ts)).fetchone()
+            ev = c.execute(
+                "SELECT * FROM npc_events WHERE id=? AND starts_at<=? AND ends_at>?",
+                (event_id, ts, ts),
+            ).fetchone()
             if not ev:
                 return {"ok": False, "error": "活动已结束"}
-            if c.execute("SELECT 1 FROM npc_event_claims WHERE user_id=? AND event_id=?", (account_id, event_id)).fetchone():
+            if c.execute(
+                "SELECT 1 FROM npc_event_claims WHERE user_id=? AND event_id=?",
+                (account_id, event_id),
+            ).fetchone():
                 return {"ok": False, "error": "已领取"}
-    user = load_user(account_id)
-    reward = ev["reward_points"]
-    balance = _earn(user, reward)
-    save_user(account_id, user)
-    with life_db._lock:
-        with life_db._conn() as c:
             c.execute(
                 "INSERT INTO npc_event_claims (user_id, event_id, claimed_at) VALUES (?,?,?)",
                 (account_id, event_id, life_db.datetime.now(life_db.CST).isoformat()),
             )
+            reward = int(ev["reward_points"])
+            buff_type = ev["buff_type"]
+            buff_value = ev["buff_value"]
+            ok, balance = life_db._adjust_points_cursor(c, account_id, reward)
+            if not ok:
+                return {"ok": False, "error": "领取失败"}
+    user = load_user(account_id)
+    user["points"] = balance
+    life_db.save_user_points(account_id, balance)
     life_db.add_season_points(account_id, points=reward, social=5)
-    return {"ok": True, "balance": balance, "reward": reward, "buff_type": ev["buff_type"], "buff_value": ev["buff_value"]}
+    return {"ok": True, "balance": balance, "reward": reward, "buff_type": buff_type, "buff_value": buff_value}
 
 
 @social_router.post("/social/table-speak")
@@ -1160,7 +1173,8 @@ class DispatchEnqueueBody(BaseModel):
     agent_id: str
     action: str
     node_id: str = ""
-    cost: int = 0
+    tier_id: str = "a"
+    cost: int = 0  # 已废弃，服务端计价
 
 
 class TradingPkBody(BaseModel):
@@ -1623,23 +1637,21 @@ async def list_auctions():
 
 @pvp_router.post("/pvp/seats/{seat_id}/bid")
 async def bid_seat(seat_id: str, body: SeatBidBody, account_id: str = Depends(resolve_account_id)):
-    from life_game import load_user, save_user, _spend
-
-    user = load_user(account_id)
     ts = life_db.now_ms()
+    ends = ts + AUCTION_EXTEND_MS
     with life_db._lock:
         with life_db._conn() as c:
             auc = c.execute("SELECT * FROM seat_auctions WHERE seat_id=?", (seat_id,)).fetchone()
             min_bid = (auc["high_bid"] + AUCTION_MIN_BID) if auc else AUCTION_MIN_BID
             if body.amount < min_bid:
                 return {"ok": False, "error": f"出价至少 {min_bid}"}
-    if not _spend(user, body.amount):
-        save_user(account_id, user)
-        return {"ok": False, "error": "积分不足"}
-    save_user(account_id, user)
-    ends = ts + AUCTION_EXTEND_MS
-    with life_db._lock:
-        with life_db._conn() as c:
+            prev_bidder = auc["high_bidder"] if auc else None
+            prev_bid = int(auc["high_bid"]) if auc else 0
+            ok, balance = life_db._adjust_points_cursor(c, account_id, -body.amount)
+            if not ok:
+                return {"ok": False, "error": "积分不足"}
+            if prev_bidder and prev_bidder != account_id and prev_bid > 0:
+                life_db._adjust_points_cursor(c, prev_bidder, prev_bid)
             if auc:
                 c.execute(
                     "UPDATE seat_auctions SET high_bid=?, high_bidder=?, ends_at=? WHERE seat_id=?",
@@ -1650,20 +1662,26 @@ async def bid_seat(seat_id: str, body: SeatBidBody, account_id: str = Depends(re
                     "INSERT INTO seat_auctions (seat_id, activity, high_bid, high_bidder, ends_at) VALUES (?,?,?,?,?)",
                     (seat_id, "any", body.amount, account_id, ends),
                 )
-    return {"ok": True, "seat_id": seat_id, "bid": body.amount, "ends_at": ends, "balance": user["points"]}
+    return {"ok": True, "seat_id": seat_id, "bid": body.amount, "ends_at": ends, "balance": balance}
 
 
 @pvp_router.post("/pvp/dispatch/enqueue")
 async def enqueue_dispatch(body: DispatchEnqueueBody, account_id: str = Depends(resolve_account_id)):
+    from life_game import _dispatch_cost
+
+    tier_id = (body.tier_id or "a").strip().lower()
+    if tier_id not in ("a", "b", "c"):
+        tier_id = "a"
+    cost = _dispatch_cost(body.action, tier_id)
     ts = life_db.now_ms()
     with life_db._lock:
         with life_db._conn() as c:
             c.execute(
                 "INSERT INTO dispatch_queue (user_id, agent_id, action, node_id, cost, enqueued_at) VALUES (?,?,?,?,?,?)",
-                (account_id, body.agent_id, body.action, body.node_id, body.cost, ts),
+                (account_id, body.agent_id, body.action, body.node_id, cost, ts),
             )
             qid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
-    return {"ok": True, "queue_id": qid}
+    return {"ok": True, "queue_id": qid, "cost": cost}
 
 
 @pvp_router.get("/pvp/dispatch/queue")
@@ -1679,7 +1697,7 @@ async def get_dispatch_queue(account_id: str = Depends(resolve_account_id)):
 
 @pvp_router.post("/pvp/dispatch/process")
 async def process_dispatch_queue(account_id: str = Depends(resolve_account_id)):
-    from life_game import load_user, save_user, _spend, FACILITY_COSTS
+    from life_game import FACILITY_COSTS
 
     ts = life_db.now_ms()
     processed = []
@@ -1689,21 +1707,18 @@ async def process_dispatch_queue(account_id: str = Depends(resolve_account_id)):
                 "SELECT * FROM dispatch_queue WHERE user_id=? AND status='pending' ORDER BY enqueued_at ASC LIMIT 5",
                 (account_id,),
             ).fetchall()
-    for row in rows:
-        seats = life_db.get_all_seats()
-        # simplified: mark processed if any seat free for action
-        user = load_user(account_id)
-        cost = row["cost"] or FACILITY_COSTS.get(row["action"], 0)
-        if cost > 0 and not _spend(user, cost):
-            continue
-        save_user(account_id, user)
-        with life_db._lock:
-            with life_db._conn() as c:
+            for row in rows:
+                cost = int(row["cost"] or FACILITY_COSTS.get(row["action"], 0))
+                if cost > 0:
+                    ok, _ = life_db._adjust_points_cursor(c, account_id, -cost)
+                    if not ok:
+                        continue
                 c.execute(
                     "UPDATE dispatch_queue SET status='done', processed_at=? WHERE id=?",
                     (ts, row["id"]),
                 )
-        processed.append(dict(row))
+                processed.append(dict(row))
+    for _ in processed:
         life_db.add_season_points(account_id, social=1)
     return {"ok": True, "processed": processed}
 
@@ -1910,8 +1925,8 @@ async def buy_season_cosmetic(body: SeasonBuyBody, account_id: str = Depends(res
 
 
 @season_router.post("/season/settle")
-async def settle_season(account_id: str = Depends(resolve_account_id)):
-    """赛季结算 — 按排名发放奖励（赛季结束时调用）"""
+async def settle_season(account_id: str = Depends(require_admin)):
+    """赛季结算 — 仅管理员可触发，按排名给所有上榜用户发奖。"""
     from life_game import load_user, save_user, _earn
 
     season = life_db.get_active_season()
@@ -1921,23 +1936,33 @@ async def settle_season(account_id: str = Depends(resolve_account_id)):
     if ts < season["ends_at"]:
         return {"ok": False, "error": "赛季未结束", "ends_at": season["ends_at"]}
     rewards = {1: 500, 2: 300, 3: 200, 4: 100, 5: 100}
+    settled_count = 0
+    payout_summary: list[dict] = []
     with life_db._lock:
         with life_db._conn() as c:
+            if c.execute("SELECT status FROM seasons WHERE id=?", (season["id"],)).fetchone()["status"] == "ended":
+                return {"ok": False, "error": "赛季已结算"}
             rows = c.execute(
                 "SELECT user_id, points_earned FROM season_scores WHERE season_id=? AND settled=0 ORDER BY points_earned DESC LIMIT 10",
                 (season["id"],),
             ).fetchall()
             for i, r in enumerate(rows):
+                uid = r["user_id"]
                 reward = rewards.get(i + 1, 50)
-                c.execute("UPDATE season_scores SET settled=1, rank=? WHERE season_id=? AND user_id=?", (i + 1, season["id"], r["user_id"]))
+                c.execute(
+                    "UPDATE season_scores SET settled=1, rank=? WHERE season_id=? AND user_id=?",
+                    (i + 1, season["id"], uid),
+                )
+                if not str(uid).startswith(("npc_", "ai_")):
+                    ok, balance = life_db._adjust_points_cursor(c, uid, reward)
+                    if ok:
+                        payout_summary.append({"user_id": uid, "rank": i + 1, "reward": reward, "balance": balance})
+                settled_count += 1
             c.execute("UPDATE seasons SET status='ended' WHERE id=?", (season["id"],))
-    my_reward = 0
-    for i, r in enumerate(rows):
-        if r["user_id"] == account_id:
-            my_reward = rewards.get(i + 1, 50)
-            user = load_user(account_id)
-            _earn(user, my_reward)
-            save_user(account_id, user)
-            break
+    for item in payout_summary:
+        user = load_user(item["user_id"])
+        user["points"] = item["balance"]
+        save_user(item["user_id"], user)
     life_db._seed_engagement_data()
-    return {"ok": True, "settled": len(rows), "my_reward": my_reward}
+    my_reward = next((p["reward"] for p in payout_summary if p["user_id"] == account_id), 0)
+    return {"ok": True, "settled": settled_count, "my_reward": my_reward, "payouts": payout_summary}

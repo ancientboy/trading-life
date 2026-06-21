@@ -30,6 +30,7 @@ MAX_TRADING_CUSTOM_AGENTS = 3
 DAILY_TASK_DEFS = life_db.DAILY_TASK_DEFS
 
 ACTIVITY_REWARDS = {"rest": 10, "dine": 15, "massage": 25, "poker": 0}
+ACTIVITY_DAILY_LIMITS = {"rest": 15, "dine": 15, "massage": 10}
 FACILITY_COSTS = {"rest": 0, "dine": 0, "massage": 0, "poker": 0}
 DAILY_ALLOWANCE = 1000
 LEISURE_TIER_COSTS = {
@@ -175,6 +176,26 @@ def _spend(user: dict, amount: int) -> bool:
         return False
     user["points"] -= amount
     return True
+
+
+def _dispatch_cost(action: str, tier_id: str = "a") -> int:
+    if action in LEISURE_TIER_COSTS:
+        tiers = LEISURE_TIER_COSTS[action]
+        return int(tiers.get(tier_id, tiers.get("a", 0)))
+    return int(FACILITY_COSTS.get(action, 0))
+
+
+def _activity_daily_key() -> str:
+    return _today()
+
+
+def _activity_completions_today(user: dict) -> dict:
+    stats = user.setdefault("stats", {})
+    daily = stats.setdefault("activity_completions", {})
+    if daily.get("date") != _activity_daily_key():
+        daily.clear()
+        daily["date"] = _activity_daily_key()
+    return daily
 
 
 def _count_agents(custom: dict) -> tuple[int, int]:
@@ -432,7 +453,8 @@ class ActivityBody(BaseModel):
 
 class DispatchBody(BaseModel):
     action: str
-    cost: Optional[int] = None
+    tier_id: str = "a"
+    cost: Optional[int] = None  # 已废弃，服务端计价
 
 
 class ShopBuyBody(BaseModel):
@@ -525,7 +547,10 @@ async def life_state(account_id: str = Depends(resolve_account_id)):
 @router.post("/migrate")
 async def life_migrate(body: MigrateBody, account_id: str = Depends(resolve_account_id)):
     uid = _validate_user_id(account_id)
-    life_db.migrate_user(uid, body.points, body.last_idle_tick, body.custom_agents, body.shop_unlocks)
+    result = life_db.migrate_user(uid, body.points, body.last_idle_tick, body.custom_agents, body.shop_unlocks)
+    if not result.get("ok"):
+        user = load_user(uid)
+        return {"ok": False, "error": result.get("error", "migrate_failed"), **_public_state(user, uid)}
     user = load_user(uid)
     return {"ok": True, **_public_state(user, uid)}
 
@@ -558,13 +583,9 @@ async def life_daily_claim(account_id: str = Depends(resolve_account_id)):
 
 @router.post("/points/earn")
 async def life_earn(body: EarnBody, account_id: str = Depends(resolve_account_id)):
-    uid = _validate_user_id(account_id)
-    user = load_user(uid)
-    cap = 500
-    amount = min(max(0, body.amount), cap)
-    balance = _earn(user, amount, body.reason, uid)
-    save_user(uid, user)
-    return {"ok": True, "balance": balance, "earned": amount}
+    """已关闭 — 积分请通过任务、挂机、玩法等正当途径获取。"""
+    _validate_user_id(account_id)
+    raise HTTPException(403, "该接口已关闭")
 
 
 @router.post("/points/idle")
@@ -622,14 +643,26 @@ async def life_activity_complete(body: ActivityBody, account_id: str = Depends(r
     user = load_user(uid)
     if not body.user_initiated:
         return {"ok": True, "balance": user["points"], "earned": 0}
-    reward = ACTIVITY_REWARDS.get(body.activity, 0)
+    activity = (body.activity or "").strip()
+    if activity not in ACTIVITY_REWARDS or activity == "poker":
+        return {"ok": False, "balance": user["points"], "earned": 0, "error": "invalid_activity"}
+    reward = ACTIVITY_REWARDS.get(activity, 0)
+    if reward <= 0:
+        return {"ok": True, "balance": user["points"], "earned": 0}
+    daily = _activity_completions_today(user)
+    limit = ACTIVITY_DAILY_LIMITS.get(activity, 10)
+    done = int(daily.get(activity, 0))
+    if done >= limit:
+        save_user(uid, user)
+        return {"ok": False, "balance": user["points"], "earned": 0, "error": "daily_limit"}
+    daily[activity] = done + 1
     balance = _earn(user, reward, account_id=uid)
     stats = user.setdefault("stats", {})
     acts = stats.setdefault("activities", {})
-    acts[body.activity] = acts.get(body.activity, 0) + 1
+    acts[activity] = acts.get(activity, 0) + 1
     dt = user.setdefault("daily_tasks", {})
     for tdef in DAILY_TASK_DEFS:
-        if tdef.get("kind") == "activity" and tdef.get("activity") == body.activity:
+        if tdef.get("kind") == "activity" and tdef.get("activity") == activity:
             task = dt.get(tdef["id"], {"progress": 0, "claimed": False})
             task["progress"] = min(tdef["target"], task.get("progress", 0) + 1)
             dt[tdef["id"]] = task
@@ -641,7 +674,10 @@ async def life_activity_complete(body: ActivityBody, account_id: str = Depends(r
 async def life_dispatch(body: DispatchBody, account_id: str = Depends(resolve_account_id)):
     uid = _validate_user_id(account_id)
     user = load_user(uid)
-    cost = body.cost if body.cost is not None else FACILITY_COSTS.get(body.action, 0)
+    tier_id = (body.tier_id or "a").strip().lower()
+    if tier_id not in ("a", "b", "c"):
+        tier_id = "a"
+    cost = _dispatch_cost(body.action, tier_id)
     if cost > 0 and not _spend(user, cost):
         save_user(uid, user)
         return {"ok": False, "balance": user["points"], "error": "insufficient", "cost": cost}
@@ -984,7 +1020,8 @@ async def feedback_agent_poker_style(agent_id: str, body: AgentPokerFeedbackBody
 
 
 @router.get("/seats")
-async def life_get_seats():
+async def life_get_seats(account_id: str = Depends(resolve_account_id)):
+    _validate_user_id(account_id)
     return {"ok": True, "seats": life_db.get_all_seats()}
 
 
@@ -996,8 +1033,8 @@ async def life_claim_seat(body: SeatClaimBody, account_id: str = Depends(resolve
 
 @router.post("/seats/release")
 async def life_release_seat(body: SeatReleaseBody, account_id: str = Depends(resolve_account_id)):
-    _validate_user_id(account_id)
-    return life_db.release_seat(body.seat_id, body.agent_id)
+    uid = _validate_user_id(account_id)
+    return life_db.release_seat(body.seat_id, uid, body.agent_id)
 
 
 def JSONResponse_error(msg: str) -> dict:

@@ -19,7 +19,7 @@ router = APIRouter()
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,20}$")
 _PBKDF2_ROUNDS = 260_000
 ADMIN_USERNAME = "admin"
-ADMIN_DEFAULT_PASSWORD = os.environ.get("LIFE_ADMIN_PASSWORD", "admin1234")
+ALLOW_HEADER_USER_ID = os.environ.get("LIFE_ALLOW_HEADER_USER_ID", "").strip() in ("1", "true", "yes")
 
 
 def hash_password(password: str) -> str:
@@ -49,9 +49,15 @@ def ensure_admin_account() -> None:
     """确保 admin 账户存在（系统默认 Agent 归属 admin）"""
     if life_db.get_account_by_username(ADMIN_USERNAME):
         return
-    res = life_db.create_account(ADMIN_USERNAME, hash_password(ADMIN_DEFAULT_PASSWORD), "管理员")
+    pw = (os.environ.get("LIFE_ADMIN_PASSWORD") or "").strip()
+    if not pw:
+        pw = secrets.token_urlsafe(16)
+        print(f"[life_auth] 未设置 LIFE_ADMIN_PASSWORD，已生成一次性 admin 密码: {pw}")
+    elif len(pw) < 8:
+        print("[life_auth] 警告: LIFE_ADMIN_PASSWORD 过短，建议至少 8 位")
+    res = life_db.create_account(ADMIN_USERNAME, hash_password(pw), "管理员")
     if res.get("ok"):
-        print(f"[life_auth] 已创建 admin 账户，默认密码见 LIFE_ADMIN_PASSWORD 环境变量")
+        print("[life_auth] 已创建 admin 账户")
 
 
 def resolve_account_id(
@@ -66,12 +72,23 @@ def resolve_account_id(
         if account_id:
             return account_id
         raise HTTPException(401, "登录已过期，请重新登录")
-    if x_life_user_id:
+    if ALLOW_HEADER_USER_ID and x_life_user_id:
         uid = x_life_user_id.strip()
         if uid and len(uid) <= 64:
             life_db.ensure_user(uid)
             return uid
     raise HTTPException(401, "请先登录")
+
+
+def is_admin_account(account_id: str) -> bool:
+    acc = life_db.get_account_by_id(account_id)
+    return bool(acc and str(acc.get("username", "")).lower() == ADMIN_USERNAME)
+
+
+async def require_admin(account_id: str = Depends(resolve_account_id)) -> str:
+    if not is_admin_account(account_id):
+        raise HTTPException(403, "需要管理员权限")
+    return account_id
 
 
 class RegisterBody(BaseModel):

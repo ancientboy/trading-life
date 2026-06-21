@@ -734,7 +734,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       if (alreadyAtService || enRouteToService) {
         if (!skipCost && cost > 0) {
-          const disp = await lifeDispatch(action, cost);
+          const disp = await lifeDispatch(action, cost, tierId);
           if (!disp.ok) {
             get().addMessage(`积分不足，需要 ${cost} 积分（当前 ${disp.balance}）`);
             return false;
@@ -793,13 +793,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       if (!hasFreeSeat(action, id, mergedForSeat, wallNow)) {
         const queueCost = skipCost ? 0 : (cost > 0 ? cost : (FACILITY_BASE_COST[action] ?? 0));
-        await enqueueDispatch(id, action, opts?.nodeId || '', queueCost);
+        await enqueueDispatch(id, action, opts?.nodeId || '', queueCost, tierId);
         get().addMessage(`${char0.data.name} 座位已满，已加入派遣队列（未扣积分）`);
         return true;
       }
 
       if (!skipCost && cost > 0) {
-        const disp = await lifeDispatch(action, cost);
+        const disp = await lifeDispatch(action, cost, tierId);
         if (!disp.ok) {
           get().addMessage(`积分不足，需要 ${cost} 积分（当前 ${disp.balance}）`);
           return false;
