@@ -18,6 +18,7 @@ export interface ArenaDisplayData {
   endPrice?: number;
   pctChange?: number;
   secondsLeft?: number;
+  settling?: boolean;
   bettingOpen?: boolean;
   poolUp?: number;
   poolDown?: number;
@@ -255,7 +256,9 @@ function drawKlineScreen(
     ctx.font = `${Math.max(7, ws(8))}px Inter,sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText(
-      `涨池 ${data.poolUp ?? 0} · 跌池 ${data.poolDown ?? 0}${data.secondsLeft != null ? ` · ${data.secondsLeft}s` : ''}`,
+      `涨池 ${data.poolUp ?? 0} · 跌池 ${data.poolDown ?? 0}${
+        data.settling ? ' · 结算中' : data.secondsLeft != null ? ` · ${data.secondsLeft}s` : ''
+      }`,
       c.x, c.y + sh / 2 - ws(8),
     );
   }

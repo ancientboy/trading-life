@@ -729,7 +729,7 @@ async def _start_trading_tick_loop() -> None:
     async def _loop() -> None:
         await tick_trading_rounds()
         while True:
-            await asyncio.sleep(18)
+            await asyncio.sleep(8)
             await tick_trading_rounds()
 
     asyncio.create_task(_loop())

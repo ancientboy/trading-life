@@ -8,6 +8,7 @@ import {
   type ArenaRoundState, type ArenaWinRateEntry, type ArenaEntry,
   type PkResultInfo,
 } from '../../lib/lifeEngagementApi';
+import { guessClockFromRound } from '../../lib/guessClock';
 import { shareOrCopy, shareResultMessage, appBaseUrl } from '../../lib/shareUtils';
 
 const RANK_LABELS: Record<number, string> = { 1: '🥇 冠军', 2: '🥈 亚军', 3: '🥉 季军' };
@@ -44,6 +45,12 @@ export function TradingEventsPanel() {
   const [specRank, setSpecRank] = useState(1);
   const [busy, setBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
+  const [clockNow, setClockNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setClockNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const shownGuessRef = useRef<Set<string>>(new Set());
   const shownArenaRef = useRef<Set<string>>(new Set());
@@ -244,6 +251,10 @@ export function TradingEventsPanel() {
   const pctChange = guess && guess.start_price
     ? ((Number(guess.end_price || guess.start_price) - Number(guess.start_price)) / Number(guess.start_price) * 100)
     : 0;
+  const guessClock = guessClockFromRound(guess, clockNow);
+  const guessTimer = guessClock.settling
+    ? '结算中'
+    : `${guessClock.bettingOpen ? guessClock.bettingSecondsLeft : guessClock.secondsLeft}s`;
 
   return (
     <div style={{ color: '#3d3530', fontSize: 13 }}>
@@ -298,7 +309,7 @@ export function TradingEventsPanel() {
         <div style={{ padding: 12, background: '#faf6ef', borderRadius: 10, border: '1px solid #ebe4d8' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: 700 }}>BTC 猜涨跌</span>
-            <span style={{ fontFamily: 'monospace', color: '#3a6bb5' }}>{guess.seconds_left}s</span>
+            <span style={{ fontFamily: 'monospace', color: '#3a6bb5' }}>{guessTimer}</span>
           </div>
           <div style={{ marginTop: 8, fontSize: 12 }}>
             开盘价 <b>${Math.round(Number(guess.start_price)).toLocaleString()}</b>
@@ -320,7 +331,7 @@ export function TradingEventsPanel() {
               已押 {guess.my_bet.direction === 'up' ? '涨' : '跌'} · {guess.my_bet.stake} 积分
               {guess.my_bet.payout ? ` · 赢得 ${guess.my_bet.payout}` : ''}
             </div>
-          ) : guess.betting_open ? (
+          ) : guessClock.bettingOpen ? (
             <>
               <input type="range" min={10} max={500} step={10} value={guessStake}
                 onChange={e => setGuessStake(Number(e.target.value))} style={{ width: '100%', marginTop: 10 }} />
@@ -333,7 +344,11 @@ export function TradingEventsPanel() {
               </div>
             </>
           ) : (
-            <p style={{ marginTop: 10, fontSize: 11, color: '#9a8b7a' }}>封盘中… 等待 {guess.seconds_left}s 后结算</p>
+            <p style={{ marginTop: 10, fontSize: 11, color: '#9a8b7a' }}>
+              {guessClock.settling
+                ? '结算中… 约数秒内开新局'
+                : `封盘中… 等待 ${guessClock.secondsLeft}s 后结算`}
+            </p>
           )}
           {lastGuess && (
             <p style={{ marginTop: 10, fontSize: 10, color: '#9a8b7a' }}>

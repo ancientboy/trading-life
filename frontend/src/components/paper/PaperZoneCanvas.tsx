@@ -4,6 +4,7 @@ import { tickCharacterSim } from '../../lib/characterSimLoop';
 import { WORLD_MAP, ZONE_CAMERA } from '../../lib/worldMap';
 import { hitTestPaperFacilities, getAgentPaperPos, ZONE_NPCS } from '../../lib/zoneFurniture';
 import { ARENA_PIT, hitTestArenaPod, type ArenaDisplayData } from './arenaDraw';
+import { guessClockFromRound } from '../../lib/guessClock';
 import { fetchMarketKlines } from '../../lib/lifeApi';
 import { joinArena } from '../../lib/lifeEngagementApi';
 import { ZONE_LAYOUTS } from '../../lib/zoneLayouts';
@@ -48,6 +49,12 @@ export function PaperZoneCanvas() {
   const [arenaPulseSlots, setArenaPulseSlots] = useState<Set<number>>(new Set());
   const [hoverPodId, setHoverPodId] = useState<string | null>(null);
   const [klineCloses, setKlineCloses] = useState<number[]>([]);
+  const [clockNow, setClockNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setClockNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const flyToZone = useGameStore(s => s.flyToZone);
   const selectAgent = useGameStore(s => s.selectAgent);
@@ -121,18 +128,21 @@ export function PaperZoneCanvas() {
       const start = guessRound?.start_price;
       const end = guessRound?.end_price;
       const price = btc || end || start;
+      const gc = guessClockFromRound(guessRound, clockNow);
+      const displaySeconds = gc.settling
+        ? 0
+        : (gc.bettingOpen ? gc.bettingSecondsLeft : gc.secondsLeft);
       arenaDisplay = {
         btcPrice: price,
         startPrice: start,
         endPrice: end,
         pctChange: price && start ? ((price - start) / start) * 100 : undefined,
-        secondsLeft: guessRound?.seconds_left,
-        bettingOpen: guessRound?.betting_open,
+        secondsLeft: displaySeconds,
+        settling: gc.settling,
+        bettingOpen: gc.bettingOpen,
         poolUp: guessRound?.pool_up,
         poolDown: guessRound?.pool_down,
-        statusLabel: guessRound
-          ? (guessRound.betting_open ? '押注中' : guessRound.status === 'locked' ? '封盘中' : '进行中')
-          : (btc ? 'LIVE' : undefined),
+        statusLabel: gc.statusLabel,
         klineCloses: klineCloses.length >= 4 ? klineCloses : undefined,
       };
     }
@@ -164,7 +174,7 @@ export function PaperZoneCanvas() {
         getStoredAccount()?.id, t,
       );
     }
-  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerTableDealingUntil, pokerRoom, zoneSkins, arenaLive, guessRound, klineCloses, arenaPulseSlots, hoverPodId]);
+  }, [activeZone, agents, selectedAgentId, cameraZoom, dayMode, getPan, hoverFacilityId, ticker, npcBubble, agentBubble, pokerTableDealingUntil, pokerRoom, zoneSkins, arenaLive, guessRound, klineCloses, arenaPulseSlots, hoverPodId, clockNow]);
 
   useEffect(() => {
     let last = performance.now();

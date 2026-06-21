@@ -248,6 +248,7 @@ async def settle_leverage_bets(c, round_id: str, winner_side: str) -> None:
     rows = [dict(r) for r in c.execute(
         "SELECT * FROM leverage_bets WHERE round_id=? AND payout=0", (round_id,)
     ).fetchall()]
+    plans: list[tuple[dict, int, bool]] = []
     for b in rows:
         uid = b["user_id"]
         won = winner_side != "tie" and b["direction"] == winner_side
@@ -255,13 +256,17 @@ async def settle_leverage_bets(c, round_id: str, winner_side: str) -> None:
         if won:
             payout = int(b["profit_stake"] * int(b["leverage"]))
             payout = _cap_daily_win(uid, payout)
-            if payout > 0:
-                user = load_user(uid)
-                _earn(user, payout)
-                save_user(uid, user)
-                record_personality_event(uid, "guess_win")
-        clear_pending_leverage(uid)
+        plans.append((b, payout, won))
         c.execute("UPDATE leverage_bets SET payout=? WHERE id=?", (payout, b["id"]))
+    c.commit()
+    for b, payout, won in plans:
+        uid = b["user_id"]
+        if won and payout > 0:
+            user = load_user(uid)
+            _earn(user, payout)
+            save_user(uid, user)
+            record_personality_event(uid, "guess_win")
+        clear_pending_leverage(uid)
         record_personality_event(uid, "guess_leverage", leverage=int(b["leverage"]))
 
 
@@ -272,15 +277,14 @@ async def settle_pk_rooms(c, round_id: str, winner_side: str) -> list[dict]:
     rows = [dict(r) for r in c.execute(
         "SELECT * FROM guess_pk_rooms WHERE round_id=? AND status='open'", (round_id,)
     ).fetchall()]
+    refunds: list[tuple[str, int]] = []
+    wins: list[tuple[dict, str, int]] = []
     for room in rows:
         if winner_side == "tie":
             for uid in (room["user_a"], room["user_b"]):
                 if uid.startswith("npc_"):
                     continue
-                user = load_user(uid)
-                refund = int(room["stake"] * 0.9)
-                _earn(user, refund)
-                save_user(uid, user)
+                refunds.append((uid, int(room["stake"] * 0.9)))
             c.execute(
                 "UPDATE guess_pk_rooms SET status='settled', winner_id='', settled_at=? WHERE id=?",
                 (life_db.now_ms(), room["id"]),
@@ -292,27 +296,36 @@ async def settle_pk_rooms(c, round_id: str, winner_side: str) -> list[dict]:
         winner = room["user_a"] if win_a else (room["user_b"] if win_b else "")
         distributable = int(room["stake"] * 2 * (1 - PK_RAKE))
         if winner and not str(winner).startswith("npc_"):
-            user = load_user(winner)
-            won = _cap_daily_win(winner, distributable)
-            if won > 0:
-                _earn(user, won)
-                save_user(winner, user)
-            record_personality_event(winner, "pk_win")
-            loser = room["user_b"] if winner == room["user_a"] else room["user_a"]
-            if loser and not str(loser).startswith("npc_"):
-                record_personality_event(loser, "pk_loss")
-            streak = _load_stats(winner).get("daily_modes", {}).get("pk_streak", 0)
-            if streak >= 3:
-                broadcasts.append({
-                    "type": "pk_streak",
-                    "user_id": winner,
-                    "display_name": _display_name(winner),
-                    "streak": streak,
-                })
+            wins.append((room, winner, distributable))
         c.execute(
             "UPDATE guess_pk_rooms SET status='settled', winner_id=?, settled_at=? WHERE id=?",
             (winner, life_db.now_ms(), room["id"]),
         )
+    c.commit()
+
+    for uid, refund in refunds:
+        user = load_user(uid)
+        _earn(user, refund)
+        save_user(uid, user)
+
+    for room, winner, distributable in wins:
+        user = load_user(winner)
+        won = _cap_daily_win(winner, distributable)
+        if won > 0:
+            _earn(user, won)
+            save_user(winner, user)
+        record_personality_event(winner, "pk_win")
+        loser = room["user_b"] if winner == room["user_a"] else room["user_a"]
+        if loser and not str(loser).startswith("npc_"):
+            record_personality_event(loser, "pk_loss")
+        streak = _load_stats(winner).get("daily_modes", {}).get("pk_streak", 0)
+        if streak >= 3:
+            broadcasts.append({
+                "type": "pk_streak",
+                "user_id": winner,
+                "display_name": _display_name(winner),
+                "streak": streak,
+            })
     return broadcasts
 
 
@@ -674,15 +687,19 @@ async def settle_comeback_bets(c, round_id: str, winner_side: str) -> None:
     rows = [dict(r) for r in c.execute(
         "SELECT * FROM comeback_bets WHERE round_id=? AND payout=0", (round_id,)
     ).fetchall()]
+    plans: list[tuple[dict, int, bool]] = []
     for b in rows:
+        won = winner_side != "tie" and b["direction"] == winner_side
+        payout = int(b["stake"] * COMEBACK_LEVERAGE) if won else 0
+        plans.append((b, payout, won))
+        c.execute("UPDATE comeback_bets SET payout=? WHERE id=?", (payout, b["id"]))
+    c.commit()
+    for b, payout, won in plans:
         uid = b["user_id"]
         user = load_user(uid)
         stats = user.get("stats") or {}
         cb = stats.get("comeback", {})
-        won = winner_side != "tie" and b["direction"] == winner_side
-        payout = 0
         if won:
-            payout = int(b["stake"] * COMEBACK_LEVERAGE)
             cb["balance"] = payout
             if payout >= 200:
                 cb["active"] = False
@@ -693,7 +710,6 @@ async def settle_comeback_bets(c, round_id: str, winner_side: str) -> None:
         stats["comeback"] = cb
         user["stats"] = stats
         save_user(uid, user)
-        c.execute("UPDATE comeback_bets SET payout=? WHERE id=?", (payout, b["id"]))
 
 
 @modes_router.get("/pvp/trading/personality")
