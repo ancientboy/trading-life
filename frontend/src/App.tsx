@@ -7,6 +7,9 @@ import { fetchOverview, fetchTicker } from './lib/api';
 import { lifeSessionStart } from './lib/lifeApi';
 import { isLoggedIn, getStoredAccount } from './lib/lifeAuth';
 import { syncMood } from './lib/lifeEngagementApi';
+import {
+  startLifeSocket, stopLifeSocket, syncLifeSocketSubscriptions, runLifeSocketFallbackSync,
+} from './lib/lifeSocket';
 import { clearUrlParams, parseDeepLink, persistDeepLink } from './lib/shareUtils';
 
 export default function App() {
@@ -70,6 +73,13 @@ export default function App() {
     const tick = () => fetchTicker().then(setTicker).catch(() => {});
     pollSystem(); pollPortfolio(); tick();
     useGameStore.getState().syncTradingLive().catch(() => {});
+    startLifeSocket();
+    const unsubSocket = useGameStore.subscribe((state, prev) => {
+      const roomChanged = state.pokerRoom?.id !== prev.pokerRoom?.id
+        || state.pokerRoom?.status !== prev.pokerRoom?.status
+        || state.pokerSpectateRoom?.id !== prev.pokerSpectateRoom?.id;
+      if (roomChanged) syncLifeSocketSubscriptions();
+    });
     const flashInvite = sessionStorage.getItem('tl_flash_invite');
     if (flashInvite) {
       sessionStorage.removeItem('tl_flash_invite');
@@ -94,31 +104,25 @@ export default function App() {
       }));
       if (agents.length) syncMood(agents).catch(() => {});
     }, 30000);
-    const pokerPoll = setInterval(() => {
-      const st = useGameStore.getState();
-      if (st.activeZone !== 'casino') return;
-      if (st.pokerSpectateRoom) return;
-      if (st.pokerRoom?.id && st.pokerRoom.status === 'waiting') {
-        st.syncPokerRoom().catch(() => {});
-      } else {
-        st.restorePokerRoom().catch(() => {});
-      }
-    }, 4000);
-    const tradingPoll = setInterval(() => {
+    const wsFallbackPoll = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        useGameStore.getState().syncTradingLive().catch(() => {});
+        runLifeSocketFallbackSync();
       }
-    }, 5000);
+    }, 15000);
     const onVis = () => {
       if (document.visibilityState === 'visible') {
         lifeSessionStart().catch(() => {});
         useGameStore.setState({ lastIdleClientTick: 0 });
+        syncLifeSocketSubscriptions();
+        runLifeSocketFallbackSync();
       }
     };
     document.addEventListener('visibilitychange', onVis);
     return () => {
-      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f); clearInterval(pokerPoll); clearInterval(tradingPoll);
+      clearInterval(a); clearInterval(g); clearInterval(b); clearInterval(c); clearInterval(d); clearInterval(e); clearInterval(f); clearInterval(wsFallbackPoll);
       document.removeEventListener('visibilitychange', onVis);
+      unsubSocket();
+      stopLifeSocket();
     };
   }, [loggedIn, initAgents, syncLifeState, syncSeats, syncEngagement, updateFromOverview, syncUserPortfolio, setTicker, addMessage, processPendingDeepLink]);
 

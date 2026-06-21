@@ -12,6 +12,23 @@ from life_auth import resolve_account_id
 
 events_router = APIRouter()
 
+
+def _ws_notify_arena() -> None:
+    try:
+        from life_ws import schedule_arena_broadcast
+        schedule_arena_broadcast()
+    except Exception:
+        pass
+
+
+def _ws_notify_guess() -> None:
+    try:
+        from life_ws import schedule_guess_broadcast
+        schedule_guess_broadcast()
+    except Exception:
+        pass
+
+
 GUESS_SYMBOL = "BTCUSDT"
 GUESS_DURATION_MS = 60_000
 GUESS_BET_WINDOW_MS = 50_000
@@ -727,6 +744,7 @@ async def place_guess_bet(body: GuessBetBody, account_id: str = Depends(resolve_
 
     life_db.add_season_points(account_id, social=2)
     life_db.bump_daily_task(account_id, "guess")
+    _ws_notify_guess()
     return {"ok": True, "current": payload, "balance": load_user(account_id)["points"]}
 
 
@@ -807,6 +825,7 @@ async def join_arena(body: ArenaJoinBody, account_id: str = Depends(resolve_acco
 
     life_db.add_season_points(account_id, social=3)
     mode_label = (ARENA_MODES.get(rd.get("duration_mode") or "classic") or {}).get("label", "")
+    _ws_notify_arena()
     return {
         "ok": True,
         "message": f"{meta.get('name')} 已报名 · {mode_label} · AI 判定 {direction} · {lev}x · 30s 多轮短线",
@@ -862,6 +881,7 @@ async def arena_spectate_bet(body: ArenaSpectateBetBody, account_id: str = Depen
             payload = _arena_payload(c, rd2, account_id)
 
     rank_label = {1: "冠军", 2: "亚军", 3: "季军"}.get(pick_rank, f"第{pick_rank}名")
+    _ws_notify_arena()
     return {
         "ok": True,
         "message": f"已押 {rank_label} · {stake} 积分",
