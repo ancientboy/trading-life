@@ -81,9 +81,9 @@ export default function App() {
     } else {
       store().addMessage('欢迎来到交易人生 · 登录后开始挂机与派遣');
     }
-    const a = setInterval(pollSystem, 8000);
+    const a = setInterval(pollSystem, 15000);
     const g = setInterval(pollPortfolio, 45000);
-    const b = setInterval(tick, 10000);
+    const b = setInterval(tick, 15000);
     const c = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       store().syncSeats();

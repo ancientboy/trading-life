@@ -1,4 +1,5 @@
 import { dedupeAsync, throttleAsync } from './pollGuard';
+import { getAuthToken } from './lifeAuth';
 
 const API = '/trading/api/life';
 
