@@ -43,6 +43,7 @@ import {
   DEFAULT_ZONE_SKINS, effectiveZoneSkin, normalizeZoneSkins, parseZoneSkinValue,
   type SkinZone,
 } from '../lib/zoneSkins';
+import { resolveShopCatalog, SHOP_CATALOG_FALLBACK } from '../lib/shopCatalog';
 
 let seatSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -385,7 +386,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   dailyDate: '',
   seatOccupancy: {},
   shopUnlocks: [],
-  shopCatalog: [],
+  shopCatalog: SHOP_CATALOG_FALLBACK,
   zoneSkins: { ...DEFAULT_ZONE_SKINS },
   facilityCosts: { ...FACILITY_BASE_COST },
   dailyAllowanceClaimed: false,
@@ -526,10 +527,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
         break;
     }
   },
-  openModal: (id) => set(s => ({
-    activeModal: id,
-    rightPanelCollapsed: PANEL_COLLAPSING_MODALS.includes(id) ? true : s.rightPanelCollapsed,
-  })),
+  openModal: (id) => {
+    if (id === 'shop') {
+      void get().syncLifeState();
+    }
+    set(s => ({
+      activeModal: id,
+      rightPanelCollapsed: PANEL_COLLAPSING_MODALS.includes(id) ? true : s.rightPanelCollapsed,
+    }));
+  },
   openWorkshop: (mode = 'list') => set({ activeModal: 'workshop', workshopMode: mode, rightPanelCollapsed: true }),
   closeModal: () => set({
     activeModal: null, workshopMode: 'list', pokerHandResult: null,
@@ -1354,7 +1360,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       dailyTaskDefs: state.daily_task_defs ?? get().dailyTaskDefs,
       dailyDate: state.daily_date ?? get().dailyDate,
       shopUnlocks,
-      shopCatalog: state.shop_catalog ?? get().shopCatalog,
+      shopCatalog: resolveShopCatalog(state.shop_catalog ?? get().shopCatalog),
       zoneSkins,
       facilityCosts: state.facility_costs ?? get().facilityCosts,
       dailyAllowanceClaimed: state.daily_allowance?.claimed_today ?? get().dailyAllowanceClaimed,

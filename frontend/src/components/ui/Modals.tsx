@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useGameStore, type ModalId } from '../../store/useGameStore';
@@ -275,10 +275,21 @@ function ShopPanel() {
   const shopCatalog = useGameStore(s => s.shopCatalog);
   const shopUnlocks = useGameStore(s => s.shopUnlocks);
   const buyShopItem = useGameStore(s => s.buyShopItem);
+  const syncLifeState = useGameStore(s => s.syncLifeState);
   const addMessage = useGameStore(s => s.addMessage);
-  const hasZoneSkins = shopUnlocks.some(id => id.startsWith('zone_skin_') || id.startsWith('skin_'));
-  const [tab, setTab] = useState<'buy' | 'scene'>(hasZoneSkins ? 'scene' : 'buy');
+  const ownedZonePackCount = shopUnlocks.filter(id => id.startsWith('zone_skin_') || id.startsWith('skin_')).length;
+  const [tab, setTab] = useState<'buy' | 'scene'>('buy');
   const [buyBusy, setBuyBusy] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSyncing(true);
+    void syncLifeState().finally(() => {
+      if (!cancelled) setSyncing(false);
+    });
+    return () => { cancelled = true; };
+  }, [syncLifeState]);
 
   const agentItems = shopCatalog.filter(i => i.type === 'color' || i.type === 'hat');
   const speciesItems = shopCatalog.filter(i => isSpeciesShopItem(i) && !i.legacy);
@@ -324,6 +335,9 @@ function ShopPanel() {
     );
   };
 
+  const buyItemCount = agentItems.length + speciesItems.length + outfitItems.length
+    + niumaOutfitItems.length + hairItems.length + zoneItems.length + legacyZoneItems.length;
+
   return (
     <div style={{ color: '#3d3530', maxHeight: 520, overflowY: 'auto' }}>
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
@@ -335,15 +349,36 @@ function ShopPanel() {
           color: tab === 'scene' ? '#fff' : undefined,
         }}
           onClick={() => setTab('scene')}>
-          🎨 场景装扮{hasZoneSkins ? ' ✓' : ''}
+          🎨 场景装扮{ownedZonePackCount > 0 ? ` (${ownedZonePackCount})` : ''}
         </button>
       </div>
 
+      {syncing && (
+        <p style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 10 }}>正在同步商城与已购记录…</p>
+      )}
+
       {tab === 'scene' ? (
-        <SceneSkinsPanel compact />
+        <>
+          {ownedZonePackCount === 0 && (
+            <div style={{ padding: 10, background: '#fff8e8', borderRadius: 8, marginBottom: 10, fontSize: 11, color: '#8a6a28' }}>
+              暂无已购区域皮肤。请切到「购买商品」购买区域皮肤包；已购记录保存在账户中，刷新后会自动恢复。
+            </div>
+          )}
+          <SceneSkinsPanel compact />
+        </>
       ) : (
         <>
           <div style={{ fontSize: 12, color: '#d4af37', marginBottom: 12 }}>当前积分：{points}</div>
+
+          {buyItemCount === 0 && !syncing && (
+            <div style={{ padding: 12, background: '#fff8e8', borderRadius: 8, marginBottom: 12, fontSize: 12, color: '#8a6a28' }}>
+              商品列表加载异常，请
+              <button type="button" className="ui-btn" style={{ marginLeft: 6, fontSize: 11, padding: '2px 8px' }}
+                onClick={() => { setSyncing(true); void syncLifeState().finally(() => setSyncing(false)); }}>
+                重新同步
+              </button>
+            </div>
+          )}
 
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Agent 装扮</div>
           {agentItems.map(renderShopRow)}
