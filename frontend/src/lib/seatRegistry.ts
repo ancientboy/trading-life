@@ -118,6 +118,8 @@ export function hasFreeSeat(activity: string, agentId: string, occupied: SeatMap
 
 const LOCAL_SEAT_ACTIVITIES = new Set(['dine', 'massage', 'poker', 'rest', 'desk']);
 
+const VALID_SEAT_IDS = new Set(allSeatIds());
+
 function agentOccupiesSeat(char: CharState): boolean {
   if (char.isWalking || char.inTransit) return false;
   if (char.travelIntent && !char.activity) return false;
@@ -133,11 +135,14 @@ export function mergeLocalSeatOccupancy(
   agents: Record<string, CharState>,
   nowMs = seatNowMs(),
 ): SeatMap {
+  const localAgentIds = new Set(Object.keys(agents));
   const merged: SeatMap = {};
   for (const [seatId, occ] of Object.entries(serverSeats)) {
-    if (occ.until_ts > 0 && occ.until_ts >= nowMs) {
-      merged[seatId] = occ;
-    }
+    if (!VALID_SEAT_IDS.has(seatId)) continue;
+    if (occ.until_ts <= 0 || occ.until_ts < nowMs) continue;
+    // 服务端残留占座：本地已无该 Agent 时忽略（避免「视觉空座但 0/4 满」）
+    if (occ.agent_id && !localAgentIds.has(occ.agent_id)) continue;
+    merged[seatId] = occ;
   }
   for (const char of Object.values(agents)) {
     if (!agentOccupiesSeat(char)) continue;

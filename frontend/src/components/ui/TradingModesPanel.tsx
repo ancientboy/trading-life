@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
+import { dedupeAsync } from '../../lib/pollGuard';
 import {
   fetchTradingModes, placeLeverageBet, placePkBet, joinFaction,
   fetchComebackStatus, placeComebackBet, fetchPkStreakBoard,
@@ -41,11 +42,13 @@ export function TradingModesPanel() {
   };
 
   const refresh = useCallback(async () => {
+    if (document.visibilityState !== 'visible') return;
     setLoading(true);
     setLoadError(null);
     try {
       const [m, sb] = await Promise.all([
-        fetchTradingModes(), fetchPkStreakBoard(),
+        dedupeAsync('trading-modes', () => fetchTradingModes()),
+        dedupeAsync('pk-streak', () => fetchPkStreakBoard()),
       ]);
       if (m.ok) setModes(m);
       else setLoadError(m.error || '玩法数据加载失败');
@@ -59,7 +62,7 @@ export function TradingModesPanel() {
 
   useEffect(() => {
     void refresh();
-    const id = setInterval(() => void refresh(), 6000);
+    const id = setInterval(() => void refresh(), 12000);
     return () => clearInterval(id);
   }, [refresh]);
 

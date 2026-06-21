@@ -1,5 +1,4 @@
-import { getAuthToken } from './lifeAuth';
-import { dedupeAsync } from './pollGuard';
+import { dedupeAsync, throttleAsync } from './pollGuard';
 
 const API = '/trading/api/life';
 
@@ -125,13 +124,14 @@ export async function agentBrainSpeak(opts: {
   post_to_chat?: boolean;
   remember?: boolean;
 }) {
-  const r = await fetch(`${API}/social/agent-brain/speak`, {
-    method: 'POST', headers: headers(), body: JSON.stringify(opts),
-  });
-  return parse<{
-    ok: boolean; line?: string;
-    chat?: { id: number; body: string; agent_id: string; created_at: number };
-  }>(r);
+  return throttleAsync(`brain-speak:${opts.agent_id}`, 8000, () =>
+    dedupeAsync(`brain-speak:${opts.agent_id}`, () =>
+      fetchJson<{
+        ok: boolean; line?: string;
+        chat?: { id: number; body: string; agent_id: string; created_at: number };
+      }>(`${API}/social/agent-brain/speak`, {
+        method: 'POST', headers: headers(), body: JSON.stringify(opts),
+      }, 12000)));
 }
 
 export async function agentBrainDialogue(opts: {

@@ -87,4 +87,12 @@ describe('mergeLocalSeatOccupancy', () => {
     const merged = mergeLocalSeatOccupancy({}, { xau: transit }, wall);
     expect(merged.bed_2).toBeUndefined();
   });
+
+  it('ignores stale server seats when agent is not loaded locally', () => {
+    const wall = seatNowMs();
+    const server = {
+      rest_l_1_s1: { user_id: 'u1', agent_id: 'ghost_agent', activity: 'rest', until_ts: wall + 600_000 },
+    };
+    expect(hasFreeSeat('rest', 'newcoin', server, wall)).toBe(true);
+  });
 });

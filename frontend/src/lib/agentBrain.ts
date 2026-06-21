@@ -293,6 +293,13 @@ export function decideAgentAction(perception: AgentPerception, mem: BrainMemory)
   return buildActionForMode(mode, perception, mem);
 }
 
+function applyTravelIntent(char: CharState, decision: BrainDecision): CharState {
+  const moved = assignPath({ ...char, userDispatched: false }, decision.targetNode);
+  if (moved.activity) return moved;
+  if (!decision.travelIntent || moved.travelIntent) return moved;
+  return { ...moved, travelIntent: decision.travelIntent };
+}
+
 function pickSelfCareIntent(char: CharState, traits: AgentTraits, stress: number): { intent: CharState['travelIntent']; node: string } {
   const weights = [
     { w: traits.selfCare + stress * 0.3, intent: 'massage' as const, node: 'massage' },
@@ -472,6 +479,7 @@ export async function executeBrainSpeak(
       post_to_chat: decision.postToChat && now - mem.lastChatAt > 25000,
       channel,
     });
+    if (!res?.ok) return;
     if (res.line) {
       useGameStore.getState().setAgentBubble(char.agentId, res.line, now + 4800);
     }
@@ -518,13 +526,8 @@ export function tickAgentBrain(char: CharState, now: number): CharState {
   const decision = decideAgentAction(perception, mem);
 
   let c = char;
-  if (decision.travelIntent) {
-    c = {
-      ...assignPath({ ...c, userDispatched: false }, decision.targetNode),
-      travelIntent: decision.travelIntent,
-    };
-  } else if (decision.targetNode) {
-    c = assignPath({ ...c, userDispatched: false }, decision.targetNode);
+  if (decision.travelIntent || decision.targetNode) {
+    c = applyTravelIntent(c, decision);
   }
 
   if (decision.speakOnArrive) {
@@ -545,10 +548,7 @@ export function brainDispatchLeisure(char: CharState, now: number): CharState {
   const perception = perceiveAgent(char, Object.values(useGameStore.getState().agents));
   const decision = buildActionForMode('self_care', perception, mem);
   if (!decision.travelIntent) return char;
-  return {
-    ...assignPath({ ...char, userDispatched: false }, decision.targetNode),
-    travelIntent: decision.travelIntent,
-  };
+  return applyTravelIntent(char, decision);
 }
 
 export function getAgentBrainMode(agentId: string): BrainMode | null {

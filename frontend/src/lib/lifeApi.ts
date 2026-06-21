@@ -1,3 +1,4 @@
+import { dedupeAsync, throttleAsync } from './pollGuard';
 import { getAuthToken } from './lifeAuth';
 import type { AgentMeta, TradeRecord } from './constants';
 import type { CustomAgentDraft } from './customAgents';
@@ -37,6 +38,19 @@ export interface LifeState {
 
 async function parse<T>(r: Response): Promise<T> {
   return r.json() as Promise<T>;
+}
+
+async function fetchJson<T>(url: string, init?: RequestInit, timeoutMs = 20000): Promise<T> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { ...init, signal: ctrl.signal });
+    clearTimeout(timer);
+    return parse<T>(r);
+  } catch {
+    clearTimeout(timer);
+    return { ok: false, error: '网络错误，请检查连接后重试' } as T;
+  }
 }
 
 function extractApiError(data: Record<string, unknown>, fallback: string): string {
@@ -257,10 +271,16 @@ export async function lifeAgentSpeak(opts: {
   context?: string;
   activity?: string | null;
 }) {
-  const r = await fetch(`${API}/agent-speak`, {
-    method: 'POST', headers: headers(), body: JSON.stringify(opts),
-  });
-  return parse<{ ok: boolean; line: string }>(r);
+  return throttleAsync(`agent-speak:${opts.agent_id}`, 8000, () =>
+    dedupeAsync(`agent-speak:${opts.agent_id}`, () =>
+      fetchJson<{ ok: boolean; line: string }>(`${API}/agent-speak`, {
+        method: 'POST', headers: headers(), body: JSON.stringify(opts),
+      }, 12000)));
+}
+
+export async function fetchPortfolio(): Promise<UserPortfolio> {
+  return dedupeAsync('portfolio', () =>
+    fetchJson<UserPortfolio>(`${API}/portfolio`, { headers: headers() }, 15000));
 }
 
 export interface SeatOccupant {
@@ -364,11 +384,6 @@ export async function fetchMarketKlines(symbol = 'BTCUSDT', interval = '15m', li
   const q = new URLSearchParams({ symbol, interval, limit: String(limit) });
   const r = await fetch(`${API}/portfolio/market/klines?${q}`, { headers: headers() });
   return parse<{ ok: boolean; symbol?: string; interval?: string; candles?: KlineCandle[]; error?: string }>(r);
-}
-
-export async function fetchPortfolio(): Promise<UserPortfolio> {
-  const r = await fetch(`${API}/portfolio`, { headers: headers() });
-  return parse(r);
 }
 
 export async function fetchPortfolioPresets() {

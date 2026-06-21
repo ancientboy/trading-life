@@ -1473,10 +1473,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncUserPortfolio: async () => {
     if (!isLoggedIn()) return;
-    try {
-      const data = await fetchPortfolio();
-      if (data.ok) get().applyUserPortfolio(data);
-    } catch { /* ignore */ }
+    return throttleAsync('sync-portfolio', 8000, async () => {
+      try {
+        const data = await fetchPortfolio();
+        if (data.ok) get().applyUserPortfolio(data);
+      } catch { /* ignore */ }
+    });
   },
 
   resetUserPortfolio: async () => {
@@ -1717,7 +1719,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         context,
         activity,
       });
-      if (res.line) {
+      if (res?.line) {
         get().setAgentBubble(agentId, res.line, performance.now() + 4500);
       }
     } catch { /* ignore */ }
@@ -1861,6 +1863,8 @@ export function onPathComplete(char: CharState, now: number): CharState {
   return { ...char, destNode: null, isWalking: false, pathQueue: [] };
 }
 
+const seatFailMsgAt = new Map<string, number>();
+
 function startActivity(char: CharState, activity: CharState['activity'], now: number, dur: number): CharState {
   const seatMap: Record<string, Record<string, string>> = {
     rest: OfficePath.boothByAgent, massage: OfficePath.massageByAgent,
@@ -1879,7 +1883,12 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
   if (activity && !seatId) {
     const { free, total } = countFreeSeats(activity, char.agentId, mergedSeats, wallNow);
     const label = ACTIVITY_SEAT_LABEL[activity] ?? '座位';
-    store.addMessage(`${char.data.name}：${label}已满（${free}/${total} 空位），活动取消`);
+    const msgKey = `${char.agentId}:${activity}`;
+    const lastMsg = seatFailMsgAt.get(msgKey) ?? 0;
+    if (wallNow - lastMsg > 12_000) {
+      seatFailMsgAt.set(msgKey, wallNow);
+      store.addMessage(`${char.data.name}：${label}已满（${free}/${total} 空位），活动取消`);
+    }
     return { ...char, travelIntent: null, isWalking: false, pathQueue: [], destNode: null };
   }
 
