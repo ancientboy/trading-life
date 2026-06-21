@@ -21,6 +21,22 @@ AUCTION_EXTEND_MS = 60_000
 AUCTION_MIN_BID = 10
 
 
+def _ws_notify_poker_room(room_id: str) -> None:
+    try:
+        from life_ws import schedule_poker_room_broadcast
+        schedule_poker_room_broadcast(room_id)
+    except Exception:
+        pass
+
+
+def _ws_notify_advanced(room_id: str) -> None:
+    try:
+        from life_ws import schedule_advanced_broadcast
+        schedule_advanced_broadcast(room_id)
+    except Exception:
+        pass
+
+
 # ─── Phase 1: Social ───────────────────────────────────────────
 
 class ChatPostBody(BaseModel):
@@ -1145,6 +1161,7 @@ async def poker_quick_join(body: PokerJoinBody, account_id: str = Depends(resolv
             )
             payload = _room_payload(c, target, account_id)
 
+    _ws_notify_poker_room(target["id"])
     return {
         "ok": True, "mode": "waiting", "room_id": target["id"], "room_code": target["id"],
         "seat_id": seat, "buy_in": target["buy_in"], "room": payload,
@@ -1258,6 +1275,7 @@ async def create_poker_room(body: PokerCreateBody, account_id: str = Depends(res
             room = dict(c.execute("SELECT * FROM poker_rooms WHERE id=?", (rid,)).fetchone())
             payload = _room_payload(c, room, account_id)
     mode_label = "进阶" if game_mode == "advanced" else "经典"
+    _ws_notify_poker_room(rid)
     return {
         "ok": True, "room_id": rid, "room_code": rid, "buy_in": buy_in, "game_mode": game_mode,
         "seat_id": seat if agent_id else "", "room": payload,
@@ -1310,6 +1328,7 @@ async def join_poker_room(room_id: str, body: PokerJoinBody, account_id: str = D
             )
             room = dict(room)
             payload = _room_payload(c, room, account_id)
+    _ws_notify_poker_room(rid)
     return {
         "ok": True, "room_id": rid, "room_code": rid, "seat_id": seat,
         "buy_in": room["buy_in"], "room": payload,
@@ -1370,6 +1389,7 @@ async def change_poker_seat(room_id: str, body: PokerChangeSeatBody, account_id:
                 (seat_req, rid, account_id),
             )
             payload = _room_payload(c, dict(room), account_id)
+    _ws_notify_poker_room(rid)
     return {
         "ok": True, "room_id": rid, "seat_id": seat_req, "room": payload,
         "message": f"已换到座位 {num}",
@@ -1393,6 +1413,7 @@ async def leave_poker_room(room_id: str, account_id: str = Depends(resolve_accou
             ).fetchone():
                 return {"ok": True, "closed": False, "message": "你已不在该房间中"}
             closed = _leave_poker_room(c, rid, account_id)
+    _ws_notify_poker_room(rid)
     return {
         "ok": True,
         "closed": closed,
@@ -1459,6 +1480,8 @@ async def start_poker_room(room_id: str, account_id: str = Depends(resolve_accou
         out["cost"] = room["buy_in"]
         if not out.get("balance"):
             out["balance"] = load_user(account_id)["points"]
+        _ws_notify_poker_room(room_id)
+        _ws_notify_advanced(room_id)
         return out
 
     with life_db._lock:
@@ -1476,6 +1499,7 @@ async def start_poker_room(room_id: str, account_id: str = Depends(resolve_accou
     out["mode"] = "classic"
     out["balance"] = load_user(account_id)["points"]
     out["cost"] = room["buy_in"]
+    _ws_notify_poker_room(room_id)
     return out
 
 
@@ -1507,6 +1531,7 @@ async def play_poker_round(room_id: str, account_id: str = Depends(resolve_accou
     out = _settle_poker_room(room_id, room, players, account_id)
     out["mode"] = "pvp"
     out["balance"] = load_user(account_id)["points"]
+    _ws_notify_poker_room(room_id)
     return out
 
 
@@ -1579,6 +1604,7 @@ async def start_ai_spectator(body: PokerAiSpectatorBody, account_id: str = Depen
     out["buy_in"] = buy_in
     out["balance"] = load_user(account_id)["points"]
     out["message"] = f"观赛开始 · {num} 人桌 · 买入 {buy_in}"
+    _ws_notify_advanced(rid)
     return out
 
 

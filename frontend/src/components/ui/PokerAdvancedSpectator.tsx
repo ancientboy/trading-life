@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PokerCard, PokerCardRow } from './PokerCard';
 import type { AdvancedPokerGame } from '../../lib/lifeEngagementApi';
-import { fetchAdvancedPokerState } from '../../lib/lifeEngagementApi';
+import { fetchAdvancedPokerStateSmart, lifeSocket } from '../../lib/lifeSocket';
+import type { AdvancedPokerStateResponse } from '../../lib/lifeSocket';
 import { buildSpectateLink, shareOrCopy, shareResultMessage } from '../../lib/shareUtils';
 import { useGameStore } from '../../store/useGameStore';
 
@@ -28,7 +29,7 @@ type PaceId = typeof PACE_OPTIONS[number]['id'];
 type Props = {
   roomId: string;
   buyIn: number;
-  onComplete?: (settlement: NonNullable<Awaited<ReturnType<typeof fetchAdvancedPokerState>>['settlement']>) => void;
+  onComplete?: (settlement: NonNullable<AdvancedPokerStateResponse['settlement']>) => void;
   onClose?: () => void;
 };
 
@@ -101,6 +102,21 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     return true;
   }, []);
 
+  const runPollRef = useRef<(opts?: { force?: boolean; initial?: boolean; steps?: number }) => Promise<void>>(async () => {});
+
+  const applySuccess = useCallback((r: AdvancedPokerStateResponse, force: boolean) => {
+    setError('');
+    if (r.game) applyGame(r.game, r.status ?? 'playing', force);
+    if (r.status) {
+      setStatus(r.status);
+      statusRef.current = r.status;
+    }
+    if (r.settlement && !doneRef.current) {
+      doneRef.current = true;
+      onCompleteRef.current?.(r.settlement);
+    }
+  }, [applyGame]);
+
   const runPoll = useCallback(async (opts?: { force?: boolean; initial?: boolean; steps?: number }) => {
     const force = opts?.force ?? false;
     if (inFlightRef.current && !force) return;
@@ -110,7 +126,7 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
     else setSyncing(true);
     try {
       const steps = opts?.steps ?? (force ? 8 : isInitial ? 3 : 1);
-      const r = await fetchAdvancedPokerState(roomIdRef.current, sinceRef.current, {
+      const r = await fetchAdvancedPokerStateSmart(roomIdRef.current, sinceRef.current, {
         autoRun: !pausedRef.current || force,
         maxSteps: steps,
       });
@@ -119,22 +135,13 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
         const msg = r.error || '同步失败';
         setError(msg);
         if (r.timedOut && !force && !pausedRef.current) {
-          window.setTimeout(() => void runPoll({ force: true, steps: 3 }), 1500);
+          window.setTimeout(() => void runPollRef.current({ force: true, steps: 3 }), 1500);
         } else if (msg.includes('房间不存在') || msg.includes('状态丢失')) {
           setBooting(false);
         }
         return;
       }
-      setError('');
-      if (r.game) applyGame(r.game, r.status ?? 'playing', force);
-      if (r.status) {
-        setStatus(r.status);
-        statusRef.current = r.status;
-      }
-      if (r.settlement && !doneRef.current) {
-        doneRef.current = true;
-        onCompleteRef.current?.(r.settlement);
-      }
+      applySuccess(r, force);
     } catch {
       setError('网络错误');
     } finally {
@@ -142,7 +149,17 @@ export function PokerAdvancedSpectator({ roomId, buyIn, onComplete, onClose }: P
       setBooting(false);
       setSyncing(false);
     }
-  }, [roomId, applyGame]);
+  }, [roomId, applySuccess]);
+
+  runPollRef.current = runPoll;
+
+  useEffect(() => {
+    return lifeSocket.onAdvancedPush(roomId, (payload) => {
+      if (roomIdRef.current !== roomId) return;
+      if (inFlightRef.current || !payload.ok) return;
+      applySuccess(payload, false);
+    });
+  }, [roomId, applySuccess]);
 
   const retryPoll = useCallback(() => {
     setError('');

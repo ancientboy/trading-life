@@ -17,7 +17,13 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/trading/api': { target: 'http://43.98.167.204', changeOrigin: true },
+      '/trading/api': {
+        target: process.env.VITE_PROXY_TARGET || 'http://43.98.167.204',
+        changeOrigin: true,
+        ...(process.env.VITE_PROXY_TARGET
+          ? { rewrite: (path: string) => path.replace(/^\/trading\/api/, '/api') }
+          : {}),
+      },
     },
   },
 });

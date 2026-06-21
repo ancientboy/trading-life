@@ -33,12 +33,7 @@ export function paperToWorld(zone: ZoneId, px: number, py: number) {
   };
 }
 
-const ACTIVITY_ZONE: Record<string, ZoneId> = {
-  dine: 'restaurant',
-  massage: 'spa',
-  poker: 'casino',
-  rest: 'hall',
-};
+import { zoneForActivity } from './activityZones';
 
 function inZoneBounds(wx: number, wz: number, zone: ZoneId): boolean {
   const meta = ZONES.find(z => z.id === zone);
@@ -56,7 +51,7 @@ export function agentVisibleInZone(
   zone: ZoneId,
 ): boolean {
   if (char.inTransit) return false;
-  if (char.activity && ACTIVITY_ZONE[char.activity] === zone) return true;
+  if (char.activity && zoneForActivity(char.activity) === zone) return true;
   if (inZoneBounds(char.x, char.z, zone)) return true;
   return false;
 }
