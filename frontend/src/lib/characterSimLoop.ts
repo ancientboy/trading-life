@@ -117,8 +117,11 @@ export function tickCharacterSim(dt: number) {
       }
     }
     if (!c.isWalking && !c.travelIntent && !c.activity && !c.inTransit) {
-      c = brainDispatchLeisure(c, now);
-      if (!c.isWalking && !c.travelIntent) c = tickAgentBrain(c, now);
+      const focusZone = useGameStore.getState().activeZone;
+      if (focusZone !== 'arena' || c.userDispatched) {
+        c = brainDispatchLeisure(c, now);
+        if (!c.isWalking && !c.travelIntent) c = tickAgentBrain(c, now);
+      }
     }
     if (c.state === 'panic' && !c.isWalking && !c.travelIntent && !c.inTransit) c = assignPath(c, 'scr_ctr');
     if (c.isWalking && c.pathQueue.length) {

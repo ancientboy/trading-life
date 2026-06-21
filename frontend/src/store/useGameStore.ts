@@ -24,6 +24,7 @@ import {
 import { throttleAsync } from '../lib/pollGuard';
 import { dismissPkResult, dismissGuessResult, dismissArenaResult } from '../lib/tradingResultDismiss';
 import { liveGuessRound, liveArenaRound } from '../lib/guessDisplay';
+import { inferMessageScope, messageVisibleInZone, type MessageScope } from '../lib/messageScope';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, ACTIVITY_ZONE, formatSeatCapacityMessage, type SeatMap } from '../lib/seatRegistry';
 import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
 import { loadPoints, loadLastIdleTick } from '../lib/pointsSystem';
@@ -186,7 +187,7 @@ interface GameStore {
   profileSchema: { key: string; label: string; type: string; min?: number; max?: number; step?: number }[];
   profileConfig: Record<string, unknown>;
   soulMd: string;
-  messages: { text: string; time: string }[];
+  messages: { text: string; time: string; scope?: MessageScope }[];
   npcBubble: { npcId: string; text: string; until: number } | null;
   /** 用户积分 — 后端持久化 */
   points: number;
@@ -309,7 +310,7 @@ interface GameStore {
   setTicker: (t: Record<string, number>) => void;
   setProfile: (schema: GameStore['profileSchema'], config: Record<string, unknown>, soul: string) => void;
   patchChar: (id: string, patch: Partial<CharState>) => void;
-  addMessage: (text: string) => void;
+  addMessage: (text: string, scope?: MessageScope) => void;
   setNpcBubble: (npcId: string | null, text: string, until: number) => void;
   earnPoints: (amount: number, reason?: string) => void;
   trySpendPoints: (amount: number) => { ok: boolean; balance: number };
@@ -686,7 +687,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
   flyToZone: (zone) => {
     const cam = ZONE_CAMERA[zone];
     const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino' || zone === 'arena';
+    const s = get();
+    let agents = s.agents;
+    if (zone === 'arena') {
+      agents = Object.fromEntries(Object.entries(s.agents).map(([id, char]) => {
+        if (char.userDispatched) return [id, char];
+        if (char.travelIntent || (char.isWalking && !char.activity)) {
+          return [id, { ...char, travelIntent: null, isWalking: false, pathQueue: [], pathIndex: 0, destNode: null }];
+        }
+        return [id, char];
+      }));
+    }
     set({
+      agents,
       activeZone: zone,
       sidebarActive: zone === 'hall' ? 'hall' : zone === 'arena' ? 'events' : zone,
       rightTab: ZONE_TO_RIGHT_TAB[zone],
@@ -1643,7 +1656,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setTicker: (t) => set({ ticker: t }),
   setProfile: (schema, config, soul) => set({ profileSchema: schema, profileConfig: config, soulMd: soul }),
   patchChar: (id, patch) => set(s => ({ agents: { ...s.agents, [id]: { ...s.agents[id], ...patch } } })),
-  addMessage: (text) => set(s => ({ messages: [...s.messages.slice(-49), { text, time: new Date().toLocaleTimeString() }] })),
+  addMessage: (text, scope) => {
+    const s = get();
+    const msgScope = scope ?? inferMessageScope(text);
+    if (!messageVisibleInZone(msgScope, s.activeZone)) return;
+    set(st => ({
+      messages: [...st.messages.slice(-49), { text, time: new Date().toLocaleTimeString(), scope: msgScope }],
+    }));
+  },
   setNpcBubble: (npcId, text, until) => set({
     npcBubble: npcId && text ? { npcId, text, until } : null,
   }),
@@ -1991,7 +2011,7 @@ function startActivity(char: CharState, activity: CharState['activity'], now: nu
     const showMsg = char.userDispatched || (activityZone != null && store.activeZone === activityZone);
     if (showMsg && wallNow - lastMsg > 12_000) {
       seatFailMsgAt.set(msgKey, wallNow);
-      store.addMessage(`${char.data.name}：${formatSeatCapacityMessage(label, free, total)}，活动取消`);
+      store.addMessage(`${char.data.name}：${formatSeatCapacityMessage(label, free, total)}，活动取消`, activityZone ?? 'hall');
     }
     return { ...char, travelIntent: null, isWalking: false, pathQueue: [], destNode: null };
   }
