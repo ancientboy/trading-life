@@ -379,9 +379,9 @@ export function TradingEventsPanel() {
                 <span style={{ fontWeight: 700 }}>Agent 短线大赛</span>
                 <span style={{
                   marginLeft: 8, fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                  background: arena.duration_mode === 'speed' ? '#ffe082' : '#c8e6c9',
+                  background: arena.duration_mode === 'standard' ? '#c8e6c9' : '#ffe082',
                 }}>
-                  {arena.duration_label || (arena.duration_mode === 'speed' ? '极速 60s' : '标准 3min')}
+                  {arena.duration_label || '报名5分 · 赛15分'}
                 </span>
               </div>
               <span style={{ fontSize: 11, color: '#3a6bb5' }}>

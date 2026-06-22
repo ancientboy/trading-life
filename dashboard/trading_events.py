@@ -30,6 +30,8 @@ ARENA_SPECTATOR_RAKE = 0.05
 ARENA_LEG_INTERVAL_MS = 30_000
 
 ARENA_MODES: dict[str, dict] = {
+    "standard": {"join_ms": 300_000, "run_ms": 900_000, "label": "报名5分 · 赛15分"},
+    # 旧局兼容展示
     "speed": {"join_ms": 45_000, "run_ms": 60_000, "label": "极速 60s"},
     "classic": {"join_ms": 60_000, "run_ms": 120_000, "label": "标准 3min"},
 }
@@ -96,18 +98,12 @@ def _recent_first_flag(stats: dict, at_key: str, event_ms: int, window_ms: int =
 
 
 def _arena_timings(mode: str) -> tuple[int, int]:
-    cfg = ARENA_MODES.get(mode) or ARENA_MODES["classic"]
+    cfg = ARENA_MODES.get(mode) or ARENA_MODES["standard"]
     return int(cfg["join_ms"]), int(cfg["run_ms"])
 
 
 def _next_arena_mode(c) -> str:
-    row = c.execute(
-        "SELECT duration_mode FROM arena_rounds WHERE status='settled' ORDER BY ends_at DESC LIMIT 1"
-    ).fetchone()
-    if not row:
-        return "speed"
-    last = row[0] if isinstance(row, tuple) else row["duration_mode"]
-    return "classic" if last == "speed" else "speed"
+    return "standard"
 
 
 def _leg_return(direction: str, entry: float, exit_price: float, leverage: float) -> float:
@@ -600,7 +596,7 @@ async def _settle_arena_round(c, round_id: str) -> dict:
 
     if winner_id and entries:
         acc = life_db.get_account_by_id(entries[0]["user_id"]) or {}
-        mode_label = (ARENA_MODES.get(rd.get("duration_mode") or "classic") or {}).get("label", "")
+        mode_label = (ARENA_MODES.get(rd.get("duration_mode") or "standard") or ARENA_MODES["standard"]).get("label", "")
         legs = int(entries[0].get("legs_count") or 1)
         body = (
             f"🏆 短线大赛{(' · ' + mode_label) if mode_label else ''} · {entries[0].get('agent_name') or 'Agent'} "
@@ -678,8 +674,8 @@ def _arena_payload(c, rd: dict, account_id: str = "") -> dict:
             "SELECT * FROM arena_spectator_bets WHERE round_id=? AND user_id=?",
             (rd["id"], account_id),
         ).fetchall()]
-    mode = rd.get("duration_mode") or "classic"
-    mode_cfg = ARENA_MODES.get(mode) or ARENA_MODES["classic"]
+    mode = rd.get("duration_mode") or "standard"
+    mode_cfg = ARENA_MODES.get(mode) or ARENA_MODES["standard"]
     _, run_ms = _arena_timings(mode)
     return {
         "round_id": rd["id"],
@@ -933,7 +929,7 @@ async def join_arena(body: ArenaJoinBody, account_id: str = Depends(resolve_acco
             payload = _arena_payload(c, rd2, account_id)
 
     life_db.add_season_points(account_id, social=3)
-    mode_label = (ARENA_MODES.get(rd.get("duration_mode") or "classic") or {}).get("label", "")
+    mode_label = (ARENA_MODES.get(rd.get("duration_mode") or "standard") or ARENA_MODES["standard"]).get("label", "")
     return {
         "ok": True,
         "message": f"{meta.get('name')} 已报名 · {mode_label} · AI 判定 {direction} · {lev}x · 30s 多轮短线",
@@ -1051,5 +1047,5 @@ async def public_arena_snapshot() -> dict:
         "current": current,
         "highlights": highlights,
         "win_rate_board": win_rate,
-        "message": "注册即可参赛 · 押冠亚季军 · AI 每 30s 多轮短线操作",
+        "message": "注册即可参赛 · 报名5分钟 · 比赛15分钟 · 押冠亚季军",
     }

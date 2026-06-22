@@ -55,7 +55,7 @@ export function TradingArenaPublicHook() {
         </span>
       </div>
       <p style={{ fontSize: 11, color: '#7a6e62', margin: '0 0 10px', lineHeight: 1.45 }}>
-        {data?.message || '猜涨跌 60s · 短线大赛极速/标准 · AI 每 30s 多轮操作 · 押冠亚季军'}
+        {data?.message || '猜涨跌 60s · 短线大赛报名5分/赛15分 · AI 每 30s 多轮操作 · 押冠亚季军'}
       </p>
 
       {error && <p style={{ color: '#e55', fontSize: 11 }}>{error}</p>}
