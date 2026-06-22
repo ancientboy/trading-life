@@ -139,7 +139,7 @@ export default function App() {
       const hot = st.rightTab === 'events' || st.activeZone === 'arena';
       if (!hot && Math.random() > 0.35) return;
       st.syncTradingLive().catch(() => {});
-    }, 8000);
+    }, 4000);
     const tradingCountdown = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       store().tickTradingCountdown();

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { LogicDrawer } from './LogicDrawer';
 import { TradingModesPanel } from './TradingModesPanel';
-import { guessPhaseLabel, arenaPhaseLabel } from '../../lib/guessDisplay';
+import { guessPhaseLabel, arenaPhaseLabel, arenaRoundStep, arenaParticipationHint } from '../../lib/guessDisplay';
 import {
-  placeGuessBet, joinArena, arenaSpectateBet, fetchGuessRoundFresh,
+  placeGuessBet, arenaSpectateBet, fetchGuessRoundFresh,
   fetchArenaLeaderboard, fetchArenaWinRate,
   type ArenaRoundState, type ArenaWinRateEntry, type ArenaEntry,
   type PkResultInfo,
@@ -31,6 +31,7 @@ export function TradingEventsPanel() {
   const setGuessRound = useGameStore(s => s.setGuessRound);
   const setArenaLive = useGameStore(s => s.setArenaLive);
   const syncTradingLive = useGameStore(s => s.syncTradingLive);
+  const syncArenaLiveNow = useGameStore(s => s.syncArenaLiveNow);
   const showGuessResult = useGameStore(s => s.showGuessResult);
   const showArenaResult = useGameStore(s => s.showArenaResult);
   const showPkResult = useGameStore(s => s.showPkResult);
@@ -48,6 +49,7 @@ export function TradingEventsPanel() {
   const [specRank, setSpecRank] = useState(1);
   const [busy, setBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
+  const [arenaSyncing, setArenaSyncing] = useState(false);
 
   const prevArenaLegsRef = useRef<Record<string, number>>({});
 
@@ -139,6 +141,11 @@ export function TradingEventsPanel() {
     });
   }, [arena]);
 
+  useEffect(() => {
+    if (tab !== 'arena') return;
+    void useGameStore.getState().syncArenaLiveNow();
+  }, [tab]);
+
   const refreshExtras = useCallback(async () => {
     if (document.visibilityState !== 'visible' || tab !== 'arena') return;
     await dedupeAsync('arena-extras', async () => {
@@ -196,17 +203,21 @@ export function TradingEventsPanel() {
     }
     setBusy(true);
     try {
-      const r = await joinArena(joinAgentId);
-      if (!r.ok) {
-        addMessage(r.error || '报名失败');
-        return;
-      }
-      setArenaLive(r.current ?? null);
-      if (r.balance != null) useGameStore.setState({ points: r.balance });
-      addMessage(r.message || '已报名短线大赛');
-      void syncTradingLive();
+      const ok = await useGameStore.getState().joinArenaQuick(joinAgentId);
+      if (ok) void syncTradingLive();
     } finally {
       setBusy(false);
+    }
+  };
+
+  const refreshArena = async () => {
+    setArenaSyncing(true);
+    try {
+      const ok = await syncArenaLiveNow();
+      if (!ok) addMessage('大赛状态刷新失败，请检查网络');
+      else void syncTradingLive();
+    } finally {
+      setArenaSyncing(false);
     }
   };
 
@@ -350,6 +361,16 @@ export function TradingEventsPanel() {
 
       {tab === 'arena' && arena && (
         <>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: 8, fontSize: 11, color: '#7a6e62',
+          }}>
+            <span>{arenaSyncing ? '正在同步大赛数据…' : `第 ${arenaRoundStep(arena)}/3 步 · ${arenaPhaseLabel(arena)}`}</span>
+            <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '2px 8px' }}
+              disabled={arenaSyncing} onClick={() => void refreshArena()}>
+              {arenaSyncing ? '…' : '刷新'}
+            </button>
+          </div>
           <div style={{ padding: 12, background: '#eef4ff', borderRadius: 10, border: '1px solid #b8cce8', marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
@@ -384,17 +405,43 @@ export function TradingEventsPanel() {
               <div style={{ color: '#9a8b7a', marginTop: 4 }}>与「猜涨跌」独立 · 倒计时到 0 后会自动结算并开下一局</div>
             </div>
             {arena.can_join && !arena.my_entry && (
-              <button className="ui-btn" style={{ width: '100%', marginTop: 10 }} disabled={busy || !joinAgentId}
-                onClick={() => void doJoinArena()}>
-                派 {agents[joinAgentId]?.data.name || '交易 Agent'} 参赛
-              </button>
+              <>
+                <button className="ui-btn" style={{ width: '100%', marginTop: 10, background: '#e8f5e9', fontWeight: 700 }}
+                  disabled={busy || !joinAgentId}
+                  onClick={() => void doJoinArena()}>
+                  ① 报名本局大赛 · {arena.entry_fee} 积分 · 派 {agents[joinAgentId]?.data.name || 'Agent'}
+                </button>
+                <div style={{ fontSize: 10, color: '#6b8e6b', marginTop: 6, textAlign: 'center' }}>
+                  或点击场景中央空选手台上的「报名」（会弹出确认）
+                </div>
+              </>
             )}
-            {arena.my_entry && (
-              <div style={{ marginTop: 8, fontSize: 11, padding: 8, background: '#fff', borderRadius: 6 }}>
-                已报名 · {arena.my_entry.signal_summary || `${arena.my_entry.direction} · ${arena.my_entry.leverage}x`}
-                {(arena.my_entry.legs_count ?? 0) > 0 ? ` · ${arena.my_entry.legs_count} 轮操作` : ''}
-                {arena.my_entry.rank ? ` · 第 ${arena.my_entry.rank} 名 ${arena.my_entry.return_pct != null && arena.my_entry.return_pct >= 0 ? '+' : ''}${arena.my_entry.return_pct}%` : ''}
-                {arena.my_entry.prize ? ` · 奖金 +${arena.my_entry.prize}` : ''}
+            {arena.my_entry ? (
+              <div style={{
+                marginTop: 10, padding: 10, background: '#e8f5e9', borderRadius: 8,
+                border: '1px solid #81c784', fontSize: 11,
+              }}>
+                <div style={{ fontWeight: 700, color: '#2e7d32', marginBottom: 4 }}>
+                  ✅ 本局你已参赛 · Agent 自动交易，无需再点「进入」
+                </div>
+                <div>{arena.my_entry.agent_name} · {arena.my_entry.signal_summary || `${arena.my_entry.direction} · ${arena.my_entry.leverage}x`}</div>
+                {(arena.my_entry.legs_count ?? 0) > 0 && (
+                  <div style={{ marginTop: 4 }}>
+                    已执行 {arena.my_entry.legs_count} 轮 ·
+                    {arena.my_entry.return_pct != null && (
+                      <span style={{ fontWeight: 600, color: (arena.my_entry.return_pct ?? 0) >= 0 ? '#2e7d32' : '#c62828' }}>
+                        {' '}{(arena.my_entry.return_pct ?? 0) >= 0 ? '+' : ''}{arena.my_entry.return_pct}%
+                      </span>
+                    )}
+                    {arena.my_entry.rank ? ` · 当前第 ${arena.my_entry.rank} 名` : ''}
+                    {arena.my_entry.prize ? ` · 奖金 +${arena.my_entry.prize}` : ''}
+                  </div>
+                )}
+                <div style={{ fontSize: 10, color: '#558b2f', marginTop: 6 }}>{arenaParticipationHint(arena)}</div>
+              </div>
+            ) : !arena.can_join && (
+              <div style={{ marginTop: 10, padding: 8, background: '#fff3e0', borderRadius: 6, fontSize: 11, color: '#8a6e3a' }}>
+                {arenaParticipationHint(arena)}
               </div>
             )}
           </div>

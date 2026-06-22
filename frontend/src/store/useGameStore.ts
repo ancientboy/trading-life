@@ -57,6 +57,23 @@ import {
 let seatSyncTimer: ReturnType<typeof setTimeout> | null = null;
 let lastArenaSettlePoll = 0;
 
+function applyArenaFetch(
+  ar: { ok: boolean; current?: import('../lib/lifeEngagementApi').ArenaRoundState; last_settled?: import('../lib/lifeEngagementApi').ArenaRoundState | null },
+) {
+  if (!ar.ok || !ar.current) return false;
+  const syncedAt = Date.now();
+  const st = useGameStore.getState();
+  useGameStore.setState({
+    arenaLiveServer: ar.current,
+    arenaLive: liveArenaRound(ar.current, syncedAt),
+    tradingLiveSyncedAt: syncedAt,
+    arenaPollMeta: {
+      last_settled: ar.last_settled ?? st.arenaPollMeta?.last_settled ?? null,
+    },
+  });
+  return true;
+}
+
 export type GuessPollMeta = {
   last_settled?: Record<string, unknown> | null;
   last_my_bet?: { direction?: string; stake?: number; payout?: number; won?: boolean; first_win?: boolean; pending_leverage?: unknown } | null;
@@ -286,6 +303,7 @@ interface GameStore {
   setArenaLive: (state: import('../lib/lifeEngagementApi').ArenaRoundState | null) => void;
   setGuessRound: (state: GuessRoundState | null) => void;
   syncTradingLive: () => Promise<void>;
+  syncArenaLiveNow: () => Promise<boolean>;
   tickTradingCountdown: () => void;
   joinArenaQuick: (agentId?: string) => Promise<boolean>;
   setSelectedArenaEntryId: (id: string | null) => void;
@@ -641,6 +659,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
       } catch { /* ignore */ }
     });
   },
+  syncArenaLiveNow: async () => {
+    if (!isLoggedIn()) return false;
+    try {
+      const ar = await fetchArenaRoundFresh();
+      return applyArenaFetch(ar);
+    } catch {
+      return false;
+    }
+  },
   tickTradingCountdown: () => {
     const s = get();
     if (!s.tradingLiveSyncedAt) return;
@@ -657,19 +684,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (Object.keys(patch).length) set(patch);
     if (arenaLive && arenaNeedsServerRefresh(arenaLive) && now - lastArenaSettlePoll > 1800) {
       lastArenaSettlePoll = now;
-      void fetchArenaRoundFresh().then(ar => {
-        if (!ar.ok || !ar.current) return;
-        const syncedAt = Date.now();
-        const st = get();
-        set({
-          arenaLiveServer: ar.current ?? null,
-          arenaLive: liveArenaRound(ar.current!, syncedAt),
-          tradingLiveSyncedAt: syncedAt,
-          arenaPollMeta: {
-            last_settled: ar.last_settled ?? st.arenaPollMeta?.last_settled ?? null,
-          },
-        });
-      }).catch(() => {});
+      void fetchArenaRoundFresh().then(ar => { applyArenaFetch(ar); }).catch(() => {});
     }
   },
   joinArenaQuick: async (agentId) => {
@@ -689,7 +704,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return false;
     }
     if (s.arenaLive.my_entry) {
-      s.addMessage('你已报名本局大赛');
+      s.addMessage('你已在本局大赛中，开赛后 Agent 会自动交易');
+      return false;
+    }
+    const fee = s.arenaLive.entry_fee ?? 30;
+    const agentName = s.agents[id].data.name;
+    if (typeof window !== 'undefined' && !window.confirm(
+      `派「${agentName}」报名本局短线大赛？\n\n· 消耗 ${fee} 积分\n· 报名截止后自动开赛，Agent 每 30s 自动换向交易\n· 无需手动操作，一局跑完后自动结算并开下一局`,
+    )) {
+      s.addMessage('已取消报名');
       return false;
     }
     try {

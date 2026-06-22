@@ -50,3 +50,22 @@ export function arenaNeedsServerRefresh(arena: ArenaRoundState): boolean {
   if (arena.status === 'running') return (arena.seconds_left ?? 0) <= 0;
   return false;
 }
+
+/** 本局进度（1 报名 → 2 比赛 → 3 结算/下一局） */
+export function arenaRoundStep(arena: ArenaRoundState): 1 | 2 | 3 {
+  if (arena.status === 'join') return 1;
+  if (arena.status === 'running' && (arena.seconds_left ?? 0) > 0) return 2;
+  return 3;
+}
+
+export function arenaParticipationHint(arena: ArenaRoundState): string {
+  if (arena.my_entry) {
+    if (arena.status === 'join') return '已报名 · 等待报名截止后自动开赛，无需再点进入';
+    if (arena.status === 'running' && (arena.seconds_left ?? 0) > 0) {
+      return '比赛中 · Agent 每 30s 自动换向交易，下方可看各轮操作';
+    }
+    return '本局结束结算中 · 稍后会自动开下一局报名';
+  }
+  if (arena.can_join) return '尚未报名 · 点下方绿色按钮，或点场景空选手台上的「报名」';
+  return '本局报名已截止 · 等待本局结束后再报下一局';
+}

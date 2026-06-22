@@ -357,7 +357,8 @@ async def _ensure_arena_round(c) -> dict:
             rd = dict(c.execute("SELECT * FROM arena_rounds WHERE id=?", (rd["id"],)).fetchone())
         if rd["status"] == "running" and ts >= rd["ends_at"]:
             await _settle_arena_round(c, rd["id"])
-        else:
+            rd = None
+        elif rd:
             return rd
 
     price = await _fetch_btc_price()
@@ -400,9 +401,13 @@ async def _start_arena_round(c, round_id: str) -> None:
             )
 
     price = await _fetch_btc_price()
+    mode_row = c.execute("SELECT duration_mode FROM arena_rounds WHERE id=?", (round_id,)).fetchone()
+    mode = (dict(mode_row) if mode_row else {}).get("duration_mode") or "classic"
+    _, run_ms = _arena_timings(mode)
+    now = life_db.now_ms()
     c.execute(
-        "UPDATE arena_rounds SET status='running', start_price=?, last_leg_index=0 WHERE id=?",
-        (price, round_id),
+        "UPDATE arena_rounds SET status='running', start_price=?, last_leg_index=0, ends_at=? WHERE id=?",
+        (price, now + run_ms, round_id),
     )
     c.execute(
         """UPDATE arena_entries SET entry_price=?, leg_entry_price=?
