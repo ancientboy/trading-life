@@ -28,7 +28,7 @@ import {
   shouldShowPkResult, markPkResultShown,
   shouldShowArenaResult, markArenaResultShown,
 } from '../lib/tradingResultDismiss';
-import { liveGuessRound, liveArenaRound } from '../lib/guessDisplay';
+import { liveGuessRound, liveArenaRound, arenaNeedsServerRefresh } from '../lib/guessDisplay';
 import { inferMessageScope, pauseBackgroundAgentAi, type MessageScope } from '../lib/messageScope';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, ACTIVITY_ZONE, formatSeatCapacityMessage, type SeatMap } from '../lib/seatRegistry';
 import { consumeDeepLinkIntent, parseDeepLink } from '../lib/shareUtils';
@@ -43,6 +43,7 @@ import {
   chatChannelForZone, fetchPokerRoom, fetchMyPokerRoom, joinPokerRoomByCode, fetchPublicRoomPreview,
   leavePokerRoom as apiLeavePokerRoom, changePokerSeat as apiChangePokerSeat,
   fetchGuessRound, fetchArenaRound, fetchPublicArenaLive, joinArena,
+  fetchArenaRoundFresh,
   type ChatMessage, type NpcEvent, type SeasonInfo, type SeasonScore, type SeasonCosmetic,
   type PokerRoom, type GuessRoundState, type PkResultInfo,
 } from '../lib/lifeEngagementApi';
@@ -54,6 +55,7 @@ import {
 } from '../lib/zoneSkins';
 
 let seatSyncTimer: ReturnType<typeof setTimeout> | null = null;
+let lastArenaSettlePoll = 0;
 
 export type GuessPollMeta = {
   last_settled?: Record<string, unknown> | null;
@@ -644,13 +646,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!s.tradingLiveSyncedAt) return;
     const now = Date.now();
     const patch: Partial<GameStore> = {};
+    let arenaLive: import('../lib/lifeEngagementApi').ArenaRoundState | null = null;
     if (s.guessRoundServer) {
       patch.guessRound = liveGuessRound(s.guessRoundServer, s.tradingLiveSyncedAt, now);
     }
     if (s.arenaLiveServer) {
-      patch.arenaLive = liveArenaRound(s.arenaLiveServer, s.tradingLiveSyncedAt, now);
+      arenaLive = liveArenaRound(s.arenaLiveServer, s.tradingLiveSyncedAt, now);
+      patch.arenaLive = arenaLive;
     }
     if (Object.keys(patch).length) set(patch);
+    if (arenaLive && arenaNeedsServerRefresh(arenaLive) && now - lastArenaSettlePoll > 1800) {
+      lastArenaSettlePoll = now;
+      void fetchArenaRoundFresh().then(ar => {
+        if (!ar.ok || !ar.current) return;
+        const syncedAt = Date.now();
+        const st = get();
+        set({
+          arenaLiveServer: ar.current ?? null,
+          arenaLive: liveArenaRound(ar.current!, syncedAt),
+          tradingLiveSyncedAt: syncedAt,
+          arenaPollMeta: {
+            last_settled: ar.last_settled ?? st.arenaPollMeta?.last_settled ?? null,
+          },
+        });
+      }).catch(() => {});
+    }
   },
   joinArenaQuick: async (agentId) => {
     const s = get();

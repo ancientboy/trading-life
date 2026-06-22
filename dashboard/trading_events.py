@@ -28,7 +28,7 @@ ARENA_LEG_INTERVAL_MS = 30_000
 
 ARENA_MODES: dict[str, dict] = {
     "speed": {"join_ms": 45_000, "run_ms": 60_000, "label": "极速 60s"},
-    "classic": {"join_ms": 60_000, "run_ms": 120_000, "label": "标准 3min"},
+    "classic": {"join_ms": 60_000, "run_ms": 120_000, "label": "标准 2min"},
 }
 
 NPC_ARENA_AGENTS = [

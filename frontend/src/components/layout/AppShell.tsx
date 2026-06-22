@@ -6,6 +6,7 @@ import { CanvasControls } from '../ui/CanvasControls';
 import { Modals } from '../ui/Modals';
 import { GameCanvas } from '../scene/GameCanvas';
 import { filterMessagesForZone, messageVisibleInZone, resolveMessageScope } from '../../lib/messageScope';
+import { arenaPhaseLabel } from '../../lib/guessDisplay';
 import { useGameStore } from '../../store/useGameStore';
 import { createPortal } from 'react-dom';
 
@@ -73,9 +74,9 @@ function ArenaFloatCTA() {
   if (!arenaLive) return null;
 
   const label = arenaLive.status === 'running'
-    ? `🔥 大赛进行中 ${arenaLive.seconds_left}s · 看选手操作`
+    ? `🔥 ${arenaPhaseLabel(arenaLive)} · 看选手操作`
     : arenaLive.can_join
-      ? `🏆 报名中 ${arenaLive.join_seconds_left}s · 派 Agent 参赛`
+      ? `🏆 ${arenaPhaseLabel(arenaLive)} · 派 Agent 参赛`
       : '🏆 交易竞技馆 · 打开面板';
 
   return createPortal(

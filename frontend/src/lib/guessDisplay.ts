@@ -31,3 +31,22 @@ export function liveArenaRound(arena: ArenaRoundState, syncedAtMs: number, nowMs
     && (arena.entries?.length ?? 0) < 12 && !arena.my_entry;
   return { ...arena, seconds_left, join_seconds_left, can_join };
 }
+
+/** 大赛阶段文案（含本地倒计时到 0 时的「结算中」） */
+export function arenaPhaseLabel(arena: ArenaRoundState): string {
+  if (arena.status === 'join') {
+    const j = arena.join_seconds_left ?? 0;
+    return j > 0 ? `报名中 · ${j}s` : '即将开赛…';
+  }
+  if (arena.status === 'running') {
+    const s = arena.seconds_left ?? 0;
+    return s > 0 ? `进行中 · ${s}s` : '结算中…';
+  }
+  return '结算中';
+}
+
+export function arenaNeedsServerRefresh(arena: ArenaRoundState): boolean {
+  if (arena.status === 'join') return (arena.join_seconds_left ?? 0) <= 0;
+  if (arena.status === 'running') return (arena.seconds_left ?? 0) <= 0;
+  return false;
+}

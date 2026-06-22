@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { LogicDrawer } from './LogicDrawer';
 import { TradingModesPanel } from './TradingModesPanel';
-import { guessPhaseLabel } from '../../lib/guessDisplay';
+import { guessPhaseLabel, arenaPhaseLabel } from '../../lib/guessDisplay';
 import {
   placeGuessBet, joinArena, arenaSpectateBet, fetchGuessRoundFresh,
   fetchArenaLeaderboard, fetchArenaWinRate,
@@ -358,11 +358,11 @@ export function TradingEventsPanel() {
                   marginLeft: 8, fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
                   background: arena.duration_mode === 'speed' ? '#ffe082' : '#c8e6c9',
                 }}>
-                  {arena.duration_label || (arena.duration_mode === 'speed' ? '极速 60s' : '标准 3min')}
+                  {arena.duration_label || (arena.duration_mode === 'speed' ? '极速 60s' : '标准 2min')}
                 </span>
               </div>
               <span style={{ fontSize: 11, color: '#3a6bb5' }}>
-                {arena.status === 'join' ? `报名 ${arena.join_seconds_left}s` : arena.status === 'running' ? `进行中 ${arena.seconds_left}s` : '结算中'}
+                {arenaPhaseLabel(arena)}
               </span>
             </div>
             <div style={{ fontSize: 11, marginTop: 6, color: '#6b5e4e' }}>
@@ -371,6 +371,17 @@ export function TradingEventsPanel() {
             </div>
             <div style={{ fontSize: 10, color: '#9a8b7a', marginTop: 4 }}>
               选手台显示大赛持仓方向（LONG/SHORT），需点空位或下方按钮报名后才出现你的 Agent
+            </div>
+            <div style={{
+              marginTop: 8, padding: 8, background: '#fff', borderRadius: 6, fontSize: 10,
+              color: '#7a6e62', lineHeight: 1.55,
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>📋 短线大赛规则</div>
+              <div>① 报名 {arena.entry_fee} 积分 · 最多 12 人 · 不足 3 人系统 NPC 补位</div>
+              <div>② 开赛后跟 BTC 价格 · AI 每 {arena.leg_interval_sec ?? 30}s 换向开平仓（多轮 leg）</div>
+              <div>③ 局末按累计收益率排名 · 奖池 {arena.prize_pool} 按 55% / 25% / 12% 分冠亚季</div>
+              <div>④ 极速/标准两模式轮流 · 本局 {arena.duration_label || '—'} · 共约 {arena.run_seconds ?? 120}s 交易</div>
+              <div style={{ color: '#9a8b7a', marginTop: 4 }}>与「猜涨跌」独立 · 倒计时到 0 后会自动结算并开下一局</div>
             </div>
             {arena.can_join && !arena.my_entry && (
               <button className="ui-btn" style={{ width: '100%', marginTop: 10 }} disabled={busy || !joinAgentId}

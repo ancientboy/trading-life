@@ -474,6 +474,13 @@ export async function fetchArenaRound() {
     ));
 }
 
+/** 倒计时归零时拉最新局，触发服务端结算/切局 */
+export async function fetchArenaRoundFresh() {
+  return fetchJson<{ ok: boolean; current?: ArenaRoundState; last_settled?: ArenaRoundState; error?: string }>(
+    `${API}/pvp/trading/arena`, { headers: headers() }, 15000,
+  );
+}
+
 export async function joinArena(agentId: string) {
   const r = await fetch(`${API}/pvp/trading/arena/join`, {
     method: 'POST', headers: headers(), body: JSON.stringify({ agent_id: agentId }),

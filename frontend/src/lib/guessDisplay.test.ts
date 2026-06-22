@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { guessPhaseLabel, liveGuessRound } from './guessDisplay';
+import { guessPhaseLabel, liveGuessRound, arenaPhaseLabel } from './guessDisplay';
 import type { GuessRoundState } from './lifeEngagementApi';
 
 const base: GuessRoundState = {
@@ -20,5 +20,16 @@ describe('guessDisplay', () => {
   it('labels locked phase with settle countdown', () => {
     const locked = { ...base, betting_open: false, bet_seconds_left: 0, status: 'locked', seconds_left: 8 };
     expect(guessPhaseLabel(locked)).toBe('封盘 · 8s 后结算');
+  });
+
+  it('labels arena settling when local countdown hits zero', () => {
+    const arena = {
+      round_id: 'a1', symbol: 'BTCUSDT', status: 'running' as const,
+      duration_label: '标准 2min', entry_fee: 30, prize_pool: 30, spectate_pool: 0,
+      start_price: 64000, starts_at: 0, join_ends_at: 0, ends_at: 0,
+      seconds_left: 0, join_seconds_left: 0, leg_interval_sec: 30,
+      entries: [], can_join: false, can_spectate_bet: false,
+    };
+    expect(arenaPhaseLabel(arena)).toBe('结算中…');
   });
 });
