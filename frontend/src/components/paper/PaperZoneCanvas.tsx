@@ -136,6 +136,9 @@ export function PaperZoneCanvas() {
         statusLabel: guessRound ? guessPhaseLabel(guessRound) : (btc ? 'LIVE' : undefined),
         phaseLabel: guessRound ? guessPhaseLabel(guessRound) : undefined,
         klineCloses: klineCloses.length >= 4 ? klineCloses : undefined,
+        myGuessBet: guessRound?.my_bet
+          ? { direction: guessRound.my_bet.direction, stake: guessRound.my_bet.stake }
+          : undefined,
       };
     }
 

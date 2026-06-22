@@ -352,6 +352,7 @@ export function renderZone(
           entries: live?.entries,
           status: live?.status,
           canJoin: live?.can_join,
+          myEntryUserId: live?.my_entry?.user_id ?? null,
           display: opts.arenaDisplay ?? undefined,
           pulseSlots: opts.arenaPulseSlots,
         },

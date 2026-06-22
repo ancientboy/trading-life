@@ -10,7 +10,7 @@ import {
   type PkResultInfo,
 } from '../../lib/lifeEngagementApi';
 import {
-  shouldShowGuessResult, markGuessResultShown,
+  shouldShowGuessResult,
   shouldShowPkResult, markPkResultShown,
   shouldShowArenaResult, markArenaResultShown,
 } from '../../lib/tradingResultDismiss';
@@ -66,7 +66,6 @@ export function TradingEventsPanel() {
     if (!settled || !lastMy?.direction) return;
     const rid = String(settled.id || settled.round_id || '');
     if (!rid || !shouldShowGuessResult(rid)) return;
-    markGuessResultShown(rid);
     const won = !!lastMy.won && (lastMy.payout ?? 0) > 0;
     showGuessResult({
       round_id: rid,
@@ -85,7 +84,6 @@ export function TradingEventsPanel() {
     if (!pk?.round_id) return;
     const rid = pk.round_id;
     if (!shouldShowPkResult(rid)) return;
-    markPkResultShown(rid);
     showPkResult({
       round_id: rid,
       won: !!pk.won,
@@ -105,7 +103,6 @@ export function TradingEventsPanel() {
     const my = lastSettled.my_entry;
     const specHits = (lastSettled.my_spectator_bets || []).some(b => (b.payout ?? 0) > 0);
     if (!my && !specHits) return;
-    markArenaResultShown(rid);
     showArenaResult({
       round_id: rid,
       duration_label: lastSettled.duration_label,
@@ -262,6 +259,9 @@ export function TradingEventsPanel() {
       }}>
         <div style={{ fontWeight: 800, fontSize: 14, color: '#c65a00', marginBottom: 4 }}>🏆 交易竞技中心</div>
         <div style={{ fontSize: 11, color: '#7a6e62' }}>猜涨跌 60s · 大赛极速/标准 · AI 30s 多轮 · 押前三名</div>
+        <div style={{ fontSize: 10, color: '#9a8b7a', marginTop: 4 }}>
+          进入竞技馆不会自动入座 · 猜涨跌押注与选手台大赛是两套玩法
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
@@ -312,6 +312,9 @@ export function TradingEventsPanel() {
             <div style={{ marginTop: 10, padding: 8, background: '#eef8f0', borderRadius: 6, fontSize: 11 }}>
               已押 {guess.my_bet.direction === 'up' ? '涨' : '跌'} · {guess.my_bet.stake} 积分
               {guess.my_bet.payout ? ` · 赢得 ${guess.my_bet.payout}` : ''}
+              <div style={{ fontSize: 10, color: '#7a9a82', marginTop: 4 }}>
+                上方 K 线屏会同步显示 · 与中央选手台 LONG/SHORT 无关
+              </div>
             </div>
           ) : guess.betting_open ? (
             <>
@@ -365,6 +368,9 @@ export function TradingEventsPanel() {
             <div style={{ fontSize: 11, marginTop: 6, color: '#6b5e4e' }}>
               报名 {arena.entry_fee} 积分 · 奖池 {arena.prize_pool} · 观众池 {arena.spectate_pool}
               {arena.leg_interval_sec ? ` · AI 每 ${arena.leg_interval_sec}s 换向操作` : ''}
+            </div>
+            <div style={{ fontSize: 10, color: '#9a8b7a', marginTop: 4 }}>
+              选手台显示大赛持仓方向（LONG/SHORT），需点空位或下方按钮报名后才出现你的 Agent
             </div>
             {arena.can_join && !arena.my_entry && (
               <button className="ui-btn" style={{ width: '100%', marginTop: 10 }} disabled={busy || !joinAgentId}

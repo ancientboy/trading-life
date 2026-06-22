@@ -25,6 +25,7 @@ export interface ArenaDisplayData {
   statusLabel?: string;
   phaseLabel?: string;
   klineCloses?: number[];
+  myGuessBet?: { direction: 'up' | 'down'; stake: number };
 }
 
 export const ARENA_PODS: ArenaPodDef[] = Array.from({ length: 6 }, (_, i) => {
@@ -266,6 +267,23 @@ function drawKlineScreen(
       c.x, c.y + sh / 2 - ws(8),
     );
   }
+
+  if (data?.myGuessBet) {
+    const isUp = data.myGuessBet.direction === 'up';
+    ctx.fillStyle = isUp ? `${P.up}33` : `${P.down}33`;
+    rrect(ctx, c.x - sw / 2 + ws(8), c.y + sh / 2 - ws(28), sw - ws(16), ws(16), ws(4));
+    ctx.fill();
+    ctx.strokeStyle = isUp ? P.up : P.down;
+    ctx.lineWidth = ws(1);
+    ctx.stroke();
+    ctx.fillStyle = isUp ? P.up : P.down;
+    ctx.font = `700 ${Math.max(7, ws(8))}px Inter,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(
+      `我的猜涨跌 · ${isUp ? '📈 涨' : '📉 跌'} · ${data.myGuessBet.stake} 积分`,
+      c.x, c.y + sh / 2 - ws(17),
+    );
+  }
 }
 
 function drawPkStage(
@@ -298,7 +316,7 @@ function drawArenaPod(
   ws: (v: number) => number,
   t: number,
   P: ArenaPalette,
-  opts?: { label?: string; returnPct?: number; direction?: string; pulse?: boolean; hover?: boolean; rank?: number; emptyLabel?: string },
+  opts?: { label?: string; returnPct?: number; direction?: string; pulse?: boolean; hover?: boolean; rank?: number; emptyLabel?: string; isMine?: boolean },
 ) {
   const p = toScreen(pod.px, pod.py);
   const pulseScale = opts?.pulse ? 1 + 0.05 * Math.sin(t * 8) : 1;
@@ -352,7 +370,8 @@ function drawArenaPod(
     ctx.fillStyle = P.text;
     ctx.font = `700 ${Math.max(8, ws(10))}px Inter,sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(opts.label.slice(0, 8), p.x, p.y + ws(8));
+    const name = opts.isMine ? `★ ${opts.label.slice(0, 6)}` : opts.label.slice(0, 8);
+    ctx.fillText(name, p.x, p.y + ws(8));
   }
 
   if (opts?.returnPct != null && opts.returnPct !== 0) {
@@ -378,6 +397,7 @@ export function drawArenaScene(
     entries?: Array<{ user_id: string; agent_name: string; direction: string; return_pct?: number; rank?: number; recent_legs?: Array<{ direction: string }> }>;
     status?: string;
     canJoin?: boolean;
+    myEntryUserId?: string | null;
     display?: ArenaDisplayData;
     pulseSlots?: Set<number>;
   },
@@ -421,6 +441,7 @@ export function drawArenaScene(
       pulse,
       hover: opts?.hoverPodId === pod.id,
       rank: entry?.rank,
+      isMine: !!(entry && opts?.myEntryUserId && entry.user_id === opts.myEntryUserId),
       emptyLabel: !entry
         ? (opts?.canJoin ? '报名' : '空位')
         : undefined,

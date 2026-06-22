@@ -22,7 +22,12 @@ import {
   fetchPortfolio, resetPortfolio, resetAgentPortfolio, updateAgentStrategy, type UserPortfolio,
 } from '../lib/lifeApi';
 import { throttleAsync } from '../lib/pollGuard';
-import { dismissPkResult, dismissGuessResult, dismissArenaResult } from '../lib/tradingResultDismiss';
+import {
+  dismissPkResult, dismissGuessResult, dismissArenaResult,
+  shouldShowGuessResult, markGuessResultShown,
+  shouldShowPkResult, markPkResultShown,
+  shouldShowArenaResult, markArenaResultShown,
+} from '../lib/tradingResultDismiss';
 import { liveGuessRound, liveArenaRound } from '../lib/guessDisplay';
 import { inferMessageScope, pauseBackgroundAgentAi, type MessageScope } from '../lib/messageScope';
 import { resolveAvailableSeat, resolvePreferredSeat, hasFreeSeat, mergeLocalSeatOccupancy, seatNowMs, countFreeSeats, ACTIVITY_SEAT_LABEL, ACTIVITY_ZONE, formatSeatCapacityMessage, type SeatMap } from '../lib/seatRegistry';
@@ -547,8 +552,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       dismissPkResult(s.pkResultData.round_id);
       if (guessPollMeta) guessPollMeta = { ...guessPollMeta, last_pk_result: null };
     }
-    if (modal === 'guess_result' && s.guessResultData?.round_id) {
-      dismissGuessResult(s.guessResultData.round_id);
+    if (modal === 'guess_result') {
+      const rid = s.guessResultData?.round_id
+        || String(s.guessPollMeta?.last_settled?.id || s.guessPollMeta?.last_settled?.round_id || '');
+      if (rid) dismissGuessResult(rid);
+      if (guessPollMeta) guessPollMeta = { ...guessPollMeta, last_my_bet: null };
     }
     if (modal === 'arena_result' && s.arenaResultData?.round_id) {
       dismissArenaResult(s.arenaResultData.round_id);
@@ -563,15 +571,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
   showPokerResult: (result) => set({
     pokerHandResult: result, activeModal: 'poker_result', rightPanelCollapsed: true, pokerTableDealingUntil: 0,
   }),
-  showGuessResult: (result) => set({
-    guessResultData: result, activeModal: 'guess_result', rightPanelCollapsed: true,
-  }),
-  showArenaResult: (result) => set({
-    arenaResultData: result, activeModal: 'arena_result', rightPanelCollapsed: true,
-  }),
-  showPkResult: (result) => set({
-    pkResultData: result, activeModal: 'pk_result', rightPanelCollapsed: true,
-  }),
+  showGuessResult: (result) => {
+    const rid = result.round_id;
+    if (rid && !shouldShowGuessResult(rid)) return;
+    if (rid) markGuessResultShown(rid);
+    set({ guessResultData: result, activeModal: 'guess_result', rightPanelCollapsed: true });
+  },
+  showArenaResult: (result) => {
+    const rid = result.round_id;
+    if (rid && !shouldShowArenaResult(rid)) return;
+    if (rid) markArenaResultShown(rid);
+    set({ arenaResultData: result, activeModal: 'arena_result', rightPanelCollapsed: true });
+  },
+  showPkResult: (result) => {
+    const rid = result.round_id;
+    if (rid && !shouldShowPkResult(rid)) return;
+    if (rid) markPkResultShown(rid);
+    set({ pkResultData: result, activeModal: 'pk_result', rightPanelCollapsed: true });
+  },
   triggerTradingReaction: (kind, leverage) => {
     const s = get();
     const agents = Object.values(s.agents);
@@ -685,6 +702,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   }),
   setPokerTableDealingUntil: (until) => set({ pokerTableDealingUntil: until }),
   flyToZone: (zone) => {
+    const prev = get();
+    if (prev.activeModal === 'pk_result' || prev.activeModal === 'guess_result' || prev.activeModal === 'arena_result') {
+      get().closeModal();
+    }
     const cam = ZONE_CAMERA[zone];
     const isLeisure = zone === 'restaurant' || zone === 'spa' || zone === 'casino' || zone === 'arena';
     const s = get();
