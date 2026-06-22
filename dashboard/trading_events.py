@@ -1,6 +1,7 @@
 """交易竞技 — 猜涨跌 / 短线 Agent 大赛 / 观众押注 / 多轮短线"""
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Optional
 
@@ -62,10 +63,14 @@ class ArenaSpectateBetBody(BaseModel):
     stake: int = Field(50, ge=20, le=300)
 
 
-async def _fetch_btc_price() -> float:
-    from life_trading import fetch_prices
-    prices = await fetch_prices([GUESS_SYMBOL])
-    return float(prices.get(GUESS_SYMBOL) or 95000.0)
+async def _fetch_btc_price(fallback: float | None = None) -> float:
+    fb = float(fallback or 95000.0)
+    try:
+        from life_trading import fetch_prices
+        prices = await asyncio.wait_for(fetch_prices([GUESS_SYMBOL]), timeout=5.0)
+        return float(prices.get(GUESS_SYMBOL) or fb)
+    except Exception:
+        return fb
 
 
 def _display_name(user_id: str) -> str:
@@ -234,27 +239,33 @@ async def _decide_agent_direction(preset_id: str, meta: dict) -> tuple[str, floa
     )
 
     eff = effective_preset(preset_id, meta)
-    entry_iv, filter_iv = parse_kline_intervals(meta.get("interval", ""), eff)
-    sym = ARENA_SYMBOL
-    klines = await fetch_kline_map({(sym, entry_iv), (sym, filter_iv)})
-    closes_e = klines.get((sym, entry_iv), [])
-    closes_f = klines.get((sym, filter_iv), [])
-    threshold = float(eff.get("threshold_pct", 0.3))
-    risk = meta.get("risk") or eff.get("risk", "中")
-    style = eff.get("style", "trend")
+    lev = float(eff.get("leverage") or 5)
     direction = "LONG"
     reason = "动量跟随"
-    if closes_e and len(closes_e) >= 12:
-        sig, signal_reason = evaluate_entry_signal(style, closes_e, closes_f, threshold, risk)
-        if sig == "SHORT":
-            direction = "SHORT"
-        elif sig == "LONG":
-            direction = "LONG"
-        else:
-            direction = "LONG" if closes_e[-1] >= closes_e[-5] else "SHORT"
-            signal_reason = "tick 动量"
-        reason = signal_reason or reason
-    lev = float(eff.get("leverage") or 5)
+    try:
+        entry_iv, filter_iv = parse_kline_intervals(meta.get("interval", ""), eff)
+        sym = ARENA_SYMBOL
+        klines = await asyncio.wait_for(
+            fetch_kline_map({(sym, entry_iv), (sym, filter_iv)}),
+            timeout=4.0,
+        )
+        closes_e = klines.get((sym, entry_iv), [])
+        closes_f = klines.get((sym, filter_iv), [])
+        threshold = float(eff.get("threshold_pct", 0.3))
+        risk = meta.get("risk") or eff.get("risk", "中")
+        style = eff.get("style", "trend")
+        if closes_e and len(closes_e) >= 12:
+            sig, signal_reason = evaluate_entry_signal(style, closes_e, closes_f, threshold, risk)
+            if sig == "SHORT":
+                direction = "SHORT"
+            elif sig == "LONG":
+                direction = "LONG"
+            else:
+                direction = "LONG" if closes_e[-1] >= closes_e[-5] else "SHORT"
+                signal_reason = "tick 动量"
+            reason = signal_reason or reason
+    except Exception:
+        reason = "快速默认"
     return direction, lev, reason
 
 
@@ -318,12 +329,43 @@ async def _open_new_leg(c, round_id: str, e: dict, price: float) -> None:
     e["signal_reason"] = summary
 
 
+async def _force_settle_arena_round(c, round_id: str) -> None:
+    """行情拉取失败时的兜底结算，避免 running 局永久卡住。"""
+    rd = dict(c.execute("SELECT * FROM arena_rounds WHERE id=?", (round_id,)).fetchone() or {})
+    if not rd or rd.get("status") != "running":
+        return
+    end_price = float(rd.get("start_price") or 95000.0)
+    entries = [dict(e) for e in c.execute(
+        "SELECT * FROM arena_entries WHERE round_id=?", (round_id,)
+    ).fetchall()]
+    for e in entries:
+        try:
+            await _close_open_leg(c, round_id, e, end_price)
+        except Exception:
+            pass
+    c.execute(
+        "UPDATE arena_rounds SET end_price=?, status='settled' WHERE id=?",
+        (end_price, round_id),
+    )
+    entries = [dict(e) for e in c.execute(
+        "SELECT * FROM arena_entries WHERE round_id=? ORDER BY return_pct DESC, agent_name ASC",
+        (round_id,),
+    ).fetchall()]
+    for i, e in enumerate(entries):
+        c.execute(
+            "UPDATE arena_entries SET rank=?, return_pct=? WHERE round_id=? AND user_id=?",
+            (i + 1, float(e.get("return_pct") or 0), round_id, e["user_id"]),
+        )
+
+
 async def _advance_arena_legs(c, rd: dict) -> None:
     """运行中每 30s 多轮开平仓。"""
     ts = life_db.now_ms()
     round_id = rd["id"]
     run_start = int(rd["join_ends_at"])
-    if ts >= int(rd["ends_at"]) or ts < run_start:
+    if ts >= int(rd["ends_at"]):
+        return
+    if ts < run_start:
         return
     leg_index = int((ts - run_start) // ARENA_LEG_INTERVAL_MS)
     round_last = int(rd.get("last_leg_index") or 0)
@@ -349,16 +391,29 @@ async def _ensure_arena_round(c) -> dict:
     ).fetchone()
     if row:
         rd = dict(row)
-        if rd["status"] == "join" and ts >= rd["join_ends_at"]:
+        if rd["status"] == "running" and ts >= int(rd.get("ends_at") or 0):
+            try:
+                await _settle_arena_round(c, rd["id"])
+            except Exception:
+                await _force_settle_arena_round(c, rd["id"])
+            row = None
+        elif rd["status"] == "join" and ts >= rd["join_ends_at"]:
             await _start_arena_round(c, rd["id"])
             rd = dict(c.execute("SELECT * FROM arena_rounds WHERE id=?", (rd["id"],)).fetchone())
-        if rd["status"] == "running":
+            if rd.get("status") == "running":
+                return rd
+        elif rd["status"] == "running":
             await _advance_arena_legs(c, rd)
             rd = dict(c.execute("SELECT * FROM arena_rounds WHERE id=?", (rd["id"],)).fetchone())
-        if rd["status"] == "running" and ts >= rd["ends_at"]:
-            await _settle_arena_round(c, rd["id"])
-            rd = None
-        elif rd:
+            if rd.get("status") == "running" and ts >= int(rd.get("ends_at") or 0):
+                try:
+                    await _settle_arena_round(c, rd["id"])
+                except Exception:
+                    await _force_settle_arena_round(c, rd["id"])
+                row = None
+            else:
+                return rd
+        elif rd.get("status") == "join":
             return rd
 
     price = await _fetch_btc_price()
@@ -420,7 +475,7 @@ async def _settle_arena_round(c, round_id: str) -> dict:
     from life_game import load_user, save_user, _earn
 
     rd = dict(c.execute("SELECT * FROM arena_rounds WHERE id=?", (round_id,)).fetchone())
-    end_price = await _fetch_btc_price()
+    end_price = await _fetch_btc_price(float(rd.get("start_price") or 95000.0))
 
     entries = [dict(e) for e in c.execute(
         "SELECT * FROM arena_entries WHERE round_id=?", (round_id,)

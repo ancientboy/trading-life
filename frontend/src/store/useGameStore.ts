@@ -67,6 +67,7 @@ function applyArenaFetch(
     arenaLiveServer: ar.current,
     arenaLive: liveArenaRound(ar.current, syncedAt),
     tradingLiveSyncedAt: syncedAt,
+    arenaSyncError: null,
     arenaPollMeta: {
       last_settled: ar.last_settled ?? st.arenaPollMeta?.last_settled ?? null,
     },
@@ -249,6 +250,7 @@ interface GameStore {
   guessRound: GuessRoundState | null;
   guessPollMeta: GuessPollMeta | null;
   arenaPollMeta: ArenaPollMeta | null;
+  arenaSyncError: string | null;
   /** 竞技数据上次同步时间 — 用于本地 1s 倒计时 */
   tradingLiveSyncedAt: number;
   guessRoundServer: GuessRoundState | null;
@@ -442,6 +444,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   guessRound: null,
   guessPollMeta: null,
   arenaPollMeta: null,
+  arenaSyncError: null,
   tradingLiveSyncedAt: 0,
   guessRoundServer: null,
   arenaLiveServer: null,
@@ -630,12 +633,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   syncTradingLive: async () => {
     if (!isLoggedIn()) return;
-    return throttleAsync('sync-trading-live', 4500, async () => {
+    return throttleAsync('sync-trading-live', 3000, async () => {
       try {
         const syncedAt = Date.now();
-        const [gr, ar] = await Promise.all([fetchGuessRound(), fetchArenaRound()]);
+        const [grSet, arSet] = await Promise.allSettled([
+          fetchGuessRound(),
+          fetchArenaRoundFresh(),
+        ]);
         const patch: Partial<GameStore> = { tradingLiveSyncedAt: syncedAt };
-        if (gr.ok) {
+        if (grSet.status === 'fulfilled' && grSet.value.ok) {
+          const gr = grSet.value;
           patch.guessRoundServer = gr.current ?? null;
           patch.guessRound = gr.current ?? null;
           patch.guessPollMeta = {
@@ -644,19 +651,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
             last_pk_result: gr.last_pk_result ?? null,
           };
         }
-        if (ar.ok) {
-          patch.arenaLiveServer = ar.current ?? null;
-          patch.arenaLive = ar.current ?? null;
-          patch.arenaPollMeta = { last_settled: ar.last_settled ?? null };
-        } else {
-          const pr = await fetchPublicArenaLive().catch(() => null);
-          if (pr?.ok && pr.current) {
-            patch.arenaLiveServer = pr.current;
-            patch.arenaLive = pr.current;
-          }
+        if (arSet.status === 'fulfilled' && arSet.value.ok && arSet.value.current) {
+          patch.arenaLiveServer = arSet.value.current;
+          patch.arenaLive = liveArenaRound(arSet.value.current, syncedAt);
+          patch.arenaPollMeta = { last_settled: arSet.value.last_settled ?? null };
+          patch.arenaSyncError = null;
+        } else if (arSet.status === 'rejected' || (arSet.status === 'fulfilled' && !arSet.value.ok)) {
+          patch.arenaSyncError = '大赛同步失败，请点刷新';
         }
         set(patch);
-      } catch { /* ignore */ }
+      } catch {
+        set({ arenaSyncError: '竞技数据同步失败，请点刷新' });
+      }
     });
   },
   syncArenaLiveNow: async () => {
@@ -682,7 +688,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       patch.arenaLive = arenaLive;
     }
     if (Object.keys(patch).length) set(patch);
-    if (arenaLive && arenaNeedsServerRefresh(arenaLive) && now - lastArenaSettlePoll > 1800) {
+    if (arenaLive && arenaNeedsServerRefresh(arenaLive) && now - lastArenaSettlePoll > 1200) {
       lastArenaSettlePoll = now;
       void fetchArenaRoundFresh().then(ar => { applyArenaFetch(ar); }).catch(() => {});
     }

@@ -32,6 +32,7 @@ export function TradingEventsPanel() {
   const setArenaLive = useGameStore(s => s.setArenaLive);
   const syncTradingLive = useGameStore(s => s.syncTradingLive);
   const syncArenaLiveNow = useGameStore(s => s.syncArenaLiveNow);
+  const arenaSyncError = useGameStore(s => s.arenaSyncError);
   const showGuessResult = useGameStore(s => s.showGuessResult);
   const showArenaResult = useGameStore(s => s.showArenaResult);
   const showPkResult = useGameStore(s => s.showPkResult);
@@ -41,6 +42,10 @@ export function TradingEventsPanel() {
   const [tab, setTab] = useState<'guess' | 'arena'>('arena');
   const [lastGuess, setLastGuess] = useState<Record<string, unknown> | null>(null);
   const arena = arenaLive;
+  const arenaStuck = !!arena && (
+    (arena.status === 'running' && (arena.seconds_left ?? 0) <= 0)
+    || (arena.status === 'join' && (arena.join_seconds_left ?? 0) <= 0 && !arena.can_join)
+  );
   const [highlights, setHighlights] = useState<Array<Record<string, unknown>>>([]);
   const [winRates, setWinRates] = useState<ArenaWinRateEntry[]>([]);
   const [guessStake, setGuessStake] = useState(50);
@@ -145,6 +150,14 @@ export function TradingEventsPanel() {
     if (tab !== 'arena') return;
     void useGameStore.getState().syncArenaLiveNow();
   }, [tab]);
+
+  useEffect(() => {
+    if (!arenaStuck || tab !== 'arena') return;
+    const id = setInterval(() => {
+      void useGameStore.getState().syncArenaLiveNow();
+    }, 2500);
+    return () => clearInterval(id);
+  }, [arenaStuck, tab]);
 
   const refreshExtras = useCallback(async () => {
     if (document.visibilityState !== 'visible' || tab !== 'arena') return;
@@ -365,12 +378,24 @@ export function TradingEventsPanel() {
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             marginBottom: 8, fontSize: 11, color: '#7a6e62',
           }}>
-            <span>{arenaSyncing ? '正在同步大赛数据…' : `第 ${arenaRoundStep(arena)}/3 步 · ${arenaPhaseLabel(arena)}`}</span>
+            <span>
+              {arenaSyncing ? '正在同步大赛数据…'
+                : arenaStuck ? '结算中 · 正在请求下一局…'
+                  : `第 ${arenaRoundStep(arena)}/3 步 · ${arenaPhaseLabel(arena)}`}
+            </span>
             <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '2px 8px' }}
               disabled={arenaSyncing} onClick={() => void refreshArena()}>
               {arenaSyncing ? '…' : '刷新'}
             </button>
           </div>
+          {(arenaStuck || arenaSyncError) && (
+            <div style={{
+              marginBottom: 8, padding: 8, borderRadius: 8, fontSize: 11,
+              background: '#fff3e0', color: '#8a6e3a', lineHeight: 1.5,
+            }}>
+              {arenaSyncError || '本局时间已到，正在向服务器请求结算并开启下一局。若超过 10 秒无变化，请点「刷新」或 Ctrl+Shift+R 强刷页面。'}
+            </div>
+          )}
           <div style={{ padding: 12, background: '#eef4ff', borderRadius: 10, border: '1px solid #b8cce8', marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
