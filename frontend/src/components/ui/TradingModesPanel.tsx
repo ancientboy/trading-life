@@ -7,6 +7,7 @@ import {
   type TradingModesState,
 } from '../../lib/lifeEngagementApi';
 import { guessPhaseLabel } from '../../lib/guessDisplay';
+import { PersonalityCard } from './PersonalityCard';
 
 type ModeTab = 'leverage' | 'pk' | 'faction' | 'comeback';
 
