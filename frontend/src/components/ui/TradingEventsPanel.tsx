@@ -15,6 +15,7 @@ import {
   shouldShowArenaResult, markArenaResultShown,
 } from '../../lib/tradingResultDismiss';
 import { shareOrCopy, shareResultMessage, appBaseUrl } from '../../lib/shareUtils';
+import { dedupeAsync } from '../../lib/pollGuard';
 
 const RANK_LABELS: Record<number, string> = { 1: '🥇 冠军', 2: '🥈 亚军', 3: '🥉 季军' };
 

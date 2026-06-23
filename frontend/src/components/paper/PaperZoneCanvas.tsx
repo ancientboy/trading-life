@@ -12,6 +12,7 @@ import {
 } from './renderZone';
 import { resolveAgentZone } from '../../lib/zoneTransit';
 import { getStoredAccount } from '../../lib/lifeAuth';
+import { fetchMarketKlines } from '../../lib/lifeApi';
 
 export function PaperZoneCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
