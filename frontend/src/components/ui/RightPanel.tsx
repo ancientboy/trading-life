@@ -130,7 +130,7 @@ export function RightPanel() {
         {currentTab === 'hall' && renderHallPanel()}
         {currentTab === 'tasks' && <DailyTasksPanel compact />}
         {currentTab === 'social' && <SocialPanel />}
-        {(currentTab === 'events' || activeZone === 'arena') && <TradingEventsPanel />}
+        {currentTab === 'events' && <TradingEventsPanel />}
         {(currentTab === 'object' || currentTab === 'agent') && renderAgentPanel()}
         {currentTab === 'npc' && renderNpcPanel()}
         {currentTab === 'facility' && renderFacilityPanel()}

@@ -9,7 +9,7 @@ import {
 import { guessPhaseLabel } from '../../lib/guessDisplay';
 import { PersonalityCard } from './PersonalityCard';
 
-type ModeTab = 'leverage' | 'pk' | 'faction' | 'comeback';
+export type TradingModeTab = 'leverage' | 'pk' | 'faction' | 'comeback';
 
 const EMPTY_FACTION = {
   day_key: '',
@@ -19,17 +19,26 @@ const EMPTY_FACTION = {
   settle_hour: 22,
 };
 
-export function TradingModesPanel() {
+const MODE_INTRO: Record<TradingModeTab, { title: string; desc: string }> = {
+  pk: { title: '⚔️ 1v1 对冲 PK', desc: '与 AI 对赌涨跌方向 · 基于当前猜涨跌局结算 · 与短线大赛无关' },
+  leverage: { title: '🎰 杠杆翻倍', desc: '用猜涨跌赢得的利润加杠杆 · 仅在本轮猜涨跌窗口内操作' },
+  faction: { title: '🛡 多 / 空阵营', desc: '选边站队 · 你的猜涨跌押注自动计入阵营净值 · 每日分红' },
+  comeback: { title: '🔄 爆仓逆袭', desc: '当日大亏后触发的 2x 低倍安全局 · 独立于大赛' },
+};
+
+type Props = {
+  mode: TradingModeTab;
+  onGoGuess?: () => void;
+};
+
+export function TradingModesPanel({ mode, onGoGuess }: Props) {
   const addMessage = useGameStore(s => s.addMessage);
   const points = useGameStore(s => s.points);
   const triggerTradingReaction = useGameStore(s => s.triggerTradingReaction);
   const flyToZone = useGameStore(s => s.flyToZone);
-  const setRightTab = useGameStore(s => s.setRightTab);
   const guess = useGameStore(s => s.guessRound);
-  const arenaLive = useGameStore(s => s.arenaLive);
   const setGuessRound = useGameStore(s => s.setGuessRound);
 
-  const [tab, setTab] = useState<ModeTab>('pk');
   const [modes, setModes] = useState<TradingModesState | null>(null);
   const [pkStake, setPkStake] = useState(50);
   const [busy, setBusy] = useState(false);
@@ -37,6 +46,8 @@ export function TradingModesPanel() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [streakBoard, setStreakBoard] = useState<Array<{ display_name: string; wins: number; rank: number }>>([]);
+
+  const intro = MODE_INTRO[mode];
 
   const toast = (msg: string) => {
     setFlash(msg);
@@ -51,17 +62,17 @@ export function TradingModesPanel() {
     try {
       const [m, sb] = await Promise.all([
         dedupeAsync('trading-modes', () => fetchTradingModes()),
-        dedupeAsync('pk-streak', () => fetchPkStreakBoard()),
+        mode === 'pk' ? dedupeAsync('pk-streak', () => fetchPkStreakBoard()) : Promise.resolve({ ok: false as const }),
       ]);
       if (m.ok) setModes(m);
       else setLoadError(m.error || '玩法数据加载失败');
-      if (sb.ok) setStreakBoard(sb.entries ?? []);
+      if (sb.ok && 'entries' in sb) setStreakBoard(sb.entries ?? []);
     } catch {
       setLoadError('网络错误，请稍后重试');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     void refresh();
@@ -73,7 +84,7 @@ export function TradingModesPanel() {
   const fs = modes?.faction_status ?? EMPTY_FACTION;
   const cb = modes?.comeback;
   const guessOpen = !!guess?.betting_open;
-  const guessNeedsBet = tab === 'pk' || tab === 'leverage' || tab === 'comeback';
+  const guessNeedsBet = mode === 'pk' || mode === 'leverage' || mode === 'comeback';
 
   const ensureGuessOpen = async (): Promise<boolean> => {
     try {
@@ -113,7 +124,6 @@ export function TradingModesPanel() {
       toast(r.message || 'PK 已开局 · 等待本局猜涨跌结算');
       triggerTradingReaction('pk');
       flyToZone('arena');
-      setRightTab('events');
     } catch { toast('网络错误'); } finally { setBusy(false); }
   };
 
@@ -149,7 +159,7 @@ export function TradingModesPanel() {
   };
 
   return (
-    <div style={{ marginTop: 12, position: 'relative', zIndex: 2 }}>
+    <div style={{ position: 'relative', zIndex: 2 }}>
       {flash && (
         <div style={{
           position: 'sticky', top: 0, zIndex: 5, marginBottom: 8, padding: '8px 10px',
@@ -158,8 +168,16 @@ export function TradingModesPanel() {
         }}>{flash}</div>
       )}
 
+      <div style={{
+        padding: '10px 12px', marginBottom: 10, borderRadius: 10,
+        background: '#faf6ef', border: '1px solid #ebe4d8',
+      }}>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>{intro.title}</div>
+        <div style={{ fontSize: 10, color: '#8a7e72', marginTop: 4, lineHeight: 1.5 }}>{intro.desc}</div>
+      </div>
+
       {loading && !modes && (
-        <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>加载四大玩法…</div>
+        <div style={{ fontSize: 11, color: '#9a8b7a', marginBottom: 8 }}>加载玩法数据…</div>
       )}
       {loadError && (
         <div style={{ marginBottom: 8, padding: 8, background: '#fff8e8', borderRadius: 8, fontSize: 11 }}>
@@ -169,42 +187,36 @@ export function TradingModesPanel() {
         </div>
       )}
 
-      {guess && (
+      {guessNeedsBet && guess && (
         <div style={{
-          marginBottom: 10, padding: '6px 10px', borderRadius: 8, fontSize: 10,
-          background: guessOpen ? '#eef8f0' : '#faf6ef', color: '#6b5e4e',
-          display: 'flex', justifyContent: 'space-between',
+          marginBottom: 10, padding: '8px 10px', borderRadius: 8, fontSize: 10,
+          background: guessOpen ? '#eef8f0' : '#fff3e0', color: '#6b5e4e',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
         }}>
-          <span>{guessPhaseLabel(guess)}</span>
-          <span>BTC ${Math.round(Number(guess.start_price || 0)).toLocaleString()}</span>
+          <span>
+            关联猜涨跌局：{guessPhaseLabel(guess)}
+            {!guessOpen && ` · ${guess.seconds_left}s 后结算`}
+          </span>
+          {onGoGuess && (
+            <button type="button" className="ui-btn" style={{ fontSize: 10, padding: '2px 8px', flexShrink: 0 }}
+              onClick={onGoGuess}>
+              去猜涨跌 →
+            </button>
+          )}
         </div>
       )}
 
       <PersonalityCard personality={modes?.personality} />
 
-      <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
-        {([
-          ['leverage', '🎰 杠杆'],
-          ['pk', '⚔️ PK'],
-          ['faction', '🛡 阵营'],
-          ['comeback', '🔄 逆袭'],
-        ] as const).map(([id, label]) => (
-          <button key={id} type="button" className={`ui-btn${tab === id ? ' active' : ''}`} style={{
-            flex: '1 1 45%', fontSize: 10,
-          }} onClick={() => setTab(id)}>{label}</button>
-        ))}
-      </div>
-
-      {tab === 'leverage' && (
+      {mode === 'leverage' && (
         <div style={{ padding: 10, background: '#fff8e8', borderRadius: 8, fontSize: 11 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>杠杆翻倍 · 用利润博下一根 K 线</div>
           {pl ? (
             <div style={{ marginBottom: 8, color: '#2e7d32' }}>
               可用利润 <b>{pl.profit}</b> 积分 · 剩余 {modes?.leverage_uses_left ?? 0} 次
             </div>
           ) : (
             <div style={{ marginBottom: 8, color: '#c65a00' }}>
-              先在上方「猜涨跌」赢一局，结算后 120 秒内可杠杆出击
+              请先到「猜涨跌」标签赢一局，结算后 120 秒内可在此杠杆出击
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
@@ -212,7 +224,7 @@ export function TradingModesPanel() {
               <button key={lev} type="button" className="ui-btn" style={{ flex: 1, fontSize: 10 }}
                 disabled={busy || !guessOpen}
                 onClick={() => void (pl ? doLeverage('up', lev) : toast('需先赢得一局猜涨跌'))}>
-                {lev}x 涨
+                {lev}x 猜涨
               </button>
             ))}
           </div>
@@ -221,7 +233,7 @@ export function TradingModesPanel() {
               <button key={lev} type="button" className="ui-btn" style={{ flex: 1, fontSize: 10, background: '#ffefef' }}
                 disabled={busy || !guessOpen}
                 onClick={() => void (pl ? doLeverage('down', lev) : toast('需先赢得一局猜涨跌'))}>
-                {lev}x 跌
+                {lev}x 猜跌
               </button>
             ))}
           </div>
@@ -229,24 +241,22 @@ export function TradingModesPanel() {
         </div>
       )}
 
-      {tab === 'pk' && (
+      {mode === 'pk' && (
         <div style={{ padding: 10, background: '#eef4ff', borderRadius: 8, fontSize: 11 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>1v1 对冲 PK · 反向零和</div>
           <div style={{ marginBottom: 6 }}>连胜 {modes?.pk_streak ?? 0} · 最佳 {modes?.pk_best_streak ?? 0}</div>
           <input type="range" min={20} max={300} step={10} value={pkStake}
             onChange={e => setPkStake(Number(e.target.value))} style={{ width: '100%' }} />
-          <div style={{ fontSize: 10, color: '#9a8b7a', marginBottom: 8 }}>押注 {pkStake} · 积分 {points}</div>
-          {!guessOpen && guessNeedsBet && (
+          <div style={{ fontSize: 10, color: '#9a8b7a', marginBottom: 8 }}>PK 押注 {pkStake} · 积分 {points}</div>
+          {!guessOpen && (
             <p style={{ fontSize: 9, color: '#c65a00', marginBottom: 8 }}>
-              猜涨跌封盘中 · {guess.seconds_left}s 后结算 · 押注/PK 暂不可用
-              {arenaLive?.can_join ? ' · 大赛报名仍开放' : ''}
+              猜涨跌封盘中 · PK 需等下一局押注窗口
             </p>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="ui-btn" style={{ flex: 1 }} disabled={busy || !guessOpen}
-              onClick={() => void doPk('up')}>📈 押涨 PK</button>
+              onClick={() => void doPk('up')}>📈 PK 猜涨</button>
             <button type="button" className="ui-btn" style={{ flex: 1, background: '#ffefef' }} disabled={busy || !guessOpen}
-              onClick={() => void doPk('down')}>📉 押跌 PK</button>
+              onClick={() => void doPk('down')}>📉 PK 猜跌</button>
           </div>
           {streakBoard.length > 0 && (
             <>
@@ -262,9 +272,9 @@ export function TradingModesPanel() {
         </div>
       )}
 
-      {tab === 'faction' && (
+      {mode === 'faction' && (
         <div style={{ padding: 10, background: '#f0fff4', borderRadius: 8, fontSize: 11 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>多 / 空阵营团战 · 每日 {fs.settle_hour}:00 分红</div>
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>每日 {fs.settle_hour}:00 按阵营净值分红</div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <div style={{ flex: 1, padding: 8, background: '#e8f5e9', borderRadius: 6, textAlign: 'center' }}>
               🐂 多头<br />{fs.bull.members} 人 · 净值 {fs.bull.net_pnl >= 0 ? '+' : ''}{fs.bull.net_pnl}
@@ -283,12 +293,14 @@ export function TradingModesPanel() {
             <button type="button" className="ui-btn" style={{ flex: 1, background: '#ffebee' }} disabled={busy}
               onClick={() => void doFaction('bear')}>加入空头</button>
           </div>
+          <p style={{ fontSize: 9, color: '#9a8b7a', marginTop: 8 }}>
+            无需在此押注 · 在「猜涨跌」标签押涨/跌即计入阵营
+          </p>
         </div>
       )}
 
-      {tab === 'comeback' && (
+      {mode === 'comeback' && (
         <div style={{ padding: 10, background: '#f3e5f5', borderRadius: 8, fontSize: 11 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>爆仓逆袭副本 · 2x 低倍安全局</div>
           {cb?.active ? (
             <>
               <div style={{ marginBottom: 8 }}>
@@ -296,9 +308,9 @@ export function TradingModesPanel() {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="ui-btn" style={{ flex: 1 }} disabled={busy || (cb.rounds_left ?? 0) <= 0 || !guessOpen}
-                  onClick={() => void doComeback('up')}>📈 2x 押涨</button>
+                  onClick={() => void doComeback('up')}>📈 逆袭猜涨</button>
                 <button type="button" className="ui-btn" style={{ flex: 1, background: '#ffefef' }} disabled={busy || (cb.rounds_left ?? 0) <= 0 || !guessOpen}
-                  onClick={() => void doComeback('down')}>📉 2x 押跌</button>
+                  onClick={() => void doComeback('down')}>📉 逆袭猜跌</button>
               </div>
             </>
           ) : (

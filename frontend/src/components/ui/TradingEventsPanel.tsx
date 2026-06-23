@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { LogicDrawer } from './LogicDrawer';
-import { TradingModesPanel } from './TradingModesPanel';
+import { TradingModesPanel, type TradingModeTab } from './TradingModesPanel';
 import { guessPhaseLabel, arenaPhaseLabel, arenaRoundStep, arenaParticipationHint } from '../../lib/guessDisplay';
 import {
   placeGuessBet, arenaSpectateBet, fetchGuessRoundFresh,
@@ -19,7 +19,31 @@ import { dedupeAsync } from '../../lib/pollGuard';
 
 const RANK_LABELS: Record<number, string> = { 1: '🥇 冠军', 2: '🥈 亚军', 3: '🥉 季军' };
 
+type EventTab = 'guess' | 'arena' | TradingModeTab;
+
+const PRIMARY_TABS: { id: EventTab; label: string; hint: string }[] = [
+  { id: 'guess', label: '📊 猜涨跌', hint: '60s BTC 涨跌押注' },
+  { id: 'arena', label: '🏆 短线大赛', hint: 'Agent 参赛 · 观众押前三' },
+];
+
+const MODE_TABS: { id: TradingModeTab; label: string }[] = [
+  { id: 'pk', label: '⚔️ PK' },
+  { id: 'leverage', label: '🎰 杠杆' },
+  { id: 'faction', label: '🛡 阵营' },
+  { id: 'comeback', label: '🔄 逆袭' },
+];
+
+const TAB_BLURB: Record<EventTab, string> = {
+  guess: '独立玩法：押 BTC 60 秒内涨或跌，与短线大赛、选手台 LONG/SHORT 无关',
+  arena: '独立玩法：报名派 Agent 自动交易，或观众押冠/亚/季军，与猜涨跌分池',
+  pk: '进阶玩法：1v1 对冲 PK，结算依赖当前猜涨跌局',
+  leverage: '进阶玩法：用猜涨跌赢得的利润加杠杆',
+  faction: '进阶玩法：选边站队，猜涨跌押注自动计入阵营',
+  comeback: '进阶玩法：大亏后触发的逆袭安全局',
+};
+
 export function TradingEventsPanel() {
+  const activeZone = useGameStore(s => s.activeZone);
   const agents = useGameStore(s => s.agents);
   const canOperateAgent = useGameStore(s => s.canOperateAgent);
   const selectedAgentId = useGameStore(s => s.selectedAgentId);
@@ -40,7 +64,7 @@ export function TradingEventsPanel() {
   const addMessage = useGameStore(s => s.addMessage);
   const points = useGameStore(s => s.points);
 
-  const [tab, setTab] = useState<'guess' | 'arena'>('arena');
+  const [tab, setTab] = useState<EventTab>(() => (activeZone === 'arena' ? 'arena' : 'guess'));
   const [lastGuess, setLastGuess] = useState<Record<string, unknown> | null>(null);
   const arena = arenaLive;
   const arenaStuck = !!arena && (
@@ -283,17 +307,38 @@ export function TradingEventsPanel() {
         background: 'linear-gradient(135deg,#fff3e0,#eef4ff)', border: '2px solid #ffb74d',
       }}>
         <div style={{ fontWeight: 800, fontSize: 14, color: '#c65a00', marginBottom: 4 }}>🏆 交易竞技中心</div>
-        <div style={{ fontSize: 11, color: '#7a6e62' }}>猜涨跌 60s · 大赛极速/标准 · AI 30s 多轮 · 押前三名</div>
+        <div style={{ fontSize: 11, color: '#7a6e62' }}>每个玩法独立 Tab · 切换标签只显示当前玩法</div>
         <div style={{ fontSize: 10, color: '#9a8b7a', marginTop: 4 }}>
-          进入竞技馆不会自动入座 · 猜涨跌押注与选手台大赛是两套玩法
+          猜涨跌 ≠ 短线大赛 ≠ PK/杠杆 · 请勿在同一屏混押
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        <button className="ui-btn" style={{ flex: 1, opacity: tab === 'guess' ? 1 : 0.55 }}
-          onClick={() => setTab('guess')}>📊 猜涨跌 · 60s</button>
-        <button className="ui-btn" style={{ flex: 1, opacity: tab === 'arena' ? 1 : 0.55 }}
-          onClick={() => setTab('arena')}>🏆 短线大赛</button>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+        {PRIMARY_TABS.map(t => (
+          <button key={t.id} type="button" className="ui-btn" style={{
+            flex: 1, opacity: tab === t.id ? 1 : 0.55,
+            border: tab === t.id ? '2px solid #ffb74d' : '1px solid #ebe4d8',
+          }} onClick={() => setTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+        {MODE_TABS.map(t => (
+          <button key={t.id} type="button" className="ui-btn" style={{
+            flex: '1 1 22%', fontSize: 10, opacity: tab === t.id ? 1 : 0.55,
+            border: tab === t.id ? '2px solid #4a90c8' : '1px solid #ebe4d8',
+          }} onClick={() => setTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{
+        marginBottom: 10, padding: '6px 10px', borderRadius: 8, fontSize: 10,
+        background: '#f5f0e8', color: '#7a6e62', lineHeight: 1.45,
+      }}>
+        {TAB_BLURB[tab]}
       </div>
 
       <div style={{ fontSize: 11, color: '#8a7e72', marginBottom: 10, display: 'flex', justifyContent: 'space-between' }}>
@@ -356,10 +401,10 @@ export function TradingEventsPanel() {
           ) : (
             <div style={{ marginTop: 10, padding: 10, background: '#fff3e0', borderRadius: 8, fontSize: 11, color: '#8a6e3a' }}>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>⏳ 封盘中 · {guess.seconds_left}s 后结算</div>
-              <div>本阶段不可押猜涨跌/PK（前 50s 为押注窗口）</div>
-              {arena?.can_join && !arena.my_entry && (
+              <div>本阶段不可押猜涨跌 · 请等待下一局（约 60s 一轮）</div>
+              {arena?.can_join && !arena.my_entry && tab === 'guess' && (
                 <div style={{ marginTop: 6, color: '#2e7d32' }}>
-                  大赛仍可报名 · 剩余 {arena.join_seconds_left}s · 点击场景空选手台可入座
+                  大赛仍可报名 · 请切到「短线大赛」标签或点击场景空选手台
                 </div>
               )}
             </div>
@@ -578,7 +623,9 @@ export function TradingEventsPanel() {
         </>
       )}
 
-      <TradingModesPanel />
+      {(tab === 'pk' || tab === 'leverage' || tab === 'faction' || tab === 'comeback') && (
+        <TradingModesPanel mode={tab} onGoGuess={() => setTab('guess')} />
+      )}
     </div>
   );
 }
