@@ -728,6 +728,24 @@ app.include_router(life_router, prefix="/api/life", tags=["life"])
 # ============================================================
 STATIC_DIR = Path(__file__).parent / "static"
 
+# ============================================================
+# 健康检查（部署探活 / 监控）
+# ============================================================
+@app.get("/api/health")
+async def health_check():
+    import life_db
+    life_ok = life_db.db_ready()
+    life_index = STATIC_DIR / "life" / "index.html"
+    static_ok = life_index.is_file()
+    body = {
+        "status": "ok" if life_ok and static_ok else "degraded",
+        "life_db": life_ok,
+        "static_life": static_ok,
+        "ts": datetime.now(timezone.utc).isoformat(),
+    }
+    code = 200 if life_ok else 503
+    return JSONResponse(body, status_code=code)
+
 # Explicit routes (must be before static mount)
 @app.get("/pixel")
 async def pixel_page():

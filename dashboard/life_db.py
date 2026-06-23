@@ -38,6 +38,10 @@ DEFAULT_PORTFOLIO_USDT = 50000.0
 DEFAULT_AGENT_ALLOC_USDT = 10000.0
 
 
+def db_ready() -> bool:
+    return _db_path is not None
+
+
 def init_db(data_dir: Path) -> None:
     global _db_path
     _db_path = data_dir / "life_game.db"
